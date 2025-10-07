@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 const BusinessOwnerSchema = new Schema({
     fname: {  type: String, required: true },
@@ -14,4 +15,7 @@ const BusinessOwnerSchema = new Schema({
     image: { type: String },
 });
 
-module.exports = mongoose.model('BusinessOwner', BusinessOwnerSchema);
+const BusinessOwner = mongoose.model('BusinessOwner', BusinessOwnerSchema);
+// BusinessOwner.createIndexes();
+
+module.exports = BusinessOwner;
