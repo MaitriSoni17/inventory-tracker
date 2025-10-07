@@ -1,9 +1,11 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 const ProductSchema = new Schema({
+    businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'businessowner' },
     name: {  type: String, required: true },
     category: { type: String, required: true },
-    price: { type: Number, required: true, unique: true },
+    price: { type: Number, required: true },
     totalProducts: { type: Number, required: true },
     warehouse: [{ type: String }],
     brand: { type: String },
