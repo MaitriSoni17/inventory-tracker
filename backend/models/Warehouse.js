@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
 const Warehouse = new Schema({
+    businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner', required: true },
+    employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     wName: { type: String, required: true },
     wManager: { type: String, required: true },
     wAddress: { type: String, required: true },
@@ -11,4 +14,4 @@ const Warehouse = new Schema({
     country: { type: String },
 });
 
-module.exports = mongoose.model('WarehouseSchema', Warehouse);
+module.exports = mongoose.model('Warehouse', Warehouse);

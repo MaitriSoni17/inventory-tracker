@@ -34,7 +34,7 @@ router.post('/createcustomerorder', fetchuser, [
             customerorderData.employee = req.user._id;
         }
 
-        const customerorder = await CustomerOrders.create(productData);
+        const customerorder = await CustomerOrders.create(customerorderData);
         res.json(customerorder);
     } catch (err) {
         console.error(err.message);

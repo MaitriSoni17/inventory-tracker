@@ -26,7 +26,7 @@ router.post('/createsupplierorder', fetchuser, [
             supplierorderdata.businessowner = req.user._id;
         }
 
-        const supplierorder = await SupplierOrders.create(productData);
+        const supplierorder = await SupplierOrders.create(supplierorderdata);
         res.json(supplierorder);
     } catch (err) {
         console.error(err.message);
