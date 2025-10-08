@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
+const { Schema } = mongoose;
 
-const SupplierSchema = new Schema({
+const Supplier = new Schema({
     fname: {  type: String, required: true },
     lname: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -14,6 +15,7 @@ const SupplierSchema = new Schema({
     phone: { type: String, required: true },
     address: { type: String, required: true },
     about: { type: String },
+    role: { type: String, default: 'supplier' }
 });
 
-module.exports = mongoose.model('SupplierSchema', SupplierSchema);
+module.exports = mongoose.model('Supplier', Supplier);

@@ -40,7 +40,7 @@ router.post('/createemployee', fetchbusinessowner, [
             password: secPass,
             phone: req.body.phone,
             address: req.body.address,
-            role: 'Employee' // ✅ Add role here
+            role: 'employee'
         });
 
         const authToken = jwt.sign({ id: employee._id, role: 'employee' }, JWT_SECRET);

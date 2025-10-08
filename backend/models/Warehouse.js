@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const WarehouseSchema = new Schema({
+const Warehouse = new Schema({
     wName: { type: String, required: true },
     wManager: { type: String, required: true },
     wAddress: { type: String, required: true },
@@ -11,4 +11,4 @@ const WarehouseSchema = new Schema({
     country: { type: String },
 });
 
-module.exports = mongoose.model('WarehouseSchema', WarehouseSchema);
+module.exports = mongoose.model('WarehouseSchema', Warehouse);

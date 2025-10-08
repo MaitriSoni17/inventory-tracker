@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const BusinessOwner = require('../models/BusinessOwner');
 const Employee = require('../models/Employee');
+const Supplier = require('../models/Supplier');
 const JWT_SECRET = "ThisisaSecretKey";
 
 const fetchUser = async (req, res, next) => {
@@ -22,7 +23,14 @@ const fetchUser = async (req, res, next) => {
             if (!employee) return res.status(401).send({ error: "Employee not found" });
             req.user = employee;
             req.role = 'employee';
-        } else {
+        } 
+        else if(data.role === 'supplier') {
+            const supplier = await Supplier.findById(data.id);
+            if (!supplier) return res.status(401).send({ error: "Supplier not found" });
+            req.user = supplier;
+            req.role = 'supplier';
+        }
+        else {
             return res.status(401).send({ error: "Invalid role" });
         }
 

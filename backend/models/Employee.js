@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
-const EmployeeSchema = new Schema({
+const Employee = new Schema({
     businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner' },
     fname: {  type: String, required: true },
     lname: { type: String, required: true },
@@ -23,4 +23,4 @@ const EmployeeSchema = new Schema({
     role: { type: String, default: "employee" }
 });
 
-module.exports = mongoose.model('EmployeeSchema', EmployeeSchema);
+module.exports = mongoose.model('Employee', Employee);
