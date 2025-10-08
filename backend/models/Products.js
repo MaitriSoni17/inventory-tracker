@@ -3,6 +3,7 @@ const { Schema } = mongoose;
 
 const ProductSchema = new Schema({
     businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'businessowner' },
+    employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
     name: {  type: String, required: true },
     category: { type: String, required: true },
     price: { type: Number, required: true },

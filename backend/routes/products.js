@@ -1,13 +1,11 @@
 const express = require('express');
-const fetchbusinessowner = require('../middleware/fetchbusinessowner');
-const fetchemployee = require('../middleware/fetchemployee');
+const fetchuser = require('../middleware/fetchuser');
 const Product = require('../models/Products');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 
-// Create Products using: POST "/api/auth/createproduct". Login required
-
-router.post('/createproduct', [fetchbusinessowner, fetchemployee], [
+// Create Product — accessible by BusinessOwner or Employee
+router.post('/createproduct', fetchuser, [
     body('name', 'Enter Product Name').exists(),
     body('category', 'Enter Category').exists(),
     body('price', 'Enter Price').exists().isNumeric(),
@@ -16,44 +14,51 @@ router.post('/createproduct', [fetchbusinessowner, fetchemployee], [
     body('eDate', 'Enter Expiring Date').exists().isDate(),
 ], async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
     const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image } = req.body;
+
     try {
-        const product = await Product.create({
-            businessowner: req.businessowner.id,
-            name: name,
-            category: category,
-            price: price,  
-            totalProducts: totalProducts,
-            warehouse: warehouse,
-            brand: brand,
-            mDate: mDate,
-            eDate: eDate,
-            desc: desc,
-            image: image
-        })
-        const savedProduct = await product.save();
-        res.json(savedProduct);
-    }
-    catch (err) {
+        let productData = {
+            name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image
+        };
+
+        if (req.role === 'businessowner') {
+            productData.businessowner = req.user._id;
+        } else if (req.role === 'employee') {
+            productData.businessowner = req.user.businessowner;
+            productData.employee = req.user._id;
+        }
+
+        const product = await Product.create(productData);
+        res.json(product);
+    } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Get Products using: GET "/api/auth/getproduct". Login required
+// Get Products — accessible by BusinessOwner or Employee
+router.get('/getproduct', fetchuser, async (req, res) => {
+    try {
+        let products = [];
+        console.log(req.user, req.role);
 
-router.get('/getproduct', [fetchbusinessowner, fetchemployee], async (req, res) => {
-    const products = await Product.find({ businessowner: req.businessowner.id });
-    res.json(products);
+        if (req.role === 'businessowner') {
+            products = await Product.find({ businessowner: req.user._id });
+        } else if (req.role === 'employee') {
+            products = await Product.find({ employee: req.user._id }).populate('businessowner', 'fname lname email phone address');
+        }
+
+        res.json(products);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send("Internal Server error occurred");
+    }
 });
 
-
-// Update Products using: PUT "/api/auth/updateproduct". Login required
-
-router.put('/updateproduct/:id', [fetchbusinessowner, fetchemployee], [
+// Update Product — only BusinessOwner can update
+router.put('/updateproduct/:id', fetchuser, [
     body('name', 'Enter Product Name').exists(),
     body('category', 'Enter Category').exists(),
     body('price', 'Enter Price').exists().isNumeric(),
@@ -61,57 +66,50 @@ router.put('/updateproduct/:id', [fetchbusinessowner, fetchemployee], [
     body('mDate', 'Enter Manufacturing Date').exists().isDate(),
     body('eDate', 'Enter Expiring Date').exists().isDate(),
 ], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+    if (req.role !== 'businessowner' || req.role !== 'employee') {
+        return res.status(403).send("Only BusinessOwner or Employee can update products");
     }
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
     const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image } = req.body;
+
     try {
-        const newProduct = {};
-        if (name) { newProduct.name = name };
-        if (category) { newProduct.category = category };
-        if (price) { newProduct.price = price };
-        if (totalProducts) { newProduct.totalProducts = totalProducts };
-        if (warehouse) { newProduct.warehouse = warehouse };
-        if (brand) { newProduct.brand = brand };
-        if (mDate) { newProduct.mDate = mDate };
-        if (eDate) { newProduct.eDate = eDate };
-        if (desc) { newProduct.desc = desc };
-        if (image) { newProduct.image = image };
-        console.log(newProduct);
+        const newProduct = { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image };
+
         let product = await Product.findById(req.params.id);
-        if (!product) { return res.status(404).send("Not Found") }
-        if (product.businessowner.toString() !== req.businessowner.id) {
+        if (!product) return res.status(404).send("Not Found");
+
+        if (product.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && product.employee.toString() !== req.user._id.toString())) {
             return res.status(401).send("Not Allowed");
         }
 
-        product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true })
-        console.log(product);
+        product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true });
         res.json({ product });
-    }
-    catch (err) {
+    } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Delete Products using: DELETE "/api/auth/deleteproduct". Login required
-
-router.delete('/deleteproduct/:id', [fetchbusinessowner, fetchemployee], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+// Delete Product — only BusinessOwner can delete
+router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
+    if (req.role !== 'businessowner') {
+        return res.status(403).send("Only BusinessOwner can delete products");
     }
+
     try {
-        const product = await Product.findByIdAndDelete(req.params.id);
-        if (product.businessowner.toString() !== req.businessowner.id) {
+        const product = await Product.findById(req.params.id);
+        if (!product) return res.status(404).send("Not Found");
+
+        if (product.businessowner.toString() !== req.user._id.toString()) {
             return res.status(401).send("Not Allowed");
         }
-        if (!product) { return res.status(404).send("Not Found") }
-        // console.log(product);
-        res.json({ product });
-    }
-    catch (err) {
+
+        await Product.findByIdAndDelete(req.params.id);
+        res.json({ message: "Product deleted successfully" });
+    } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }

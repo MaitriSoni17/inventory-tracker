@@ -1,19 +1,24 @@
-var jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
+const BusinessOwner = require('../models/BusinessOwner');
 const JWT_SECRET = "ThisisaSecretKey";
-const fetchbusinessowner = (req, res, next) => {
-    // Get the user from the jwt token and add id to req object
+
+const fetchbusinessowner = async (req, res, next) => {
     const token = req.header('auth-token');
     if (!token) {
-        res.status(401).send({ error: "Please authenticate using a valid token" })
+        return res.status(401).send({ error: "Please authenticate using a valid token" });
     }
+
     try {
         const data = jwt.verify(token, JWT_SECRET);
-        req.businessowner = data.businessowner;
+        const businessowner = await BusinessOwner.findById(data.id);
+        if (!businessowner) {
+            return res.status(401).send({ error: "Business owner not found" });
+        }
+        req.businessowner = businessowner; // ✅ Now req.businessowner._id will work
         next();
+    } catch (error) {
+        res.status(401).send({ error: "Invalid token" });
     }
-    catch (error) {
-        res.status(401).send({ error: "Please authenticate using a valid token" })
-    }
-}
+};
 
 module.exports = fetchbusinessowner;

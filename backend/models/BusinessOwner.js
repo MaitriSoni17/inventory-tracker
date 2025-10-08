@@ -13,6 +13,7 @@ const BusinessOwnerSchema = new Schema({
     phone: { type: String, required: true },
     address: { type: String, required: true },
     image: { type: String },
+    role: { type: String, default: "businessowner" }
 });
 
 const BusinessOwner = mongoose.model('BusinessOwner', BusinessOwnerSchema);
