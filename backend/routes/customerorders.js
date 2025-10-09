@@ -43,7 +43,7 @@ router.post('/createcustomerorder', fetchuser, [
 });
 
 // Get Cstomer Orders — accessible by BusinessOwner or Employee
-router.get('/getcutomerorder', fetchuser, async (req, res) => {
+router.post('/getcustomerorder', fetchuser, async (req, res) => {
     try {
         let customerorder = [];
         console.log(req.user, req.role);
@@ -51,7 +51,12 @@ router.get('/getcutomerorder', fetchuser, async (req, res) => {
         if (req.role === 'businessowner') {
             customerorder = await CustomerOrders.find({ businessowner: req.user._id });
         } else if (req.role === 'employee') {
-            customerorder = await CustomerOrders.find({ employee: req.user._id }).populate('businessowner', 'fname lname email phone address');
+            const businessownerID = req.user.businessowner;
+            const employeeID = req.user._id;
+            customerorder = await CustomerOrders.find({ $or: [
+                    { businessowner: businessownerID },
+                    { employee: employeeID }
+                ] });
         }
 
         res.json(customerorder);
@@ -74,9 +79,9 @@ router.put('/updatecustomerorder/:id', fetchuser, [
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
-    if (req.role !== 'businessowner' || req.role !== 'employee') {
-        return res.status(403).send("Only BusinessOwner or Employee can update products");
-    }
+    // if (req.role !== 'businessowner' || req.role !== 'employee') {
+    //     return res.status(403).send("Only BusinessOwner or Employee can update products");
+    // }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

@@ -36,14 +36,21 @@ router.post('/createwarehouse', fetchuser, [
 });
 
 // Get Warehouse — accessible by BusinessOwner or Employee
-router.get('/getwarehouse', fetchuser, async (req, res) => {
+router.post('/getwarehouse', fetchuser, async (req, res) => {
     try {
         let warehouse = [];
 
         if (req.role === 'businessowner') {
             warehouse = await Warehouse.find({ businessowner: req.user._id });
         } else if (req.role === 'employee') {
-            warehouse = await Warehouse.find({ employee: req.user._id }).populate('businessowner', 'fname lname email phone address');
+            const businessownerID = req.user.businessowner;
+            const employeeID = req.user._id;
+            warehouse = await Warehouse.find({
+                $or: [
+                    { businessowner: businessownerID },
+                    { employee: employeeID }
+                ]
+            });
         }
 
         res.json(warehouse);
@@ -54,16 +61,16 @@ router.get('/getwarehouse', fetchuser, async (req, res) => {
 });
 
 // Update Warehouse — only BusinessOwner can update
-router.put('/updatecategory/:id', fetchuser, [
+router.put('/updatewarehouse/:id', fetchuser, [
     body('wName', 'Enter Warehouse Name').exists(),
     body('wManager', 'Enter Warehouse Manager Name').exists(),
     body('wAddress', 'Enter Warehouse Address').exists(),
     body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
 ], async (req, res) => {
-    if (req.role !== 'businessowner' || req.role !== 'employee') {
-        return res.status(403).send("Only BusinessOwner or Employee can update category");
-    }
+    // if (req.role !== 'businessowner' || req.role !== 'employee') {
+    //     return res.status(403).send("Only BusinessOwner or Employee can update category");
+    // }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

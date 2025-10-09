@@ -23,6 +23,8 @@ router.post('/createproduct', fetchuser, [
             name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image
         };
 
+        console.log(req.user, req.role);
+
         if (req.role === 'businessowner') {
             productData.businessowner = req.user._id;
         } else if (req.role === 'employee') {
@@ -39,15 +41,23 @@ router.post('/createproduct', fetchuser, [
 });
 
 // Get Products — accessible by BusinessOwner or Employee
-router.get('/getproduct', fetchuser, async (req, res) => {
+router.post('/getproduct', fetchuser, async (req, res) => {
     try {
         let products = [];
-        console.log(req.user, req.role);
 
         if (req.role === 'businessowner') {
             products = await Product.find({ businessowner: req.user._id });
-        } else if (req.role === 'employee') {
-            products = await Product.find({ employee: req.user._id }).populate('businessowner', 'fname lname email phone address');
+        } 
+        else if (req.role === 'employee') {
+            const businessownerID = req.user.businessowner;
+            const employeeID = req.user._id;
+
+            products = await Product.find({
+                $or: [
+                    { businessowner: businessownerID },
+                    { employee: employeeID }
+                ]
+            });
         }
 
         res.json(products);
@@ -66,9 +76,9 @@ router.put('/updateproduct/:id', fetchuser, [
     body('mDate', 'Enter Manufacturing Date').exists().isDate(),
     body('eDate', 'Enter Expiring Date').exists().isDate(),
 ], async (req, res) => {
-    if (req.role !== 'businessowner' || req.role !== 'employee') {
-        return res.status(403).send("Only BusinessOwner or Employee can update products");
-    }
+    // if (req.role !== 'businessowner' || req.role !== 'employee') {
+    //     return res.status(403).send("Only BusinessOwner or Employee can update products");
+    // }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

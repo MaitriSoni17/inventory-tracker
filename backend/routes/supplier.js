@@ -44,7 +44,7 @@ router.post('/createsupplier', fetchbusinessowner, [
             role: 'supplier'
         });
 
-        const authToken = jwt.sign({ id: employee._id, role: 'supplier' }, JWT_SECRET);
+        const authToken = jwt.sign({ id: supplier._id, role: 'supplier' }, JWT_SECRET);
         res.json({ authToken });
     } catch (err) {
         console.error(err.message);
@@ -53,35 +53,35 @@ router.post('/createsupplier', fetchbusinessowner, [
 });
 
 // Login Supplier using: POST "/api/supplier/loginsupplier". No login required
-router.post('/loginsupplier', [
-    body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password cannot be blank').exists(),
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
+// router.post('/loginsupplier', [
+//     body('email', 'Enter a valid email').isEmail(),
+//     body('password', 'Password cannot be blank').exists(),
+// ], async (req, res) => {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//         return res.status(400).json({ errors: errors.array() });
+//     }
 
-    const { email, password } = req.body;
+//     const { email, password } = req.body;
 
-    try {
-        let supplier = await Supplier.findOne({ email });
-        if (!supplier) {
-            return res.status(400).json({ error: "Please try to login with correct credentials" });
-        }
+//     try {
+//         let supplier = await Supplier.findOne({ email });
+//         if (!supplier) {
+//             return res.status(400).json({ error: "Please try to login with correct credentials" });
+//         }
 
-        const passwordCompare = await bcrypt.compare(password, employee.password);
-        if (!passwordCompare) {
-            return res.status(400).json({ error: "Please try to login with correct credentials" });
-        }
+//         const passwordCompare = await bcrypt.compare(password, supplier.password);
+//         if (!passwordCompare) {
+//             return res.status(400).json({ error: "Please try to login with correct credentials" });
+//         }
 
-        const authToken = jwt.sign({ id: employee._id, role: 'supplier' }, JWT_SECRET);
-        res.json({ authToken });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).send("Internal Server error occurred");
-    }
-});
+//         const authToken = jwt.sign({ id: supplier._id, role: 'supplier' }, JWT_SECRET);
+//         res.json({ authToken });
+//     } catch (err) {
+//         console.error(err.message);
+//         res.status(500).send("Internal Server error occurred");
+//     }
+// });
 
 // Get Supplier Data using: POST "/api/supplier/getsupplier". Login required
 router.post('/getsupplier', fetchuser, async (req, res) => {

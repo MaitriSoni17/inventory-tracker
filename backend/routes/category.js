@@ -33,14 +33,21 @@ router.post('/createcategory', fetchuser, [
 });
 
 // Get Category — accessible by BusinessOwner or Employee
-router.get('/getcategory', fetchuser, async (req, res) => {
+router.post('/getcategory', fetchuser, async (req, res) => {
     try {
         let category = [];
 
         if (req.role === 'businessowner') {
             category = await Category.find({ businessowner: req.user._id });
         } else if (req.role === 'employee') {
-            category = await Category.find({ employee: req.user._id }).populate('businessowner', 'fname lname email phone address');
+            const businessownerID = req.user.businessowner;
+            const employeeID = req.user._id;
+            category = await Category.find({
+                $or: [
+                    { businessowner: businessownerID },
+                    { employee: employeeID }
+                ]
+            });
         }
 
         res.json(category);
@@ -55,9 +62,9 @@ router.put('/updatecategory/:id', fetchuser, [
     body('cName', 'Enter Category Name').exists(),
     body('cDesc', 'Enter Category Description').exists(),
 ], async (req, res) => {
-    if (req.role !== 'businessowner' || req.role !== 'employee') {
-        return res.status(403).send("Only BusinessOwner or Employee can update category");
-    }
+    // if (req.role !== 'businessowner' || req.role !== 'employee') {
+    //     return res.status(403).send("Only BusinessOwner or Employee can update category");
+    // }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

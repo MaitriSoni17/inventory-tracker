@@ -1,12 +1,11 @@
 const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
-const supplierorders = require('../models/SupplierOrders');
 const { body, validationResult } = require('express-validator');
 const SupplierOrders = require('../models/SupplierOrders');
 const router = express.Router();
 
 // Create Supplier Order — accessible by BusinessOwner or Employee
-router.post('/createsupplierorder', fetchuser, [
+router.post('/createsupplierorder/:id', fetchuser, [
     body('pName', 'Enter Product Name').exists(),
     body('category', 'Enter Product Category').exists(),
     body('amount', 'Enter Price').exists().isNumeric(),
@@ -20,7 +19,7 @@ router.post('/createsupplierorder', fetchuser, [
     const { pName, category, amount, ounits, oDate, dDate} = req.body;
 
     try {
-        let supplierorderdata = { pName, category, amount, ounits, oDate, dDate };
+        let supplierorderdata = { pName, category, amount, ounits, oDate, dDate, supplier: req.params.id };
 
         if (req.role === 'businessowner') {
             supplierorderdata.businessowner = req.user._id;
@@ -35,7 +34,7 @@ router.post('/createsupplierorder', fetchuser, [
 });
 
 // Get Supplier Orders — accessible by BusinessOwner or Employee
-router.get('/getsupplierorder', fetchuser, async (req, res) => {
+router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
     try {
         let supplierorder = [];
 

@@ -14,7 +14,7 @@ const fetchbusinessowner = async (req, res, next) => {
         if (!businessowner) {
             return res.status(401).send({ error: "Business owner not found" });
         }
-        req.businessowner = businessowner; // ✅ Now req.businessowner._id will work
+        req.businessowner = businessowner;
         next();
     } catch (error) {
         res.status(401).send({ error: "Invalid token" });
