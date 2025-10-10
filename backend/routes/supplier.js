@@ -39,6 +39,12 @@ router.post('/createsupplier', fetchbusinessowner, [
             lname: req.body.lname,
             email: req.body.email,
             password: secPass,
+            gender: req.body.gender,
+            jDate: req.body.jDate,
+            nationality: req.body.nationality,
+            country: req.body.country,
+            state: req.body.state,
+            city: req.body.city,
             phone: req.body.phone,
             address: req.body.address,
             role: 'supplier'

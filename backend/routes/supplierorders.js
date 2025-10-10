@@ -16,10 +16,10 @@ router.post('/createsupplierorder/:id', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { pName, category, amount, ounits, oDate, dDate} = req.body;
+    const { pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc } = req.body;
 
     try {
-        let supplierorderdata = { pName, category, amount, ounits, oDate, dDate, supplier: req.params.id };
+        let supplierorderdata = { pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc, supplier: req.params.id };
 
         if (req.role === 'businessowner') {
             supplierorderdata.businessowner = req.user._id;
@@ -33,7 +33,7 @@ router.post('/createsupplierorder/:id', fetchuser, [
     }
 });
 
-// Get Supplier Orders — accessible by BusinessOwner or Employee
+// Get Supplier Orders — accessible by BusinessOwner or Supplier
 router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
     try {
         let supplierorder = [];
@@ -43,7 +43,22 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
         } else if (req.role === 'supplier') {
             supplierorder = await SupplierOrders.find({ supplier: req.user._id }).populate('businessowner', 'fname lname email phone address');
         }
+        res.json(supplierorder);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send("Internal Server error occurred");
+    }
+});
 
+// Get Supplier Order by ID — accessible by BusinessOwner or Supplier
+router.post('/getorders', fetchuser, async (req, res) => {
+    try {
+        let supplierorder = await SupplierOrders.find({ supplier: req.user._id }).populate('businessowner', 'fname lname email phone address');
+        if (!supplierorder) return res.status(404).send("Not Found");
+
+        if (req.role === 'supplier' && supplierorder.supplier.toString() !== req.user._id.toString()) {
+            return res.status(401).send("Not Allowed");
+        }
         res.json(supplierorder);
     } catch (err) {
         console.error(err.message);
@@ -67,10 +82,10 @@ router.put('/updatesupplierorder/:id', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { pName, category, amount, ounits, oDate, dDate} = req.body;
+    const { pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc } = req.body;
 
     try {
-        const newSupplierOrder = { pName, category, amount, ounits, oDate, dDate};
+        const newSupplierOrder = { pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
 
         let supplierorder = await SupplierOrders.findById(req.params.id);
         if (!supplierorder) return res.status(404).send("Not Found");

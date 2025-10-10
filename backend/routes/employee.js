@@ -38,8 +38,18 @@ router.post('/createemployee', fetchbusinessowner, [
             lname: req.body.lname,
             email: req.body.email,
             password: secPass,
+            birthDate: req.body.birthDate,
+            gender: req.body.gender,
+            jDate: req.body.jDate,
+            nationality: req.body.nationality,
+            country: req.body.country,
+            state: req.body.state,
+            city: req.body.city,
+            hireAt: req.body.hireAt,
             phone: req.body.phone,
             address: req.body.address,
+            image: req.body.image,
+            about: req.body.about,
             role: 'employee'
         });
 
@@ -96,5 +106,7 @@ router.post('/getemployee', fetchuser, async (req, res) => {
         res.status(500).send("Internal Server error occurred");
     }
 });
+
+
 
 module.exports = router;

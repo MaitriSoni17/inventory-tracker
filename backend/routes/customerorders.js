@@ -20,12 +20,10 @@ router.post('/createcustomerorder', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate } = req.body;
+    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc } = req.body;
 
     try {
-        let customerorderData = {
-            cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate
-        };
+        let customerorderData = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
 
         if (req.role === 'businessowner') {
             customerorderData.businessowner = req.user._id;
@@ -83,20 +81,24 @@ router.put('/updatecustomerorder/:id', fetchuser, [
     //     return res.status(403).send("Only BusinessOwner or Employee can update products");
     // }
 
+    if (!['businessowner', 'employee'].includes(req.role)) {
+        return res.status(403).send("Only BusinessOwner or Employee can update customer orders");
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate } = req.body;
+    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc } = req.body;
 
     try {
-        const newCustomerOrder = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate };
+        const newCustomerOrder = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
 
         let customerorder = await CustomerOrders.findById(req.params.id);
         if (!customerorder) return res.status(404).send("Not Found");
 
-        if (customerorder.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && customerorder.employee.toString() !== req.user._id.toString())) {
-            return res.status(401).send("Not Allowed");
-        }
+        // if (customerorder.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && customerorder.employee.toString() !== req.user._id.toString())) {
+        //     return res.status(401).send("Not Allowed");
+        // }
 
         customerorder = await CustomerOrders.findByIdAndUpdate(req.params.id, { $set: newCustomerOrder }, { new: true });
         res.json({ customerorder });
@@ -108,17 +110,21 @@ router.put('/updatecustomerorder/:id', fetchuser, [
 
 // Delete Customer Order — only BusinessOwner can delete
 router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
-    if (req.role !== 'businessowner') {
-        return res.status(403).send("Only BusinessOwner can delete products");
+    // if (req.role !== 'businessowner') {
+    //     return res.status(403).send("Only BusinessOwner can delete products");
+    // }
+
+    if (!['businessowner', 'employee'].includes(req.role)) {
+        return res.status(403).send("Only BusinessOwner or Employee can delete category");
     }
 
     try {
         const customerorder = await CustomerOrders.findById(req.params.id);
         if (!customerorder) return res.status(404).send("Not Found");
 
-        if (customerorder.businessowner.toString() !== req.user._id.toString()) {
-            return res.status(401).send("Not Allowed");
-        }
+        // if (customerorder.businessowner.toString() !== req.user._id.toString()) {
+        //     return res.status(401).send("Not Allowed");
+        // }
 
         await CustomerOrders.findByIdAndDelete(req.params.id);
         res.json({ message: "Customer Order deleted successfully" });

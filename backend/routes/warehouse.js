@@ -15,10 +15,10 @@ router.post('/createwarehouse', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { wName, wManager, wAddress, wContact, wEmail } = req.body;
+    const { wName, wManager, wAddress, wContact, wEmail, city, state, country } = req.body;
 
     try {
-        let warehouseData = { wName, wManager, wAddress, wContact, wEmail };
+        let warehouseData = { wName, wManager, wAddress, wContact, wEmail, city, state, country };
 
         if (req.role === 'businessowner') {
             warehouseData.businessowner = req.user._id;
@@ -72,20 +72,24 @@ router.put('/updatewarehouse/:id', fetchuser, [
     //     return res.status(403).send("Only BusinessOwner or Employee can update category");
     // }
 
+    if (!['businessowner', 'employee'].includes(req.role)) {
+        return res.status(403).send("Only BusinessOwner or Employee can update products");
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { wName, wManager, wAddress, wContact, wEmail } = req.body;
+    const { wName, wManager, wAddress, wContact, wEmail, city, state, country } = req.body;
 
     try {
-        const newWarehouse = { wName, wManager, wAddress, wContact, wEmail };
+        const newWarehouse = { wName, wManager, wAddress, wContact, wEmail, city, state, country };
 
         let warehouse = await Warehouse.findById(req.params.id);
         if (!warehouse) return res.status(404).send("Not Found");
 
-        if (warehouse.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && warehouse.employee.toString() !== req.user._id.toString())) {
-            return res.status(401).send("Not Allowed");
-        }
+        // if (warehouse.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && warehouse.employee.toString() !== req.user._id.toString())) {
+        //     return res.status(401).send("Not Allowed");
+        // }
 
         warehouse = await Warehouse.findByIdAndUpdate(req.params.id, { $set: newWarehouse }, { new: true });
         res.json({ warehouse });
@@ -97,9 +101,9 @@ router.put('/updatewarehouse/:id', fetchuser, [
 
 // Delete Warehouse — only BusinessOwner can delete
 router.delete('/deletewarehouse/:id', fetchuser, async (req, res) => {
-    if (req.role !== 'businessowner' || req.role !== 'employee') {
-        return res.status(403).send("Only BusinessOwner or Employee can delete warehouse");
-    }
+    // if (req.role !== 'businessowner' || req.role !== 'employee') {
+    //     return res.status(403).send("Only BusinessOwner or Employee can delete warehouse");
+    // }
 
     try {
         const warehouse = await Warehouse.findById(req.params.id);
@@ -109,7 +113,7 @@ router.delete('/deletewarehouse/:id', fetchuser, async (req, res) => {
             return res.status(401).send("Not Allowed");
         }
 
-        await warehouse.findByIdAndDelete(req.params.id);
+        await Warehouse.findByIdAndDelete(req.params.id);
         res.json({ message: "Warehouse deleted successfully" });
     } catch (err) {
         console.error(err.message);

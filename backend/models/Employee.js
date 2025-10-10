@@ -15,7 +15,6 @@ const Employee = new Schema({
     state: { type: String },
     city: { type: String },
     hireAt: { type: String },
-    role: { type: String },
     phone: { type: Number, required: true },
     address: { type: String, required: true },
     image: { type: String },

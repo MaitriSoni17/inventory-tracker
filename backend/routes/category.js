@@ -65,6 +65,9 @@ router.put('/updatecategory/:id', fetchuser, [
     // if (req.role !== 'businessowner' || req.role !== 'employee') {
     //     return res.status(403).send("Only BusinessOwner or Employee can update category");
     // }
+    if (!['businessowner', 'employee'].includes(req.role)) {
+        return res.status(403).send("Only BusinessOwner or Employee can update cateogry");
+    }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
@@ -77,9 +80,9 @@ router.put('/updatecategory/:id', fetchuser, [
         let category = await Category.findById(req.params.id);
         if (!category) return res.status(404).send("Not Found");
 
-        if (category.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && category.employee.toString() !== req.user._id.toString())) {
-            return res.status(401).send("Not Allowed");
-        }
+        // if (category.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && category.employee.toString() !== req.user._id.toString())) {
+        //     return res.status(401).send("Not Allowed");
+        // }
 
         category = await Category.findByIdAndUpdate(req.params.id, { $set: newCategory }, { new: true });
         res.json({ category });
@@ -91,20 +94,23 @@ router.put('/updatecategory/:id', fetchuser, [
 
 // Delete Category — only BusinessOwner can delete
 router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
-    if (req.role !== 'businessowner' || req.role !== 'employee') {
-        return res.status(403).send("Only BusinessOwner or Employee can delete cateogry");
+    // if (req.role !== 'businessowner' || req.role !== 'employee') {
+    //     return res.status(403).send("Only BusinessOwner or Employee can delete cateogry");
+    // }
+    if (!['businessowner', 'employee'].includes(req.role)) {
+        return res.status(403).send("Only BusinessOwner or Employee can delete category");
     }
 
     try {
         const category = await Category.findById(req.params.id);
         if (!category) return res.status(404).send("Not Found");
 
-        if (category.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && category.employee.toString() !== req.user._id.toString())) {
-            return res.status(401).send("Not Allowed");
-        }
+        // if (category.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && category.employee.toString() !== req.user._id.toString())) {
+        //     return res.status(401).send("Not Allowed");
+        // }
 
         await Category.findByIdAndDelete(req.params.id);
-        res.json({ message: "Customer Order deleted successfully" });
+        res.json({ message: "Category deleted successfully" });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");
