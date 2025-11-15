@@ -26,8 +26,7 @@ ChartJS.register(
     Legend,
     Filler
 );
-
-const BusinessOwner = () => {
+function Employee() {
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
@@ -158,41 +157,40 @@ const BusinessOwner = () => {
         <div className="container-fluid px-5 mt-4 mb-5">
             {/* Dashboard Cards */}
             <div className="row g-3 my-2">
-                {/* Products */}
                 <div className="col-md-4">
-                    <a href="products.html" className="text-decoration-none">
-                        <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                            <i className="fas fa-box dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                            <div className="mt-3">
-                                <h3 className="fs-2">100</h3>
-                                <p className="fs-5">Total Products</p>
-                            </div>
+                    <a href="products.html" className="text-decoration-none"> <div
+                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        <i
+                            className="fas fa-box dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div className="mt-3">
+                            <h3 className="fs-2">100</h3>
+                            <p className="fs-5">Total Products</p>
                         </div>
-                    </a>
+                    </div></a>
                 </div>
-                {/* Orders */}
+
                 <div className="col-md-4">
-                    <a href="orders.html" className="text-decoration-none">
-                        <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                            <i className="bi bi-cart dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                            <div className="mt-3">
-                                <h3 className="fs-2">100</h3>
-                                <p className="fs-5">Total Orders</p>
-                            </div>
+                    <a href="orders.html" className="text-decoration-none"><div
+                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        <i
+                            className="bi bi-cart dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div className="mt-3">
+                            <h3 className="fs-2">100</h3>
+                            <p className="fs-5">Total Orders</p>
                         </div>
-                    </a>
+                    </div></a>
                 </div>
-                {/* Employees */}
+
                 <div className="col-md-4">
-                    <a href="employees.html" className="text-decoration-none">
-                        <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                            <i className="bi bi-people dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                            <div className="mt-3">
-                                <h3 className="fs-2">100</h3>
-                                <p className="fs-5">Total Employees</p>
-                            </div>
+                    <a href="category.html" className="text-decoration-none"><div
+                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        <i
+                            className="bi bi-boxes dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div className="mt-3">
+                            <h3 className="fs-2">100</h3>
+                            <p className="fs-5">Total Categories</p>
                         </div>
-                    </a>
+                    </div></a>
                 </div>
             </div>
 
@@ -201,7 +199,7 @@ const BusinessOwner = () => {
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border border-4">
                         <div className="d-flex justify-content-between mb-3">
-                            <h3 className="fs-4">Sales</h3>
+                            <h3 className="fs-4">Orders Overview</h3>
                             <select className="form-select w-auto">
                                 <option>Monthly</option>
                                 <option value="1">Quarterly</option>
@@ -215,7 +213,7 @@ const BusinessOwner = () => {
                 </div>
             </div>
 
-            <div className="row g-3">
+            <div className="row my-4 g-3">
                 <div className="col-md-6">
                     <div className="p-3 bg-white shadow rounded-4 border border-4">
                         <h3 className="fs-4 mb-4 mt-2 ms-2">Stock Numbers</h3>
@@ -241,36 +239,36 @@ const BusinessOwner = () => {
                 <div className="col-md-6">
                     <div className="p-3 bg-white shadow border border-4 rounded-4">
                         <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
-                            Your Warehouses
-                            <a href="warehouses.html" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                            Products
+                            <a href="products.html" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
                         </h3>
                         <table className="table table-borderless align-middle mb-0">
                             <thead className="text-secondary">
                                 <tr>
-                                    <th scope="col">Warehouse</th>
+                                    <th scope="col">Product Name</th>
                                     <th scope="col">Location</th>
-                                    <th scope="col">Employees</th>
-                                    <th scope="col">Items</th>
+                                    <th scope="col">Total Products</th>
+                                    <th scope="col">Total Orders</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>Warehouse</td>
+                                    <td>Product1</td>
                                     <td>Location</td>
-                                    <td>10 Employees</td>
-                                    <td>20 Items</td>
+                                    <td>10 Products</td>
+                                    <td>20 Orders</td>
                                 </tr>
                                 <tr>
-                                    <td>Warehouse</td>
+                                    <td>Product1</td>
                                     <td>Location</td>
-                                    <td>10 Employees</td>
-                                    <td>20 Items</td>
+                                    <td>10 Products</td>
+                                    <td>20 Orders</td>
                                 </tr>
                                 <tr>
-                                    <td>Warehouse</td>
+                                    <td>Product1</td>
                                     <td>Location</td>
-                                    <td>10 Employees</td>
-                                    <td>20 Items</td>
+                                    <td>10 Products</td>
+                                    <td>20 Orders</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -291,7 +289,7 @@ const BusinessOwner = () => {
                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default BusinessOwner;
+export default Employee

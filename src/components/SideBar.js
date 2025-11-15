@@ -1,40 +1,44 @@
 import React, { useEffect } from 'react';
 
-import { Link, useLocation, useNavigate } from "react-router-dom";
-
+import { Link, useLocation } from "react-router-dom";
+import BusinessOwner from './BusinessOwner';
+import Employee from './Employee';
+import Supplier from './Supplier';
 import './styles/sidebar.css'
 
 const SideBar = () => {
+    const role = localStorage.getItem('role');
     let location = useLocation();
     useEffect(() => {
         // console.log(location.pathname);
     }, [location]);
+
     return (
         <>
             <div className='d-flex' id="wrapper">
-                <div className='sidebar'>
+                <div className='sidebar' id="sidebar-wrapper">
                     <div className="bg-white border-end sidebar" id="sidebar-wrapper">
                         <div className="sidebar-heading text-center py-4 fs-4 fw-bold app-title">Inline Tracker</div>
                         <div className="list-group list-group-flush my-3">
-                            <Link to="/" className={`list-group-item list-group-item-action second-text ${location.pathname === "/" ? "active" : ""}`}>
+                            <Link to="/" className={`list-group-item list-group-item-action second-text ${location.pathname === "/sidebar" ? "active" : ""}`}>
                                 <i className="fas fa-th-large me-2"></i>Dashboard
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/category" ? "active" : ""}`}>
+                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/category" ? "active" : ""}`}>
                                 <i className="fas fa-cube me-2"></i>Categories
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/products" ? "active" : ""}`}>
+                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/products" ? "active" : ""}`}>
                                 <i className="fas fa-box me-2"></i>Products
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/orders" ? "active" : ""}`}>
                                 <i className="bi bi-cart me-2"></i>Orders
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/employees" ? "active" : ""}`}>
+                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/employees" ? "active" : ""}`}>
                                 <i className="bi bi-people me-2"></i>Employees
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/suppliers" ? "active" : ""}`}>
+                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/suppliers" ? "active" : ""}`}>
                                 <i className="fas fa-truck me-2"></i>Suppliers
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/warehouses" ? "active" : ""}`}>
+                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/warehouses" ? "active" : ""}`}>
                                 <i className="fas fa-warehouse me-2"></i>Warehouses
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/settings" ? "active" : ""}`}>
@@ -46,7 +50,7 @@ const SideBar = () => {
                         </div>
                     </div>
                 </div>
-                <div id="page-content-wrapper" class="p-0 m-0">
+                <div id="page-content-wrapper" className="p-0 m-0">
                     <nav className="navbar navbar-expand-lg navbar-light bg-light border-1 border-bottom py-4 px-4 m-0">
                         <div className="d-flex align-items-center">
                             <h2 className="fs-2 m-0 d-none d-md-block">Dashboard</h2>
@@ -75,6 +79,9 @@ const SideBar = () => {
                             </ul>
                         </div>
                     </nav>
+                    {role === 'businessowner' && <BusinessOwner />}
+                    {role === 'employee' && <Employee />}
+                    {role === 'supplier' && <Supplier />}
                 </div>
             </div>
         </>

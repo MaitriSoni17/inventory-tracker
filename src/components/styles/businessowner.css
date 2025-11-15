@@ -1,0 +1,178 @@
+/* Custom CSS for Inline Tracker Dashboard */
+
+/* Variables for easy color adjustments */
+
+/* Dashboard Cards (Total Products, Orders, Employees) */
+.dashboard-card {
+    background-color: var(--card-bg-color);
+    color: var(--text-dark);
+}
+
+.border-primary{
+    border-color: #7300FF !important;
+}
+
+.dashboard-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background: linear-gradient(180deg, #7300FF);
+    /* clip-path: polygon(25% 6.5%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0% 50%); */
+    /* clip-path: path(
+    "M38,2 L82,2 A12,12 0 0,1 94,10 L112,44 A12,12 0 0,1 112,56 L94,90 A12,12 0 0,1 82,98 L38,98 A12,12 0 0,1 26,90 L8,56 A12,12 0 0,1 8,44 L26,10 A12,12 0 0,1 38,2"); */
+}
+
+/* Slightly smaller hexagon on small screens */
+/* @media (max-width: 575.98px) {
+    .dashboard-card-icon { font-size: 2rem; width:48px; height:48px; }
+    .dashboard-card-icon::before { width:64px; height:64px; }
+} */
+
+/* Specific icon background color from image (using pseudo-elements for shape) */
+.dashboard-card .fa-boxes::before {
+    background-color: rgba(138, 43, 226, 0.1);
+    /* Light violet */
+    border-radius: 15px;
+    padding: 15px 20px;
+    /* Adjust padding to match shape */
+    display: inline-block;
+    content: '';
+    position: absolute;
+    z-index: -1;
+    transform: rotate(-10deg);
+}
+
+.dashboard-card .fa-shopping-cart::before {
+    background-color: rgba(138, 43, 226, 0.1);
+    border-radius: 15px;
+    padding: 15px 20px;
+    display: inline-block;
+    content: '';
+    position: absolute;
+    z-index: -1;
+    transform: rotate(10deg);
+}
+
+.dashboard-card .fa-users::before {
+    background-color: rgba(138, 43, 226, 0.1);
+    border-radius: 15px;
+    padding: 15px 20px;
+    display: inline-block;
+    content: '';
+    position: absolute;
+    z-index: -1;
+    transform: rotate(5deg);
+}
+
+.dashboard-card .fas {
+    position: relative;
+    /* For pseudo-element positioning */
+}
+
+.dashboard-card h3 {
+    font-weight: bold;
+    color: var(--accent-purple);
+}
+
+.dashboard-card p {
+    color: var(--text-secondary);
+}
+
+/* Table Styling */
+/* .table {
+    --bs-table-bg: transparent;
+}
+
+.table td,
+.table th {
+    border-top: none;
+} */
+
+.table tbody tr:hover td,
+.table tbody tr:hover th {
+    color: #5c009c;
+}
+
+/* Custom text color for 'View All' link */
+.text-violet {
+    color: var(--accent-purple) !important;
+}
+
+/* Chart Title Styling */
+h3.fs-4 {
+    color: var(--text-dark);
+    font-weight: 600;
+}
+
+/* Chart Select */
+.form-select {
+    border-color: var(--border-color);
+    color: var(--text-secondary);
+}
+
+/* Ensure chart wrapper prevents scroll anchoring and keeps charts from changing layout */
+.p-3.bg-white.shadow-sm.rounded {
+    /* prevent browser scroll-anchoring when charts resize */
+    overflow-anchor: none;
+}
+
+/* Chart container: fixed-height wrapper; canvas will be absolutely positioned inside */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 500px; /* default mobile/compact height */
+    overflow: hidden;
+}
+
+.chart-container canvas {
+    position: absolute !important;
+    inset: 0;
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Center text displayed over doughnut chart */
+#chart-center-text {
+    z-index: 3;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #5c009c;
+    pointer-events: none;
+}
+
+/* Larger screens get taller charts */
+/* @media (min-width: 992px) {
+    .chart-container {
+        height: 320px;
+    }
+} */
+
+/* Media Queries for Responsiveness */
+@media (min-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: 0;
+    }
+
+    #page-content-wrapper {
+        min-width: 0;
+        width: 100%;
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: -15rem;
+    }
+
+    .app-title {
+        font-size: 1.8rem !important;
+        /* Adjust font size for smaller screens if needed */
+    }
+
+    .list-group-item {
+        font-size: 0.95rem;
+    }
+}
+
+/* Importing a fancy font for the title (optional, requires internet connection) */
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');

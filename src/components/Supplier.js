@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import './styles/businessowner.css';
 import {
     Chart as ChartJS,
     LineElement,
@@ -12,7 +13,10 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import './styles/businessowner.css';
+
+import { DoughnutController, ArcElement } from 'chart.js';
+
+ChartJS.register(DoughnutController, ArcElement, Tooltip, Legend);
 
 ChartJS.register(
     LineElement,
@@ -26,13 +30,22 @@ ChartJS.register(
     Legend,
     Filler
 );
-
-const BusinessOwner = () => {
+function Supplier() {
     const salesRef = useRef(null);
-    const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
-    const stockChartInstance = useRef(null);
     const resizeObserver = useRef(null);
+    const orderRef = useRef(null);
+    const orderInstance = useRef(null);
+    const centerTextRef = useRef(null);
+
+    const completedOrders = 80;
+    const pendingOrders = 41;
+    const totalOrders = completedOrders + pendingOrders;
+
+    const colors = {
+        completed: '#6a1b9a',
+        pending: '#7a96ff'
+    };
 
     useEffect(() => {
         if (salesRef.current) {
@@ -96,51 +109,51 @@ const BusinessOwner = () => {
             });
         }
 
-        if (stockRef.current) {
-            const ctx = stockRef.current.getContext('2d');
-            stockChartInstance.current = new ChartJS(ctx, {
-                type: 'bar',
+        if (centerTextRef.current) {
+            centerTextRef.current.innerText = totalOrders;
+        }
+
+        if (orderRef.current) {
+            const ctx = orderRef.current.getContext('2d');
+            orderInstance.current = new ChartJS(ctx, {
+                type: 'doughnut',
                 data: {
-                    labels: ['Item 1', 'Item 2', 'Item 3', 'Item 4', 'Item 5', 'Item 6', 'Item 7', 'Item 8', 'Item 9', 'Item 10', 'Item 11', 'Item 12'],
+                    labels: ['Completed Orders', 'Pending Orders'],
                     datasets: [{
-                        label: 'Stock Quantity',
-                        data: [35000, 20000, 45000, 28000, 55000, 38000, 48000, 60000, 30000, 40000, 52000, 25000],
-                        backgroundColor: '#8a2be2',
-                        borderColor: '#8a2be2',
-                        borderWidth: 1,
-                        borderRadius: 5
+                        data: [completedOrders, pendingOrders],
+                        backgroundColor: [colors.completed, colors.pending],
+                        hoverOffset: 4,
+                        borderWidth: 0
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    cutout: '65%',
                     plugins: {
-                        legend: { display: false },
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                usePointStyle: true,
+                                boxWidth: 6,
+                                padding: 20
+                            }
+                        },
                         tooltip: {
                             backgroundColor: '#333',
                             titleColor: '#fff',
                             bodyColor: '#fff'
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: value => value >= 1000 ? `${value / 1000}K` : value
-                            },
-                            grid: { color: '#f0f0f0' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
                     }
                 }
             });
+
         }
 
         resizeObserver.current = new ResizeObserver(() => {
             salesChartInstance.current?.resize();
-            stockChartInstance.current?.resize();
+            orderInstance.current?.resize();
         });
 
         document.querySelectorAll('.chart-container').forEach(container => {
@@ -149,7 +162,7 @@ const BusinessOwner = () => {
 
         return () => {
             salesChartInstance.current?.destroy();
-            stockChartInstance.current?.destroy();
+            orderInstance.current?.destroy();
             resizeObserver.current?.disconnect();
         };
     }, []);
@@ -157,42 +170,41 @@ const BusinessOwner = () => {
     return (
         <div className="container-fluid px-5 mt-4 mb-5">
             {/* Dashboard Cards */}
-            <div className="row g-3 my-2">
-                {/* Products */}
-                <div className="col-md-4">
-                    <a href="products.html" className="text-decoration-none">
-                        <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                            <i className="fas fa-box dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                            <div className="mt-3">
-                                <h3 className="fs-2">100</h3>
-                                <p className="fs-5">Total Products</p>
-                            </div>
+            <div class="row g-3 my-2">
+                <div class="col-md-4">
+                    <div
+                        class="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        <i
+                            class="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div class="mt-3">
+                            <h3 class="fs-2">100</h3>
+                            <p class="fs-5">Total Orders</p>
                         </div>
-                    </a>
+                    </div>
                 </div>
-                {/* Orders */}
-                <div className="col-md-4">
-                    <a href="orders.html" className="text-decoration-none">
-                        <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                            <i className="bi bi-cart dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                            <div className="mt-3">
-                                <h3 className="fs-2">100</h3>
-                                <p className="fs-5">Total Orders</p>
-                            </div>
+
+                <div class="col-md-4">
+                    <div
+                        class="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        <i
+                            class="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div class="mt-3">
+                            <h3 class="fs-2">100</h3>
+                            <p class="fs-5">Pending Orders</p>
                         </div>
-                    </a>
+                    </div>
                 </div>
-                {/* Employees */}
-                <div className="col-md-4">
-                    <a href="employees.html" className="text-decoration-none">
-                        <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                            <i className="bi bi-people dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                            <div className="mt-3">
-                                <h3 className="fs-2">100</h3>
-                                <p className="fs-5">Total Employees</p>
-                            </div>
+
+                <div class="col-md-4">
+                    <div
+                        class="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        <i
+                            class="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div class="mt-3">
+                            <h3 class="fs-2">100</h3>
+                            <p class="fs-5">Completed Orders</p>
                         </div>
-                    </a>
+                    </div>
                 </div>
             </div>
 
@@ -201,7 +213,7 @@ const BusinessOwner = () => {
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border border-4">
                         <div className="d-flex justify-content-between mb-3">
-                            <h3 className="fs-4">Sales</h3>
+                            <h3 className="fs-4">Orders Overview</h3>
                             <select className="form-select w-auto">
                                 <option>Monthly</option>
                                 <option value="1">Quarterly</option>
@@ -215,62 +227,62 @@ const BusinessOwner = () => {
                 </div>
             </div>
 
-            <div className="row g-3">
-                <div className="col-md-6">
-                    <div className="p-3 bg-white shadow rounded-4 border border-4">
-                        <h3 className="fs-4 mb-4 mt-2 ms-2">Stock Numbers</h3>
-                        <table className="table align-middle mt-4">
+            <div class="row my-4 g-3">
+                <div class="col-md-6">
+                    <div class="p-3 bg-white shadow rounded-4 border border-4">
+                        <h3 class="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
+                        <table class="table align-middle mt-4">
                             <tbody>
                                 <tr>
-                                    <td>Low Stock Items</td>
-                                    <td><span className="fw-bold">100</span></td>
+                                    <td>Total Orders</td>
+                                    <td><span class="fw-bold">100</span></td>
                                 </tr>
                                 <tr>
-                                    <td>Items Categories</td>
-                                    <td><span className="fw-bold">100</span></td>
+                                    <td>Pending Orders</td>
+                                    <td><span class="fw-bold">100</span></td>
                                 </tr>
                                 <tr>
-                                    <td>Total Stocks</td>
-                                    <td><span className="fw-bold">100</span></td>
+                                    <td>Completed Orders</td>
+                                    <td><span class="fw-bold">100</span></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div className="col-md-6">
-                    <div className="p-3 bg-white shadow border border-4 rounded-4">
-                        <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
-                            Your Warehouses
-                            <a href="warehouses.html" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                <div class="col-md-6">
+                    <div class="p-3 bg-white shadow border border-4 rounded-4">
+                        <h3 class="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
+                            Orders
+                            <a href="orders.html" class="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
                         </h3>
-                        <table className="table table-borderless align-middle mb-0">
-                            <thead className="text-secondary">
+                        <table class="table table-borderless align-middle mb-0">
+                            <thead class="text-secondary">
                                 <tr>
-                                    <th scope="col">Warehouse</th>
-                                    <th scope="col">Location</th>
-                                    <th scope="col">Employees</th>
-                                    <th scope="col">Items</th>
+                                    <th scope="col">Order Title</th>
+                                    <th scope="col">Deadline</th>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>Warehouse</td>
-                                    <td>Location</td>
-                                    <td>10 Employees</td>
-                                    <td>20 Items</td>
+                                    <td>Order1</td>
+                                    <td>31/10/2025</td>
+                                    <td>Paid</td>
+                                    <td>₹100</td>
                                 </tr>
                                 <tr>
-                                    <td>Warehouse</td>
-                                    <td>Location</td>
-                                    <td>10 Employees</td>
-                                    <td>20 Items</td>
+                                    <td>Order1</td>
+                                    <td>31/10/2025</td>
+                                    <td>Paid</td>
+                                    <td>₹100</td>
                                 </tr>
                                 <tr>
-                                    <td>Warehouse</td>
-                                    <td>Location</td>
-                                    <td>10 Employees</td>
-                                    <td>20 Items</td>
+                                    <td>Order1</td>
+                                    <td>31/10/2025</td>
+                                    <td>Paid</td>
+                                    <td>₹100</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -282,16 +294,22 @@ const BusinessOwner = () => {
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border border-4">
                         <div className="d-flex justify-content-between mb-3">
-                            <h3 className="fs-4">Stock Overview</h3>
+                            <h3 className="fs-4">Orders</h3>
                         </div>
-                        <div className="chart-container">
-                            <canvas ref={stockRef} className="m-4" />
+                        <div className="chart-container position-relative">
+                            <div
+                                ref={centerTextRef}
+                                className="position-absolute top-50 start-50 translate-middle fw-bold fs-1"
+                                style={{ zIndex: 1 }}
+                            ></div>
+
+                            <canvas ref={orderRef}/>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default BusinessOwner;
+export default Supplier

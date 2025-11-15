@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-
+import { Link, useNavigate } from "react-router-dom";
 import '../styles/login.css';
 function Login(props) {
     const [credentials, setCredentials] = useState({ email: "", password: "" })
@@ -19,12 +18,14 @@ function Login(props) {
             body: JSON.stringify({ email: credentials.email, password: credentials.password })
         });
         const json = await response.json();
-        console.log(json);
-        console.log(credentials.email)
+        // console.log(json);
         if (json.success) {
             localStorage.setItem('token', json.authtoken);
+            localStorage.setItem('role', json.role);
             // props.showAlert("Loged in Successfully", "success")
-            history("/signup");
+            // console.log(json.role)
+            history("/sidebar");
+
         }
         else {
             // props.showAlert("Invalid Details", "danger")
@@ -63,7 +64,7 @@ function Login(props) {
                         <div className="mb-4">
                             <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
                             <div className='input-group mb-3'>
-                                <input type={showPassword ? "text" : "password"} onChange={onChange} className='form-control' name='password' id="password" placeholder="••••••••" required/><i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
+                                <input type={showPassword ? "text" : "password"} onChange={onChange} className='form-control' name='password' id="password" placeholder="••••••••" required /><i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
                             </div>
                         </div>
 
@@ -71,7 +72,7 @@ function Login(props) {
                             <Link to="/" className="small text-secondary text-decoration-none">Forgot Password?</Link>
                         </div>
 
-                        <input type="submit" className="btn btn-primary w-100 py-2" value='Sign in'/>
+                        <input type="submit" className="btn btn-primary w-100 py-2" value='Sign in' />
                     </form>
 
                     <div className="text-center mt-4 small text-secondary">Don't have an account yet?
