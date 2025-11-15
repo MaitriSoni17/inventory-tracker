@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import '../styles/signup.css';
 
 function SignUp(props) {
@@ -78,7 +78,7 @@ function SignUp(props) {
             </div>
 
             <div className="text-center mt-3 login-link-container">
-              Already have an account? <a href='/' className="login-link">Login Now!!</a>
+              Already have an account? <Link to='/' className="login-link">Login Now!!</Link>
             </div>
           </form>
         </div>

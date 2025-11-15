@@ -68,14 +68,14 @@ function Login(props) {
                         </div>
 
                         <div className="text-end mb-3">
-                            <a href="#" className="small text-secondary text-decoration-none">Forgot Password?</a>
+                            <Link to="/" className="small text-secondary text-decoration-none">Forgot Password?</Link>
                         </div>
 
                         <input type="submit" className="btn btn-primary w-100 py-2" value='Sign in'/>
                     </form>
 
                     <div className="text-center mt-4 small text-secondary">Don't have an account yet?
-                        <span><a href='/signup' className="text-decoration-none">Register for free</a></span>
+                        <span><Link to='/signup' className="text-decoration-none">Register for free</Link></span>
                     </div>
 
                 </div>

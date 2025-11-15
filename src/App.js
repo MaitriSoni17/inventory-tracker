@@ -1,5 +1,5 @@
 import './App.css';
-import Login from './components/login/Login';
+// import Login from './components/login/Login';
 import SignUp from './components/login/SignUp';
 
 import {
@@ -7,6 +7,7 @@ import {
   Routes,
   Route
 } from "react-router-dom";
+import SideBar from './components/SideBar';
 
 function App() {
   return (
@@ -14,7 +15,7 @@ function App() {
       <Router>
         <div className="container-fluid p-0 m-0">
           <Routes>
-            <Route path="/" element={<Login />} />
+            <Route path="/" element={<SideBar />} />
             <Route path="/signup" element={<SignUp />} />
           </Routes>
         </div>
