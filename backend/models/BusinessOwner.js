@@ -2,16 +2,16 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const BusinessOwnerSchema = new Schema({
-    fname: {  type: String, required: true },
-    lname: { type: String, required: true },
+    fname: {  type: String},
+    lname: { type: String},
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     date: { type: Date, default: Date.now },
     country: { type: String },
     state: { type: String },
     city: { type: String },
-    phone: { type: Number, required: true },
-    address: { type: String, required: true },
+    phone: { type: Number},
+    address: { type: String},
     image: { type: String },
     role: { type: String, default: "businessowner" }
 });

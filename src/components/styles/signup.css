@@ -1,0 +1,115 @@
+/* Custom CSS to replicate the design */
+
+/* Variables for easy color adjustments */
+:root {
+    --primary-purple: #5c009c;
+    /* Darker purple for main background */
+    --light-purple: #8a2be2;
+    /* Violet for button/title accents */
+    --card-color: #ffffff;
+    --text-color: #333333;
+    --placeholder-color: #aaaaaa;
+}
+
+/* Main Container: Ensures the card is vertically centered */
+.main-container {
+    background-color: var(--primary-purple);
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+}
+
+/* Card Styling */
+.signup-card {
+    background-color: var(--card-color);
+    /* width: 90%; */
+    /* max-width: 450px; */
+    /* Max width for a typical form card */
+    color: var(--text-color);
+    /* Adding rounded corners and shadow */
+    /* border-radius: 15px !important; */
+}
+
+/* App Title Styling */
+.app-title {
+    font-family: 'Pacifico', cursive;
+    /* Use a font that looks script/handwritten like in the image (or a placeholder like Pacifico) */
+    color: var(--light-purple);
+    font-size: 2.5rem;
+    font-weight: bold;
+}
+
+/* Form Control Styling (Input Fields) */
+.form-control {
+    /* height: 50px; */
+    /* Taller input fields */
+    border: 1px solid #ced4da;
+}
+
+/* .form-control::placeholder {
+    color: var(--placeholder-color);
+    opacity: 1;
+} */
+
+/* Password Toggle ('Hide'/'Show' element) */
+/* .password-toggle {
+    background-color: transparent;
+    border: none;
+    color: var(--light-purple);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+    height: 50px;
+    display: flex;
+    align-items: center;
+} */
+
+/* .input-group:not(.has-validation)>.form-control:not(:last-child) {
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
+} */
+
+/* .input-group-text {
+    background-color: transparent;
+    border-left: none;
+} */
+
+
+/* Custom Purple Button Styling */
+.btn-custom-purple {
+    background-color: var(--light-purple);
+    border-color: var(--light-purple);
+    color: white;
+    font-weight: bold;
+    height: 55px;
+    font-size: 1.1rem;
+    border-radius: 8px;
+    /* Slightly more rounded button */
+}
+
+.btn-custom-purple:hover {
+    background-color: #791bd6;
+    /* Slightly darker hover color */
+    border-color: #791bd6;
+    color: white;
+}
+
+/* Login Link Styling */
+.login-link {
+    color: var(--light-purple);
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.login-link:hover {
+    text-decoration: underline;
+}
+
+/* Media Query for smaller screens */
+/* @media (max-width: 576px) {
+    .signup-card {
+        margin: 20px;
+    }
+} */
+
+/* Importing a fancy font for the title (optional, requires internet connection) */
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');

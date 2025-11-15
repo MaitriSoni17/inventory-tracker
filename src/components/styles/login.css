@@ -1,7 +1,6 @@
-body {
+.bg-login{
     font-family: 'Inter', sans-serif;
     background-color: #5500FF;
-    /* A vibrant primary background color */
 }
 
 /* The overall dark container that holds the scene */
@@ -10,7 +9,7 @@ body {
     /* The darker, inner purple/indigo */
     overflow: hidden;
     position: relative;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    /* box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); */
 }
 
 /* Custom CSS for the abstract, glowing shapes in the background */

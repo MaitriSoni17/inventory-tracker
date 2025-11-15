@@ -43,7 +43,7 @@ router.post('/login', [
         if (!passwordCompare) return res.status(400).json({ error: "Please try to login with correct credentials" });
 
         const token = jwt.sign({ id: user._id, role }, JWT_SECRET);
-        res.json({ token });
+        res.json({ success: true, authtoken: token });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");

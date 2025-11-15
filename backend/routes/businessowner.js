@@ -13,7 +13,6 @@ const JWT_SECRET = 'ThisisaSecretKey';
 
 // Create a Business Owner using: POST "/api/businessowner/createbusinessowner". No login required
 router.post('/createbusinessowner', [
-    body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
     body('password', 'Password must be at least 5 characters').isLength({ min: 5 }),
 ], async (req, res) => {
@@ -32,23 +31,14 @@ router.post('/createbusinessowner', [
         const secPass = await bcrypt.hash(req.body.password, salt);
 
         businessowner = await BusinessOwner.create({
-            fname: req.body.fname,
-            lname: req.body.lname,
             email: req.body.email,
             password: secPass,
-            date: req.body.date,
-            country: req.body.country,
-            state: req.body.state,
-            city: req.body.city,
-            phone: req.body.phone,
-            address: req.body.address,
-            image: req.body.image,
             role: 'businessowner'
         });
 
         const token = jwt.sign({ id: businessowner._id, role: 'businessowner' }, JWT_SECRET);
 
-        res.json({ token });
+        res.json({ success: true, authtoken: token });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");
