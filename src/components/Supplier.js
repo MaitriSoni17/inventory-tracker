@@ -165,7 +165,7 @@ function Supplier() {
             orderInstance.current?.destroy();
             resizeObserver.current?.disconnect();
         };
-    }, []);
+    });
 
     return (
         <div className="container-fluid px-5 mt-4 mb-5">

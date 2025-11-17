@@ -16,7 +16,7 @@ function SignUp(props) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (credentials.password !== credentials.cpassword) {
-      // props.showAlert("Password and Confirm Password Both are must be same!!", "danger")
+      props.showAlert("Password and Confirm Password Both are must be same!!", "danger")
     }
     else {
       const { email, password } = credentials;
@@ -33,10 +33,10 @@ function SignUp(props) {
       if (json.success) {
         localStorage.setItem('token', json.authtoken);
         navigate("/");
-        // props.showAlert("Account Created Successfully", "success")
+        props.showAlert("Account Created Successfully", "success")
       }
       else {
-        // props.showAlert("Invalid Credentials", "danger")
+        props.showAlert("Invalid Credentials", "danger")
       }
     }
   }

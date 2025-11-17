@@ -22,13 +22,13 @@ function Login(props) {
         if (json.success) {
             localStorage.setItem('token', json.authtoken);
             localStorage.setItem('role', json.role);
-            // props.showAlert("Loged in Successfully", "success")
+            props.showAlert("Loged in Successfully", "success")
             // console.log(json.role)
             history("/sidebar");
 
         }
         else {
-            // props.showAlert("Invalid Details", "danger")
+            props.showAlert("Invalid Details", "danger")
         }
     }
     const onChange = (e) => {
