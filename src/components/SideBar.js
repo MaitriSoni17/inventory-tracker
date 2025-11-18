@@ -1,9 +1,6 @@
 import React, { useEffect } from 'react';
-
+import { Outlet } from 'react-router-dom';
 import { Link, useLocation } from "react-router-dom";
-import BusinessOwner from './BusinessOwner';
-import Employee from './Employee';
-import Supplier from './Supplier';
 import './styles/sidebar.css'
 
 const SideBar = () => {
@@ -20,7 +17,8 @@ const SideBar = () => {
                     <div className="bg-white border-end sidebar" id="sidebar-wrapper">
                         <div className="sidebar-heading text-center py-4 fs-4 fw-bold app-title">Inline Tracker</div>
                         <div className="list-group list-group-flush my-3">
-                            <Link to="/" className={`list-group-item list-group-item-action second-text ${location.pathname === "/sidebar" ? "active" : ""}`}>
+                            
+                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
                                 <i className="fas fa-th-large me-2"></i>Dashboard
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/category" ? "active" : ""}`}>
@@ -32,7 +30,7 @@ const SideBar = () => {
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/orders" ? "active" : ""}`}>
                                 <i className="bi bi-cart me-2"></i>Orders
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/employees" ? "active" : ""}`}>
+                            <Link to={role === "businessowner"  ? "/dashboard/createemployee" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/dashboard/createemployee" ? "active" : ""}`}>
                                 <i className="bi bi-people me-2"></i>Employees
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/suppliers" ? "active" : ""}`}>
@@ -48,6 +46,7 @@ const SideBar = () => {
                                 <i className="fas fa-sign-out-alt me-2"></i>Log Out
                             </Link>
                         </div>
+                        
                     </div>
                 </div>
                 <div id="page-content-wrapper" className="p-0 m-0">
@@ -79,9 +78,7 @@ const SideBar = () => {
                             </ul>
                         </div>
                     </nav>
-                    {role === 'businessowner' && <BusinessOwner />}
-                    {role === 'employee' && <Employee />}
-                    {role === 'supplier' && <Supplier />}
+                    <Outlet />
                 </div>
             </div>
         </>

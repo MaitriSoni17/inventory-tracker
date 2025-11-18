@@ -4,7 +4,7 @@ const { Schema } = mongoose;
 const Employee = new Schema({
     businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner' },
     fname: {  type: String, required: true },
-    lname: { type: String, required: true },
+    lname: { type: String},
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     birthDate: { type: Date },
@@ -15,8 +15,8 @@ const Employee = new Schema({
     state: { type: String },
     city: { type: String },
     hireAt: { type: String },
-    phone: { type: Number, required: true },
-    address: { type: String, required: true },
+    phone: { type: Number},
+    address: { type: String},
     image: { type: String },
     about: { type: String },
     role: { type: String, default: "employee" }

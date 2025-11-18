@@ -2,6 +2,7 @@ const express = require('express');
 const BusinessOwner = require('../models/BusinessOwner');
 const Employee = require('../models/Employee');
 const Supplier = require('../models/Supplier');
+const LoginInfo = require('../models/LoginInfo')
 // const fetchuser = require('../middleware/fetchuser');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -43,6 +44,14 @@ router.post('/login', [
         if (!passwordCompare) return res.status(400).json({ error: "Please try to login with correct credentials" });
 
         const token = jwt.sign({ id: user._id, role }, JWT_SECRET);
+
+        await LoginInfo.create(
+            {
+                email,
+                role
+            }
+        )
+
         res.json({ success: true, authtoken: token, role: role });
     } catch (err) {
         console.error(err.message);

@@ -14,9 +14,7 @@ const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 router.post('/createemployee', fetchbusinessowner, [
     body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password must be at least 5 characters').isLength({ min: 5 }),
-    body('phone', 'Enter a valid phone number').isLength({ min: 10 }),
-    body('address', 'Enter a valid address').isLength({ min: 5 }),
+    body('password', 'Password must be at least 5 characters').isLength({ min: 5 })
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

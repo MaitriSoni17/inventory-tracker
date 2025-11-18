@@ -24,7 +24,7 @@ function Login(props) {
             localStorage.setItem('role', json.role);
             props.showAlert("Loged in Successfully", "success")
             // console.log(json.role)
-            history("/sidebar");
+            history("/dashboard");
 
         }
         else {
@@ -55,14 +55,14 @@ function Login(props) {
 
                     <form onSubmit={handleSubmit}>
                         <div className="mb-3">
-                            <label htmlFor="email" className="form-label small text-secondary mb-1">Email</label>
+                            <label htmlhtmlFor="email" className="form-label small text-secondary mb-1">Email</label>
                             <input type="email" name='email' id="email" placeholder="username@gmail.com" onChange={onChange}
                                 className="form-control bg-white text-secondary p-2 rounded-3 border-1" required
                             />
                         </div>
 
                         <div className="mb-4">
-                            <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
+                            <label htmlhtmlFor="password" className="form-label small text-secondary mb-1">Password</label>
                             <div className='input-group mb-3'>
                                 <input type={showPassword ? "text" : "password"} onChange={onChange} className='form-control' name='password' id="password" placeholder="••••••••" required /><i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
                             </div>

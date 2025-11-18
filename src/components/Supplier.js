@@ -170,39 +170,39 @@ function Supplier() {
     return (
         <div className="container-fluid px-5 mt-4 mb-5">
             {/* Dashboard Cards */}
-            <div class="row g-3 my-2">
-                <div class="col-md-4">
+            <div className="row g-3 my-2">
+                <div className="col-md-4">
                     <div
-                        class="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
                         <i
-                            class="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                        <div class="mt-3">
-                            <h3 class="fs-2">100</h3>
-                            <p class="fs-5">Total Orders</p>
+                            className="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div className="mt-3">
+                            <h3 className="fs-2">100</h3>
+                            <p className="fs-5">Total Orders</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-4">
+                <div className="col-md-4">
                     <div
-                        class="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
                         <i
-                            class="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                        <div class="mt-3">
-                            <h3 class="fs-2">100</h3>
-                            <p class="fs-5">Pending Orders</p>
+                            className="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div className="mt-3">
+                            <h3 className="fs-2">100</h3>
+                            <p className="fs-5">Pending Orders</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-md-4">
+                <div className="col-md-4">
                     <div
-                        class="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
                         <i
-                            class="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                        <div class="mt-3">
-                            <h3 class="fs-2">100</h3>
-                            <p class="fs-5">Completed Orders</p>
+                            className="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                        <div className="mt-3">
+                            <h3 className="fs-2">100</h3>
+                            <p className="fs-5">Completed Orders</p>
                         </div>
                     </div>
                 </div>
@@ -227,37 +227,37 @@ function Supplier() {
                 </div>
             </div>
 
-            <div class="row my-4 g-3">
-                <div class="col-md-6">
-                    <div class="p-3 bg-white shadow rounded-4 border border-4">
-                        <h3 class="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
-                        <table class="table align-middle mt-4">
+            <div className="row my-4 g-3">
+                <div className="col-md-6">
+                    <div className="p-3 bg-white shadow rounded-4 border border-4">
+                        <h3 className="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
+                        <table className="table align-middle mt-4">
                             <tbody>
                                 <tr>
                                     <td>Total Orders</td>
-                                    <td><span class="fw-bold">100</span></td>
+                                    <td><span className="fw-bold">100</span></td>
                                 </tr>
                                 <tr>
                                     <td>Pending Orders</td>
-                                    <td><span class="fw-bold">100</span></td>
+                                    <td><span className="fw-bold">100</span></td>
                                 </tr>
                                 <tr>
                                     <td>Completed Orders</td>
-                                    <td><span class="fw-bold">100</span></td>
+                                    <td><span className="fw-bold">100</span></td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <div class="col-md-6">
-                    <div class="p-3 bg-white shadow border border-4 rounded-4">
-                        <h3 class="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
+                <div className="col-md-6">
+                    <div className="p-3 bg-white shadow border border-4 rounded-4">
+                        <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
                             Orders
-                            <a href="orders.html" class="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                            <a href="orders.html" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
                         </h3>
-                        <table class="table table-borderless align-middle mb-0">
-                            <thead class="text-secondary">
+                        <table className="table table-borderless align-middle mb-0">
+                            <thead className="text-secondary">
                                 <tr>
                                     <th scope="col">Order Title</th>
                                     <th scope="col">Deadline</th>
