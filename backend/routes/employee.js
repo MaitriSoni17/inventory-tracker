@@ -52,7 +52,7 @@ router.post('/createemployee', fetchbusinessowner, [
         });
 
         const authToken = jwt.sign({ id: employee._id, role: 'employee' }, JWT_SECRET);
-        res.json({ authToken });
+        res.json({ authToken, success: true });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");

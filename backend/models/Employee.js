@@ -8,7 +8,7 @@ const Employee = new Schema({
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     birthDate: { type: Date },
-    gender: {type: String, enum: ['Male', 'Female', 'Other']},
+    gender: {type: String},
     jDate: { type: Date, default: Date.now },
     nationality: { type: String },
     country: { type: String },
