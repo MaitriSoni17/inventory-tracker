@@ -18,7 +18,7 @@ const SideBar = () => {
                         <div className="sidebar-heading text-center py-4 fs-4 fw-bold app-title">Inline Tracker</div>
                         <div className="list-group list-group-flush my-3">
                             
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
+                            <Link to="/dashboard" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
                                 <i className="fas fa-th-large me-2"></i>Dashboard
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/category" ? "active" : ""}`}>
@@ -33,7 +33,7 @@ const SideBar = () => {
                             <Link to={role === "businessowner"  ? "/dashboard/createemployee" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/dashboard/createemployee" ? "active" : ""}`}>
                                 <i className="bi bi-people me-2"></i>Employees
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/suppliers" ? "active" : ""}`}>
+                            <Link to={role === "businessowner"  ? "/dashboard/createsupplier" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/dashboard/createsupplier" ? "active" : ""}`}>
                                 <i className="fas fa-truck me-2"></i>Suppliers
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/warehouses" ? "active" : ""}`}>
