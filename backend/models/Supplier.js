@@ -11,6 +11,7 @@ const Supplier = new Schema({
     country: { type: String },
     state: { type: String },
     city: { type: String },
+    jDate: {type: Date, default: Date.now},
     phone: { type: Number },
     address: { type: String },
     about: { type: String },
