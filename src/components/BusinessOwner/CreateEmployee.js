@@ -348,7 +348,7 @@ const CreateEmployee = (props) => {
                 </div>
 
                 {/* Submit and Cancel Buttons */}
-                <div className="row mt-5 mx-2">
+                <div className="row mt-5">
                     <div className="col-12 d-flex justify-content-start">
                         <input
                             type="submit"
