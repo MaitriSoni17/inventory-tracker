@@ -2,28 +2,39 @@ const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
 const Product = require('../models/Products');
 const { body, validationResult } = require('express-validator');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 
 // Create Product — accessible by BusinessOwner or Employee
 router.post('/createproduct', fetchuser, [
-    body('name', 'Enter Product Name').exists(),
-    body('category', 'Enter Category').exists(),
-    body('price', 'Enter Price').exists().isNumeric(),
-    body('totalProducts', 'Enter Total Products').exists().isNumeric(),
-    body('mDate', 'Enter Manufacturing Date').exists().isDate(),
-    body('eDate', 'Enter Expiring Date').exists().isDate(),
+    body('name').exists().trim().notEmpty().withMessage('Enter Product Name'),
+    body('category').exists().trim().notEmpty().withMessage('Enter Category'),
+    body('price').exists().isNumeric().withMessage('Enter valid Price'),
+    body('totalProducts').exists().isNumeric().withMessage('Enter valid Total Products'),
+    body('mDate').exists().trim().notEmpty().withMessage('Enter Manufacturing Date'),
+    body('eDate').exists().trim().notEmpty().withMessage('Enter Expiring Date'),
 ], async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) {
+        console.log('Validation errors:', errors.array());
+        return res.status(400).json({ errors: errors.array() });
+    }
 
-    const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image } = req.body;
+    const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc } = req.body;
 
     try {
         let productData = {
-            name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image
+            name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc
         };
 
-        console.log(req.user, req.role);
+        if (req.files && req.files.length > 0) {
+            productData.images = req.files.map(f => f.filename);
+            productData.image = req.files[0].filename;
+        }
+
+        console.log('Creating product with data:', productData);
+        console.log('User info:', req.user, 'Role:', req.role);
 
         if (req.role === 'businessowner') {
             productData.businessowner = req.user._id;
@@ -33,10 +44,10 @@ router.post('/createproduct', fetchuser, [
         }
 
         const product = await Product.create(productData);
-        res.json(product);
+        res.json({product, success: true});
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Internal Server error occurred");
+        res.status(500).json({ success: false, message: "Internal Server error occurred", error: err.message });
     }
 });
 
@@ -59,7 +70,6 @@ router.post('/getproduct', fetchuser, async (req, res) => {
                 ]
             });
         }
-
         res.json(products);
     } catch (err) {
         console.error(err.message);
@@ -69,39 +79,100 @@ router.post('/getproduct', fetchuser, async (req, res) => {
 
 // Update Product — only BusinessOwner can update
 router.put('/updateproduct/:id', fetchuser, [
-    body('name', 'Enter Product Name').exists(),
-    body('category', 'Enter Category').exists(),
+    body('name', 'Enter Product Name').exists().trim().notEmpty(),
+    body('category', 'Enter Category').exists().trim().notEmpty(),
     body('price', 'Enter Price').exists().isNumeric(),
     body('totalProducts', 'Enter Total Products').exists().isNumeric(),
-    body('mDate', 'Enter Manufacturing Date').exists().isDate(),
-    body('eDate', 'Enter Expiring Date').exists().isDate(),
+    body('mDate', 'Enter Manufacturing Date').exists().trim().notEmpty(),
+    body('eDate', 'Enter Expiring Date').exists().trim().notEmpty(),
 ], async (req, res) => {
-    // if (req.role !== 'businessowner' || req.role !== 'employee') {
-    //     return res.status(403).send("Only BusinessOwner or Employee can update products");
-    // }
-
     if (!['businessowner', 'employee'].includes(req.role)) {
         return res.status(403).send("Only BusinessOwner or Employee can update products");
     }
 
-
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image } = req.body;
+    const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image, removedImages, images } = req.body;
 
     try {
-        const newProduct = { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc, image };
-
         let product = await Product.findById(req.params.id);
         if (!product) return res.status(404).send("Not Found");
 
-        // if (product.businessowner.toString() !== req.user._id.toString() || (product.employee.toString() !== req.user._id.toString())) {
-        //     return res.status(401).send("Not Allowed");
-        // }
+        console.log('=== UPDATE PRODUCT DEBUG ===');
+        console.log('Product ID:', req.params.id);
+        console.log('Request body images field:', images);
+        console.log('Request body removedImages field:', removedImages);
+        console.log('Request body existingImages[]:', req.body['existingImages[]']);
+        console.log('Request files count:', req.files ? req.files.length : 0);
+        console.log('Current product images in DB:', product.images);
+
+        // Delete removed image files from the uploads directory
+        if (removedImages && removedImages.length > 0) {
+            const removedImagesList = Array.isArray(removedImages) ? removedImages : [removedImages];
+            removedImagesList.forEach(imageName => {
+                const imagePath = path.join(__dirname, '../uploads', imageName);
+                if (fs.existsSync(imagePath)) {
+                    fs.unlinkSync(imagePath);
+                    console.log('Deleted image from disk:', imageName);
+                }
+            });
+        }
+
+        // Handle new images uploaded and existing images
+        let updatedImages = [];
+        let newImageFiles = [];
+        
+        // Get new uploaded files
+        if (req.files && req.files.length > 0) {
+            newImageFiles = req.files.map(f => f.filename);
+            console.log('New uploaded files:', newImageFiles);
+        }
+
+        // Get existing images from either FormData or JSON body
+        let existingImages = [];
+        
+        // Check FormData format (existingImages[])
+        if (req.body['existingImages[]']) {
+            existingImages = Array.isArray(req.body['existingImages[]']) 
+                ? req.body['existingImages[]'] 
+                : [req.body['existingImages[]']];
+            console.log('Using existing images from FormData:', existingImages);
+        } 
+        // Check JSON format (images array)
+        else if (images && Array.isArray(images)) {
+            existingImages = images;
+            console.log('Using existing images from JSON body:', existingImages);
+        }
+        // Fallback to product's existing images if nothing provided
+        else if (product.images && product.images.length > 0) {
+            existingImages = product.images;
+            console.log('Using fallback - product existing images:', existingImages);
+        }
+
+        // Combine existing and new images
+        updatedImages = [...existingImages, ...newImageFiles];
+        console.log('Final combined images array:', updatedImages);
+
+        const newProduct = { 
+            name, 
+            category, 
+            price, 
+            totalProducts, 
+            warehouse, 
+            brand, 
+            mDate, 
+            eDate, 
+            desc, 
+            image: image || (updatedImages.length > 0 ? updatedImages[0] : ''),
+            images: updatedImages
+        };
+
+        console.log('Updating product with:', { image: newProduct.image, images: newProduct.images });
 
         product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true });
-        res.json({ product });
+        console.log('Product updated in DB. New images in DB:', product.images);
+        res.json({ product, success: true });
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");

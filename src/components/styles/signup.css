@@ -79,10 +79,10 @@
     background-color: var(--light-purple);
     border-color: var(--light-purple);
     color: white;
-    font-weight: bold;
-    height: 55px;
+    /* font-weight: bold; */
+    /* height: 55px;
     font-size: 1.1rem;
-    border-radius: 8px;
+    border-radius: 8px; */
     /* Slightly more rounded button */
 }
 

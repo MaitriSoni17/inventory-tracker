@@ -14,6 +14,7 @@ const Product = new Schema({
     eDate: { type: Date, required: true },
     desc: { type: String },
     image: { type: String },
+    images: [{ type: String }],
 });
 
 module.exports = mongoose.model('Product', Product);

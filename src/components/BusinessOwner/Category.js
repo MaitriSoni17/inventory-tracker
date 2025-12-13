@@ -12,7 +12,7 @@ const Category = (props) => {
   // Fetch categories on component mount
   useEffect(() => {
     fetchCategories();
-  }, []);
+  });
 
   const fetchCategories = async () => {
     try {

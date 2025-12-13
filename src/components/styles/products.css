@@ -1,0 +1,75 @@
+/* Custom CSS for Product Page */
+
+/* --- Custom Purple Color --- */
+:root {
+    --custom-purple: #7B3EBC; /* A deep purple color similar to the image */
+    --custom-purple-light: #9B66D6; /* A lighter shade for badges/hover */
+}
+
+.border-primary{
+    border-color: var(--custom-purple) !important;
+}
+
+/* --- Search Bar Styling --- */
+.search-bar {
+    border: 1px solid #ced4da; /* Light border around the whole bar */
+    border-radius: 2rem; /* Highly rounded corners */
+    padding: 0 0; /* Remove internal padding */
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075); /* Subtle shadow */
+}
+
+/* Ensure the input group text (icon) is part of the rounded shape */
+.search-bar .input-group-text {
+    border-top-left-radius: 2rem !important;
+    border-bottom-left-radius: 2rem !important;
+}
+
+/* Remove default border/shadow on the input field */
+.search-bar .form-control:focus {
+    box-shadow: none;
+    border-color: transparent;
+}
+/* .search-bar .form-control {
+    border-top-right-radius: 2rem !important;
+    border-bottom-right-radius: 2rem !important;
+} */
+
+/* --- Custom Purple Button --- */
+.btn-custom-purple {
+    background-color: var(--custom-purple);
+    border-color: var(--custom-purple);
+    color: white;
+}
+
+.btn-custom-purple:hover {
+    background-color: var(--custom-purple-light);
+    border-color: var(--custom-purple-light);
+    color: white;
+}
+
+/* --- Filter Dropdown Styling --- */
+.custom-select-filter {
+    background-color: #f8f9fa;
+    color: #495057;
+    /* Optional: Remove the focus border if needed to match the image exactly */
+}
+
+.custom-select-filter:focus {
+    box-shadow: none;
+    border-color: #ced4da;
+}
+
+/* --- Active Status Badge --- */
+.custom-badge-purple {
+    background-color: var(--custom-purple-light); /* Lighter purple for the badge */
+    color: white;
+}
+
+
+/* Image variant for real product thumbnails */
+.product-thumb-img {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    display: block;
+}

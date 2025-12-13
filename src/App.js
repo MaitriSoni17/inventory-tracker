@@ -10,6 +10,9 @@ import CreateEmployee from './components/BusinessOwner/CreateEmployee';
 import Alert from './components/Alert';
 import CreateSupplier from "./components/BusinessOwner/CreateSupplier";
 import Category from "./components/BusinessOwner/Category";
+import Products from "./components/BusinessOwner/Products";
+import AddProduct from "./components/BusinessOwner/AddProduct";
+import EditProduct from "./components/BusinessOwner/EditProduct";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -38,6 +41,9 @@ function App() {
             <Route path="createemployee" element={<CreateEmployee showAlert={showAlert} />} />
             <Route path="createsupplier" element={<CreateSupplier showAlert={showAlert} />} />
             <Route path="category" element={<Category showAlert={showAlert} />} />
+            <Route path="products" element={<Products showAlert={showAlert} />} />
+            <Route path="addproduct" element={<AddProduct showAlert={showAlert} />} />
+            <Route path="editproduct/:id" element={<EditProduct showAlert={showAlert} />} />
           </Route>
 
         </Routes>
