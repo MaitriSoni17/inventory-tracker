@@ -1,0 +1,81 @@
+/* Custom Fonts */
+.categories-title {
+    /* Mimicking the elegant serif font from the image */
+    font-family: 'Playfair Display', serif;
+    font-weight: 600;
+    font-size: 3rem;
+}
+
+.last-update-text {
+    font-size: 0.9rem;
+}
+
+/* Add Category Button */
+.add-category-btn {
+    background-color: #7300FF; /* Medium Purple/Violet color */
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+}
+.add-category-btn:hover {
+    background-color: rgb(130, 115, 215);
+    color: white;
+}
+
+.btn-primary{
+    background-color: #6A0DAD !important;
+    border-color: #6A0DAD !important;
+}
+
+/* Search Bar Styling */
+.search-bar-container {
+    border: 1px solid #ccc; /* Subtle border for the entire control */
+    border-radius: 0.375rem; /* Match Bootstrap's default rounding */
+    overflow: hidden; /* Ensures contents stay within rounded border */
+}
+
+.search-input {
+    border: none;
+    box-shadow: none !important;
+    padding-left: 0.5rem;
+}
+
+.search-icon-bg {
+    background-color: white;
+    border: none;
+    color: #888;
+}
+
+/* Category Cards */
+.category-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.category-image-placeholder {
+    height: 150px; /* Adjust height as needed */
+    background-color: #be98edd8; /* Very light lavender/purple background */
+}
+
+.category-icon {
+    color: #6A0DAD; /* Deep purple color for the T-shirt icon */
+    font-size: 4rem; /* Large icon size */
+}
+
+/* Actions (Edit and Delete Icons) */
+.category-actions {
+    display: flex;
+    justify-content: flex-end; /* Pushes the icons to the bottom right */
+}
+
+.edit-icon {
+    color: #888; /* Gray color for edit icon */
+    font-size: 1.2rem;
+}
+
+.delete-icon {
+    color: #dc3545; /* Bootstrap's danger red color for delete */
+    font-size: 1.2rem;
+}

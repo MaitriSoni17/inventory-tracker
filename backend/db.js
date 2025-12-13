@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const mongoURI = 'mongodb://localhost:27017/inventory-tracker';
+const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/inventory-tracker';
 
 const connectToMongo = async () => {
     try {

@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 // const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { body, validationResult } = require('express-validator');
 
-const JWT_SECRET = 'ThisisaSecretKey';
+const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
 
 // Login for any user (Business Owner, Employee, Supplier) using: POST "/api/auth/login". No login required
@@ -55,7 +55,7 @@ router.post('/login', [
         res.json({ success: true, authtoken: token, role: role });
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Internal Server error occurred");
+        res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 

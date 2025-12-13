@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const BusinessOwner = require('../models/BusinessOwner');
-const JWT_SECRET = "ThisisaSecretKey";
+const JWT_SECRET = process.env.JWT_SECRET || "ThisisaSecretKey";
 
 const fetchbusinessowner = async (req, res, next) => {
     const token = req.header('auth-token');

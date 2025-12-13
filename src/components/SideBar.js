@@ -21,7 +21,7 @@ const SideBar = () => {
                             <Link to="/dashboard" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
                                 <i className="fas fa-th-large me-2"></i>Dashboard
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/category" ? "active" : ""}`}>
+                            <Link to={role === "businessowner"  ? "/dashboard/category" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/dashboard/category" ? "active" : ""}`}>
                                 <i className="fas fa-cube me-2"></i>Categories
                             </Link>
                             <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/products" ? "active" : ""}`}>

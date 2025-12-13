@@ -9,6 +9,7 @@ import Supplier from './components/Supplier';
 import CreateEmployee from './components/BusinessOwner/CreateEmployee';
 import Alert from './components/Alert';
 import CreateSupplier from "./components/BusinessOwner/CreateSupplier";
+import Category from "./components/BusinessOwner/Category";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -36,6 +37,7 @@ function App() {
             {/* Other nested pages */}
             <Route path="createemployee" element={<CreateEmployee showAlert={showAlert} />} />
             <Route path="createsupplier" element={<CreateSupplier showAlert={showAlert} />} />
+            <Route path="category" element={<Category showAlert={showAlert} />} />
           </Route>
 
         </Routes>

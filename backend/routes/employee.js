@@ -8,22 +8,39 @@ const { body, validationResult } = require('express-validator');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 // --- Import and Configure Multer ---
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 // Configure storage (e.g., store files in an 'uploads' directory)
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        // You should create this 'uploads' directory manually
-        cb(null, 'uploads/')
+        cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
         // Create a unique file name
         cb(null, Date.now() + '-' + file.originalname)
     }
 });
+
+const deleteUploadedFile = (filePath) => {
+    if (filePath && fs.existsSync(filePath)) {
+        try {
+            fs.unlinkSync(filePath);
+            console.log(`Successfully deleted file: ${filePath}`);
+        } catch (error) {
+            console.error(`Error deleting file: ${filePath}`, error);
+        }
+    }
+};
 const upload = multer({ storage: storage });
 // ------------------------------------
 
-const JWT_SECRET = 'ThisisaSecretKey';
+const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
 // Create an Employee using: POST "/api/employee/createemployee". 
 // Business Owner login required.
@@ -40,7 +57,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
     if (!errors.isEmpty()) {
         // You might want to delete the uploaded file if validation fails here
         if (req.file) {
-            // Logic to delete file from disk (requires 'fs' module)
+            deleteUploadedFile(req.file.path);
         }
         return res.status(400).json({ errors: errors.array() });
     }
@@ -50,7 +67,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         if (employee) {
             // Delete file if user already exists
             if (req.file) {
-                // Logic to delete file
+                deleteUploadedFile(req.file.path);
             }
             return res.status(400).json({ error: "Sorry, a user with this email already exists" });
         }
@@ -90,54 +107,59 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         console.error(err.message);
         // Delete file on internal error
         if (req.file) {
-            // Logic to delete file
+            deleteUploadedFile(req.file.path);
         }
         res.status(500).send("Internal Server error occurred");
     }
 });
+
 // Login Employee using: POST "/api/employee/loginemployee". No login required
-// router.post('/loginemployee', [
-//     body('email', 'Enter a valid email').isEmail(),
-//     body('password', 'Password cannot be blank').exists(),
-// ], async (req, res) => {
-//     const errors = validationResult(req);
-//     if (!errors.isEmpty()) {
-//         return res.status(400).json({ errors: errors.array() });
-//     }
+router.post('/loginemployee', [
+    body('email', 'Enter a valid email').isEmail(),
+    body('password', 'Password cannot be blank').exists(),
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
 
-//     const { email, password } = req.body;
+    const { email, password } = req.body;
 
-//     try {
-//         let employee = await Employee.findOne({ email });
-//         if (!employee) {
-//             return res.status(400).json({ error: "Please try to login with correct credentials" });
-//         }
+    try {
+        let employee = await Employee.findOne({ email });
+        if (!employee) {
+            return res.status(400).json({ error: "Please try to login with correct credentials" });
+        }
 
-//         const passwordCompare = await bcrypt.compare(password, employee.password);
-//         if (!passwordCompare) {
-//             return res.status(400).json({ error: "Please try to login with correct credentials" });
-//         }
+        const passwordCompare = await bcrypt.compare(password, employee.password);
+        if (!passwordCompare) {
+            return res.status(400).json({ error: "Please try to login with correct credentials" });
+        }
 
-//         const authToken = jwt.sign({ id: employee._id, role: 'employee' }, JWT_SECRET);
-//         res.json({ authToken });
-//     } catch (err) {
-//         console.error(err.message);
-//         res.status(500).send("Internal Server error occurred");
-//     }
-// });
+        const authToken = jwt.sign({ id: employee._id, role: 'employee' }, JWT_SECRET);
+        res.json({ success: true, authtoken: authToken });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
 
 // Get Employee Data using: POST "/api/employee/getemployee". Login required
 router.post('/getemployee', fetchuser, async (req, res) => {
     try {
         if (req.role !== 'employee') {
-            return res.status(403).send("Access denied");
+            return res.status(403).json({ error: "Access denied" });
         }
 
         const employee = await Employee.findById(req.user._id).select("-password");
-        res.send(employee);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        res.json(employee);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Internal Server error occurred");
+        res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 

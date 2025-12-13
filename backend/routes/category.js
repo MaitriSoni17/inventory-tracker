@@ -25,7 +25,7 @@ router.post('/createcategory', fetchuser, [
         }
 
         const category = await Category.create(categoryData);
-        res.json(category);
+        res.json({category, success: true});
     } catch (err) {
         console.error(err.message);
         res.status(500).send("Internal Server error occurred");

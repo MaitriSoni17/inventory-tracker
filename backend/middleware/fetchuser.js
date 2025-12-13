@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const BusinessOwner = require('../models/BusinessOwner');
 const Employee = require('../models/Employee');
 const Supplier = require('../models/Supplier');
-const JWT_SECRET = "ThisisaSecretKey";
+const JWT_SECRET = process.env.JWT_SECRET || "ThisisaSecretKey";
 
 const fetchUser = async (req, res, next) => {
     const token = req.header('auth-token');

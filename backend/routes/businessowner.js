@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { body, validationResult } = require('express-validator');
 
-const JWT_SECRET = 'ThisisaSecretKey';
+const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
 // Create a Business Owner using: POST "/api/businessowner/createbusinessowner". No login required
 router.post('/createbusinessowner', [
@@ -83,10 +83,13 @@ router.post('/getbusinessowner', fetchbusinessowner, async (req, res) => {
     try {
         const userId = req.businessowner._id;
         const businessowner = await BusinessOwner.findById(userId).select("-password");
-        res.send(businessowner);
+        if (!businessowner) {
+            return res.status(404).json({ error: "Business owner not found" });
+        }
+        res.json(businessowner);
     } catch (err) {
         console.error(err.message);
-        res.status(500).send("Internal Server error occurred");
+        res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 
