@@ -14,6 +14,12 @@ const Products = (props) => {
     const [selectedStock, setSelectedStock] = useState('');
     const [categories, setCategories] = useState([]);
 
+    const getImageFileName = (product) => {
+        const fileName = (product.images && product.images.length > 0 ? product.images[0] : '');
+        // Ensure the filename is a string and not null/undefined
+        return fileName ? String(fileName) : '';
+    };
+
     useEffect(() => {
         // Fetch products data from an API or database
         // For demonstration, we'll use static data
@@ -35,11 +41,11 @@ const Products = (props) => {
                 }
                 const json = await response.json();
                 setProducts(json);
-                
+
                 // Extract unique categories
                 const uniqueCategories = [...new Set(json.map(p => p.category))];
                 setCategories(uniqueCategories);
-                
+
                 setLoading(false);
             } catch (error) {
                 console.error("Network or Parsing Error:", error);
@@ -82,13 +88,13 @@ const Products = (props) => {
     const getFilteredProducts = () => {
         return products.filter(product => {
             const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                 product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                 product.brand?.toLowerCase().includes(searchTerm.toLowerCase());
-            
+                product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                product.brand?.toLowerCase().includes(searchTerm.toLowerCase());
+
             const matchesCategory = !selectedCategory || product.category === selectedCategory;
-            
+
             const matchesStatus = !selectedStatus || selectedStatus === 'Active'; // All products shown as active for now
-            
+
             let matchesStock = true;
             if (selectedStock === 'Low') {
                 matchesStock = product.totalProducts <= 10;
@@ -97,7 +103,7 @@ const Products = (props) => {
             } else if (selectedStock === 'High') {
                 matchesStock = product.totalProducts > 50;
             }
-            
+
             return matchesSearch && matchesCategory && matchesStatus && matchesStock;
         });
     };
@@ -111,7 +117,7 @@ const Products = (props) => {
 
     const exportToExcel = () => {
         const filteredProducts = getFilteredProducts();
-        
+
         if (filteredProducts.length === 0) {
             props.showAlert("No products to export", "warning");
             return;
@@ -133,7 +139,7 @@ const Products = (props) => {
         const ws = XLSX.utils.json_to_sheet(dataToExport);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Products");
-        
+
         // Adjust column widths
         ws['!cols'] = [
             { wch: 20 },
@@ -147,14 +153,14 @@ const Products = (props) => {
             { wch: 12 },
             { wch: 25 }
         ];
-        
+
         XLSX.writeFile(wb, `Products_${new Date().toISOString().split('T')[0]}.xlsx`);
         props.showAlert("Products exported to Excel successfully", "success");
     };
 
     const exportToPDF = async () => {
         const filteredProducts = getFilteredProducts();
-        
+
         if (filteredProducts.length === 0) {
             props.showAlert("No products to export", "warning");
             return;
@@ -177,7 +183,7 @@ const Products = (props) => {
 
             const imgWidth = 280;
             const imgHeight = (canvas.height * imgWidth) / canvas.width;
-            
+
             pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
             pdf.save(`Products_${new Date().toISOString().split('T')[0]}.pdf`);
             props.showAlert("Products exported to PDF successfully", "success");
@@ -197,14 +203,14 @@ const Products = (props) => {
 
                     </div>
                     <div className="col-3 d-flex justify-content-center align-items-center pb-3">
-                        <button 
-                            className="btn btn-link text-danger me-3 fs-2 p-0 border-0" 
+                        <button
+                            className="btn btn-link text-danger me-3 fs-2 p-0 border-0"
                             onClick={exportToPDF}
                             title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill"></i>
                         </button>
-                        <button 
-                            className="btn btn-link text-success me-3 fs-2 p-0 border-0" 
+                        <button
+                            className="btn btn-link text-success me-3 fs-2 p-0 border-0"
                             onClick={exportToExcel}
                             title="Export to Excel">
                             <i className="bi bi-file-earmark-excel-fill"></i>
@@ -220,10 +226,10 @@ const Products = (props) => {
                     <div className="col-12">
                         <div className="input-group input-group-lg search-bar shadow border-3 rounded-pill">
                             <span className="input-group-text bg-white border-0 ps-3"><i className="bi bi-search"></i></span>
-                            <input 
-                                type="text" 
-                                className="form-control border-0 rounded-pill shadow-none text-muted" 
-                                placeholder="Search" 
+                            <input
+                                type="text"
+                                className="form-control border-0 rounded-pill shadow-none text-muted"
+                                placeholder="Search"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -236,7 +242,7 @@ const Products = (props) => {
                         <small className="text-secondary fs-4">Filters</small>
                     </div>
                     <div className="col-auto">
-                        <select 
+                        <select
                             className="shadow border border-2 form-select custom-select-filter"
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -248,7 +254,7 @@ const Products = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
-                        <select 
+                        <select
                             className="shadow border border-2 form-select custom-select-filter"
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value)}
@@ -258,7 +264,7 @@ const Products = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
-                        <select 
+                        <select
                             className="shadow border border-2 form-select custom-select-filter"
                             value={selectedStock}
                             onChange={(e) => setSelectedStock(e.target.value)}
@@ -270,7 +276,7 @@ const Products = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
-                        <button 
+                        <button
                             className="shadow border border-2 border-primary btn btn-custom-purple px-4"
                             onClick={handleResetFilters}
                         >
@@ -311,15 +317,15 @@ const Products = (props) => {
                                     <tbody>
                                         {getFilteredProducts().map((product) => {
                                             // Get the first image from images array or use single image field
-                                            const imageToDisplay = product.image || (product.images && product.images.length > 0 ? product.images[0] : null);
-                                            const imageSrc = imageToDisplay ? `http://localhost:5000/uploads/${imageToDisplay}` : '../imgs/product1.jpg';
-                                            
+                                            const imageToDisplay = getImageFileName(product);
+                                            const imageSrc = `http://localhost:5000/uploads/${imageToDisplay}`;
+
                                             return (
                                                 <tr key={product._id}>
                                                     <td className="align-middle d-flex justify-content-center">
-                                                        <img 
+                                                        <img
                                                             src={imageSrc}
-                                                            alt={product.name} 
+                                                            alt={product.name}
                                                             className="product-thumb-img rounded-3"
                                                             onError={(e) => { e.target.src = '../imgs/product1.jpg'; }}
                                                         />

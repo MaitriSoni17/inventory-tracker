@@ -47,6 +47,7 @@ app.use('/api/customerorders', require('./routes/customerorders'));
 app.use('/api/supplierorders', require('./routes/supplierorders'));
 app.use('/api/warehouse', require('./routes/warehouse'));
 app.use('/api/category', require('./routes/category'));
+app.use('/api/orders', require('./routes/orders'));
 
 // Global error handler middleware
 app.use((err, req, res, next) => {

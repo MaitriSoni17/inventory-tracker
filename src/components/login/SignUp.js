@@ -53,20 +53,20 @@ function SignUp(props) {
 
           <form  onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlhtmlFor="email" className="form-label">Email address</label>
+              <label htmlFor="email" className="form-label">Email address</label>
               <input type="email" className="form-control text-secondary p-2 rounded-3 border-1" id="email" onChange={onChange} name='email'
                 placeholder="Email address" required />
             </div>
 
             <div className="mb-4">
-              <label htmlhtmlFor="password" className="form-label small text-secondary mb-1">Password</label>
+              <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
               <div className='input-group mb-3'>
                 <input type={showPassword ? "text" : "password"} className='form-control' name='password' id="password" placeholder="••••••••" onChange={onChange} minLength={5} /><i className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
               </div>
             </div>
 
             <div className="mb-4">
-              <label htmlhtmlFor="cPassword" className="form-label small text-secondary mb-1">Confirm Password</label>
+              <label htmlFor="cPassword" className="form-label small text-secondary mb-1">Confirm Password</label>
               <div className='input-group mb-3'>
                 <input type={showCPassword ? "text" : "password"} name='cpassword' minLength={5} className='form-control' id="cpassword" placeholder="••••••••" onChange={onChange} /><i className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={cpassVisibility}></i>
               </div>

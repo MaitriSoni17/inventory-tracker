@@ -13,6 +13,9 @@ import Category from "./components/BusinessOwner/Category";
 import Products from "./components/BusinessOwner/Products";
 import AddProduct from "./components/BusinessOwner/AddProduct";
 import EditProduct from "./components/BusinessOwner/EditProduct";
+import Orders from "./components/BusinessOwner/Orders";
+import AddOrder from "./components/BusinessOwner/AddOrder";
+import EditOrder from "./components/BusinessOwner/EditOrder";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -44,6 +47,9 @@ function App() {
             <Route path="products" element={<Products showAlert={showAlert} />} />
             <Route path="addproduct" element={<AddProduct showAlert={showAlert} />} />
             <Route path="editproduct/:id" element={<EditProduct showAlert={showAlert} />} />
+            <Route path="orders" element={<Orders showAlert={showAlert} />} />
+            <Route path="addorder" element={<AddOrder showAlert={showAlert} />} />
+            <Route path="editorder/:id" element={<EditOrder showAlert={showAlert} />} />
           </Route>
 
         </Routes>
