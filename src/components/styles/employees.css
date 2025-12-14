@@ -1,0 +1,72 @@
+:root {
+    --custom-purple: #7B3EBC; /* A deep purple color similar to the image */
+    --custom-purple-light: #9B66D6; /* A lighter shade for badges/hover */
+}
+
+.metric-card {
+    /* Set the background color to the dark purple from the image */
+    background-color: #5d2595; /* A deep purple color */
+    /* Set all text inside the card to white */
+    color: white; 
+}
+
+.metric-title {
+    opacity: 0.8;
+}
+
+/* .metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0;
+} */
+
+.metric-icon {
+    opacity: 0.6;
+}
+
+.fa-users {
+    transform: translateY(-5px);
+}
+
+.border-primary{
+    border-color: var(--custom-purple) !important;
+}
+
+.btn-custom-purple {
+    background-color: var(--custom-purple);
+    border-color: var(--custom-purple);
+    color: white;
+}
+
+.btn-custom-purple:hover {
+    background-color: var(--custom-purple-light);
+    border-color: var(--custom-purple-light);
+    color: white;
+}
+
+/* --- Filter Dropdown Styling --- */
+.custom-select-filter {
+    background-color: #f8f9fa;
+    color: #495057;
+    /* Optional: Remove the focus border if needed to match the image exactly */
+}
+
+.custom-select-filter:focus {
+    border-color: #ced4da;
+}
+
+/* --- Active Status Badge --- */
+.custom-badge-purple {
+    background-color: var(--custom-purple-light); /* Lighter purple for the badge */
+    color: white;
+}
+
+
+
+.profile-img-container {
+    overflow: hidden;
+}
+
+.profile-img-container img {
+    object-fit: cover; 
+}

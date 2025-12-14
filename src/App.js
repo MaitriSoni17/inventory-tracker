@@ -16,6 +16,10 @@ import EditProduct from "./components/BusinessOwner/EditProduct";
 import Orders from "./components/BusinessOwner/Orders";
 import AddOrder from "./components/BusinessOwner/AddOrder";
 import EditOrder from "./components/BusinessOwner/EditOrder";
+import Employees from "./components/BusinessOwner/Employees";
+import EditEmployee from "./components/BusinessOwner/EditEmployee";
+import Suppliers from "./components/BusinessOwner/Suppliers";
+import EditSupplier from "./components/BusinessOwner/EditSupplier";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -41,8 +45,12 @@ function App() {
             } />
 
             {/* Other nested pages */}
+            <Route path="employee" element={<Employees showAlert={showAlert} />} />
             <Route path="createemployee" element={<CreateEmployee showAlert={showAlert} />} />
+            <Route path="editemployee/:id" element={<EditEmployee showAlert={showAlert} />} />
+            <Route path="suppliers" element={<Suppliers showAlert={showAlert} />} />
             <Route path="createsupplier" element={<CreateSupplier showAlert={showAlert} />} />
+            <Route path="editsupplier/:id" element={<EditSupplier showAlert={showAlert} />} />
             <Route path="category" element={<Category showAlert={showAlert} />} />
             <Route path="products" element={<Products showAlert={showAlert} />} />
             <Route path="addproduct" element={<AddProduct showAlert={showAlert} />} />

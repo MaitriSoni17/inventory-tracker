@@ -104,4 +104,70 @@ router.post('/getsupplier', fetchuser, async (req, res) => {
     }
 });
 
+// Get All Suppliers using: POST "/api/supplier/getallsuppliers". Business Owner login required
+router.post('/getallsuppliers', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const suppliers = await Supplier.find({ businessowner: req.businessowner._id }).select('-password');
+        res.json(suppliers);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Update Supplier using: PUT "/api/supplier/updatesupplier/:id". Business Owner login required
+router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const { fname, lname, phone, nationality, country, state, city, address, about } = req.body;
+
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Check if supplier belongs to this business owner
+        if (supplier.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        // Update fields
+        if (fname) supplier.fname = fname;
+        if (lname) supplier.lname = lname;
+        if (phone) supplier.phone = phone;
+        if (nationality) supplier.nationality = nationality;
+        if (country) supplier.country = country;
+        if (state) supplier.state = state;
+        if (city) supplier.city = city;
+        if (address) supplier.address = address;
+        if (about) supplier.about = about;
+
+        await supplier.save();
+        res.json({ supplier, success: true });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Delete Supplier using: DELETE "/api/supplier/deletesupplier/:id". Business Owner login required
+router.delete('/deletesupplier/:id', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Check if supplier belongs to this business owner
+        if (supplier.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        await Supplier.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: "Supplier deleted successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 module.exports = router;

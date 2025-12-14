@@ -57,7 +57,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
     if (!errors.isEmpty()) {
         // You might want to delete the uploaded file if validation fails here
         if (req.file) {
-            deleteUploadedFile(req.file.path);
+            deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
         return res.status(400).json({ errors: errors.array() });
     }
@@ -67,7 +67,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         if (employee) {
             // Delete file if user already exists
             if (req.file) {
-                deleteUploadedFile(req.file.path);
+                deleteUploadedFile(path.join(uploadsDir, req.file.filename));
             }
             return res.status(400).json({ error: "Sorry, a user with this email already exists" });
         }
@@ -75,8 +75,8 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         const salt = await bcrypt.genSalt(10);
         const secPass = await bcrypt.hash(req.body.password, salt);
 
-        // Get the path to the uploaded file from req.file
-        const imagePath = req.file ? req.file.path : undefined;
+        // Get only the filename from the uploaded file
+        const imagePath = req.file ? req.file.filename : undefined;
 
         employee = await Employee.create({
             businessowner: req.businessowner._id,
@@ -107,7 +107,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         console.error(err.message);
         // Delete file on internal error
         if (req.file) {
-            deleteUploadedFile(req.file.path);
+            deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
         res.status(500).send("Internal Server error occurred");
     }
@@ -163,6 +163,101 @@ router.post('/getemployee', fetchuser, async (req, res) => {
     }
 });
 
+// Get All Employees using: POST "/api/employee/getallemployees". Business Owner login required
+router.post('/getallemployees', fetchbusinessowner, async (req, res) => {
+    try {
+        const employees = await Employee.find({ businessowner: req.businessowner._id }).select("-password");
+        res.json(employees);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
 
+// Update Employee using: PUT "/api/employee/updateemployee/:id". Business Owner login required
+router.put('/updateemployee/:id', fetchbusinessowner, upload.single('image'), async (req, res) => {
+    try {
+        const { fname, lname, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role } = req.body;
+
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            // Delete file if employee not found
+            if (req.file) {
+                deleteUploadedFile(req.file.path);
+            }
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        // Check if employee belongs to this business owner
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            // Delete file if access denied
+            if (req.file) {
+                deleteUploadedFile(req.file.path);
+            }
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        // Update fields
+        if (fname) employee.fname = fname;
+        if (lname) employee.lname = lname;
+        if (birthDate) employee.birthDate = birthDate;
+        if (gender) employee.gender = gender;
+        if (jDate) employee.jDate = jDate;
+        if (nationality) employee.nationality = nationality;
+        if (country) employee.country = country;
+        if (state) employee.state = state;
+        if (city) employee.city = city;
+        if (hireAt) employee.hireAt = hireAt;
+        if (phone) employee.phone = phone;
+        if (address) employee.address = address;
+        if (about) employee.about = about;
+        if (role) employee.role = role;
+
+        // Handle image upload
+        if (req.file) {
+            // Delete old image if exists
+            if (employee.image) {
+                deleteUploadedFile(path.join(uploadsDir, employee.image));
+            }
+            employee.image = req.file.filename;
+        }
+
+        await employee.save();
+        res.json({ employee, success: true });
+    } catch (err) {
+        console.error(err.message);
+        // Delete file on error
+        if (req.file) {
+            deleteUploadedFile(path.join(uploadsDir, req.file.filename));
+        }
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Delete Employee using: DELETE "/api/employee/deleteemployee/:id". Business Owner login required
+router.delete('/deleteemployee/:id', fetchbusinessowner, async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        // Check if employee belongs to this business owner
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        // Delete uploaded image if exists
+        if (employee.image) {
+            deleteUploadedFile(employee.image);
+        }
+
+        await Employee.findByIdAndDelete(req.params.id);
+        res.json({ message: "Employee deleted successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
 
 module.exports = router;

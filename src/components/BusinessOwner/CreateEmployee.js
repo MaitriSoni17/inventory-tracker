@@ -354,7 +354,7 @@ const CreateEmployee = (props) => {
                             type="submit"
                             className="btn btn-custom-purple me-3 px-2 shadow-sm"
                             value='Add Employee' />
-                        <a href="/dashboard/createemployee" type="button" className="btn btn-secondary btn-lg shadow-sm text-center px-3">
+                        <a href="/dashboard/employee" type="button" className="btn btn-secondary btn-lg shadow-sm text-center px-3">
                             Cancel
                         </a>
                     </div>
