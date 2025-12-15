@@ -20,6 +20,11 @@ import Employees from "./components/BusinessOwner/Employees";
 import EditEmployee from "./components/BusinessOwner/EditEmployee";
 import Suppliers from "./components/BusinessOwner/Suppliers";
 import EditSupplier from "./components/BusinessOwner/EditSupplier";
+import SupplierOrder from "./components/BusinessOwner/SupplierOrder";
+import AddSupplierOrder from "./components/BusinessOwner/AddSupplierOrder";
+import EditSupplierOrder from "./components/BusinessOwner/EditSupplierOrder";
+import Warehouses from "./components/BusinessOwner/Warehouses";
+import Settings from "./components/BusinessOwner/Settings";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -51,6 +56,9 @@ function App() {
             <Route path="suppliers" element={<Suppliers showAlert={showAlert} />} />
             <Route path="createsupplier" element={<CreateSupplier showAlert={showAlert} />} />
             <Route path="editsupplier/:id" element={<EditSupplier showAlert={showAlert} />} />
+            <Route path="supplierordes/:id" element={<SupplierOrder showAlert={showAlert} />} />
+            <Route path="addsupplierorder/:id" element={<AddSupplierOrder showAlert={showAlert} />} />
+            <Route path="editsupplierorder/:id" element={<EditSupplierOrder showAlert={showAlert} />} />
             <Route path="category" element={<Category showAlert={showAlert} />} />
             <Route path="products" element={<Products showAlert={showAlert} />} />
             <Route path="addproduct" element={<AddProduct showAlert={showAlert} />} />
@@ -58,6 +66,8 @@ function App() {
             <Route path="orders" element={<Orders showAlert={showAlert} />} />
             <Route path="addorder" element={<AddOrder showAlert={showAlert} />} />
             <Route path="editorder/:id" element={<EditOrder showAlert={showAlert} />} />
+            <Route path="warehouses" element={<Warehouses showAlert={showAlert} />} />
+            <Route path="settings" element={<Settings showAlert={showAlert} />} />
           </Route>
 
         </Routes>

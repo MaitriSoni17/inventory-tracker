@@ -104,6 +104,21 @@ router.post('/getsupplier', fetchuser, async (req, res) => {
     }
 });
 
+// Get Supplier Data by ID using: POST "/api/supplier/getsupplier/:id". Login required
+router.post('/getsupplier/:id', fetchuser, async (req, res) => {
+    try {
+        const supplier = await Supplier.findById(req.params.id).select("-password");
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        res.json(supplier);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 // Get All Suppliers using: POST "/api/supplier/getallsuppliers". Business Owner login required
 router.post('/getallsuppliers', require('../middleware/fetchbusinessowner'), async (req, res) => {
     try {

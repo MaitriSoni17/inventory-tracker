@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './styles/businessowner.css';
 import {
     Chart as ChartJS,
@@ -30,7 +30,7 @@ ChartJS.register(
     Legend,
     Filler
 );
-function Supplier() {
+function Supplier(props) {
     const salesRef = useRef(null);
     const salesChartInstance = useRef(null);
     const resizeObserver = useRef(null);
@@ -38,25 +38,115 @@ function Supplier() {
     const orderInstance = useRef(null);
     const centerTextRef = useRef(null);
 
-    const completedOrders = 80;
-    const pendingOrders = 41;
-    const totalOrders = completedOrders + pendingOrders;
+    const [supplierOrders, setSupplierOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        totalOrders: 0,
+        pendingOrders: 0,
+        completedOrders: 0
+    });
 
-    const colors = {
-        completed: '#6a1b9a',
-        pending: '#7a96ff'
+    // Fetch supplier orders on mount
+    useEffect(() => {
+        fetchSupplierOrders();
+    }, []);
+
+    // Initialize charts when data changes
+    useEffect(() => {
+        if (supplierOrders.length > 0) {
+            initCharts();
+        }
+    }, [supplierOrders]);
+    const fetchSupplierOrders = async () => {
+        try {
+            const headers = {
+                'Content-Type': 'application/json',
+                'auth-token': localStorage.getItem('token')
+            };
+
+            // Fetch supplier orders
+            const response = await fetch('http://localhost:5000/api/supplierorder/getsupplierorder', {
+                method: 'POST',
+                headers
+            });
+
+            const data = response.ok ? await response.json() : [];
+            setSupplierOrders(data);
+
+            // Calculate statistics
+            const completed = data.filter(o => o.status?.toLowerCase() === 'completed').length;
+            const pending = data.filter(o => o.status?.toLowerCase() === 'pending').length;
+
+            setStats({
+                totalOrders: data.length,
+                pendingOrders: pending,
+                completedOrders: completed
+            });
+
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching supplier orders:', error);
+            props.showAlert?.('Failed to load supplier orders', 'danger');
+            setLoading(false);
+        }
     };
 
-    useEffect(() => {
+    const aggregateMonthlyOrders = (orders) => {
+        const monthlyData = {};
+        const currentYear = new Date().getFullYear();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // Initialize all months with 0
+        monthNames.forEach(month => {
+            monthlyData[month] = 0;
+        });
+
+        // Aggregate order counts by month
+        orders.forEach(order => {
+            if (order.orderDate) {
+                const orderDate = new Date(order.orderDate);
+                if (orderDate.getFullYear() === currentYear) {
+                    const monthIndex = orderDate.getMonth();
+                    const monthName = monthNames[monthIndex];
+                    monthlyData[monthName] += 1;
+                }
+            }
+        });
+
+        return {
+            labels: monthNames,
+            data: monthNames.map(month => monthlyData[month])
+        };
+    };
+
+    const initCharts = () => {
+        // Destroy existing charts if they exist
+        if (salesChartInstance.current) {
+            salesChartInstance.current.destroy();
+        }
+        if (orderInstance.current) {
+            orderInstance.current.destroy();
+        }
+
+        const monthlyOrders = aggregateMonthlyOrders(supplierOrders);
+        const completedOrders = stats.completedOrders;
+        const pendingOrders = stats.pendingOrders;
+        const totalOrders = stats.totalOrders;
+
+        const colors = {
+            completed: '#6a1b9a',
+            pending: '#7a96ff'
+        };
+
         if (salesRef.current) {
             const ctx = salesRef.current.getContext('2d');
             salesChartInstance.current = new ChartJS(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                    labels: monthlyOrders.labels,
                     datasets: [{
-                        label: 'Sales',
-                        data: [15000, 22000, 28000, 18000, 35000, 30000, 42000, 38000, 50000, 45000, 60000, 75000],
+                        label: 'Orders',
+                        data: monthlyOrders.data,
                         backgroundColor: 'rgba(138, 43, 226, 0.2)',
                         borderColor: '#8a2be2',
                         borderWidth: 3,
@@ -82,11 +172,7 @@ function Supplier() {
                                     let label = context.dataset.label || '';
                                     if (label) label += ': ';
                                     if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('en-US', {
-                                            style: 'currency',
-                                            currency: 'USD',
-                                            maximumFractionDigits: 0
-                                        }).format(context.parsed.y);
+                                        label += context.parsed.y + ' orders';
                                     }
                                     return label;
                                 }
@@ -97,7 +183,7 @@ function Supplier() {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: value => value >= 1000 ? `${value / 1000}K` : value
+                                callback: value => value
                             },
                             grid: { color: '#f0f0f0' }
                         },
@@ -148,7 +234,6 @@ function Supplier() {
                     }
                 }
             });
-
         }
 
         resizeObserver.current = new ResizeObserver(() => {
@@ -159,155 +244,178 @@ function Supplier() {
         document.querySelectorAll('.chart-container').forEach(container => {
             resizeObserver.current.observe(container);
         });
+    };
 
+    useEffect(() => {
         return () => {
             salesChartInstance.current?.destroy();
             orderInstance.current?.destroy();
             resizeObserver.current?.disconnect();
         };
-    });
+    }, []);
 
     return (
         <div className="container-fluid px-5 mt-4 mb-5">
-            {/* Dashboard Cards */}
-            <div className="row g-3 my-2">
-                <div className="col-md-4">
-                    <div
-                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
-                        <i
-                            className="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                        <div className="mt-3">
-                            <h3 className="fs-2">100</h3>
-                            <p className="fs-5">Total Orders</p>
-                        </div>
+            {loading && (
+                <div className="text-center p-5">
+                    <div className="spinner-border" role="status">
+                        <span className="visually-hidden">Loading...</span>
                     </div>
                 </div>
-
-                <div className="col-md-4">
-                    <div
-                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
-                        <i
-                            className="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                        <div className="mt-3">
-                            <h3 className="fs-2">100</h3>
-                            <p className="fs-5">Pending Orders</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="col-md-4">
-                    <div
-                        className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
-                        <i
-                            className="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
-                        <div className="mt-3">
-                            <h3 className="fs-2">100</h3>
-                            <p className="fs-5">Completed Orders</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Charts */}
-            <div className="row my-5 mb-5">
-                <div className="col-12">
-                    <div className="p-4 bg-white shadow rounded-4 border border-4">
-                        <div className="d-flex justify-content-between mb-3">
-                            <h3 className="fs-4">Orders Overview</h3>
-                            <select className="form-select w-auto">
-                                <option>Monthly</option>
-                                <option value="1">Quarterly</option>
-                                <option value="2">Annually</option>
-                            </select>
-                        </div>
-                        <div className="chart-container">
-                            <canvas ref={salesRef} className="m-4" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="row my-4 g-3">
-                <div className="col-md-6">
-                    <div className="p-3 bg-white shadow rounded-4 border border-4">
-                        <h3 className="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
-                        <table className="table align-middle mt-4">
-                            <tbody>
-                                <tr>
-                                    <td>Total Orders</td>
-                                    <td><span className="fw-bold">100</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Pending Orders</td>
-                                    <td><span className="fw-bold">100</span></td>
-                                </tr>
-                                <tr>
-                                    <td>Completed Orders</td>
-                                    <td><span className="fw-bold">100</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div className="col-md-6">
-                    <div className="p-3 bg-white shadow border border-4 rounded-4">
-                        <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
-                            Orders
-                            <a href="orders.html" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
-                        </h3>
-                        <table className="table table-borderless align-middle mb-0">
-                            <thead className="text-secondary">
-                                <tr>
-                                    <th scope="col">Order Title</th>
-                                    <th scope="col">Deadline</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Order1</td>
-                                    <td>31/10/2025</td>
-                                    <td>Paid</td>
-                                    <td>₹100</td>
-                                </tr>
-                                <tr>
-                                    <td>Order1</td>
-                                    <td>31/10/2025</td>
-                                    <td>Paid</td>
-                                    <td>₹100</td>
-                                </tr>
-                                <tr>
-                                    <td>Order1</td>
-                                    <td>31/10/2025</td>
-                                    <td>Paid</td>
-                                    <td>₹100</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div className="row my-5 mb-5">
-                <div className="col-12">
-                    <div className="p-4 bg-white shadow rounded-4 border border-4">
-                        <div className="d-flex justify-content-between mb-3">
-                            <h3 className="fs-4">Orders</h3>
-                        </div>
-                        <div className="chart-container position-relative">
+            )}
+            
+            {!loading && (
+                <>
+                    {/* Dashboard Cards */}
+                    <div className="row g-3 my-2">
+                        <div className="col-md-4">
                             <div
-                                ref={centerTextRef}
-                                className="position-absolute top-50 start-50 translate-middle fw-bold fs-1"
-                                style={{ zIndex: 1 }}
-                            ></div>
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                <i
+                                    className="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                <div className="mt-3">
+                                    <h3 className="fs-2">{stats.totalOrders}</h3>
+                                    <p className="fs-5">Total Orders</p>
+                                </div>
+                            </div>
+                        </div>
 
-                            <canvas ref={orderRef}/>
+                        <div className="col-md-4">
+                            <div
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                <i
+                                    className="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                <div className="mt-3">
+                                    <h3 className="fs-2">{stats.pendingOrders}</h3>
+                                    <p className="fs-5">Pending Orders</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="col-md-4">
+                            <div
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                <i
+                                    className="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                <div className="mt-3">
+                                    <h3 className="fs-2">{stats.completedOrders}</h3>
+                                    <p className="fs-5">Completed Orders</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
+
+                    {/* Charts */}
+                    <div className="row my-5 mb-5">
+                        <div className="col-12">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <div className="d-flex justify-content-between mb-3">
+                                    <h3 className="fs-4">Orders Overview</h3>
+                                    <select className="form-select w-auto">
+                                        <option>Monthly</option>
+                                        <option value="1">Quarterly</option>
+                                        <option value="2">Annually</option>
+                                    </select>
+                                </div>
+                                {supplierOrders.length === 0 ? (
+                                    <div className="alert alert-info m-4" role="alert">
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        No supplier order data available to display orders overview chart. Please add supplier orders to see the chart.
+                                    </div>
+                                ) : (
+                                    <div className="chart-container" style={{ height: '400px' }}>
+                                        <canvas ref={salesRef} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="row my-4 g-3">
+                        <div className="col-md-6">
+                            <div className="p-3 bg-white shadow rounded-4 border border-4">
+                                <h3 className="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
+                                <table className="table align-middle mt-4">
+                                    <tbody>
+                                        <tr>
+                                            <td>Total Orders</td>
+                                            <td><span className="fw-bold">{stats.totalOrders}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Pending Orders</td>
+                                            <td><span className="fw-bold">{stats.pendingOrders}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td>Completed Orders</td>
+                                            <td><span className="fw-bold">{stats.completedOrders}</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="col-md-6">
+                            <div className="p-3 bg-white shadow border border-4 rounded-4">
+                                <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
+                                    Recent Orders
+                                    <a href="#orders" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                                </h3>
+                                <table className="table table-borderless align-middle mb-0">
+                                    <thead className="text-secondary">
+                                        <tr>
+                                            <th scope="col">Product Name</th>
+                                            <th scope="col">Order Date</th>
+                                            <th scope="col">Status</th>
+                                            <th scope="col">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {supplierOrders.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="text-center text-muted">No orders found</td>
+                                            </tr>
+                                        ) : (
+                                            supplierOrders.slice(0, 3).map((order, index) => (
+                                                <tr key={index}>
+                                                    <td>{order.productName || 'N/A'}</td>
+                                                    <td>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</td>
+                                                    <td><span className={`badge ${order.status?.toLowerCase() === 'completed' ? 'bg-success' : 'bg-warning'}`}>{order.status || 'Pending'}</span></td>
+                                                    <td>₹{order.totalAmount || 0}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="row my-5 mb-5">
+                        <div className="col-12">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <div className="d-flex justify-content-between mb-3">
+                                    <h3 className="fs-4">Orders Distribution</h3>
+                                </div>
+                                {supplierOrders.length === 0 ? (
+                                    <div className="alert alert-info m-4" role="alert">
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        No supplier order data available to display orders distribution chart. Please add supplier orders to see the chart.
+                                    </div>
+                                ) : (
+                                    <div className="chart-container position-relative" style={{ height: '400px' }}>
+                                        <div
+                                            ref={centerTextRef}
+                                            className="position-absolute top-50 start-50 translate-middle fw-bold fs-1"
+                                            style={{ zIndex: 1 }}
+                                        ></div>
+                                        <canvas ref={orderRef} />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
         </div>
     )
 }

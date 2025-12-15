@@ -298,6 +298,9 @@ const Suppliers = (props) => {
                                         <td>{sup.city || 'N/A'}</td>
                                         <td>{sup.country || 'N/A'}</td>
                                         <td>
+                                            <Link to={`/dashboard/supplierordes/${sup._id}`} className="btn btn-sm btn-success me-2" title="View Orders">
+                                                <i className="bi bi-box-seam"></i>
+                                            </Link>
                                             <Link to={`/dashboard/editsupplier/${sup._id}`} className="btn btn-sm btn-info me-2" title="Edit">
                                                 <i className="bi bi-pencil"></i>
                                             </Link>

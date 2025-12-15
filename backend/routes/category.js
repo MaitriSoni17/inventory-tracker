@@ -92,6 +92,31 @@ router.put('/updatecategory/:id', fetchuser, [
     }
 });
 
+// Get All Categories — accessible by BusinessOwner or Employee
+router.post('/getcategories', fetchuser, async (req, res) => {
+    try {
+        let categories = [];
+
+        if (req.role === 'businessowner') {
+            categories = await Category.find({ businessowner: req.user._id });
+        } else if (req.role === 'employee') {
+            const businessownerID = req.user.businessowner;
+            const employeeID = req.user._id;
+            categories = await Category.find({
+                $or: [
+                    { businessowner: businessownerID },
+                    { employee: employeeID }
+                ]
+            });
+        }
+
+        res.json(categories);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send("Internal Server error occurred");
+    }
+});
+
 // Delete Category — only BusinessOwner can delete
 router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
     // if (req.role !== 'businessowner' || req.role !== 'employee') {

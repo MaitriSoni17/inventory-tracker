@@ -33,13 +33,13 @@ const SideBar = () => {
                             <Link to={role === "businessowner"  ? "/dashboard/employee" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${(location.pathname === "/dashboard/createemployee" || location.pathname === "/dashboard/employee" || location.pathname.startsWith("/dashboard/editemployee/")) ? "active" : ""}`}>
                                 <i className="bi bi-people me-2"></i>Employees
                             </Link>
-                            <Link to={role === "businessowner"  ? "/dashboard/suppliers" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${(location.pathname === "/dashboard/suppliers" || location.pathname === "/dashboard/createsupplier" || location.pathname.startsWith("/dashboard/editsupplier/")) ? "active" : ""}`}>
+                            <Link to={role === "businessowner"  ? "/dashboard/suppliers" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${(location.pathname === "/dashboard/suppliers" || location.pathname === "/dashboard/createsupplier" || location.pathname.startsWith("/dashboard/editsupplier/") || location.pathname.startsWith("/dashboard/supplierordes/") || location.pathname.startsWith("/dashboard/addsupplierorder/") || location.pathname.startsWith("/dashboard/editsupplierorder/")) ? "active" : ""}`}>
                                 <i className="fas fa-truck me-2"></i>Suppliers
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/warehouses" ? "active" : ""}`}>
+                            <Link to={role === "businessowner"  ? "/dashboard/warehouses" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/dashboard/warehouses" ? "active" : ""}`}>
                                 <i className="fas fa-warehouse me-2"></i>Warehouses
                             </Link>
-                            <Link to="/" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/settings" ? "active" : ""}`}>
+                            <Link to="/dashboard/settings" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" ? "active" : ""}`}>
                                 <i className="fas fa-cog me-2"></i>Settings
                             </Link>
                             <Link to="/" className="list-group-item list-group-item-action bg-transparent text-danger">
