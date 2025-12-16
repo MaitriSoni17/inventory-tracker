@@ -136,6 +136,67 @@ body {
     font-size: 0.7rem;
 }
 
+/* User Menu Dropdown */
+.user-menu-wrapper {
+    position: relative;
+}
+
+.user-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    min-width: 180px;
+    z-index: 1000;
+    margin-top: 0.5rem;
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.user-dropdown-menu .dropdown-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    color: var(--text-dark);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+}
+
+.user-dropdown-menu .dropdown-item:hover {
+    background-color: var(--primary-bg-color);
+    color: var(--accent-purple);
+    padding-left: 1.25rem;
+}
+
+.user-dropdown-menu .dropdown-item:first-child {
+    border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.user-dropdown-menu .dropdown-item:last-child {
+    border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.user-dropdown-menu .dropdown-divider {
+    margin: 0.25rem 0;
+    border-top: 1px solid var(--border-color);
+}
 
 .form-control:focus, .form-select:focus {
     border-color: var(--custom-purple-light); /* Highlight focus with a lighter purple */

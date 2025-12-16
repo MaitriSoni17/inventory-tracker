@@ -248,4 +248,95 @@ router.delete('/deletesupplier/:id', fetchbusinessowner, async (req, res) => {
     }
 });
 
+// Get Notifications using: GET "/api/businessowner/notifications". Login required
+router.get('/notifications', fetchbusinessowner, async (req, res) => {
+    try {
+        const userId = req.businessowner._id;
+        const Product = require('../models/Products');
+        const Order = require('../models/Orders');
+        
+        const notifications = [];
+        
+        // Get all products with low stock (totalProducts < reorder level or 5)
+        const products = await Product.find({ businessowner: userId }).populate('employee', 'fname lname');
+        products.forEach(product => {
+            if (product.totalProducts < 5) {
+                notifications.push({
+                    id: `low_stock_${product._id}`,
+                    type: 'low_stock',
+                    title: 'Low Stock Alert',
+                    message: `Product "${product.name}" has only ${product.totalProducts} unit${product.totalProducts !== 1 ? 's' : ''} left in stock`,
+                    details: `Current Stock: ${product.totalProducts} units | Reorder Level: 5 units`,
+                    timestamp: new Date(),
+                    read: false,
+                    priority: product.totalProducts === 0 ? 'critical' : product.totalProducts < 3 ? 'high' : 'medium',
+                    productId: product._id.toString(),
+                    productName: product.name,
+                    icon: 'bi-exclamation-triangle-fill',
+                    color: 'danger'
+                });
+            }
+        });
+        
+        // Get recent orders (last 24 hours)
+        const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const recentOrders = await Order.find({
+            businessowner: userId,
+            createdAt: { $gte: twentyFourHoursAgo }
+        }).populate('employee', 'fname lname');
+        
+        recentOrders.forEach(order => {
+            notifications.push({
+                id: `order_${order._id}`,
+                type: 'order_update',
+                title: 'Order Status Changed',
+                message: `Order #${order._id.toString().slice(-5).toUpperCase()} - ${order.productName} has been ${order.deliveryStatus.toLowerCase()}`,
+                details: `Order Total: $${order.totalAmt} | Status: ${order.deliveryStatus}`,
+                timestamp: order.createdAt,
+                read: false,
+                priority: order.deliveryStatus === 'Pending' ? 'high' : 'medium',
+                orderId: order._id.toString(),
+                employeeName: order.employee ? `${order.employee.fname} ${order.employee.lname}` : 'Unknown',
+                icon: order.deliveryStatus === 'Delivered' ? 'bi-check-circle-fill' : 'bi-hourglass-split',
+                color: order.deliveryStatus === 'Delivered' ? 'success' : 'warning'
+            });
+        });
+        
+        // Sort by timestamp, newest first
+        notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        // Limit to 50 notifications
+        const limitedNotifications = notifications.slice(0, 50);
+        
+        res.json(limitedNotifications);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Deactivate Account using: POST "/api/businessowner/deactivate". Login required
+router.post('/deactivate', fetchbusinessowner, async (req, res) => {
+    try {
+        const userId = req.businessowner._id;
+        await BusinessOwner.findByIdAndUpdate(userId, { active: false });
+        res.json({ success: true, message: "Account deactivated successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Delete Account using: POST "/api/businessowner/delete". Login required
+router.post('/delete', fetchbusinessowner, async (req, res) => {
+    try {
+        const userId = req.businessowner._id;
+        await BusinessOwner.findByIdAndDelete(userId);
+        res.json({ success: true, message: "Account deleted successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 module.exports = router;

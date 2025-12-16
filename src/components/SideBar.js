@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Link, useLocation } from "react-router-dom";
 import './styles/sidebar.css'
@@ -6,9 +6,51 @@ import './styles/sidebar.css'
 const SideBar = () => {
     const role = localStorage.getItem('role');
     let location = useLocation();
+    const [unreadCount, setUnreadCount] = useState(0);
+    const [showUserMenu, setShowUserMenu] = useState(false);
+
     useEffect(() => {
-        // console.log(location.pathname);
-    }, [location]);
+        // Close user menu when clicking outside
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.user-menu-wrapper')) {
+                setShowUserMenu(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        // Fetch unread notifications count for business owner
+        if (role === 'businessowner') {
+            fetchUnreadCount();
+            // Refresh count every 30 seconds
+            const interval = setInterval(fetchUnreadCount, 30000);
+            return () => clearInterval(interval);
+        }
+    }, []);
+
+    const fetchUnreadCount = async () => {
+        try {
+            const headers = {
+                'Content-Type': 'application/json',
+                'auth-token': localStorage.getItem('token')
+            };
+            
+            const res = await fetch('http://localhost:5000/api/businessowner/notifications', {
+                method: 'GET',
+                headers
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                const unread = data.filter(notif => !notif.read).length;
+                setUnreadCount(unread);
+            }
+        } catch (error) {
+            console.error('Error fetching unread count:', error);
+        }
+    };
 
     return (
         <>
@@ -64,16 +106,45 @@ const SideBar = () => {
                         <div className="collapse navbar-collapse" id="navbarSupportedContent">
                             <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
                                 <li className="nav-item d-flex align-items-center me-3">
-                                    <a className="nav-link icon-link" href="notifications.html">
+                                    <a className="nav-link icon-link" href="/dashboard/notifications">
                                         <i className="fas fa-bell"></i>
-                                        <span
-                                            className="badge bg-danger rounded-circle position-absolute top-0 start-100 translate-middle">3</span>
+                                        {unreadCount > 0 && (
+                                            <span className="badge bg-danger rounded-circle position-absolute top-0 start-100 translate-middle">
+                                                {unreadCount > 99 ? '99+' : unreadCount}
+                                            </span>
+                                        )}
                                     </a>
                                 </li>
                                 <li className="nav-item d-flex align-items-center">
-                                    <a className="nav-link icon-link" href="settings.html">
-                                        <i className="fas fa-user-circle"></i>
-                                    </a>
+                                    <div className="user-menu-wrapper position-relative">
+                                        <button 
+                                            className="nav-link icon-link btn btn-link"
+                                            style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+                                            onClick={() => setShowUserMenu(!showUserMenu)}
+                                            title="User menu"
+                                        >
+                                            <i className="fas fa-user-circle"></i>
+                                        </button>
+                                        {showUserMenu && (
+                                            <div className="user-dropdown-menu">
+                                                <Link 
+                                                    to="/dashboard/settings" 
+                                                    className="dropdown-item"
+                                                    onClick={() => setShowUserMenu(false)}
+                                                >
+                                                    <i className="fas fa-cog me-2"></i>Settings
+                                                </Link>
+                                                <div className="dropdown-divider"></div>
+                                                <Link 
+                                                    to="/" 
+                                                    className="dropdown-item text-danger"
+                                                    onClick={() => setShowUserMenu(false)}
+                                                >
+                                                    <i className="fas fa-sign-out-alt me-2"></i>Logout
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </div>
                                 </li>
                             </ul>
                         </div>
