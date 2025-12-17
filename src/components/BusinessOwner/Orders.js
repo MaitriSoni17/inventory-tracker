@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 
 const Orders = (props) => {
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
     const [orders, setOrders] = useState([]);
     const [filteredOrders, setFilteredOrders] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -16,9 +16,34 @@ const Orders = (props) => {
         fetchOrders();
     }, []);
 
+    const filterOrders = useCallback(() => {
+        let filtered = orders;
+
+        // Search filter
+        if (searchTerm) {
+            filtered = filtered.filter(order =>
+                order.cName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.pName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                order.cEmail.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        // Status filter
+        if (filterStatus) {
+            filtered = filtered.filter(order => order.status === filterStatus);
+        }
+
+        // Delivery Status filter
+        if (filterDeliveryStatus) {
+            filtered = filtered.filter(order => order.dStatus === filterDeliveryStatus);
+        }
+
+        setFilteredOrders(filtered);
+    }, [orders, searchTerm, filterStatus, filterDeliveryStatus]);
+
     useEffect(() => {
         filterOrders();
-    }, [orders, searchTerm, filterStatus, filterDeliveryStatus]);
+    }, [filterOrders]);
 
     const fetchOrders = async () => {
         try {
@@ -43,31 +68,6 @@ const Orders = (props) => {
         } finally {
             setLoading(false);
         }
-    };
-
-    const filterOrders = () => {
-        let filtered = orders;
-
-        // Search filter
-        if (searchTerm) {
-            filtered = filtered.filter(order =>
-                order.cName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.pName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.cEmail.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        // Status filter
-        if (filterStatus) {
-            filtered = filtered.filter(order => order.status === filterStatus);
-        }
-
-        // Delivery Status filter
-        if (filterDeliveryStatus) {
-            filtered = filtered.filter(order => order.dStatus === filterDeliveryStatus);
-        }
-
-        setFilteredOrders(filtered);
     };
 
     const handleDelete = async (id) => {
@@ -102,10 +102,6 @@ const Orders = (props) => {
 
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
-    };
-
-    const handleFilterApply = () => {
-        filterOrders();
     };
 
     const handleResetFilters = () => {
@@ -243,14 +239,14 @@ const Orders = (props) => {
                         <p className="text-muted">Total Orders: {filteredOrders.length}</p>
                     </div>
                     <div className="col-3 d-flex justify-content-end align-items-end pb-3">
-                        <button className="btn btn-link text-decoration-none me-3" onClick={exportToPDF} title="Export to PDF">
+                        <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
-                        <button className="btn btn-link text-decoration-none me-3" onClick={exportToExcel} title="Export to Excel">
+                        <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link to="/dashboard/addorder" className="btn btn-custom-purple shadow-sm text-decoration-none">
+                        <Link to="/dashboard/addorder" className="btn btn-custom-purple shadow-sm text-decoration-none mb-2">
                             <i className="bi bi-plus-lg me-1"></i> Add Order
                         </Link>
                     </div>

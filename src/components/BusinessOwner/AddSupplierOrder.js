@@ -277,11 +277,10 @@ function AddSupplierOrder(props) {
                                     </div>
 
                                     <div className="d-flex gap-2">
-                                        <button type="submit" className="btn btn-custom-purple">
-                                            <i className="bi bi-check-lg me-2"></i> Create Order
+                                        <button type="submit" className="btn btn-custom-purple"> Create Order
                                         </button>
                                         <button type="button" className="btn btn-secondary" onClick={() => navigate(`/dashboard/supplierordes/${id}`)}>
-                                            <i className="bi bi-x-lg me-2"></i> Cancel
+                                             Cancel
                                         </button>
                                     </div>
                                 </form>

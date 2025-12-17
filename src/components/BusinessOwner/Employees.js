@@ -248,14 +248,14 @@ const Employees = (props) => {
                         <p className="text-muted">Total Employees: {stats.totalEmployees}</p>
                     </div>
                     <div className="col-3 d-flex justify-content-end align-items-end pb-3">
-                        <button className="btn btn-link text-decoration-none me-3" onClick={exportToPDF} title="Export to PDF">
+                        <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
-                        <button className="btn btn-link text-decoration-none me-3" onClick={exportToExcel} title="Export to Excel">
+                        <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link className="btn btn-custom-purple shadow-sm" to="/dashboard/createemployee">
+                        <Link className="btn btn-custom-purple shadow-sm mb-2" to="/dashboard/createemployee">
                             <i className="bi bi-plus-lg me-1"></i> Add Employee
                         </Link>
                     </div>

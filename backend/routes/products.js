@@ -4,10 +4,34 @@ const Product = require('../models/Products');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
 const path = require('path');
+const multer = require('multer');
 const router = express.Router();
 
+// Configure multer for file uploads
+const uploadsDir = path.join(__dirname, '../uploads');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  // Accept only image files
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
+
 // Create Product — accessible by BusinessOwner or Employee
-router.post('/createproduct', fetchuser, [
+router.post('/createproduct', fetchuser, upload.array('images', 10), [
     body('name').exists().trim().notEmpty().withMessage('Enter Product Name'),
     body('category').exists().trim().notEmpty().withMessage('Enter Category'),
     body('price').exists().isNumeric().withMessage('Enter valid Price'),
@@ -15,6 +39,9 @@ router.post('/createproduct', fetchuser, [
     body('mDate').exists().trim().notEmpty().withMessage('Enter Manufacturing Date'),
     body('eDate').exists().trim().notEmpty().withMessage('Enter Expiring Date'),
 ], async (req, res) => {
+    console.log('=== CREATE PRODUCT DEBUG ===');
+    console.log('req.body:', req.body);
+    console.log('req.files:', req.files ? req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename })) : 'no files');
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         console.log('Validation errors:', errors.array());
@@ -78,7 +105,7 @@ router.post('/getproduct', fetchuser, async (req, res) => {
 });
 
 // Update Product — only BusinessOwner can update
-router.put('/updateproduct/:id', fetchuser, [
+router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     body('name', 'Enter Product Name').exists().trim().notEmpty(),
     body('category', 'Enter Category').exists().trim().notEmpty(),
     body('price', 'Enter Price').exists().isNumeric(),

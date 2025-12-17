@@ -233,7 +233,7 @@ const Suppliers = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link className="btn btn-custom-purple shadow-sm" to="/dashboard/createsupplier">
+                        <Link className="btn btn-custom-purple shadow-sm mb-2" to="/dashboard/createsupplier">
                             <i className="bi bi-plus-lg me-1"></i> Add Supplier
                         </Link>
                     </div>

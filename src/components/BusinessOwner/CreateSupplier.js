@@ -206,7 +206,7 @@ function CreateSupplier(props) {
                     <div className="row mt-4">
                         <div className="col-12 d-flex justify-content-start">
                             <input type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm" value="Add Supplier" />
-                            <a href="suppliers.html" type="button" className="btn btn-secondary btn-lg shadow-sm">Cancel</a>
+                            <a href="/dashboard/suppliers" type="button" className="btn btn-secondary btn-lg shadow-sm">Cancel</a>
                         </div>
                     </div>
                 </form>

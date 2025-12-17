@@ -341,7 +341,7 @@ const Warehouses = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <button className="btn btn-custom-purple shadow-sm" onClick={() => { resetForm(); setShowAddModal(true); }}>
+                        <button className="btn btn-custom-purple shadow-sm mb-2" onClick={() => { resetForm(); setShowAddModal(true); }}>
                             <i className="bi bi-plus-lg me-1"></i> Add Warehouse
                         </button>
                     </div>
@@ -481,7 +481,7 @@ const Warehouses = (props) => {
                             <span className="input-group-text bg-white border-0 ps-3 rounded-pill"><i
                                 className="bi bi-search bg-transparent rounded-pill"></i></span>
                             <input type="text" className="form-control border-0 bg-transparent rounded-pill shadow-none"
-                                placeholder="Search by warehouse name, manager, or email" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
                 </div>
@@ -523,7 +523,7 @@ const Warehouses = (props) => {
                                         <div className="d-flex justify-content-between align-items-center mb-2">
                                             <h5 className="card-title">{warehouse.wName}</h5>
                                             <div>
-                                                <button className="btn btn-sm btn-link text-primary me-2" onClick={() => handleEdit(warehouse)} title="Edit">
+                                                <button className="btn btn-sm btn-link text-primary" onClick={() => handleEdit(warehouse)} title="Edit">
                                                     <i className="bi bi-pencil-square fs-5"></i>
                                                 </button>
                                                 <button className="btn btn-sm btn-link text-danger" onClick={() => handleDelete(warehouse._id)} title="Delete">
@@ -532,11 +532,11 @@ const Warehouses = (props) => {
                                             </div>
                                         </div>
                                         <ul className="list-unstyled contact-list">
-                                            <li><i className="fa-solid fa-location-dot me-2"></i> {warehouse.wAddress || 'N/A'}</li>
-                                            <li><i className="fa-solid fa-user me-2"></i> {warehouse.wManager || 'N/A'}</li>
-                                            <li><i className="fa-solid fa-envelope me-2"></i> {warehouse.wEmail || 'N/A'}</li>
-                                            <li><i className="fa-solid fa-phone me-2"></i> {warehouse.wContact || 'N/A'}</li>
-                                            <li><i className="fa-solid fa-city me-2"></i> {warehouse.city || 'N/A'}</li>
+                                            <li><i className="bi bi-geo-alt me-2"></i> {warehouse.wAddress || 'N/A'}</li>
+                                            <li><i className="bi bi-person me-2"></i> {warehouse.wManager || 'N/A'}</li>
+                                            <li><i className="bi bi-envelope me-2"></i> {warehouse.wEmail || 'N/A'}</li>
+                                            <li><i className="bi bi-telephone me-2"></i> {warehouse.wContact || 'N/A'}</li>
+                                            <li><i className="bi bi-building me-2"></i> {warehouse.city || 'N/A'}</li>
                                         </ul>
                                     </div>
                                 </div>

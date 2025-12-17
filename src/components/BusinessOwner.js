@@ -39,6 +39,7 @@ const BusinessOwner = (props) => {
     const [warehouses, setWarehouses] = useState([]);
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [salesView, setSalesView] = useState('monthly');
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalOrders: 0,
@@ -62,7 +63,7 @@ const BusinessOwner = (props) => {
             }, 100);
             return () => clearTimeout(timer);
         }
-    }, [orders, products]);
+    }, [orders, products, salesView]);
 
     const fetchAllData = async () => {
         try {
@@ -135,14 +136,14 @@ const BusinessOwner = (props) => {
             monthlyData[month] = 0;
         });
 
-        // Aggregate order amounts by month
+        // Aggregate order amounts by month (only paid orders)
         orders.forEach(order => {
-            if (order.orderDate) {
-                const orderDate = new Date(order.orderDate);
+            if (order.status === 'Paid' && order.oDate) {
+                const orderDate = new Date(order.oDate);
                 if (orderDate.getFullYear() === currentYear) {
                     const monthIndex = orderDate.getMonth();
                     const monthName = monthNames[monthIndex];
-                    monthlyData[monthName] += order.totalAmount || 0;
+                    monthlyData[monthName] += order.amount || 0;
                 }
             }
         });
@@ -151,6 +152,68 @@ const BusinessOwner = (props) => {
             labels: monthNames,
             data: monthNames.map(month => monthlyData[month])
         };
+    };
+
+    const aggregateQuarterlySales = (orders) => {
+        const quarterlyData = { 'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0 };
+        const currentYear = new Date().getFullYear();
+
+        // Aggregate order amounts by quarter (only paid orders)
+        orders.forEach(order => {
+            if (order.status === 'Paid' && order.oDate) {
+                const orderDate = new Date(order.oDate);
+                if (orderDate.getFullYear() === currentYear) {
+                    const monthIndex = orderDate.getMonth();
+                    const quarter = Math.floor(monthIndex / 3) + 1;
+                    quarterlyData[`Q${quarter}`] += order.amount || 0;
+                }
+            }
+        });
+
+        return {
+            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+            data: ['Q1', 'Q2', 'Q3', 'Q4'].map(q => quarterlyData[q])
+        };
+    };
+
+    const aggregateAnnuallySales = (orders) => {
+        const annualData = {};
+        const currentYear = new Date().getFullYear();
+        const startYear = currentYear - 4; // Show last 5 years
+
+        // Initialize last 5 years with 0
+        for (let i = startYear; i <= currentYear; i++) {
+            annualData[i] = 0;
+        }
+
+        // Aggregate order amounts by year (only paid orders)
+        orders.forEach(order => {
+            if (order.status === 'Paid' && order.oDate) {
+                const orderDate = new Date(order.oDate);
+                const year = orderDate.getFullYear();
+                if (year >= startYear && year <= currentYear) {
+                    annualData[year] += order.amount || 0;
+                }
+            }
+        });
+
+        const years = Object.keys(annualData).map(Number).sort((a, b) => a - b);
+        return {
+            labels: years.map(y => y.toString()),
+            data: years.map(y => annualData[y])
+        };
+    };
+
+    const getSalesData = (orders) => {
+        switch (salesView) {
+            case 'quarterly':
+                return aggregateQuarterlySales(orders);
+            case 'annually':
+                return aggregateAnnuallySales(orders);
+            case 'monthly':
+            default:
+                return aggregateMonthlySales(orders);
+        }
     };
 
     const getTopProductsByStock = (products) => {
@@ -179,7 +242,7 @@ const BusinessOwner = (props) => {
             stockChartInstance.current.destroy();
         }
 
-        const monthlySales = aggregateMonthlySales(orders);
+        const monthlySales = getSalesData(orders);
         const topProducts = getTopProductsByStock(products);
 
         if (salesRef.current) {
@@ -216,9 +279,9 @@ const BusinessOwner = (props) => {
                                     let label = context.dataset.label || '';
                                     if (label) label += ': ';
                                     if (context.parsed.y !== null) {
-                                        label += new Intl.NumberFormat('en-US', {
+                                        label += new Intl.NumberFormat('en-IN', {
                                             style: 'currency',
-                                            currency: 'USD',
+                                            currency: 'INR',
                                             maximumFractionDigits: 0
                                         }).format(context.parsed.y);
                                     }
@@ -231,7 +294,7 @@ const BusinessOwner = (props) => {
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                callback: value => value >= 1000 ? `$${value / 1000}K` : `$${value}`
+                                callback: value => value >= 1000 ? `₹${value / 1000}K` : `₹${value}`
                             },
                             grid: { color: '#f0f0f0' }
                         },
@@ -285,21 +348,43 @@ const BusinessOwner = (props) => {
             });
         }
 
+        // Disconnect previous observer if it exists
+        if (resizeObserver.current) {
+            resizeObserver.current.disconnect();
+        }
+
         resizeObserver.current = new ResizeObserver(() => {
-            salesChartInstance.current?.resize();
-            stockChartInstance.current?.resize();
+            if (salesChartInstance.current && salesChartInstance.current.canvas && salesChartInstance.current.canvas.offsetParent) {
+                salesChartInstance.current.resize();
+            }
+            if (stockChartInstance.current && stockChartInstance.current.canvas && stockChartInstance.current.canvas.offsetParent) {
+                stockChartInstance.current.resize();
+            }
         });
 
         document.querySelectorAll('.chart-container').forEach(container => {
-            resizeObserver.current.observe(container);
+            if (container && resizeObserver.current) {
+                resizeObserver.current.observe(container);
+            }
         });
     };
 
     useEffect(() => {
         return () => {
-            salesChartInstance.current?.destroy();
-            stockChartInstance.current?.destroy();
-            resizeObserver.current?.disconnect();
+            // Properly destroy and null out chart instances
+            if (salesChartInstance.current) {
+                salesChartInstance.current.destroy();
+                salesChartInstance.current = null;
+            }
+            if (stockChartInstance.current) {
+                stockChartInstance.current.destroy();
+                stockChartInstance.current = null;
+            }
+            // Disconnect and null out resize observer
+            if (resizeObserver.current) {
+                resizeObserver.current.disconnect();
+                resizeObserver.current = null;
+            }
         };
     }, []);
 
@@ -319,7 +404,7 @@ const BusinessOwner = (props) => {
                     <div className="row g-3 my-2">
                         {/* Products */}
                         <div className="col-md-4">
-                            <a href="#products" className="text-decoration-none">
+                            <a href="/dashboard/products" className="text-decoration-none">
                                 <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
                                     <i className="fas fa-box dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
                                     <div className="mt-3">
@@ -331,7 +416,7 @@ const BusinessOwner = (props) => {
                         </div>
                         {/* Orders */}
                         <div className="col-md-4">
-                            <a href="#orders" className="text-decoration-none">
+                            <a href="/dashboard/orders" className="text-decoration-none">
                                 <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
                                     <i className="bi bi-cart dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
                                     <div className="mt-3">
@@ -343,7 +428,7 @@ const BusinessOwner = (props) => {
                         </div>
                         {/* Employees */}
                         <div className="col-md-4">
-                            <a href="#employees" className="text-decoration-none">
+                            <a href="/dashboard/employee" className="text-decoration-none">
                                 <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
                                     <i className="bi bi-people dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
                                     <div className="mt-3">
@@ -361,10 +446,10 @@ const BusinessOwner = (props) => {
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
                                 <div className="d-flex justify-content-between mb-3">
                                     <h3 className="fs-4">Sales (Current Year)</h3>
-                                    <select className="form-select w-auto">
-                                        <option>Monthly</option>
-                                        <option value="1">Quarterly</option>
-                                        <option value="2">Annually</option>
+                                    <select className="form-select w-auto" value={salesView} onChange={(e) => setSalesView(e.target.value)}>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="quarterly">Quarterly</option>
+                                        <option value="annually">Annually</option>
                                     </select>
                                 </div>
                                 {orders.length === 0 ? (

@@ -269,7 +269,7 @@ const SupplierOrder = (props) => {
                         <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
-                        <Link to={`/dashboard/addsupplierorder/${id}`} className="btn btn-custom-purple shadow-sm">
+                        <Link to={`/dashboard/addsupplierorder/${id}`} className="btn btn-custom-purple shadow-sm mb-2">
                             <i className="bi bi-plus-lg me-1"></i> Add Order
                         </Link>
                     </div>
@@ -280,7 +280,7 @@ const SupplierOrder = (props) => {
                         <div className="input-group input-group-lg search-bar shadow border-3 rounded-pill">
                             <span className="input-group-text bg-white border-0 ps-3"><i className="bi bi-search"></i></span>
                             <input type="text" className="form-control text-secondary border-0 rounded-pill shadow-none"
-                                placeholder="Search by product name, category or order ID" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                                placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
                 </div>
