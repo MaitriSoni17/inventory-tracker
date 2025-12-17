@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Link, useLocation } from "react-router-dom";
 import './styles/sidebar.css'
+import Notifications from './Notifications';
 
 const SideBar = () => {
     const role = localStorage.getItem('role');
     let location = useLocation();
-    const [unreadCount, setUnreadCount] = useState(0);
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     useEffect(() => {
@@ -20,38 +20,6 @@ const SideBar = () => {
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
-    useEffect(() => {
-        // Fetch unread notifications count for business owner
-        if (role === 'businessowner') {
-            fetchUnreadCount();
-            // Refresh count every 30 seconds
-            const interval = setInterval(fetchUnreadCount, 30000);
-            return () => clearInterval(interval);
-        }
-    }, []);
-
-    const fetchUnreadCount = async () => {
-        try {
-            const headers = {
-                'Content-Type': 'application/json',
-                'auth-token': localStorage.getItem('token')
-            };
-            
-            const res = await fetch('http://localhost:5000/api/businessowner/notifications', {
-                method: 'GET',
-                headers
-            });
-            
-            if (res.ok) {
-                const data = await res.json();
-                const unread = data.filter(notif => !notif.read).length;
-                setUnreadCount(unread);
-            }
-        } catch (error) {
-            console.error('Error fetching unread count:', error);
-        }
-    };
-
     return (
         <>
             <div className='d-flex' id="wrapper">
@@ -63,13 +31,13 @@ const SideBar = () => {
                             <Link to="/dashboard" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
                                 <i className="fas fa-th-large me-2"></i>Dashboard
                             </Link>
-                            <Link to={role === "businessowner"  ? "/dashboard/category" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/dashboard/category" ? "active" : ""}`}>
+                            <Link to={(role === "businessowner" || role === "employee")  ? "/dashboard/category" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${location.pathname === "/dashboard/category" ? "active" : ""}`}>
                                 <i className="fas fa-cube me-2"></i>Categories
                             </Link>
-                            <Link to={role === "businessowner"  ? "/dashboard/products" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${(location.pathname === "/dashboard/products" || location.pathname === "/dashboard/addproduct" || location.pathname.startsWith("/dashboard/editproduct/")) ? "active" : ""}`}>
+                            <Link to={(role === "businessowner" || role === "employee")  ? "/dashboard/products" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${(location.pathname === "/dashboard/products" || location.pathname === "/dashboard/addproduct" || location.pathname.startsWith("/dashboard/editproduct/")) ? "active" : ""}`}>
                                 <i className="fas fa-box me-2"></i>Products
                             </Link>
-                            <Link to={role === "businessowner"  ? "/dashboard/orders" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/")) ? "active" : ""}`}>
+                            <Link to={(role === "businessowner" || role === "employee")  ? "/dashboard/orders" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/")) ? "active" : ""}`}>
                                 <i className="bi bi-cart me-2"></i>Orders
                             </Link>
                             <Link to={role === "businessowner"  ? "/dashboard/employee" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${(location.pathname === "/dashboard/createemployee" || location.pathname === "/dashboard/employee" || location.pathname.startsWith("/dashboard/editemployee/")) ? "active" : ""}`}>
@@ -81,7 +49,7 @@ const SideBar = () => {
                             <Link to={role === "businessowner"  ? "/dashboard/warehouses" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/dashboard/warehouses" ? "active" : ""}`}>
                                 <i className="fas fa-warehouse me-2"></i>Warehouses
                             </Link>
-                            <Link to="/dashboard/settings" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" ? "active" : ""}`}>
+                            <Link to={role === "employee" ? "/dashboard/empsettings" : role === "businessowner" ? "/dashboard/settings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" ? "active" : ""}`}>
                                 <i className="fas fa-cog me-2"></i>Settings
                             </Link>
                             <Link to="/" className="list-group-item list-group-item-action bg-transparent text-danger">
@@ -106,14 +74,7 @@ const SideBar = () => {
                         <div className="collapse navbar-collapse" id="navbarSupportedContent">
                             <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
                                 <li className="nav-item d-flex align-items-center me-3">
-                                    <a className="nav-link icon-link" href="/dashboard/notifications">
-                                        <i className="fas fa-bell"></i>
-                                        {unreadCount > 0 && (
-                                            <span className="badge bg-danger rounded-circle position-absolute top-0 start-100 translate-middle">
-                                                {unreadCount > 99 ? '99+' : unreadCount}
-                                            </span>
-                                        )}
-                                    </a>
+                                    <Notifications />
                                 </li>
                                 <li className="nav-item d-flex align-items-center">
                                     <div className="user-menu-wrapper position-relative">

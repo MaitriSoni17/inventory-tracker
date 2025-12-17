@@ -17,18 +17,6 @@ const Settings = (props) => {
     image: ''
   });
 
-  const [companyData, setCompanyData] = useState({
-    companyName: '',
-    companyPhone: '',
-    companyEmail: '',
-    companyAddress: '',
-    companyCountry: 'India',
-    companyState: '',
-    companyCity: '',
-    companyPincode: '',
-    companyLogo: ''
-  });
-
   const [preferences, setPreferences] = useState({
     emailNotifications: true,
     orderAlerts: true,
@@ -47,13 +35,12 @@ const Settings = (props) => {
     confirmPassword: ''
   });
 
-
-  // Fetch BusinessOwner data on component mount
+  // Fetch Employee data on component mount
   useEffect(() => {
-    fetchBusinessOwnerData();
+    fetchEmployeeData();
   }, []);
 
-  const fetchBusinessOwnerData = async () => {
+  const fetchEmployeeData = async () => {
     try {
       setLoading(true);
       const headers = {
@@ -61,7 +48,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/getbusinessowner', {
+      const res = await fetch('http://localhost:5000/api/employee/getemployee', {
         method: 'POST',
         headers
       });
@@ -84,7 +71,7 @@ const Settings = (props) => {
         props.showAlert?.('Failed to load profile data', 'danger');
       }
     } catch (error) {
-      console.error('Error fetching business owner data:', error);
+      console.error('Error fetching employee data:', error);
       props.showAlert?.('Error loading profile', 'danger');
     } finally {
       setLoading(false);
@@ -94,14 +81,6 @@ const Settings = (props) => {
   const handleProfileChange = (e) => {
     const { id, value } = e.target;
     setProfileData(prev => ({
-      ...prev,
-      [id]: value
-    }));
-  };
-
-  const handleCompanyChange = (e) => {
-    const { id, value } = e.target;
-    setCompanyData(prev => ({
       ...prev,
       [id]: value
     }));
@@ -133,12 +112,6 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const businessOwnerRes = await fetch('http://localhost:5000/api/businessowner/getbusinessowner', {
-        method: 'POST',
-        headers
-      });
-      const currentBusinessOwner = await businessOwnerRes.json();
-
       const dataToSend = {
         fname: profileData.fname,
         lname: profileData.lname,
@@ -148,11 +121,10 @@ const Settings = (props) => {
         state: profileData.state,
         city: profileData.city,
         pincode: profileData.pincode,
-        address: profileData.address,
-        password: currentBusinessOwner.password || 'tempPassword123'
+        address: profileData.address
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/updatebusinessowner', {
+      const res = await fetch('http://localhost:5000/api/employee/updateemployee', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -160,10 +132,8 @@ const Settings = (props) => {
 
       if (res.ok) {
         props.showAlert?.('Profile updated successfully', 'success');
-        fetchBusinessOwnerData();
       } else {
-        const errorData = await res.json();
-        props.showAlert?.('Failed to update profile: ' + (errorData.errors?.[0]?.msg || 'Unknown error'), 'danger');
+        props.showAlert?.('Failed to update profile', 'danger');
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -173,28 +143,14 @@ const Settings = (props) => {
     }
   };
 
-  const handleSaveCompany = async (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault();
-    setSaving(true);
-    setTimeout(() => {
-      props.showAlert?.('Company settings saved successfully', 'success');
-      setSaving(false);
-    }, 500);
-  };
 
-  const handleChangePassword = async () => {
-    if (!passwordData.currentPassword) {
-      props.showAlert?.('Current password is required', 'warning');
-      return;
-    }
-    if (!passwordData.newPassword) {
-      props.showAlert?.('New password is required', 'warning');
-      return;
-    }
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      props.showAlert?.('New passwords do not match', 'danger');
+      props.showAlert?.('Passwords do not match', 'warning');
       return;
     }
+
     if (passwordData.newPassword.length < 6) {
       props.showAlert?.('Password must be at least 6 characters', 'warning');
       return;
@@ -219,7 +175,7 @@ const Settings = (props) => {
         address: profileData.address
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/updatebusinessowner', {
+      const res = await fetch('http://localhost:5000/api/employee/updateemployee', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -268,7 +224,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/delete', {
+      const res = await fetch('http://localhost:5000/api/employee/deleteemployee', {
         method: 'DELETE',
         headers
       });
@@ -298,7 +254,7 @@ const Settings = (props) => {
     const confirmed = window.confirm(
       'Are you sure you want to deactivate your account? You can reactivate it by logging in again.'
     );
-    
+
     if (!confirmed) return;
 
     try {
@@ -308,22 +264,20 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/deactivate', {
-        method: 'POST',
+      const res = await fetch('http://localhost:5000/api/employee/deactivateemployee', {
+        method: 'PUT',
         headers
       });
 
       if (res.ok) {
         props.showAlert?.('Account deactivated successfully', 'success');
-        // Logout user after deactivation
         setTimeout(() => {
           localStorage.removeItem('token');
           localStorage.removeItem('role');
           window.location.href = '/';
         }, 1500);
       } else {
-        const errorData = await res.json();
-        props.showAlert?.('Failed to deactivate account: ' + (errorData.message || 'Unknown error'), 'danger');
+        props.showAlert?.('Failed to deactivate account', 'danger');
       }
     } catch (error) {
       console.error('Error deactivating account:', error);
@@ -344,7 +298,6 @@ const Settings = (props) => {
     );
   }
 
-
   return (
     <>
       <div className="settings-container">
@@ -352,7 +305,7 @@ const Settings = (props) => {
         <div className="settings-header">
           <div className="settings-header-content">
             <h1 className="settings-title">Settings</h1>
-            <p className="settings-subtitle">Manage your profile, company, and preferences</p>
+            <p className="settings-subtitle">Manage your profile and preferences</p>
           </div>
         </div>
 
@@ -363,12 +316,6 @@ const Settings = (props) => {
             onClick={() => setActiveTab('profile')}
           >
             <i className="bi bi-person-fill me-2"></i>Profile
-          </button>
-          <button
-            className={`settings-tab ${activeTab === 'company' ? 'active' : ''}`}
-            onClick={() => setActiveTab('company')}
-          >
-            <i className="bi bi-building me-2"></i>Company
           </button>
           <button
             className={`settings-tab ${activeTab === 'security' ? 'active' : ''}`}
@@ -504,137 +451,6 @@ const Settings = (props) => {
                       placeholder="Enter your street address"
                       value={profileData.address}
                       onChange={handleProfileChange}
-                      required
-                    ></textarea>
-                  </div>
-                </div>
-
-                <div className="form-actions">
-                  <button
-                    type="submit"
-                    className="btn-save"
-                    disabled={saving}
-                  >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-cancel"
-                    onClick={() => fetchBusinessOwnerData()}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Company Tab */}
-          {activeTab === 'company' && (
-            <div className="settings-panel">
-              <div className="panel-header">
-                <h2>Company Information</h2>
-                <p className="text-muted">Manage your company details</p>
-              </div>
-              <form onSubmit={handleSaveCompany} className="settings-form">
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label htmlFor="companyName">Company Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="companyName"
-                      placeholder="Your Company Name"
-                      value={companyData.companyName}
-                      onChange={handleCompanyChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="companyEmail">Company Email</label>
-                    <input
-                      type="email"
-                      className="form-control"
-                      id="companyEmail"
-                      placeholder="company@example.com"
-                      value={companyData.companyEmail}
-                      onChange={handleCompanyChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="companyPhone">Company Phone</label>
-                    <input
-                      type="tel"
-                      className="form-control"
-                      id="companyPhone"
-                      placeholder="+91 9876543210"
-                      value={companyData.companyPhone}
-                      onChange={handleCompanyChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="companyCountry">Country</label>
-                    <select
-                      className="form-control"
-                      id="companyCountry"
-                      value={companyData.companyCountry}
-                      onChange={handleCompanyChange}
-                      required
-                    >
-                      <option value="India">India</option>
-                      <option value="USA">USA</option>
-                      <option value="UK">UK</option>
-                      <option value="Canada">Canada</option>
-                      <option value="Australia">Australia</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="companyState">State</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="companyState"
-                      placeholder="Maharashtra"
-                      value={companyData.companyState}
-                      onChange={handleCompanyChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="companyCity">City</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="companyCity"
-                      placeholder="Mumbai"
-                      value={companyData.companyCity}
-                      onChange={handleCompanyChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="companyPincode">Postal Code</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="companyPincode"
-                      placeholder="400001"
-                      value={companyData.companyPincode}
-                      onChange={handleCompanyChange}
-                      required
-                    />
-                  </div>
-                  <div className="form-group full-width">
-                    <label htmlFor="companyAddress">Address</label>
-                    <textarea
-                      className="form-control"
-                      id="companyAddress"
-                      rows="3"
-                      placeholder="Enter your company street address"
-                      value={companyData.companyAddress}
-                      onChange={handleCompanyChange}
                       required
                     ></textarea>
                   </div>

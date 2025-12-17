@@ -3,6 +3,7 @@ const fetchuser = require('../middleware/fetchuser');
 const Category = require('../models/Category');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
+const { notifyEmployeesAboutCategory } = require('../utils/notificationHelper');
 
 // Create Category — accessible by BusinessOwner or Employee
 router.post('/createcategory', fetchuser, [
@@ -25,6 +26,17 @@ router.post('/createcategory', fetchuser, [
         }
 
         const category = await Category.create(categoryData);
+
+        // Send notification to employees if created by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutCategory(
+                req.user._id,
+                'created',
+                cName,
+                { categoryId: category._id, description: cDesc }
+            );
+        }
+
         res.json({category, success: true});
     } catch (err) {
         console.error(err.message);
@@ -85,6 +97,17 @@ router.put('/updatecategory/:id', fetchuser, [
         // }
 
         category = await Category.findByIdAndUpdate(req.params.id, { $set: newCategory }, { new: true });
+
+        // Send notification to employees if updated by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutCategory(
+                req.user._id,
+                'updated',
+                cName,
+                { categoryId: category._id, description: cDesc }
+            );
+        }
+
         res.json({ category });
     } catch (err) {
         console.error(err.message);
@@ -134,7 +157,21 @@ router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
         //     return res.status(401).send("Not Allowed");
         // }
 
+        const categoryName = category.cName;
+        const businessOwnerId = category.businessowner;
+
         await Category.findByIdAndDelete(req.params.id);
+
+        // Send notification to employees if deleted by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutCategory(
+                businessOwnerId,
+                'deleted',
+                categoryName,
+                { categoryId: req.params.id }
+            );
+        }
+
         res.json({ message: "Category deleted successfully" });
     } catch (err) {
         console.error(err.message);

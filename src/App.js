@@ -25,7 +25,8 @@ import AddSupplierOrder from "./components/BusinessOwner/AddSupplierOrder";
 import EditSupplierOrder from "./components/BusinessOwner/EditSupplierOrder";
 import Warehouses from "./components/BusinessOwner/Warehouses";
 import Settings from "./components/BusinessOwner/Settings";
-import Notifications from "./components/BusinessOwner/Notifications";
+import EmpSettings from "./components/Employee/Settings";
+import NotificationsPage from "./components/NotificationsPage";
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -69,7 +70,9 @@ function App() {
             <Route path="editorder/:id" element={<EditOrder showAlert={showAlert} />} />
             <Route path="warehouses" element={<Warehouses showAlert={showAlert} />} />
             <Route path="settings" element={<Settings showAlert={showAlert} />} />
-            <Route path="notifications" element={<Notifications showAlert={showAlert} />} />
+            <Route path="notifications" element={<NotificationsPage showAlert={showAlert} />} />
+            
+            <Route path="empsettings" element={<EmpSettings showAlert={showAlert} />} />
           </Route>
 
         </Routes>

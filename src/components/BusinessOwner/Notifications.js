@@ -1,53 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import '../styles/notifications.css';
+// This file has been deprecated. Please use NotificationsPage component instead.
+// Located at: src/components/NotificationsPage.js
 
-const Notifications = (props) => {
-  const [activeTab, setActiveTab] = useState('all');
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
-  const [refreshing, setRefreshing] = useState(false);
-
-  useEffect(() => {
-    fetchNotifications();
-    
-    // Auto-refresh notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      setRefreshing(true);
-      const headers = {
-        'Content-Type': 'application/json',
-        'auth-token': localStorage.getItem('token')
-      };
-      
-      const res = await fetch('http://localhost:5000/api/businessowner/notifications', { 
-        method: 'GET',
-        headers 
-      });
-      
-      if (!res.ok) {
-        throw new Error('Failed to fetch notifications');
-      }
-      
-      const data = await res.json();
-      
-      // Convert timestamp strings to Date objects if needed
-      const processedData = data.map(notif => ({
-        ...notif,
-        timestamp: typeof notif.timestamp === 'string' ? new Date(notif.timestamp) : notif.timestamp
-      }));
-      
-      setNotifications(processedData);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      props.showAlert?.('Error loading notifications', 'danger');
+export default null;
       
       // Fall back to empty state instead of mock data
       setNotifications([]);

@@ -354,16 +354,27 @@ const BusinessOwner = (props) => {
         }
 
         resizeObserver.current = new ResizeObserver(() => {
-            if (salesChartInstance.current && salesChartInstance.current.canvas && salesChartInstance.current.canvas.offsetParent) {
-                salesChartInstance.current.resize();
-            }
-            if (stockChartInstance.current && stockChartInstance.current.canvas && stockChartInstance.current.canvas.offsetParent) {
-                stockChartInstance.current.resize();
+            try {
+                if (salesChartInstance.current && 
+                    salesChartInstance.current.canvas && 
+                    salesChartInstance.current.canvas.parentElement &&
+                    document.body.contains(salesChartInstance.current.canvas)) {
+                    salesChartInstance.current.resize();
+                }
+                if (stockChartInstance.current && 
+                    stockChartInstance.current.canvas && 
+                    stockChartInstance.current.canvas.parentElement &&
+                    document.body.contains(stockChartInstance.current.canvas)) {
+                    stockChartInstance.current.resize();
+                }
+            } catch (error) {
+                // Silently ignore errors when resizing unmounted charts
+                console.debug('Chart resize error (harmless):', error.message);
             }
         });
 
         document.querySelectorAll('.chart-container').forEach(container => {
-            if (container && resizeObserver.current) {
+            if (container && resizeObserver.current && document.body.contains(container)) {
                 resizeObserver.current.observe(container);
             }
         });

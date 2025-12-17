@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const router = express.Router();
+const { notifyEmployeesAboutProduct } = require('../utils/notificationHelper');
 
 // Configure multer for file uploads
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -71,6 +72,17 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
         }
 
         const product = await Product.create(productData);
+
+        // Send notification to employees if created by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutProduct(
+                req.user._id,
+                'created',
+                name,
+                { productId: product._id, category, price }
+            );
+        }
+
         res.json({product, success: true});
     } catch (err) {
         console.error(err.message);
@@ -199,6 +211,17 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
 
         product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true });
         console.log('Product updated in DB. New images in DB:', product.images);
+
+        // Send notification to employees if updated by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutProduct(
+                req.user._id,
+                'updated',
+                name,
+                { productId: product._id, category, price }
+            );
+        }
+
         res.json({ product, success: true });
     } catch (err) {
         console.error(err.message);
@@ -224,7 +247,21 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
         //     return res.status(401).send("Not Allowed");
         // }
 
+        const productName = product.name;
+        const businessOwnerId = product.businessowner;
+
         await Product.findByIdAndDelete(req.params.id);
+
+        // Send notification to employees if deleted by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutProduct(
+                businessOwnerId,
+                'deleted',
+                productName,
+                { productId: req.params.id }
+            );
+        }
+
         res.json({ message: "Product deleted successfully" });
     } catch (err) {
         console.error(err.message);

@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const fetchuser = require('../middleware/fetchuser'); // unified middleware
 const { body, validationResult } = require('express-validator');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
+const { notifyBusinessOwnerAboutEmployee } = require('../utils/notificationHelper');
 // --- Import and Configure Multer ---
 const multer = require('multer');
 const fs = require('fs');
@@ -100,6 +101,16 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
             about: req.body.about,
             role: req.body.role || 'employee' // Use req.body.role instead of hardcoding 'employee'
         });
+
+        // Send notification to business owner
+        const employeeName = `${req.body.fname} ${req.body.lname || ''}`.trim();
+        await notifyBusinessOwnerAboutEmployee(
+            req.businessowner._id,
+            employee._id,
+            'created',
+            employeeName,
+            { employeeId: employee._id, email: employee.email }
+        );
 
         const authToken = jwt.sign({ id: employee._id, role: employee.role }, JWT_SECRET);
         res.json({ authToken, success: true });
@@ -223,6 +234,17 @@ router.put('/updateemployee/:id', fetchbusinessowner, upload.single('image'), as
         }
 
         await employee.save();
+
+        // Send notification to business owner
+        const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+        await notifyBusinessOwnerAboutEmployee(
+            req.businessowner._id,
+            employee._id,
+            'updated',
+            employeeName,
+            { employeeId: employee._id }
+        );
+
         res.json({ employee, success: true });
     } catch (err) {
         console.error(err.message);
@@ -252,7 +274,19 @@ router.delete('/deleteemployee/:id', fetchbusinessowner, async (req, res) => {
             deleteUploadedFile(employee.image);
         }
 
+        const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+
         await Employee.findByIdAndDelete(req.params.id);
+
+        // Send notification to business owner
+        await notifyBusinessOwnerAboutEmployee(
+            req.businessowner._id,
+            req.params.id,
+            'deleted',
+            employeeName,
+            { employeeId: req.params.id }
+        );
+
         res.json({ message: "Employee deleted successfully" });
     } catch (err) {
         console.error(err.message);

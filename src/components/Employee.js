@@ -36,6 +36,7 @@ function Employee(props) {
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [ordersView, setOrdersView] = useState('monthly');
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalOrders: 0,
@@ -53,7 +54,7 @@ function Employee(props) {
         if (orders.length > 0 && products.length > 0) {
             initCharts();
         }
-    }, [orders, products]);
+    }, [orders, products, ordersView]);
 
     const fetchAllData = async () => {
         try {
@@ -109,8 +110,8 @@ function Employee(props) {
 
         // Aggregate order counts by month
         orders.forEach(order => {
-            if (order.orderDate) {
-                const orderDate = new Date(order.orderDate);
+            if (order.oDate) {
+                const orderDate = new Date(order.oDate);
                 if (orderDate.getFullYear() === currentYear) {
                     const monthIndex = orderDate.getMonth();
                     const monthName = monthNames[monthIndex];
@@ -123,6 +124,68 @@ function Employee(props) {
             labels: monthNames,
             data: monthNames.map(month => monthlyData[month])
         };
+    };
+
+    const aggregateQuarterlyOrders = (orders) => {
+        const quarterlyData = { 'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0 };
+        const currentYear = new Date().getFullYear();
+
+        // Aggregate order counts by quarter
+        orders.forEach(order => {
+            if (order.oDate) {
+                const orderDate = new Date(order.oDate);
+                if (orderDate.getFullYear() === currentYear) {
+                    const monthIndex = orderDate.getMonth();
+                    const quarter = Math.floor(monthIndex / 3) + 1;
+                    quarterlyData[`Q${quarter}`] += 1;
+                }
+            }
+        });
+
+        return {
+            labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+            data: ['Q1', 'Q2', 'Q3', 'Q4'].map(q => quarterlyData[q])
+        };
+    };
+
+    const aggregateAnnuallyOrders = (orders) => {
+        const annualData = {};
+        const currentYear = new Date().getFullYear();
+        const startYear = currentYear - 4; // Show last 5 years
+
+        // Initialize last 5 years with 0
+        for (let i = startYear; i <= currentYear; i++) {
+            annualData[i] = 0;
+        }
+
+        // Aggregate order counts by year
+        orders.forEach(order => {
+            if (order.oDate) {
+                const orderDate = new Date(order.oDate);
+                const year = orderDate.getFullYear();
+                if (year >= startYear && year <= currentYear) {
+                    annualData[year] += 1;
+                }
+            }
+        });
+
+        const years = Object.keys(annualData).map(Number).sort((a, b) => a - b);
+        return {
+            labels: years.map(y => y.toString()),
+            data: years.map(y => annualData[y])
+        };
+    };
+
+    const getOrdersData = (orders) => {
+        switch (ordersView) {
+            case 'quarterly':
+                return aggregateQuarterlyOrders(orders);
+            case 'annually':
+                return aggregateAnnuallyOrders(orders);
+            case 'monthly':
+            default:
+                return aggregateMonthlyOrders(orders);
+        }
     };
 
     const getTopProductsByOrders = (products) => {
@@ -145,7 +208,7 @@ function Employee(props) {
             stockChartInstance.current.destroy();
         }
 
-        const monthlyOrders = aggregateMonthlyOrders(orders);
+        const monthlyOrders = getOrdersData(orders);
         const topProducts = getTopProductsByOrders(products);
 
         if (salesRef.current) {
@@ -247,21 +310,54 @@ function Employee(props) {
             });
         }
 
+        // Disconnect previous observer if it exists
+        if (resizeObserver.current) {
+            resizeObserver.current.disconnect();
+        }
+
         resizeObserver.current = new ResizeObserver(() => {
-            salesChartInstance.current?.resize();
-            stockChartInstance.current?.resize();
+            try {
+                if (salesChartInstance.current && 
+                    salesChartInstance.current.canvas && 
+                    salesChartInstance.current.canvas.parentElement &&
+                    document.body.contains(salesChartInstance.current.canvas)) {
+                    salesChartInstance.current.resize();
+                }
+                if (stockChartInstance.current && 
+                    stockChartInstance.current.canvas && 
+                    stockChartInstance.current.canvas.parentElement &&
+                    document.body.contains(stockChartInstance.current.canvas)) {
+                    stockChartInstance.current.resize();
+                }
+            } catch (error) {
+                // Silently ignore errors when resizing unmounted charts
+                console.debug('Chart resize error (harmless):', error.message);
+            }
         });
 
         document.querySelectorAll('.chart-container').forEach(container => {
-            resizeObserver.current.observe(container);
+            if (container && resizeObserver.current && document.body.contains(container)) {
+                resizeObserver.current.observe(container);
+            }
         });
     };
 
     useEffect(() => {
         return () => {
-            salesChartInstance.current?.destroy();
-            stockChartInstance.current?.destroy();
-            resizeObserver.current?.disconnect();
+            // Properly destroy and null out chart instances
+            if (salesChartInstance.current) {
+                salesChartInstance.current.destroy();
+                salesChartInstance.current = null;
+            }
+            if (stockChartInstance.current) {
+                stockChartInstance.current.destroy();
+                stockChartInstance.current = null;
+            }
+            // Disconnect and null out resize observer
+            if (resizeObserver.current) {
+                resizeObserver.current.disconnect();
+                resizeObserver.current = null;
+            }
         };
     }, []);
 
@@ -322,10 +418,10 @@ function Employee(props) {
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
                                 <div className="d-flex justify-content-between mb-3">
                                     <h3 className="fs-4">Orders Overview</h3>
-                                    <select className="form-select w-auto">
-                                        <option>Monthly</option>
-                                        <option value="1">Quarterly</option>
-                                        <option value="2">Annually</option>
+                                    <select className="form-select w-auto" value={ordersView} onChange={(e) => setOrdersView(e.target.value)}>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="quarterly">Quarterly</option>
+                                        <option value="annually">Annually</option>
                                     </select>
                                 </div>
                                 {orders.length === 0 ? (

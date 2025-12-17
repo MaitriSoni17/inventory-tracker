@@ -3,6 +3,7 @@ const fetchuser = require('../middleware/fetchuser');
 const CustomerOrders = require('../models/CustomerOrders');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
+const { notifyEmployeesAboutOrder } = require('../utils/notificationHelper');
 
 // Create Customer Order — accessible by BusinessOwner or Employee
 router.post('/createcustomerorder', fetchuser, [
@@ -33,6 +34,17 @@ router.post('/createcustomerorder', fetchuser, [
         }
 
         const customerorder = await CustomerOrders.create(customerorderData);
+
+        // Send notification to employees if created by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutOrder(
+                req.user._id,
+                'created',
+                customerorder._id,
+                { orderId: customerorder._id, customer: cName, product: pName, amount }
+            );
+        }
+
         res.json(customerorder);
     } catch (err) {
         console.error(err.message);
@@ -101,6 +113,17 @@ router.put('/updatecustomerorder/:id', fetchuser, [
         // }
 
         customerorder = await CustomerOrders.findByIdAndUpdate(req.params.id, { $set: newCustomerOrder }, { new: true });
+
+        // Send notification to employees if updated by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutOrder(
+                req.user._id,
+                'updated',
+                customerorder._id,
+                { orderId: customerorder._id, customer: cName, product: pName, amount }
+            );
+        }
+
         res.json({ customerorder });
     } catch (err) {
         console.error(err.message);
@@ -126,7 +149,20 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
         //     return res.status(401).send("Not Allowed");
         // }
 
+        const businessOwnerId = customerorder.businessowner;
+
         await CustomerOrders.findByIdAndDelete(req.params.id);
+
+        // Send notification to employees if deleted by business owner
+        if (req.role === 'businessowner') {
+            await notifyEmployeesAboutOrder(
+                businessOwnerId,
+                'deleted',
+                req.params.id,
+                { orderId: req.params.id }
+            );
+        }
+
         res.json({ message: "Customer Order deleted successfully" });
     } catch (err) {
         console.error(err.message);
