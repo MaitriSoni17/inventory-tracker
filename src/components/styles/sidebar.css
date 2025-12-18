@@ -2,14 +2,15 @@
 
 /* Variables for easy color adjustments */
 :root {
-    --primary-bg-color: #f8f9fa;
-    --sidebar-bg-color: #ffffff;
-    --primary-teal: #0891B2;
-    --accent-teal: #06B6D4;
-    --text-dark: #333333;
-    --text-secondary: #6c757d;
-    --card-bg-color: #ffffff;
-    --border-color: #dee2e6;
+    --primary-bg-color: #FAFAFA;
+    --sidebar-bg-color: #FFFFFF;
+    --primary-color: #7300FF;
+    --primary-light: #9333EA;
+    --primary-dark: #5800CC;
+    --text-dark: #1F2937;
+    --text-secondary: #6B7280;
+    --card-bg-color: #FFFFFF;
+    --border-color: #E5E7EB;
 }
 
 body {
@@ -39,13 +40,14 @@ body {
 }
 
 #sidebar-wrapper .sidebar-heading {
-    font-family: 'Pacifico', cursive;
-    color: var(--primary-teal);
-    font-size: 2.2rem;
-    font-weight: bold;
-    border-bottom: 1px solid var(--border-color);
-    padding: 1rem;
+    font-family: 'Inter', sans-serif;
+    color: var(--primary-color);
+    font-size: 1.8rem;
+    font-weight: 700;
+    border-bottom: 2px solid var(--border-color);
+    padding: 1.25rem;
     text-align: center;
+    letter-spacing: -0.5px;
 }
 
 #sidebar-wrapper .list-group {
@@ -56,11 +58,12 @@ body {
     color: var(--text-secondary);
     border: none;
     padding: 12px 16px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     display: flex;
     align-items: center;
     transition: all 0.2s ease;
     cursor: pointer;
+    font-weight: 500;
 }
 
 #sidebar-wrapper .list-group-item i {
@@ -68,26 +71,28 @@ body {
     margin-right: 10px;
     min-width: 20px;
     text-align: center;
+    font-size: 1.1rem;
 }
 
 #sidebar-wrapper .list-group-item.active {
-    background-color: rgb(0, 0, 0, 6%);
-    color: var(--primary-teal);
-    border-left: 5px solid var(--primary-teal);
-    padding-left: 11px;
+    background: linear-gradient(90deg, rgba(115, 0, 255, 0.1) 0%, transparent 100%);
+    color: var(--primary-color);
+    border-left: 4px solid var(--primary-color);
+    padding-left: 12px;
+    font-weight: 600;
 }
 
 #sidebar-wrapper .list-group-item.active i {
-    color: var(--primary-teal);
+    color: var(--primary-color);
 }
 
 #sidebar-wrapper .list-group-item:not(.active):hover {
-    color: var(--primary-teal);
-    background-color: rgba(8, 145, 178, 0.05);
+    color: var(--primary-color);
+    background-color: rgba(115, 0, 255, 0.05);
 }
 
 #sidebar-wrapper .list-group-item:not(.active):hover i {
-    color: var(--primary-teal);
+    color: var(--primary-color);
 }
 
 #sidebar-wrapper .list-group-item.text-danger {
@@ -135,10 +140,11 @@ body {
     font-size: 1.3rem;
     margin-left: 1rem;
     transition: color 0.2s ease;
+    cursor: pointer;
 }
 
 .navbar .icon-link:hover {
-    color: var(--primary-teal);
+    color: var(--primary-color);
 }
 
 /* User Menu Dropdown */

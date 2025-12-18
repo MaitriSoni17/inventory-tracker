@@ -2,13 +2,11 @@
 
 /* Variables for easy color adjustments */
 :root {
-    --primary-purple: #5c009c;
-    /* Darker purple for main background */
-    --light-purple: #8a2be2;
-    /* Violet for button/title accents */
+    --primary-purple: #5800CC;
+    --light-purple: #7300FF;
     --card-color: #ffffff;
-    --text-color: #333333;
-    --placeholder-color: #aaaaaa;
+    --text-color: #1F2937;
+    --placeholder-color: #9CA3AF;
 }
 
 /* Main Container: Ensures the card is vertically centered */

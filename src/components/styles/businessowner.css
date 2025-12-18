@@ -1,23 +1,36 @@
-/* Business Owner Dashboard - Mobile Responsive */
+/* Business Owner Dashboard - Modern Design */
 
 /* --- Dashboard Cards --- */
 .dashboard-card {
     background-color: var(--card-bg-color, white);
-    color: var(--text-dark, #212529);
+    color: var(--text-dark, #1F2937);
     padding: clamp(1rem, 4vw, 1.5rem);
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-radius: 1rem;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     transition: all 0.2s ease;
     cursor: pointer;
+    min-height: 120px;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-around;
 }
 
 .dashboard-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(115, 0, 255, 0.15);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 24px rgba(115, 0, 255, 0.15);
+}
+
+.dashboard-card a {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    width: 100%;
 }
 
 .border-primary {
     border-color: #7300FF !important;
+    border-width: 2px;
 }
 
 .dashboard-card-icon {
@@ -26,21 +39,24 @@
     justify-content: center;
     width: clamp(3rem, 8vw, 5rem);
     height: clamp(3rem, 8vw, 5rem);
-    border-radius: 0.5rem;
-    background: linear-gradient(135deg, rgba(115, 0, 255, 0.1) 0%, rgba(115, 0, 255, 0.05) 100%);
+    border-radius: 0.875rem;
+    background: linear-gradient(135deg, rgba(115, 0, 255, 0.15) 0%, rgba(115, 0, 255, 0.08) 100%);
     font-size: clamp(1.5rem, 4vw, 2rem);
     color: #7300FF;
+    flex-shrink: 0;
+    margin-right: clamp(0.5rem, 2vw, 1rem);
 }
 
 .dashboard-card h3 {
-    font-weight: 600;
+    font-weight: 700;
     color: #7300FF;
     font-size: clamp(1rem, 3vw, 1.25rem);
     margin: 0.75rem 0 0;
+    letter-spacing: -0.3px;
 }
 
 .dashboard-card p {
-    color: var(--text-secondary, #6c757d);
+    color: var(--text-secondary, #6B7280);
     font-size: clamp(0.875rem, 2vw, 1rem);
     margin: 0.5rem 0 0;
 }
@@ -53,6 +69,17 @@
     margin-bottom: clamp(2rem, 5vw, 3rem);
 }
 
+.row.g-3.my-2 {
+    gap: clamp(1rem, 3vw, 1.5rem) !important;
+    width: 100%;
+}
+
+.row.g-3.my-2 .col-md-4 {
+    width: 100%;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
 @media (min-width: 576px) {
     .dashboard-cards-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -63,6 +90,27 @@
     .dashboard-cards-grid {
         grid-template-columns: repeat(3, 1fr);
     }
+    
+    .row.g-3.my-2 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    .row.g-3.my-2 .col-md-4 {
+        width: 100%;
+    }
+}
+
+@media (max-width: 767px) {
+    .row.g-3.my-2 {
+        display: grid;
+        grid-template-columns: 1fr !important;
+    }
+    
+    .col-md-4 {
+        grid-column: span 1;
+        width: 100% !important;
+    }
 }
 
 /* --- Table Styling --- */
@@ -72,12 +120,12 @@
 
 .table tbody tr:hover td,
 .table tbody tr:hover th {
-    color: #5c009c;
-    background-color: rgba(115, 0, 255, 0.05);
+    color: #5800CC;
 }
 
 .text-violet {
     color: #7300FF !important;
+    font-weight: 600;
 }
 
 /* --- Chart Title & Select --- */
@@ -96,7 +144,7 @@ h3.fs-4 {
 
 .form-select:focus {
     border-color: #7300FF;
-    box-shadow: 0 0 0 0.2rem rgba(115, 0, 255, 0.25);
+    box-shadow: 0 0 0 0.3rem rgba(115, 0, 255, 0.1);
 }
 
 /* --- Chart Container --- */
@@ -121,8 +169,8 @@ h3.fs-4 {
 #chart-center-text {
     z-index: 3;
     font-size: clamp(1rem, 3vw, 1.4rem);
-    font-weight: 600;
-    color: #5c009c;
+    font-weight: 700;
+    color: #5800CC;
     pointer-events: none;
 }
 
@@ -170,17 +218,78 @@ h3.fs-4 {
     margin-bottom: clamp(1rem, 2vw, 1.5rem);
 }
 
+/* --- Stock Table --- */
+.stock-table {
+    margin-bottom: 0;
+    border-collapse: collapse;
+}
+
+.stock-table tbody tr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+}
+
+.stock-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.stock-table tbody tr:hover {
+    box-shadow: none !important;
+}
+
+.stock-label-cell {
+    /* color: #6B7280; */
+    font-size: clamp(0.9rem, 2vw, 1.05rem);
+    font-weight: 500;
+    padding: 0 !important;
+    flex: 1;
+    letter-spacing: 0.2px;
+    text-decoration: none;
+}
+
+.stock-value-cell {
+    /* color: #7300FF; */
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0 !important;
+    text-align: right;
+    letter-spacing: -0.8px;
+    text-decoration: none;
+}
+
+@media (max-width: 767px) {
+    .stock-table tbody tr {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+        padding: 1.25rem 0;
+    }
+
+    .stock-label-cell {
+        font-size: 0.95rem;
+    }
+
+    .stock-value-cell {
+        font-size: 1.1rem;
+        text-align: left;
+        width: 100%;
+    }
+}
+
 /* --- View All Link --- */
 .view-all-link {
     color: #7300FF;
     text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s ease;
+    font-weight: 600;
+    transition: all 0.2s ease;
 }
 
 .view-all-link:hover {
-    color: #5300cc;
+    color: #5800CC;
     text-decoration: underline;
+    transform: translateX(2px);
 }
 
 /* --- Dark Mode Support --- */
@@ -233,6 +342,68 @@ h3.fs-4 {
     .dashboard-card-icon,
     .view-all-link {
         transition: none;
+    }
+}
+
+/* --- Mobile Responsive --- */
+@media (max-width: 767px) {
+    .row.g-3.my-2 {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 1rem !important;
+    }
+
+    .col-md-4 {
+        min-width: 100% !important;
+    }
+
+    .dashboard-card {
+        min-height: 100px;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .dashboard-card-icon {
+        margin-right: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .dashboard-card h3 {
+        font-size: 1.5rem;
+    }
+
+    .dashboard-card p {
+        font-size: 0.875rem;
+    }
+}
+
+/* --- Tablet & Small Desktop --- */
+@media (min-width: 768px) and (max-width: 1023px) {
+    .row.g-3.my-2 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1rem !important;
+    }
+
+    .col-md-4 {
+        grid-column: span 1;
+    }
+}
+
+/* --- Desktop --- */
+@media (min-width: 1024px) {
+    .row.g-3.my-2 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1.5rem !important;
+    }
+
+    .col-md-4 {
+        grid-column: span 1;
+    }
+
+    .dashboard-card {
+        min-height: 140px;
     }
 }
 

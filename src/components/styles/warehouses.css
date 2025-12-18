@@ -2,8 +2,8 @@
 
 /* --- Custom Colors --- */
 :root {
-    --custom-purple: #7B3EBC; /* A deep purple color similar to the image */
-    --custom-purple-dark: #6a35a7; /* Darker for hover */
+    --custom-purple: #7300FF; /* Primary purple */
+    --custom-purple-dark: #5800CC; /* Darker for hover */
     --custom-grey: #adb5bd; /* Bootstrap's grey for cancel button */
     --custom-grey-dark: #8c939a; /* Darker grey for hover */
 }

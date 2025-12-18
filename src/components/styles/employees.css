@@ -1,13 +1,14 @@
 /* Employees Page - Mobile Responsive */
 
 :root {
-    --primary-teal: #0891B2;
-    --primary-light: #06B6D4;
+    --primary-color: #7300FF;
+    --primary-light: #9333EA;
+    --primary-dark: #5800CC;
 }
 
 /* --- Metric Cards --- */
 .metric-card {
-    background: linear-gradient(135deg, #164E63 0%, #0891B2 100%);
+    background: linear-gradient(135deg, #5800CC 0%, #7300FF 100%);
     color: white;
     padding: clamp(1rem, 4vw, 1.5rem);
     border-radius: 0.5rem;

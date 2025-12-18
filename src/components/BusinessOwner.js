@@ -478,22 +478,22 @@ const BusinessOwner = (props) => {
                     </div>
 
                     <div className="row g-3">
-                        <div className="col-md-6">
-                            <div className="p-3 bg-white shadow rounded-4 border border-4">
-                                <h3 className="fs-4 mb-4 mt-2 ms-2">Stock Numbers</h3>
-                                <table className="table align-middle mt-4">
+                        <div className="col-md-5">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <h3 className="fs-4 mb-4 mt-2">Stock Numbers</h3>
+                                <table className="table">
                                     <tbody>
-                                        <tr>
-                                            <td>Low Stock Items</td>
-                                            <td><span className="fw-bold">{stats.lowStockItems}</span></td>
+                                        <tr className=''>
+                                            <td className="fs-6 fw-medium">Low Stock Items</td>
+                                            <td className="fs-6 fw-medium">{stats.lowStockItems}</td>
                                         </tr>
-                                        <tr>
-                                            <td>Items Categories</td>
-                                            <td><span className="fw-bold">{stats.totalCategories}</span></td>
+                                        <tr className=''>
+                                            <td className="fs-6 fw-medium">Items Categories</td>
+                                            <td className="fs-6 fw-medium">{stats.totalCategories}</td>
                                         </tr>
-                                        <tr>
-                                            <td>Total Products</td>
-                                            <td><span className="fw-bold">{stats.totalProducts}</span></td>
+                                        <tr className=''>
+                                            <td className="fs-6 fw-medium">Total Products</td>
+                                            <td className="fs-6 fw-medium">{stats.totalProducts}</td>
                                         </tr>
                                     </tbody>
                                 </table>
