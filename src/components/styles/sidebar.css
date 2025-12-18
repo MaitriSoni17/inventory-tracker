@@ -1,15 +1,11 @@
-/* Custom CSS for Inline Tracker Dashboard */
+/* Custom CSS for Inline Tracker Dashboard - Mobile Responsive */
 
 /* Variables for easy color adjustments */
 :root {
     --primary-bg-color: #f8f9fa;
-    /* Light grey for the main content background */
     --sidebar-bg-color: #ffffff;
-    /* White for sidebar */
-    --primary-purple: #5c009c;
-    /* Darker purple for main elements like hover */
-    --accent-purple: #8a2be2;
-    /* Violet for buttons, active states, text */
+    --primary-teal: #0891B2;
+    --accent-teal: #06B6D4;
     --text-dark: #333333;
     --text-secondary: #6c757d;
     --card-bg-color: #ffffff;
@@ -18,78 +14,86 @@
 
 body {
     overflow-x: hidden;
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     background-color: var(--primary-bg-color);
+}
+
+/* Main Wrapper Layout */
+#wrapper {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
 }
 
 /* Sidebar Styling */
 #sidebar-wrapper {
     min-height: 100vh;
-    /* margin-left: -15rem; */
-    /* Hidden by default for toggle, will be shown via JS */
-    transition: margin 0.25s ease-out;
+    transition: margin 0.25s ease-out, transform 0.25s ease-out;
     background-color: var(--sidebar-bg-color);
     border-right: 1px solid var(--border-color);
     width: 15rem;
-    /* Fixed width as per design */
+    flex-shrink: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 1000;
 }
 
 #sidebar-wrapper .sidebar-heading {
     font-family: 'Pacifico', cursive;
-    /* Matching the sign-up page title font */
-    color: var(--accent-purple);
+    color: var(--primary-teal);
     font-size: 2.2rem;
     font-weight: bold;
     border-bottom: 1px solid var(--border-color);
+    padding: 1rem;
+    text-align: center;
 }
 
 #sidebar-wrapper .list-group {
-    width: 15rem;
+    width: 100%;
 }
 
 #sidebar-wrapper .list-group-item {
     color: var(--text-secondary);
     border: none;
-    padding: 15px 20px;
-    font-size: 1.05rem;
+    padding: 12px 16px;
+    font-size: 1rem;
     display: flex;
     align-items: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
 
 #sidebar-wrapper .list-group-item i {
     color: var(--text-secondary);
+    margin-right: 10px;
+    min-width: 20px;
+    text-align: center;
 }
-
 
 #sidebar-wrapper .list-group-item.active {
     background-color: rgb(0, 0, 0, 6%);
-    color: var(--accent-purple);
-    /* Rounded right edge */
-    margin-right: 15px;
-    border-left: 5px solid var(--accent-purple);
+    color: var(--primary-teal);
+    border-left: 5px solid var(--primary-teal);
+    padding-left: 11px;
 }
 
 #sidebar-wrapper .list-group-item.active i {
-    color: var(--accent-purple);
-    /* Active icon color */
+    color: var(--primary-teal);
 }
 
 #sidebar-wrapper .list-group-item:not(.active):hover {
-    color: var(--accent-purple);
+    color: var(--primary-teal);
+    background-color: rgba(8, 145, 178, 0.05);
 }
 
 #sidebar-wrapper .list-group-item:not(.active):hover i {
-    color: var(--accent-purple);
+    color: var(--primary-teal);
 }
 
-/* Log Out link specific styling */
 #sidebar-wrapper .list-group-item.text-danger {
     color: #dc3545 !important;
-    /* Bootstrap's danger color */
     margin-top: 20px;
-    /* Space it out */
     border-top: 1px solid var(--border-color);
-    /* Separator line */
 }
 
 #sidebar-wrapper .list-group-item.text-danger i {
@@ -98,42 +102,43 @@ body {
 
 #sidebar-wrapper .list-group-item.text-danger:hover {
     background-color: rgba(220, 53, 69, 0.1);
-    /* Light red background on hover */
 }
 
-
-/* Page Content Wrapper: allow shrinking so content sits beside the sidebar without forcing horizontal scroll */
+/* Page Content Wrapper */
 #page-content-wrapper {
     min-width: 0;
     flex: 1 1 auto;
     background-color: var(--primary-bg-color);
-    padding: 0 1rem; /* small horizontal padding to breathe */
-}
-
-#wrapper.toggled #sidebar-wrapper {
-    margin-left: 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Navbar Top */
 .navbar {
     border-bottom: 1px solid var(--border-color);
     background-color: var(--sidebar-bg-color) !important;
+    padding: 0.75rem 1rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.navbar h2 {
+    font-size: 1.5rem;
+    margin: 0;
 }
 
 .navbar .icon-link {
     position: relative;
     color: var(--text-secondary);
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     margin-left: 1rem;
+    transition: color 0.2s ease;
 }
 
 .navbar .icon-link:hover {
-    color: var(--accent-purple);
-}
-
-.navbar .icon-link .badge {
-    position: absolute;
-    font-size: 0.7rem;
+    color: var(--primary-teal);
 }
 
 /* User Menu Dropdown */
@@ -181,16 +186,8 @@ body {
 
 .user-dropdown-menu .dropdown-item:hover {
     background-color: var(--primary-bg-color);
-    color: var(--accent-purple);
+    color: var(--primary-teal);
     padding-left: 1.25rem;
-}
-
-.user-dropdown-menu .dropdown-item:first-child {
-    border-radius: 0.5rem 0.5rem 0 0;
-}
-
-.user-dropdown-menu .dropdown-item:last-child {
-    border-radius: 0 0 0.5rem 0.5rem;
 }
 
 .user-dropdown-menu .dropdown-divider {
@@ -198,7 +195,234 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
-.form-control:focus, .form-select:focus {
-    border-color: var(--custom-purple-light); /* Highlight focus with a lighter purple */
-    box-shadow: 0 0 0 0.25rem rgba(123, 62, 188, 0.25); /* Subtle purple shadow */
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    #wrapper {
+        flex-direction: column;
+        height: auto;
+    }
+
+    /* Hide sidebar by default on mobile */
+    #sidebar-wrapper {
+        position: fixed;
+        left: -15rem;
+        top: 0;
+        height: 100vh;
+        width: 15rem;
+        border-right: 1px solid var(--border-color);
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Show sidebar when opened */
+    #sidebar-wrapper.show {
+        left: 0;
+    }
+
+    /* Overlay backdrop */
+    .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .sidebar-overlay.show {
+        display: block;
+    }
+
+    #page-content-wrapper {
+        width: 100%;
+        min-height: 100vh;
+    }
+
+    .navbar {
+        padding: 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .navbar h2 {
+        display: none;
+    }
+
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+
+    .nav-item {
+        margin: 0;
+    }
+
+    #sidebar-wrapper .sidebar-heading {
+        font-size: 1.8rem;
+        padding: 0.75rem;
+    }
+
+    #sidebar-wrapper .list-group-item {
+        padding: 12px 12px;
+        font-size: 0.95rem;
+    }
+
+    #sidebar-wrapper .list-group-item i {
+        font-size: 1.1rem;
+    }
+
+    .navbar .icon-link {
+        font-size: 1.1rem;
+        margin-left: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    #sidebar-wrapper {
+        width: 80vw;
+        left: -80vw;
+    }
+
+    .navbar {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .navbar h2 {
+        font-size: 1.25rem;
+    }
+
+    .navbar-toggler {
+        padding: 0.25rem 0.5rem;
+        border: none;
+    }
+
+    .navbar-toggler:focus {
+        outline: 2px solid var(--primary-teal);
+        outline-offset: 2px;
+    }
+
+    .navbar .navbar-collapse {
+        position: fixed;
+        top: 60px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: white;
+        border-top: 1px solid var(--border-color);
+        max-height: calc(100vh - 60px);
+        overflow-y: auto;
+        z-index: 500;
+    }
+
+    .navbar .navbar-collapse.collapse {
+        display: none !important;
+    }
+
+    .navbar .navbar-collapse.show {
+        display: block !important;
+    }
+
+    #sidebar-wrapper .list-group-item {
+        padding: 10px 12px;
+        font-size: 0.9rem;
+    }
+
+    .user-dropdown-menu {
+        right: -1rem;
+        left: auto;
+        min-width: 160px;
+    }
+}
+
+/* Tablet to Desktop */
+@media (min-width: 769px) {
+    .navbar-toggler {
+        display: none !important;
+    }
+
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    #sidebar-wrapper {
+        position: relative !important;
+        left: auto !important;
+        top: auto !important;
+        height: auto !important;
+        box-shadow: none !important;
+    }
+
+    #page-content-wrapper {
+        width: calc(100% - 15rem);
+    }
+}
+
+/* Large screens */
+@media (min-width: 1200px) {
+    #sidebar-wrapper .sidebar-heading {
+        font-size: 2.2rem;
+    }
+
+    #sidebar-wrapper .list-group-item {
+        padding: 15px 20px;
+        font-size: 1.05rem;
+    }
+
+    .navbar h2 {
+        font-size: 2rem;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    #sidebar-wrapper .list-group-item {
+        padding: 14px 18px;
+    }
+
+    .btn, .list-group-item {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+
+    .navbar .icon-link {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Scrollbar styling */
+#sidebar-wrapper::-webkit-scrollbar,
+#page-content-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-track,
+#page-content-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-thumb,
+#page-content-wrapper::-webkit-scrollbar-thumb {
+    background: #bdbdbd;
+    border-radius: 3px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-thumb:hover,
+#page-content-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-teal);
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+    #sidebar-wrapper,
+    #sidebar-wrapper .list-group-item,
+    .user-dropdown-menu {
+        transition: none !important;
+        animation: none !important;
+    }
 }

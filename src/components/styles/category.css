@@ -1,81 +1,267 @@
-/* Custom Fonts */
+/* Categories Page - Mobile Responsive */
+
+/* --- Title Styling --- */
 .categories-title {
-    /* Mimicking the elegant serif font from the image */
     font-family: 'Playfair Display', serif;
     font-weight: 600;
-    font-size: 3rem;
+    font-size: clamp(1.75rem, 6vw, 3rem);
+    margin-bottom: clamp(1rem, 3vw, 1.5rem);
+    color: #212529;
 }
 
 .last-update-text {
-    font-size: 0.9rem;
+    font-size: clamp(0.8rem, 1.5vw, 0.9rem);
+    color: #6c757d;
 }
 
-/* Add Category Button */
+/* --- Add Category Button --- */
 .add-category-btn {
-    background-color: #7300FF; /* Medium Purple/Violet color */
+    background-color: #0891B2;
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
+    padding: clamp(0.4rem, 2vw, 0.6rem) clamp(0.8rem, 3vw, 1rem);
+    min-height: 44px;
     font-weight: 500;
+    font-size: clamp(0.875rem, 2vw, 1rem);
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
+
 .add-category-btn:hover {
-    background-color: rgb(130, 115, 215);
+    background-color: #06B6D4;
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.25);
 }
 
-.btn-primary{
-    background-color: #6A0DAD !important;
-    border-color: #6A0DAD !important;
+.btn-primary {
+    background-color: #0891B2 !important;
+    border-color: #0891B2 !important;
+    min-height: 44px;
+    font-size: clamp(0.875rem, 2vw, 1rem);
 }
 
-/* Search Bar Styling */
+/* --- Search Bar --- */
 .search-bar-container {
-    border: 1px solid #ccc; /* Subtle border for the entire control */
-    border-radius: 0.375rem; /* Match Bootstrap's default rounding */
-    overflow: hidden; /* Ensures contents stay within rounded border */
+    border: 1px solid #ccc;
+    border-radius: 0.375rem;
+    overflow: hidden;
+    display: flex;
 }
 
 .search-input {
     border: none;
     box-shadow: none !important;
-    padding-left: 0.5rem;
+    padding: clamp(0.5rem, 2vw, 0.75rem) 0.75rem;
+    font-size: clamp(0.875rem, 2vw, 1rem);
+    flex: 1;
+    min-height: 44px;
+}
+
+.search-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(106, 13, 173, 0.25);
 }
 
 .search-icon-bg {
     background-color: white;
     border: none;
     color: #888;
+    padding: clamp(0.5rem, 2vw, 0.75rem);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
 }
 
-/* Category Cards */
+/* --- Category Cards Grid --- */
+.categories-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(1rem, 3vw, 1.5rem);
+    margin-top: clamp(1.5rem, 4vw, 2rem);
+}
+
+@media (min-width: 576px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .categories-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1200px) {
+    .categories-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* --- Category Cards --- */
 .category-card {
     border: 1px solid #e0e0e0;
-    border-radius: 12px;
+    border-radius: 0.75rem;
     overflow: hidden;
+    transition: all 0.2s ease;
+    background-color: white;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+
+.category-card:hover {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
 }
 
 .category-image-placeholder {
-    height: 150px; /* Adjust height as needed */
-    background-color: #be98edd8; /* Very light lavender/purple background */
+    height: clamp(120px, 30vw, 150px);
+    background: linear-gradient(135deg, #be98edd8 0%, #d4b8e8 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .category-icon {
-    color: #6A0DAD; /* Deep purple color for the T-shirt icon */
-    font-size: 4rem; /* Large icon size */
+    color: #6A0DAD;
+    font-size: clamp(2rem, 8vw, 4rem);
 }
 
-/* Actions (Edit and Delete Icons) */
+.category-content {
+    padding: clamp(0.75rem, 2vw, 1rem);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.category-name {
+    font-size: clamp(0.9375rem, 2vw, 1.125rem);
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+}
+
+.category-description {
+    font-size: clamp(0.8125rem, 1.5vw, 0.875rem);
+    color: #6c757d;
+    margin: 0.5rem 0 0 0;
+}
+
+/* --- Category Actions --- */
 .category-actions {
     display: flex;
-    justify-content: flex-end; /* Pushes the icons to the bottom right */
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: clamp(0.5rem, 2vw, 0.75rem);
+    border-top: 1px solid #e0e0e0;
+    background-color: #f8f9fa;
+}
+
+.edit-icon,
+.delete-icon {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    transition: all 0.2s ease;
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.25rem;
 }
 
 .edit-icon {
-    color: #888; /* Gray color for edit icon */
-    font-size: 1.2rem;
+    color: #888;
+}
+
+.edit-icon:hover {
+    color: #6A0DAD;
+    background-color: rgba(106, 13, 173, 0.1);
 }
 
 .delete-icon {
-    color: #dc3545; /* Bootstrap's danger red color for delete */
-    font-size: 1.2rem;
+    color: #dc3545;
+}
+
+.delete-icon:hover {
+    color: #c82333;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+/* --- Header Controls --- */
+.categories-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: clamp(1rem, 3vw, 1.5rem);
+}
+
+@media (min-width: 768px) {
+    .categories-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.header-controls {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .header-controls {
+        width: auto;
+        gap: clamp(0.5rem, 2vw, 1rem);
+    }
+}
+
+/* --- Dark Mode Support --- */
+@media (prefers-color-scheme: dark) {
+    .categories-title {
+        color: #e9ecef;
+    }
+
+    .category-card {
+        background-color: #2d2d2d;
+        border-color: #495057;
+    }
+
+    .category-image-placeholder {
+        background: linear-gradient(135deg, #4a1d70 0%, #5d2595 100%);
+    }
+
+    .category-name {
+        color: #e9ecef;
+    }
+
+    .category-description {
+        color: #b0b8c1;
+    }
+
+    .category-actions {
+        background-color: #1a1a1a;
+        border-top-color: #495057;
+    }
+
+    .search-input {
+        background-color: #3d3d3d;
+        color: #e9ecef;
+        border-color: #495057;
+    }
+
+    .search-icon-bg {
+        background-color: #3d3d3d;
+        color: #b0b8c1;
+    }
 }

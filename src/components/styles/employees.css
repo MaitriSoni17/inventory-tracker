@@ -1,72 +1,253 @@
+/* Employees Page - Mobile Responsive */
+
 :root {
-    --custom-purple: #7B3EBC; /* A deep purple color similar to the image */
-    --custom-purple-light: #9B66D6; /* A lighter shade for badges/hover */
+    --primary-teal: #0891B2;
+    --primary-light: #06B6D4;
 }
 
+/* --- Metric Cards --- */
 .metric-card {
-    /* Set the background color to the dark purple from the image */
-    background-color: #5d2595; /* A deep purple color */
-    /* Set all text inside the card to white */
-    color: white; 
+    background: linear-gradient(135deg, #164E63 0%, #0891B2 100%);
+    color: white;
+    padding: clamp(1rem, 4vw, 1.5rem);
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(93, 37, 149, 0.2);
 }
 
 .metric-title {
-    opacity: 0.8;
+    opacity: 0.9;
+    font-size: clamp(0.875rem, 2vw, 1rem);
+    font-weight: 500;
+    margin-bottom: 0.5rem;
 }
 
-/* .metric-value {
-    font-size: 2.5rem;
+.metric-value {
+    font-size: clamp(1.75rem, 6vw, 2.5rem);
     font-weight: 700;
-    margin-bottom: 0;
-} */
+    margin: 0;
+}
 
 .metric-icon {
-    opacity: 0.6;
+    opacity: 0.7;
+    font-size: clamp(1.5rem, 4vw, 2rem);
 }
 
 .fa-users {
-    transform: translateY(-5px);
+    transform: translateY(-2px);
 }
 
-.border-primary{
+.border-primary {
     border-color: var(--custom-purple) !important;
 }
 
+/* --- Buttons --- */
 .btn-custom-purple {
     background-color: var(--custom-purple);
     border-color: var(--custom-purple);
     color: white;
+    min-height: 44px;
+    font-size: clamp(0.875rem, 2vw, 1rem);
+    padding: clamp(0.4rem, 2vw, 0.6rem) clamp(0.8rem, 3vw, 1rem);
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
 
 .btn-custom-purple:hover {
     background-color: var(--custom-purple-light);
     border-color: var(--custom-purple-light);
     color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(123, 62, 188, 0.25);
 }
 
-/* --- Filter Dropdown Styling --- */
+/* --- Filter Dropdown --- */
 .custom-select-filter {
     background-color: #f8f9fa;
     color: #495057;
-    /* Optional: Remove the focus border if needed to match the image exactly */
+    min-height: 44px;
+    font-size: clamp(0.875rem, 2vw, 1rem);
 }
 
 .custom-select-filter:focus {
-    border-color: #ced4da;
+    border-color: var(--custom-purple);
+    background-color: white;
+    box-shadow: 0 0 0 0.2rem rgba(123, 62, 188, 0.25);
 }
 
-/* --- Active Status Badge --- */
+/* --- Status Badge --- */
 .custom-badge-purple {
-    background-color: var(--custom-purple-light); /* Lighter purple for the badge */
+    background-color: var(--custom-purple-light);
     color: white;
+    font-size: clamp(0.75rem, 1.5vw, 0.875rem);
+    padding: clamp(0.25rem, 1vw, 0.35rem) clamp(0.5rem, 2vw, 0.75rem);
 }
 
-
-
+/* --- Profile Images --- */
 .profile-img-container {
     overflow: hidden;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .profile-img-container img {
-    object-fit: cover; 
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+}
+
+/* --- Employees Table Responsive --- */
+.employees-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 1rem;
+}
+
+.table {
+    font-size: clamp(0.8125rem, 2vw, 0.9375rem);
+    margin-bottom: 0;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    font-weight: 600;
+    padding: clamp(0.75rem, 2vw, 1rem);
+    white-space: nowrap;
+}
+
+.table td {
+    padding: clamp(0.75rem, 2vw, 1rem);
+    vertical-align: middle;
+}
+
+/* Mobile table - show as stacked list */
+@media (max-width: 767px) {
+    .employees-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .table thead {
+        display: none;
+    }
+
+    .table tbody tr {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        background-color: white;
+    }
+
+    .table tbody td {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: #6c757d;
+        min-width: 80px;
+    }
+
+    .table tbody td:first-child::before {
+        display: none;
+    }
+}
+
+/* --- Header & Controls --- */
+.employees-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: clamp(1.5rem, 5vw, 2rem);
+    align-items: flex-start;
+}
+
+@media (min-width: 768px) {
+    .employees-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.employees-title {
+    font-size: clamp(1.75rem, 5vw, 2.5rem);
+    font-weight: 700;
+    margin: 0;
+    color: #212529;
+}
+
+/* --- Metrics Grid --- */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: clamp(1rem, 3vw, 1.5rem);
+    margin-bottom: clamp(2rem, 5vw, 3rem);
+}
+
+@media (min-width: 576px) {
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .metrics-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 1200px) {
+    .metrics-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* --- Dark Mode Support --- */
+@media (prefers-color-scheme: dark) {
+    .metric-card {
+        background: linear-gradient(135deg, #164E63 0%, #0891B2 100%);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .custom-select-filter {
+        background-color: #3d3d3d;
+        color: #e9ecef;
+        border-color: #495057;
+    }
+
+    .table thead th {
+        background-color: #3d3d3d;
+        color: #e9ecef;
+        border-color: #495057;
+    }
+
+    .table {
+        color: #e9ecef;
+    }
+
+    .table td {
+        border-color: #495057;
+    }
+
+    .profile-img-container {
+        background-color: #495057;
+    }
 }

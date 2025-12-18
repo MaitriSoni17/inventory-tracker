@@ -1,5 +1,5 @@
 .notifications-page {
-  padding: 2rem;
+  padding: clamp(1rem, 4vw, 2rem);
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
 }
@@ -7,24 +7,32 @@
 /* Header Section */
 .notifications-header-section {
   background: white;
-  border-radius: 12px;
-  padding: 2rem;
+  border-radius: 0.75rem;
+  padding: clamp(1rem, 4vw, 2rem);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
+  margin-bottom: clamp(1rem, 3vw, 2rem);
 }
 
 .notifications-header-top {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: clamp(1rem, 3vw, 1.5rem);
   padding-bottom: 1rem;
   border-bottom: 2px solid #f0f0f0;
 }
 
+@media (min-width: 576px) {
+  .notifications-header-top {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+}
+
 .notifications-title {
   margin: 0;
-  font-size: 2rem;
+  font-size: clamp(1.5rem, 5vw, 2rem);
   font-weight: 700;
   color: #2c3e50;
   display: flex;
@@ -40,9 +48,9 @@
   background: #f8f9fa;
   border: 2px solid #dee2e6;
   color: #495057;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  font-size: 0.95rem;
+  padding: clamp(0.35rem, 2vw, 0.5rem) clamp(0.75rem, 3vw, 1rem);
+  border-radius: 0.375rem;
+  font-size: clamp(0.875rem, 2vw, 0.95rem);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
