@@ -9,8 +9,17 @@ const BusinessOwner = require('../models/BusinessOwner');
 // GET /api/notifications/getnotifications
 router.get('/getnotifications', fetchuser, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const userRole = req.user.role;
+    console.log('\n=== GET NOTIFICATIONS ===');
+    console.log('User ID:', req.user._id);
+    console.log('User Role:', req.role);
+    
+    const userId = req.user._id;
+    const userRole = req.role;
+
+    console.log('Searching for notifications with:', {
+      recipient: userId,
+      recipientRole: userRole
+    });
 
     const notifications = await Notification.find({
       recipient: userId,
@@ -20,6 +29,7 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50);
 
+    console.log(`Found ${notifications.length} notifications`);
     res.json(notifications);
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -31,8 +41,8 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
 // GET /api/notifications/unreadcount
 router.get('/unreadcount', fetchuser, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const userRole = req.user.role;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     const count = await Notification.countDocuments({
       recipient: userId,
@@ -52,7 +62,7 @@ router.get('/unreadcount', fetchuser, async (req, res) => {
 router.put('/markasread/:id', fetchuser, async (req, res) => {
   try {
     const notificationId = req.params.id;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const notification = await Notification.findById(notificationId);
 
@@ -60,7 +70,7 @@ router.put('/markasread/:id', fetchuser, async (req, res) => {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
-    if (notification.recipient.toString() !== userId) {
+    if (notification.recipient.toString() !== userId.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
@@ -78,8 +88,8 @@ router.put('/markasread/:id', fetchuser, async (req, res) => {
 // PUT /api/notifications/markallasread
 router.put('/markallasread', fetchuser, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const userRole = req.user.role;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     await Notification.updateMany(
       {
@@ -102,7 +112,7 @@ router.put('/markallasread', fetchuser, async (req, res) => {
 router.delete('/deletenotification/:id', fetchuser, async (req, res) => {
   try {
     const notificationId = req.params.id;
-    const userId = req.user.id;
+    const userId = req.user._id;
 
     const notification = await Notification.findById(notificationId);
 
@@ -110,7 +120,7 @@ router.delete('/deletenotification/:id', fetchuser, async (req, res) => {
       return res.status(404).json({ error: 'Notification not found' });
     }
 
-    if (notification.recipient.toString() !== userId) {
+    if (notification.recipient.toString() !== userId.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
@@ -127,8 +137,8 @@ router.delete('/deletenotification/:id', fetchuser, async (req, res) => {
 // DELETE /api/notifications/deleteallnotifications
 router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
   try {
-    const userId = req.user.id;
-    const userRole = req.user.role;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     await Notification.deleteMany({
       recipient: userId,
@@ -139,6 +149,45 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
   } catch (error) {
     console.error('Error deleting all notifications:', error);
     res.status(500).json({ error: 'Error deleting all notifications' });
+  }
+});
+
+// DEBUG: Get all notifications in database
+// GET /api/notifications/debug/allnotifications
+router.get('/debug/allnotifications', async (req, res) => {
+  try {
+    const allNotifications = await Notification.find({}).populate('sender').populate('recipient');
+    console.log(`\n=== DEBUG: Found ${allNotifications.length} total notifications ===`);
+    allNotifications.forEach((notif, idx) => {
+      console.log(`${idx + 1}. Type: ${notif.type}, Recipient: ${notif.recipient?._id}, RecipientRole: ${notif.recipientRole}, Sender: ${notif.sender?._id}`);
+    });
+    res.json({
+      totalCount: allNotifications.length,
+      notifications: allNotifications
+    });
+  } catch (error) {
+    console.error('Error fetching all notifications:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DEBUG: Get current user info
+// GET /api/notifications/debug/userinfo
+router.get('/debug/userinfo', fetchuser, async (req, res) => {
+  try {
+    console.log(`\n=== USER INFO ===`);
+    console.log(`User ID: ${req.user._id}`);
+    console.log(`User Role: ${req.role}`);
+    console.log(`User Data:`, JSON.stringify(req.user, null, 2));
+    
+    res.json({
+      userId: req.user._id,
+      userRole: req.role,
+      user: req.user
+    });
+  } catch (error) {
+    console.error('Error fetching user info:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

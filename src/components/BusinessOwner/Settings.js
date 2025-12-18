@@ -133,11 +133,11 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const businessOwnerRes = await fetch('http://localhost:5000/api/businessowner/getbusinessowner', {
-        method: 'POST',
-        headers
-      });
-      const currentBusinessOwner = await businessOwnerRes.json();
+      // const businessOwnerRes = await fetch('http://localhost:5000/api/businessowner/getbusinessowner', {
+      //   method: 'POST',
+      //   headers
+      // });
+      // const currentBusinessOwner = await businessOwnerRes.json();
 
       const dataToSend = {
         fname: profileData.fname,
@@ -148,8 +148,7 @@ const Settings = (props) => {
         state: profileData.state,
         city: profileData.city,
         pincode: profileData.pincode,
-        address: profileData.address,
-        password: currentBusinessOwner.password || 'tempPassword123'
+        address: profileData.address
       };
 
       const res = await fetch('http://localhost:5000/api/businessowner/updatebusinessowner', {

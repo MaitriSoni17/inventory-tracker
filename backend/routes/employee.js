@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fetchuser = require('../middleware/fetchuser'); // unified middleware
+const fetchemployee = require('../middleware/fetchemployee');
 const { body, validationResult } = require('express-validator');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { notifyBusinessOwnerAboutEmployee } = require('../utils/notificationHelper');
@@ -181,6 +182,53 @@ router.post('/getallemployees', fetchbusinessowner, async (req, res) => {
         res.json(employees);
     } catch (err) {
         console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Update Employee Profile (Self-Update) using: PUT "/api/employee/updateemployee". Employee login required
+router.put('/updateemployee', fetchemployee, upload.single('image'), async (req, res) => {
+    try {
+        const { fname, lname, phone, country, state, city, address } = req.body;
+
+        const employee = req.employee;
+        
+        // Update allowed fields for employee self-update (no password update allowed)
+        if (fname) employee.fname = fname;
+        if (lname) employee.lname = lname;
+        if (phone) employee.phone = phone;
+        if (country) employee.country = country;
+        if (state) employee.state = state;
+        if (city) employee.city = city;
+        if (address) employee.address = address;
+
+        // Handle image upload
+        if (req.file) {
+            // Delete old image if exists
+            if (employee.image) {
+                deleteUploadedFile(path.join(uploadsDir, employee.image));
+            }
+            employee.image = req.file.filename;
+        }
+
+        await employee.save();
+        
+        // Send notification to business owner
+        const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+        await notifyBusinessOwnerAboutEmployee(
+            employee.businessowner,
+            employee._id,
+            'updated',
+            employeeName,
+            { employeeId: employee._id, email: employee.email }
+        );
+        
+        res.json({ success: true, message: "Profile updated successfully" });
+    } catch (err) {
+        console.error(err.message);
+        if (req.file) {
+            deleteUploadedFile(req.file.path);
+        }
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });

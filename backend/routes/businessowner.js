@@ -98,17 +98,24 @@ router.post('/getbusinessowner', fetchbusinessowner, async (req, res) => {
 router.put('/updatebusinessowner', fetchbusinessowner, [
     body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password must be at least 5 characters').isLength({ min: 5 }),
+    body('password', 'Password must be at least 5 characters').isLength({ min: 5 }).optional({ checkFalsy: true }),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    const { fname, lname, email, password, date, country, state, city, phone, address, image } = req.body;
+    const { fname, lname, email, password, date, country, state, city, pincode, phone, address, image } = req.body;
     try {
         let businessowner = await BusinessOwner.findById(req.businessowner._id);
         if (!businessowner) return res.status(404).send("Not Found");
-        const salt = await bcrypt.genSalt(10);
-        const secPass = await bcrypt.hash(password, salt);
-        const newBusinessOwner = { fname, lname, email, password, date, country, state, city, phone, address, image };
+        
+        const newBusinessOwner = { fname, lname, email, date, country, state, city, pincode, phone, address, image };
+        
+        // Only update password if it's provided
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            const secPass = await bcrypt.hash(password, salt);
+            newBusinessOwner.password = secPass;
+        }
+        
         businessowner = await BusinessOwner.findByIdAndUpdate(req.businessowner._id, { $set: newBusinessOwner }, { new: true });
         res.send(businessowner);
     } catch (err) {

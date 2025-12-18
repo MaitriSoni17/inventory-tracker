@@ -6,7 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const router = express.Router();
-const { notifyEmployeesAboutProduct } = require('../utils/notificationHelper');
+const { notifyEmployeesAboutProduct, notifyBusinessOwnerAboutProduct, notifyBusinessOwnerOwnProductChanges } = require('../utils/notificationHelper');
 
 // Configure multer for file uploads
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -72,15 +72,46 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
         }
 
         const product = await Product.create(productData);
+        console.log('✓ Product created:', { id: product._id, name: product.name });
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
-            await notifyEmployeesAboutProduct(
-                req.user._id,
-                'created',
-                name,
-                { productId: product._id, category, price }
-            );
+            console.log('📢 Business owner product creation - sending notifications...');
+            try {
+                console.log('  1. Notifying employees...');
+                await notifyEmployeesAboutProduct(
+                    req.user._id,
+                    'created',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                console.log('  2. Notifying business owner...');
+                // Also notify the business owner about their own product creation
+                await notifyBusinessOwnerOwnProductChanges(
+                    req.user._id,
+                    'created',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                console.log('✓ All notifications sent');
+            } catch (notifError) {
+                console.error('Error sending notifications:', notifError);
+            }
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if created by employee
+            console.log('Employee creation detected. Sending notification to business owner:', req.user.businessowner);
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    req.user.businessowner,
+                    req.user._id,
+                    'created',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                console.log('Notification sent successfully to business owner');
+            } catch (notifError) {
+                console.error('Error sending notification to business owner:', notifError);
+            }
         }
 
         res.json({product, success: true});
@@ -214,12 +245,42 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
 
         // Send notification to employees if updated by business owner
         if (req.role === 'businessowner') {
-            await notifyEmployeesAboutProduct(
-                req.user._id,
-                'updated',
-                name,
-                { productId: product._id, category, price }
-            );
+            console.log('📢 Business owner product update - sending notifications...');
+            try {
+                console.log('  1. Notifying employees...');
+                await notifyEmployeesAboutProduct(
+                    req.user._id,
+                    'updated',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                console.log('  2. Notifying business owner...');
+                // Also notify the business owner about their own product update
+                await notifyBusinessOwnerOwnProductChanges(
+                    req.user._id,
+                    'updated',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                console.log('✓ All notifications sent');
+            } catch (notifError) {
+                console.error('Error sending notifications:', notifError);
+            }
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if updated by employee
+            console.log('Employee update detected. Sending notification to business owner:', req.user.businessowner);
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    req.user.businessowner,
+                    req.user._id,
+                    'updated',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                console.log('Notification sent successfully to business owner');
+            } catch (notifError) {
+                console.error('Error sending notification to business owner:', notifError);
+            }
         }
 
         res.json({ product, success: true });
@@ -254,12 +315,31 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
 
         // Send notification to employees if deleted by business owner
         if (req.role === 'businessowner') {
-            await notifyEmployeesAboutProduct(
-                businessOwnerId,
-                'deleted',
-                productName,
-                { productId: req.params.id }
-            );
+            try {
+                await notifyEmployeesAboutProduct(
+                    businessOwnerId,
+                    'deleted',
+                    productName,
+                    { productId: req.params.id }
+                );
+            } catch (notifError) {
+                console.error('Error sending notification to employees:', notifError);
+            }
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if deleted by employee
+            console.log('Employee deletion detected. Sending notification to business owner:', businessOwnerId);
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    businessOwnerId,
+                    req.user._id,
+                    'deleted',
+                    productName,
+                    { productId: req.params.id }
+                );
+                console.log('Notification sent successfully to business owner');
+            } catch (notifError) {
+                console.error('Error sending notification to business owner:', notifError);
+            }
         }
 
         res.json({ message: "Product deleted successfully" });

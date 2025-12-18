@@ -10,6 +10,7 @@ const BusinessOwnerSchema = new Schema({
     country: { type: String },
     state: { type: String },
     city: { type: String },
+    pincode: { type: String },
     phone: { type: Number},
     address: { type: String},
     image: { type: String },
