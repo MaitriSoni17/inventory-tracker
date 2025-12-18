@@ -455,9 +455,9 @@ const BusinessOwner = (props) => {
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
-                                <div className="d-flex justify-content-between mb-3">
-                                    <h3 className="fs-4">Sales (Current Year)</h3>
-                                    <select className="form-select w-auto" value={salesView} onChange={(e) => setSalesView(e.target.value)}>
+                                <div className="d-flex justify-content-between mb-5">
+                                    <h1>Sales</h1>
+                                    <select className="form-select w-auto pe-5" value={salesView} onChange={(e) => setSalesView(e.target.value)}>
                                         <option value="monthly">Monthly</option>
                                         <option value="quarterly">Quarterly</option>
                                         <option value="annually">Annually</option>
@@ -478,7 +478,7 @@ const BusinessOwner = (props) => {
                     </div>
 
                     <div className="row g-3">
-                        <div className="col-md-5">
+                        <div className="col-md-6 me-5">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
                                 <h3 className="fs-4 mb-4 mt-2">Stock Numbers</h3>
                                 <table className="table">
@@ -500,7 +500,7 @@ const BusinessOwner = (props) => {
                             </div>
                         </div>
 
-                        <div className="col-md-6">
+                        <div className="col-md-5 ms-5">
                             <div className="p-3 bg-white shadow border border-4 rounded-4">
                                 <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
                                     Your Warehouses
@@ -539,8 +539,8 @@ const BusinessOwner = (props) => {
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
-                                <div className="d-flex justify-content-between mb-3">
-                                    <h3 className="fs-4">Stock Overview</h3>
+                                <div className="d-flex justify-content-between mb-5">
+                                    <h1>Stock Overview</h1>
                                 </div>
                                 {products.length === 0 ? (
                                     <div className="alert alert-info m-4" role="alert">

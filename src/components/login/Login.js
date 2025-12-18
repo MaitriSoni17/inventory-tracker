@@ -35,15 +35,15 @@ function Login(props) {
         setCredentials({ ...credentials, [e.target.name]: e.target.value })
     }
     return (
-        <div className='container-fluid min-vh-100 d-flex align-items-center justify-content-center bg-login'>
-            <div className="scene-container w-75 p-5 d-flex align-items-center justify-content-center rounded-3 shadow-lg">
+        <div className='login-wrapper w-100'>
+            <div className="container-fluid scene-container w-100 min-vh-100 d-flex align-items-center justify-content-center shadow-lg">
 
                 <div className="abstract-shape shape-1"></div>
                 <div className="abstract-shape shape-2"></div>
                 <div className="abstract-shape shape-3"></div>
                 <div className="abstract-shape shape-4"></div>
 
-                <div className="login-card p-5 rounded-5 w-50 my-5 position-relative">
+                <div className="login-card p-4 p-sm-5 rounded-5 position-relative">
 
                     <h1 className="logo-font text-white text-center mb-4 fw-semibold">
                         Inline Tracker
@@ -63,8 +63,9 @@ function Login(props) {
 
                         <div className="mb-4">
                             <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
-                            <div className='input-group mb-3'>
-                                <input type={showPassword ? "text" : "password"} onChange={onChange} className='form-control' name='password' id="password" placeholder="••••••••" required /><i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
+                            <div className='input-group mb-3 bg-white rounded-3 border-1'>
+                                <input type={showPassword ? "text" : "password"} onChange={onChange} className='form-control m-0 p-0' name='password' id="password" placeholder="••••••••" required />
+                                <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} fs-4 text-primary input-group-text bg-white m-0`} onClick={passVisibility}></i>
                             </div>
                         </div>
 

@@ -1,389 +1,217 @@
-/* Modern Login Page - Mobile Responsive */
+html,
+body {
+    margin: 0;
+    /* padding: 0;
+    width: 100%;
+    height: 100%; */
+}
 
-.bg-login {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #7300FF 0%, #5800CC 100%);
-    min-height: 100vh;
+body {
+    font-family: 'Inter', sans-serif;
+    /* background-color: #5500FF;
+    min-height: 100vh; */
+}
+
+.login-wrapper {
+    position: fixed;
+    /* top: 0;
+    left: 0; */
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1000;
 }
 
+/* The overall dark container that holds the scene */
 .scene-container {
-    background: linear-gradient(135deg, #7300FF 0%, #5800CC 100%);
+    background-color: #240046;
     overflow: hidden;
     position: relative;
-    min-height: 100vh;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
 }
 
-/* Abstract floating shapes background */
+/* Custom CSS for the abstract, glowing shapes in the background */
 .abstract-shape {
     position: absolute;
-    opacity: 0.15;
-    filter: blur(60px);
+    opacity: 0.8;
+    filter: blur(50px);
     border-radius: 50%;
+    background: rgba(123, 44, 191, 0.7);
+    /* Lighter purple/magenta */
     z-index: 1;
-    pointer-events: none;
-    animation: floatShape 8s ease-in-out infinite;
+    pointer-events: none; /* allow clicks through decorative shapes */
+    /* Animation for subtle movement (optional but enhances the feel) */
+    animation: moveShape 15s infinite alternate ease-in-out;
 }
 
+/* Specific shapes */
 .shape-1 {
-    width: 400px;
-    height: 400px;
+    width: 300px;
+    height: 300px;
     top: -100px;
     left: -100px;
-    background: rgba(255, 255, 255, 0.3);
-    animation-duration: 10s;
+    background: rgba(76, 0, 255, 0.7);
+    /* Deep blue/violet */
+    animation-duration: 18s;
 }
 
 .shape-2 {
-    width: 300px;
-    height: 300px;
+    width: 250px;
+    height: 250px;
     bottom: -50px;
     right: -50px;
-    background: rgba(255, 255, 255, 0.2);
-    animation-delay: -3s;
-    animation-duration: 12s;
+    background: rgba(175, 80, 255, 0.6);
+    /* Violet */
+    animation-delay: -5s;
 }
 
 .shape-3 {
-    width: 250px;
-    height: 250px;
-    top: 20%;
-    left: 5%;
-    background: rgba(255, 255, 255, 0.1);
-    animation-duration: 14s;
+    width: 150px;
+    height: 150px;
+    top: 50%;
+    left: 10%;
+    background: rgba(123, 44, 191, 0.8);
+    animation-duration: 20s;
 }
 
 .shape-4 {
-    width: 350px;
-    height: 350px;
+    width: 200px;
+    height: 200px;
     bottom: 10%;
-    right: 5%;
-    background: rgba(255, 255, 255, 0.15);
-    animation-delay: -5s;
-    animation-duration: 15s;
+    right: 40%;
+    background: rgba(76, 0, 255, 0.5);
+    animation-delay: -10s;
 }
 
-@keyframes floatShape {
-    0%, 100% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(30px, 30px) scale(1.05); }
-}
-
-/* Login Card */
-.login-card {
-    background-color: white;
-    box-shadow: 0 20px 60px rgba(115, 0, 255, 0.2);
-    z-index: 2;
-    border-radius: 1.5rem;
-    padding: 3rem;
-    width: 100%;
-    max-width: 420px;
-    animation: slideUp 0.5s ease-out;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Style for the logo text */
-.logo-font {
-    font-family: 'Inter', sans-serif;
-    font-size: 2rem;
-    font-weight: 700;
-    color: #7300FF;
-    text-align: center;
-    margin-bottom: 1rem;
-    letter-spacing: -0.5px;
-}
-
-/* Form Styles */
-.login-card .form-group {
-    margin-bottom: 1.5rem;
-}
-
-.login-card .form-label {
-    color: #1F2937;
-    font-weight: 600;
-    font-size: 0.9rem;
-    margin-bottom: 0.6rem;
-    display: block;
-}
-
-.login-card .form-control {
-    background-color: #F9FAFB;
-    border: 2px solid #E5E7EB;
-    color: #1F2937;
-    padding: 0.85rem 1rem;
-    border-radius: 0.75rem;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    width: 100%;
-}
-
-.login-card .form-control::placeholder {
-    color: #9CA3AF;
-}
-
-.login-card .form-control:focus {
-    background-color: white;
-    border-color: #7300FF;
-    box-shadow: 0 0 0 3px rgba(115, 0, 255, 0.1);
-    outline: none;
-    color: #1F2937;
-}
-
-.login-card .btn {
-    width: 100%;
-    padding: 0.9rem;
-    font-weight: 600;
-    border-radius: 0.75rem;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    border: none;
-    cursor: pointer;
-    letter-spacing: 0.3px;
-}
-
-.login-card .btn-primary {
-    background: linear-gradient(135deg, #7300FF, #5800CC);
-    color: white;
-}
-
-.login-card .btn-primary:hover {
-    background: linear-gradient(135deg, #5800CC, #4000AA);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(115, 0, 255, 0.3);
-}
-
-.login-card .btn-primary:active {
-    transform: translateY(0);
-}
-
-/* Link Styles */
-.login-card a {
-    color: #7300FF;
-    text-decoration: none;
-    font-weight: 500;
-    transition: color 0.2s ease;
-}
-
-.login-card a:hover {
-    color: #5800CC;
-}
-
-/* Error Messages */
-.login-card .alert {
-    border-radius: 0.75rem;
-    padding: 1rem;
-    font-size: 0.9rem;
-    margin-bottom: 1rem;
-    border: none;
-}
-
-/* Mobile Responsive Styles */
-@media (max-width: 768px) {
-    .scene-container {
-        padding: 1rem;
-    }
-
-    .login-card {
-        padding: 2rem;
-        max-width: 100%;
-        border-radius: 1rem;
-    }
-
-    .logo-font {
-        font-size: 1.75rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .login-card .form-group {
-        margin-bottom: 1.25rem;
-    }
-
-    .login-card .form-control {
-        padding: 0.75rem 0.85rem;
-        font-size: 16px;
-    }
-
-    .abstract-shape {
-        filter: blur(80px);
-        opacity: 0.08;
-    }
-
+/* Responsive shapes for mobile */
+@media (max-width: 576px) {
     .shape-1 {
-        width: 300px;
-        height: 300px;
-        top: -80px;
-        left: -80px;
+        width: 150px;
+        height: 150px;
+        top: -50px;
+        left: -50px;
     }
 
     .shape-2 {
-        width: 200px;
-        height: 200px;
+        width: 120px;
+        height: 120px;
         bottom: -30px;
         right: -30px;
     }
 
     .shape-3 {
-        display: none;
+        width: 80px;
+        height: 80px;
+        top: 50%;
+        left: 5%;
     }
 
     .shape-4 {
-        display: none;
+        width: 100px;
+        height: 100px;
+        bottom: 10%;
+        right: 30%;
     }
 }
 
-@media (max-width: 480px) {
-    .scene-container {
-        padding: 0.5rem;
+@keyframes moveShape {
+    from {
+        transform: translate(0, 0) rotate(0deg);
     }
 
+    to {
+        transform: translate(20px, 20px) rotate(5deg);
+    }
+}
+
+/* Style for the logo text to mimic the script font */
+.logo-font {
+    font-family: 'Dancing Script', cursive;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
+}
+
+/* Styling the login card for the frosted glass effect (subtle transparency and shadow) */
+.login-card {
+    background-color: rgba(43, 0, 88, 0.75);
+    /* Darker purple, slightly transparent */
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    backdrop-filter: blur(8px);
+    /* Optional: can look good if supported */
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 2; /* ensure the card sits above the decorative shapes */
+    width: 100%;
+    max-width: 500px;
+    min-width: 280px;
+    border-radius: 2rem;
+}
+
+/* Responsive text sizes */
+.login-card h1 {
+    font-size: clamp(1.75rem, 6vw, 2.5rem) !important;
+}
+
+.login-card h2 {
+    font-size: clamp(1rem, 4vw, 1.25rem) !important;
+}
+
+.login-card label {
+    font-size: clamp(0.8rem, 2vw, 0.9rem) !important;
+}
+
+.login-card .form-control {
+    font-size: clamp(0.85rem, 2.5vw, 1rem) !important;
+    padding: 0.5rem 0.75rem !important;
+}
+
+.login-card .btn {
+    font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
+    padding: 0.5rem 1rem !important;
+}
+
+/* Responsive padding for login card */
+@media (max-width: 576px) {
     .login-card {
-        padding: 1.5rem;
-        border-radius: 1rem;
-        margin: 0;
+        padding: 1.5rem !important;
+        min-width: 250px;
     }
 
-    .logo-font {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
+    .login-card h1 {
+        margin-bottom: 1rem !important;
     }
 
-    .login-card .form-group {
-        margin-bottom: 1rem;
+    .login-card h2 {
+        margin-bottom: 1.5rem !important;
     }
 
-    .login-card .form-label {
-        font-size: 0.85rem;
+    .form-control,
+    .input-group {
+        margin-bottom: 0.75rem !important;
     }
 
-    .login-card .form-control {
-        padding: 0.7rem 0.8rem;
-        font-size: 16px;
+    .login-card .mb-3 {
+        margin-bottom: 0.5rem !important;
     }
 
-    .login-card .btn {
-        padding: 0.8rem;
-        font-size: 0.9rem;
+    .login-card .mb-4 {
+        margin-bottom: 0.75rem !important;
     }
 
-    .login-card .alert {
-        font-size: 0.8rem;
-        padding: 0.6rem;
+    .login-card .text-center {
+        font-size: 0.75rem !important;
     }
 }
 
-/* Tablet */
+@media (min-width: 577px) and (max-width: 768px) {
+    .login-card {
+        padding: 2rem !important;
+        max-width: 450px;
+    }
+}
+
 @media (min-width: 769px) {
     .login-card {
-        padding: 2.5rem;
-    }
-
-    .logo-font {
-        font-size: 2.5rem;
-    }
-
-    .login-card .form-control {
-        font-size: 1rem;
-    }
-}
-
-/* Landscape orientation */
-@media (max-height: 600px) {
-    .scene-container {
-        min-height: auto;
-        padding: 0.5rem;
-    }
-
-    .login-card {
-        padding: 1.25rem;
-        max-width: 600px;
-    }
-
-    .logo-font {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .login-card .form-group {
-        margin-bottom: 0.75rem;
-    }
-
-    .abstract-shape {
-        opacity: 0.2;
-    }
-}
-
-/* High Resolution Displays */
-@media (min-width: 1440px) {
-    .login-card {
-        padding: 3rem;
+        padding: 2.5rem !important;
         max-width: 500px;
-    }
-
-    .logo-font {
-        font-size: 3rem;
-        margin-bottom: 2rem;
-    }
-
-    .login-card .form-group {
-        margin-bottom: 2rem;
-    }
-}
-
-/* Touch Device Optimizations */
-@media (hover: none) and (pointer: coarse) {
-    .login-card .btn {
-        min-height: 44px;
-        padding: 0.75rem;
-    }
-
-    .login-card .form-control {
-        min-height: 44px;
-        padding: 0.75rem;
-    }
-
-    .login-card a {
-        min-height: 44px;
-        display: inline-block;
-        padding: 0.5rem 0;
-    }
-}
-
-/* Accessibility */
-@media (prefers-reduced-motion: reduce) {
-    .abstract-shape {
-        animation: none;
-    }
-
-    .login-card,
-    .login-card .btn,
-    .login-card a {
-        transition: none;
-    }
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-    .login-card {
-        background-color: rgba(20, 0, 40, 0.85);
-    }
-
-    .login-card .form-control {
-        background-color: rgba(0, 0, 0, 0.3);
     }
 }

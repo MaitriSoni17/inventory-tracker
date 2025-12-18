@@ -31,6 +31,7 @@ const Category = (props) => {
         return;
       }
       const json = await response.json();
+      console.log("Categories fetched:", json); // Debug: See what's being returned
       setCategories(json);
       setLoading(false);
     } catch (error) {
@@ -81,7 +82,7 @@ const Category = (props) => {
     setSearchTerm(e.target.value);
   }
 
-  const filteredCategories = categories.filter((category) => 
+  const filteredCategories = categories.filter((category) =>
     category.cName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     category.cDesc.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -126,10 +127,12 @@ const Category = (props) => {
     }
   };
 
+
+
   const handleDeleteCategory = async () => {
     if (!selectedCategory) return;
     if (!window.confirm(`Are you sure you want to delete ${selectedCategory.cName}?`)) return;
-    
+
     try {
       const response = await fetch(`http://localhost:5000/api/category/deletecategory/${selectedCategory._id}`, {
         method: 'DELETE',
@@ -158,14 +161,13 @@ const Category = (props) => {
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div className="header-left">
             <h1 className="categories-title mb-3">Categories</h1>
-            <p className="text-muted last-update-text">Last Update 7 Aug, 2025 at 11:00 PM</p>
           </div>
           <button className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
             <i className="bi bi-plus"></i> Add Category
           </button>
         </div>
 
-        <div className="modal fade" id="addCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
+        <div className="modal fade h-auto" id="addCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
           aria-hidden="true">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
@@ -178,11 +180,11 @@ const Category = (props) => {
                 <form>
                   <div className="mb-3">
                     <label htmlFor="categoryName" className="form-label">Category Name</label>
-                    <input type="text" className="form-control shadow-sm" name='cName' id="categoryName" value={categoryDetails.cName} onChange={onChange}/>
+                    <input type="text" className="form-control shadow-sm" name='cName' id="categoryName" value={categoryDetails.cName} onChange={onChange} />
                   </div>
                   <div className="mb-3">
                     <label htmlFor="categoryDesc" className="form-label">Category Description</label>
-                    <input type="text" className="form-control shadow-sm" name='cDesc' id="categoryDesc" value={categoryDetails.cDesc} onChange={onChange}/>
+                    <input type="text" className="form-control shadow-sm" name='cDesc' id="categoryDesc" value={categoryDetails.cDesc} onChange={onChange} />
                   </div>
                 </form>
               </div>
@@ -198,8 +200,8 @@ const Category = (props) => {
           <div className="input-group rounded-pill p-2 search-bar-container shadow">
             <span className="input-group-text search-icon-bg bg-transparent fw-medium text-secondary" id="search-addon"><i
               className="bi bi-search"></i></span>
-            <input type="text" className="form-control search-input bg-transparent fw-medium text-secondary"
-              placeholder="Search categories" aria-label="Search" aria-describedby="search-addon" value={searchTerm} onChange={handleSearch} />
+            <input type="text" className="form-control border-0 shadow-none text-secondary bg-transparent fw-medium text-secondary"
+              placeholder="Search" aria-label="Search" aria-describedby="search-addon" value={searchTerm} onChange={handleSearch} />
           </div>
         </div>
 
@@ -220,11 +222,9 @@ const Category = (props) => {
                     <div className="ps-3 pb-3 pe-3">
                       <h5 className="card-title mb-1">{category.cName}</h5>
                       <p className="card-text text-muted">{category.cDesc}</p>
-                      <div className="category-actions mt-2">
-                        <a href="/" className="icon-link me-3" onClick={(e) => {e.preventDefault(); handleShowCategory(category);}} data-bs-toggle="modal" data-bs-target="#editCategoryModal">
-                          <i className="bi bi-pencil-square edit-icon"></i></a>
-                        <a href="/" className="icon-link" onClick={(e) => {e.preventDefault(); handleShowCategory(category); handleDeleteCategory();}}><i className="bi bi-trash-fill delete-icon"></i></a>
-                      </div>
+                      <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); handleShowCategory(category); }} data-bs-toggle="modal" data-bs-target="#editCategoryModal">
+                        <i className="bi bi-pencil-square text-secondary fs-5 m-1"></i></a>
+                      <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); handleShowCategory(category); handleDeleteCategory(); }}><i className="bi bi-trash-fill text-danger fs-5 m-1"></i></a>
                     </div>
                   </div>
                 </div>
@@ -237,7 +237,7 @@ const Category = (props) => {
           )}
         </div>
 
-        <div className="modal fade" id="descCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
+        <div className="modal fade h-auto" id="descCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
           aria-hidden="true">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
@@ -258,7 +258,7 @@ const Category = (props) => {
           </div>
         </div>
 
-        <div className="modal fade" id="editCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
+        <div className="modal fade h-auto" id="editCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
           aria-hidden="true">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
@@ -288,7 +288,7 @@ const Category = (props) => {
           </div>
         </div>
 
-        </div>
+      </div>
     </>
   )
 }

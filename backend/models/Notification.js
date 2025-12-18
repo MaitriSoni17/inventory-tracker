@@ -75,8 +75,7 @@ const NotificationSchema = new Schema({
   },
   createdAt: {
     type: Date,
-    default: Date.now,
-    index: true
+    default: Date.now
   }
 });
 

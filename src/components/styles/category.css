@@ -265,3 +265,25 @@
         color: #b0b8c1;
     }
 }
+
+/* --- Modal Styling --- */
+.modal-content {
+    background-color: transparent !important;
+    border: none;
+    box-shadow: none;
+}
+
+.modal-header {
+    background-color: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-body {
+    background-color: transparent;
+    color: #212529;
+}
+
+.modal-footer {
+    background-color: transparent;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
