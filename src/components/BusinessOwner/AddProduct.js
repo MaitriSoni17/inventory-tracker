@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
 const AddProduct = (props) => {
     const [productDetails, setProductDetails] = useState({
@@ -13,6 +13,62 @@ const AddProduct = (props) => {
         desc: '',
     });
     const [uploadedImages, setUploadedImages] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
+    const [loadingWarehouses, setLoadingWarehouses] = useState(true);
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
+
+    useEffect(() => {
+        const fetchWarehouses = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch warehouses');
+                    setLoadingWarehouses(false);
+                    return;
+                }
+                const warehouseList = await response.json();
+                setWarehouses(warehouseList);
+            } catch (error) {
+                console.error('Error fetching warehouses:', error);
+            } finally {
+                setLoadingWarehouses(false);
+            }
+        };
+        fetchWarehouses();
+    }, []);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch categories');
+                    setLoadingCategories(false);
+                    return;
+                }
+                const categoryList = await response.json();
+                setCategories(categoryList);
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
+        fetchCategories();
+    }, []);
     const handleSubmit = async (e) => {
         e.preventDefault();
         const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc } = productDetails;
@@ -125,7 +181,7 @@ const AddProduct = (props) => {
     };
     return (
         <>
-            <div className="container-fluid p-4">
+            <div className="container-fluid p-5">
                 <div className="row mb-4">
                     <div className="col-12">
                         <h1 className="display-5 fw-normal">Add Product</h1>
@@ -133,8 +189,8 @@ const AddProduct = (props) => {
                 </div>
 
                 <form className="needs-validation" onSubmit={handleSubmit}>
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
+                    <div className="row">
+                        <div className="col-md-3 mt-2">
                             <label htmlFor="productName" className="form-label fw-semibold">Product Name</label>
                             <input type="text" className="form-control mt-3" id="productName" name="name" placeholder="" value={productDetails.name} onChange={onChange} />
                             <div className="invalid-feedback">
@@ -150,11 +206,17 @@ const AddProduct = (props) => {
                             </div>
                             <div className="col mt-4">
                                 <label htmlFor="warehouse" className="form-label fw-semibold">Warehouse</label>
-                                <select className="form-select mt-3" id="warehouse" name="warehouse" value={productDetails.warehouse} onChange={onChange}>
-                                    <option value="" disabled>Select Warehouse</option>
-                                    <option>Warehouse A</option>
-                                    <option>Warehouse B</option>
-                                </select>
+                                <div className="d-flex gap-2 align-items-end">
+                                    <div style={{ flex: 1 }}>
+                                        <select className="form-select mt-2" id="warehouse" name="warehouse" value={productDetails.warehouse} onChange={onChange} disabled={loadingWarehouses}>
+                                            <option value="" disabled>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouse'}</option>
+                                            {warehouses.map((warehouse) => (
+                                                <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <a href="/dashboard/warehouses" className="btn btn-sm btn-custom-purple text-decoration-none" title="Add new warehouse">+</a>
+                                </div>
                                 <div className="invalid-feedback">
                                     Please select a warehouse.
                                 </div>
@@ -162,12 +224,17 @@ const AddProduct = (props) => {
                         </div>
                         <div className="col-md-4">
                             <label htmlFor="productCategory" className="form-label fw-semibold">Product Category</label>
-                            <select className="form-select mt-3" id="productCategory" name="category" value={productDetails.category} onChange={onChange}>
-                                <option value="" disabled>Select Category</option>
-                                <option>Electronics</option>
-                                <option>Clothing</option>
-                                <option>Books</option>
-                            </select>
+                            <div className="d-flex gap-2 align-items-end">
+                                <div style={{ flex: 1 }}>
+                                    <select className="form-select mt-3" id="productCategory" name="category" value={productDetails.category} onChange={onChange} disabled={loadingCategories}>
+                                        <option value="" disabled>{loadingCategories ? 'Loading categories...' : 'Select Category'}</option>
+                                        {categories.map((category) => (
+                                            <option key={category._id} value={category._id}>{category.cName}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <a href="/dashboard/category" className="btn btn-sm btn-custom-purple text-decoration-none" title="Add new category">+</a>
+                            </div>
                             <div className="invalid-feedback">
                                 Please select a category.
                             </div>
@@ -189,7 +256,7 @@ const AddProduct = (props) => {
 
                         </div>
 
-                        <div className="col-md-4">
+                        <div className="col-md-4 ms-5">
                             <label htmlFor="productImages" className="form-label fw-semibold">Add Multiple Images</label>
                             <div
                                 className="image-upload-area text-center d-flex flex-column justify-content-center align-items-center shadow p-3 rounded-4 mt-3"
@@ -233,7 +300,7 @@ const AddProduct = (props) => {
                             </div>
                         </div>
 
-                        <div className="col-md-4 mt-4">
+                        <div className="col-md-5 mt-4">
                             <label htmlFor="manufacturingDate" className="form-label fw-semibold">Manufacturing Date</label>
                             <div className="input-group mt-3">
                                 <input type="date" className="form-control" id="manufacturingDate" name="mDate" placeholder="DD/MM/YYYY"
@@ -244,7 +311,7 @@ const AddProduct = (props) => {
                             </div>
                         </div>
 
-                        <div className="col-md-4 mt-4">
+                        <div className="col-md-5 mt-4">
                             <label htmlFor="expiringDate" className="form-label fw-semibold">Expiring Date</label>
                             <div className="input-group mt-3">
                                 <input type="date" className="form-control" id="expiringDate" name="eDate" placeholder="DD/MM/YYYY"
@@ -268,8 +335,8 @@ const AddProduct = (props) => {
 
                     <div className="row mt-4">
                         <div className="col-12 d-flex justify-content-start">
-                            <input type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm" value="Add Product" />
-                            <a href="/dashboard/products" className="btn btn-secondary btn-lg shadow-sm">Cancel</a>
+                            <input type="submit" className="btn btn-custom-purple text-decoration-none btn-lg me-3 shadow-sm" value="Add Product" />
+                            <a href="/dashboard/products" className="btn btn-secondary btn-lg shadow-sm text-decoration-none">Cancel</a>
                         </div>
                     </div>
                 </form>

@@ -223,19 +223,18 @@ const EditEmployee = (props) => {
                 </div>
 
                 <form className="needs-validation" onSubmit={handleSubmit} noValidate>
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-12 text-center mb-4">
-                            <div className="mb-3">
-                                {formData.imagePreview ? (
-                                    <img src={formData.imagePreview} alt="Preview" className="rounded-circle" width="150" height="150" style={{ objectFit: 'cover', border: '3px solid #ccc' }} />
-                                ) : formData.currentImage ? (
-                                    <img src={getImageUrl(formData.currentImage)} alt="Current" className="rounded-circle" width="150" height="150" style={{ objectFit: 'cover', border: '3px solid #ccc' }} onError={(e) => { e.target.style.display = 'none'; }} />
-                                ) : (
-                                    <div className="rounded-circle d-flex align-items-center justify-content-center" width="150" height="150" style={{ width: '150px', height: '150px', border: '3px solid #ccc', backgroundColor: '#f0f0f0' }}>
-                                        <i className="bi bi-person-fill fs-1 text-secondary"></i>
-                                    </div>
-                                )}
-                            </div>
+                    {/* Profile Photo Card */}
+                    <div className="mb-5 text-center">
+                        <div className="d-inline-block position-relative">
+                            {formData.imagePreview ? (
+                                <img src={formData.imagePreview} alt="Preview" className="rounded-2" width="120" height="120" style={{ objectFit: 'cover', display: 'block', boxShadow: '0 10px 30px rgba(115, 0, 255, 0.15)', border: '1px solid rgba(115, 0, 255, 0.1)' }} />
+                            ) : formData.currentImage ? (
+                                <img src={getImageUrl(formData.currentImage)} alt="Current" className="rounded-2" width="120" height="120" style={{ objectFit: 'cover', display: 'block', boxShadow: '0 10px 30px rgba(115, 0, 255, 0.15)', border: '1px solid rgba(115, 0, 255, 0.1)' }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            ) : (
+                                <div className="rounded-2 d-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px', backgroundColor: 'linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%)', border: '1px solid rgba(115, 0, 255, 0.08)', boxShadow: '0 10px 30px rgba(115, 0, 255, 0.08)' }}>
+                                    <i className="bi bi-person fs-2 text-muted" style={{ color: '#a8adc7' }}></i>
+                                </div>
+                            )}
                             <input
                                 type="file"
                                 ref={imageInputRef}
@@ -243,112 +242,138 @@ const EditEmployee = (props) => {
                                 accept="image/*"
                                 style={{ display: 'none' }}
                             />
-                            <button type="button" className="btn btn-sm btn-custom-purple me-2" onClick={handleImageClick}>
-                                <i className="bi bi-camera me-1"></i> Change Photo
+                            <button 
+                                type="button" 
+                                className="btn btn-sm btn-custom-purple rounded-circle position-absolute bottom-0 end-0"
+                                onClick={handleImageClick}
+                                style={{ width: '40px', height: '40px', padding: '0' }}
+                            >
+                                <i className="bi bi-camera-fill"></i>
                             </button>
-                            {(formData.imagePreview || formData.currentImage) && (
-                                <button type="button" className="btn btn-sm btn-danger" onClick={removeImage}>
-                                    <i className="bi bi-trash me-1"></i> Remove
+                        </div>
+                        {(formData.imagePreview || formData.currentImage) && (
+                            <div className="mt-3">
+                                <button type="button" className="btn btn-sm btn-outline-danger rounded-2" onClick={removeImage}>
+                                    <i className="bi bi-trash me-1"></i>Remove Photo
                                 </button>
-                            )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Personal Information Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Personal Information</h5>
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="fname" className="form-label fw-semibold mb-2">First Name *</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="fname" placeholder="Enter first name" value={formData.fname} onChange={handleChange} required />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="lname" className="form-label fw-semibold mb-2">Last Name</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="lname" placeholder="Enter last name" value={formData.lname} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="email" className="form-label fw-semibold mb-2">Email *</label>
+                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required disabled />
+                                </div>
+                            </div>
+                            <div className="d-flex gap-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="phone" className="form-label fw-semibold mb-2">Phone</label>
+                                    <input type="number" className="form-control rounded-3 shadow-sm" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="gender" className="form-label fw-semibold mb-2">Gender</label>
+                                    <select className="form-select rounded-3 shadow-sm" id="gender" value={formData.gender} onChange={handleChange}>
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="birthDate" className="form-label fw-semibold mb-2">Birth Date</label>
+                                    <input type="date" className="form-control rounded-3 shadow-sm" id="birthDate" value={formData.birthDate} onChange={handleChange} />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="fname" className="form-label fw-semibold">First Name *</label>
-                            <input type="text" className="form-control mt-3" id="fname" placeholder="Enter first name" value={formData.fname} onChange={handleChange} required />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="lname" className="form-label fw-semibold">Last Name</label>
-                            <input type="text" className="form-control mt-3" id="lname" placeholder="Enter last name" value={formData.lname} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="email" className="form-label fw-semibold">Email *</label>
-                            <input type="email" className="form-control mt-3" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required disabled />
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="phone" className="form-label fw-semibold">Phone</label>
-                            <input type="number" className="form-control mt-3" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="gender" className="form-label fw-semibold">Gender</label>
-                            <select className="form-select mt-3" id="gender" value={formData.gender} onChange={handleChange}>
-                                <option value="">Select Gender</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="role" className="form-label fw-semibold">Role</label>
-                            <select className="form-select mt-3" id="role" value={formData.role} onChange={handleChange}>
-                                <option value="">Select Role</option>
-                                <option value="employee">Employee</option>
-                                <option value="manager">Manager</option>
-                                <option value="supervisor">Supervisor</option>
-                            </select>
+                    {/* Employment Information Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Employment Information</h5>
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="jDate" className="form-label fw-semibold mb-2">Joining Date</label>
+                                    <input type="date" className="form-control rounded-3 shadow-sm" id="jDate" value={formData.jDate} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="role" className="form-label fw-semibold mb-2">Role</label>
+                                    <select className="form-select rounded-3 shadow-sm" id="role" value={formData.role} onChange={handleChange}>
+                                        <option value="">Select Role</option>
+                                        <option value="employee">Employee</option>
+                                        <option value="manager">Manager</option>
+                                        <option value="supervisor">Supervisor</option>
+                                    </select>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="hireAt" className="form-label fw-semibold mb-2">Hire Location</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="hireAt" placeholder="Enter hire location" value={formData.hireAt} onChange={handleChange} />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="birthDate" className="form-label fw-semibold">Birth Date</label>
-                            <input type="date" className="form-control text-secondary mt-3" id="birthDate" value={formData.birthDate} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="jDate" className="form-label fw-semibold">Joining Date</label>
-                            <input type="date" className="form-control text-secondary mt-3" id="jDate" value={formData.jDate} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="hireAt" className="form-label fw-semibold">Hire Location</label>
-                            <input type="text" className="form-control mt-3" id="hireAt" placeholder="Enter hire location" value={formData.hireAt} onChange={handleChange} />
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="nationality" className="form-label fw-semibold">Nationality</label>
-                            <input type="text" className="form-control mt-3" id="nationality" placeholder="Enter nationality" value={formData.nationality} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="country" className="form-label fw-semibold">Country</label>
-                            <input type="text" className="form-control mt-3" id="country" placeholder="Enter country" value={formData.country} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="state" className="form-label fw-semibold">State</label>
-                            <input type="text" className="form-control mt-3" id="state" placeholder="Enter state" value={formData.state} onChange={handleChange} />
+                    {/* Location Information Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Location Information</h5>
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="nationality" className="form-label fw-semibold mb-2">Nationality</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="nationality" placeholder="Enter nationality" value={formData.nationality} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="country" className="form-label fw-semibold mb-2">Country</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="country" placeholder="Enter country" value={formData.country} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="state" className="form-label fw-semibold mb-2">State</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="state" placeholder="Enter state" value={formData.state} onChange={handleChange} />
+                                </div>
+                            </div>
+                            <div className="d-flex gap-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="city" className="form-label fw-semibold mb-2">City</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="city" placeholder="Enter city" value={formData.city} onChange={handleChange} />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="city" className="form-label fw-semibold">City</label>
-                            <input type="text" className="form-control mt-3" id="city" placeholder="Enter city" value={formData.city} onChange={handleChange} />
+                    {/* Additional Information Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Additional Information</h5>
+                            <div className="row g-4 mb-4">
+                                <div className="col-md-12">
+                                    <label htmlFor="address" className="form-label fw-semibold mb-2">Address</label>
+                                    <textarea className="form-control rounded-3 shadow-sm" id="address" rows="3" placeholder="Enter address" value={formData.address} onChange={handleChange}></textarea>
+                                </div>
+                                <div className="col-md-12">
+                                    <label htmlFor="about" className="form-label fw-semibold mb-2">About/Bio</label>
+                                    <textarea className="form-control rounded-3 shadow-sm" id="about" rows="3" placeholder="Enter about/bio" value={formData.about} onChange={handleChange}></textarea>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="row g-4 mb-4">
-                        <div className="col-12">
-                            <label htmlFor="address" className="form-label fw-semibold">Address</label>
-                            <textarea className="form-control mt-3" id="address" rows="3" placeholder="Enter address" value={formData.address} onChange={handleChange}></textarea>
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-12">
-                            <label htmlFor="about" className="form-label fw-semibold">About</label>
-                            <textarea className="form-control mt-3" id="about" rows="3" placeholder="Enter about/bio" value={formData.about} onChange={handleChange}></textarea>
-                        </div>
-                    </div>
-
-                    <div className="row mt-5">
-                        <div className="col-12 d-flex justify-content-start">
-                            <button type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm">Update Employee</button>
-                            <button type="button" className="btn btn-secondary btn-lg shadow-sm" onClick={handleCancel}>Cancel</button>
+                    <div className="row mt-4 ms-1">
+                        <div className="col-12 d-flex gap-3 justify-content-start">
+                            <button type="submit" className="btn btn-custom-purple btn-lg rounded-3 px-5 shadow-sm">Update Employee</button>
+                            <button type="button" className="btn btn-outline-secondary btn-lg rounded-3 px-5 shadow-sm" onClick={handleCancel}>Cancel</button>
                         </div>
                     </div>
                 </form>

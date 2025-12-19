@@ -350,7 +350,7 @@ const Settings = (props) => {
         {/* Header */}
         <div className="settings-header">
           <div className="settings-header-content">
-            <h1 className="settings-title">Settings</h1>
+            <h1 className="settings-title text-white">Settings</h1>
             <p className="settings-subtitle">Manage your profile, company, and preferences</p>
           </div>
         </div>

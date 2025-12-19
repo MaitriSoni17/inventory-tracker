@@ -61,10 +61,9 @@
 
 .btn-custom-purple:hover {
     background-color: var(--custom-purple-light);
-    border-color: var(--custom-purple-light);
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(123, 62, 188, 0.25);
+    /* box-shadow: 0 4px 12px rgba(123, 62, 188, 0.25); */
 }
 
 /* --- Filter Dropdown --- */

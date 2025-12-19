@@ -113,25 +113,25 @@ function AddSupplierOrder(props) {
 
     return (
         <>
-            <div className="container-fluid py-4">
-                <div className="row mb-4 mx-3">
-                    <div className="col-12">
-                        <h1 className="display-5 fw-normal">Add Supplier Order</h1>
-                        <p className="text-muted">Supplier: {supplierName}</p>
-                    </div>
+            <div className="container-fluid p-5">
+                <div className="mb-5">
+                    <h1 className="display-5 fw-semibold mb-1">Add Supplier Order</h1>
+                    <p className="text-muted">Supplier: <span className="fw-semibold text-dark">{supplierName}</span></p>
                 </div>
 
-                <div className="row mx-3">
-                    <div className="col-lg-8">
-                        <div className="card shadow-sm">
-                            <div className="card-body p-4">
-                                <form onSubmit={handleSubmit}>
-                                    <div className="row mb-3">
-                                        <div className="col-md-6">
-                                            <label htmlFor="pName" className="form-label fw-500">Product Name <span className="text-danger">*</span></label>
+                <div className="row g-4">
+                    <div className="col-lg-7">
+                        <form onSubmit={handleSubmit}>
+                            {/* Product Information Card */}
+                            <div className="card border-0 shadow-sm mb-4 rounded-4">
+                                <div className="card-body p-5">
+                                    <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Product Information</h6>
+                                    <div className="d-flex gap-4">
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="pName" className="form-label fw-semibold mb-2">Product Name *</label>
                                             <input 
                                                 type="text" 
-                                                className="form-control" 
+                                                className="form-control rounded-3 shadow-sm" 
                                                 id="pName"
                                                 name="pName"
                                                 value={orderDetails.pName}
@@ -140,10 +140,10 @@ function AddSupplierOrder(props) {
                                                 required
                                             />
                                         </div>
-                                        <div className="col-md-6">
-                                            <label htmlFor="category" className="form-label fw-500">Category <span className="text-danger">*</span></label>
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="category" className="form-label fw-semibold mb-2">Category *</label>
                                             <select 
-                                                className="form-control" 
+                                                className="form-select rounded-3 shadow-sm" 
                                                 id="category"
                                                 name="category"
                                                 value={orderDetails.category}
@@ -156,14 +156,11 @@ function AddSupplierOrder(props) {
                                                 ))}
                                             </select>
                                         </div>
-                                    </div>
-
-                                    <div className="row mb-3">
-                                        <div className="col-md-6">
-                                            <label htmlFor="amount" className="form-label fw-500">Amount (₹) <span className="text-danger">*</span></label>
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="amount" className="form-label fw-semibold mb-2">Amount (₹) *</label>
                                             <input 
                                                 type="number" 
-                                                className="form-control" 
+                                                className="form-control rounded-3 shadow-sm" 
                                                 id="amount"
                                                 name="amount"
                                                 value={orderDetails.amount}
@@ -174,11 +171,20 @@ function AddSupplierOrder(props) {
                                                 required
                                             />
                                         </div>
-                                        <div className="col-md-6">
-                                            <label htmlFor="ounits" className="form-label fw-500">Units <span className="text-danger">*</span></label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Order Details Card */}
+                            <div className="card border-0 shadow-sm mb-4 rounded-4">
+                                <div className="card-body p-5">
+                                    <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Order Details</h6>
+                                    <div className="d-flex gap-4 mb-4">
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="ounits" className="form-label fw-semibold mb-2">Units *</label>
                                             <input 
                                                 type="number" 
-                                                className="form-control" 
+                                                className="form-control rounded-3 shadow-sm" 
                                                 id="ounits"
                                                 name="ounits"
                                                 value={orderDetails.ounits}
@@ -188,14 +194,11 @@ function AddSupplierOrder(props) {
                                                 required
                                             />
                                         </div>
-                                    </div>
-
-                                    <div className="row mb-3">
-                                        <div className="col-md-6">
-                                            <label htmlFor="oDate" className="form-label fw-500">Order Date <span className="text-danger">*</span></label>
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="oDate" className="form-label fw-semibold mb-2">Order Date *</label>
                                             <input 
                                                 type="date" 
-                                                className="form-control" 
+                                                className="form-control rounded-3 shadow-sm" 
                                                 id="oDate"
                                                 name="oDate"
                                                 value={orderDetails.oDate}
@@ -203,11 +206,11 @@ function AddSupplierOrder(props) {
                                                 required
                                             />
                                         </div>
-                                        <div className="col-md-6">
-                                            <label htmlFor="dDate" className="form-label fw-500">Delivery Date <span className="text-danger">*</span></label>
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="dDate" className="form-label fw-semibold mb-2">Delivery Date *</label>
                                             <input 
                                                 type="date" 
-                                                className="form-control" 
+                                                className="form-control rounded-3 shadow-sm" 
                                                 id="dDate"
                                                 name="dDate"
                                                 value={orderDetails.dDate}
@@ -216,12 +219,11 @@ function AddSupplierOrder(props) {
                                             />
                                         </div>
                                     </div>
-
-                                    <div className="row mb-3">
-                                        <div className="col-md-4">
-                                            <label htmlFor="status" className="form-label fw-500">Status</label>
+                                    <div className="d-flex gap-4">
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="status" className="form-label fw-semibold mb-2">Status</label>
                                             <select 
-                                                className="form-control" 
+                                                className="form-select rounded-3 shadow-sm" 
                                                 id="status"
                                                 name="status"
                                                 value={orderDetails.status}
@@ -232,10 +234,10 @@ function AddSupplierOrder(props) {
                                                 <option value="Cancelled">Cancelled</option>
                                             </select>
                                         </div>
-                                        <div className="col-md-4">
-                                            <label htmlFor="pAvail" className="form-label fw-500">Product Availability</label>
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="pAvail" className="form-label fw-semibold mb-2">Availability</label>
                                             <select 
-                                                className="form-control" 
+                                                className="form-select rounded-3 shadow-sm" 
                                                 id="pAvail"
                                                 name="pAvail"
                                                 value={orderDetails.pAvail}
@@ -246,10 +248,10 @@ function AddSupplierOrder(props) {
                                                 <option value="Coming Soon">Coming Soon</option>
                                             </select>
                                         </div>
-                                        <div className="col-md-4">
-                                            <label htmlFor="dStatus" className="form-label fw-500">Delivery Status</label>
+                                        <div style={{ flex: 1 }}>
+                                            <label htmlFor="dStatus" className="form-label fw-semibold mb-2">Delivery Status</label>
                                             <select 
-                                                className="form-control" 
+                                                className="form-select rounded-3 shadow-sm" 
                                                 id="dStatus"
                                                 name="dStatus"
                                                 value={orderDetails.dStatus}
@@ -262,68 +264,87 @@ function AddSupplierOrder(props) {
                                             </select>
                                         </div>
                                     </div>
-
-                                    <div className="mb-3">
-                                        <label htmlFor="desc" className="form-label fw-500">Description</label>
-                                        <textarea 
-                                            className="form-control" 
-                                            id="desc"
-                                            name="desc"
-                                            value={orderDetails.desc}
-                                            onChange={handleInputChange}
-                                            placeholder="Enter order description (optional)"
-                                            rows="4"
-                                        ></textarea>
-                                    </div>
-
-                                    <div className="d-flex gap-2">
-                                        <button type="submit" className="btn btn-custom-purple"> Create Order
-                                        </button>
-                                        <button type="button" className="btn btn-secondary" onClick={() => navigate(`/dashboard/supplierordes/${id}`)}>
-                                             Cancel
-                                        </button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
-                        </div>
+
+                            {/* Additional Information Card */}
+                            <div className="card border-0 shadow-sm mb-4 rounded-4">
+                                <div className="card-body p-5">
+                                    <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Additional Information</h6>
+                                    <label htmlFor="desc" className="form-label fw-semibold mb-2">Description</label>
+                                    <textarea 
+                                        className="form-control rounded-3 shadow-sm" 
+                                        id="desc"
+                                        name="desc"
+                                        value={orderDetails.desc}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter order description (optional)"
+                                        rows="3"
+                                    ></textarea>
+                                </div>
+                            </div>
+
+                            <div className="d-flex gap-2">
+                                <button type="submit" className="btn btn-custom-purple btn-lg px-5">Create Order</button>
+                                <button type="button" className="btn btn-outline-secondary btn-lg px-5" onClick={() => navigate(`/dashboard/supplierordes/${id}`)}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
                     </div>
 
+                    {/* Order Summary Sidebar */}
                     <div className="col-lg-4">
-                        <div className="card shadow-sm">
-                            <div className="card-body">
-                                <h5 className="card-title mb-3">Order Summary</h5>
-                                <div className="mb-3">
+                        <div className="card border-0 shadow-sm rounded-4 sticky-top" style={{ top: '20px' }}>
+                            <div className="card-body p-4">
+                                <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Order Summary</h6>
+                                
+                                <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                     <small className="text-muted">Supplier</small>
-                                    <p className="mb-0">{supplierName}</p>
+                                    <p className="mb-0 fw-semibold">{supplierName}</p>
                                 </div>
+
                                 {orderDetails.pName && (
-                                    <div className="mb-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                         <small className="text-muted">Product</small>
-                                        <p className="mb-0">{orderDetails.pName}</p>
+                                        <p className="mb-0 fw-semibold">{orderDetails.pName}</p>
                                     </div>
                                 )}
-                                {orderDetails.amount && (
-                                    <div className="mb-3">
-                                        <small className="text-muted">Total Amount</small>
-                                        <p className="mb-0 fs-5 fw-bold">₹{parseFloat(orderDetails.amount).toLocaleString('en-IN')}</p>
+
+                                {orderDetails.category && (
+                                    <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                                        <small className="text-muted">Category</small>
+                                        <p className="mb-0 fw-semibold">{orderDetails.category}</p>
                                     </div>
                                 )}
+
                                 {orderDetails.ounits && (
-                                    <div className="mb-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                         <small className="text-muted">Units</small>
-                                        <p className="mb-0">{orderDetails.ounits}</p>
+                                        <p className="mb-0 fw-semibold">{orderDetails.ounits}</p>
                                     </div>
                                 )}
+
+                                {orderDetails.amount && (
+                                    <div className="p-3 bg-light rounded-3 mb-3">
+                                        <div className="d-flex justify-content-between align-items-center">
+                                            <small className="text-muted fw-semibold">Total Amount</small>
+                                            <p className="mb-0 fs-5 fw-bold" style={{ color: '#7300FF' }}>₹{parseFloat(orderDetails.amount).toLocaleString('en-IN')}</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {orderDetails.oDate && (
-                                    <div className="mb-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
                                         <small className="text-muted">Order Date</small>
-                                        <p className="mb-0">{new Date(orderDetails.oDate).toLocaleDateString('en-IN')}</p>
+                                        <p className="mb-0 fw-semibold">{new Date(orderDetails.oDate).toLocaleDateString('en-IN')}</p>
                                     </div>
                                 )}
+
                                 {orderDetails.dDate && (
-                                    <div className="mb-3">
+                                    <div className="d-flex justify-content-between align-items-center">
                                         <small className="text-muted">Delivery Date</small>
-                                        <p className="mb-0">{new Date(orderDetails.dDate).toLocaleDateString('en-IN')}</p>
+                                        <p className="mb-0 fw-semibold">{new Date(orderDetails.dDate).toLocaleDateString('en-IN')}</p>
                                     </div>
                                 )}
                             </div>

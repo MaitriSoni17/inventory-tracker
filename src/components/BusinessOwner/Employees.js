@@ -243,11 +243,11 @@ const Employees = (props) => {
         <>
             <div className="container-fluid p-4">
                 <div className="row mb-3 mx-3">
-                    <div className="col-9 py-3">
+                    <div className="col-8 py-3 me-5">
                         <h1 className="display-5 fw-normal mb-3">Employees</h1>
                         <p className="text-muted">Total Employees: {stats.totalEmployees}</p>
                     </div>
-                    <div className="col-3 d-flex justify-content-end align-items-end pb-3">
+                    <div className="col-3 ms-5 d-flex justify-content-end align-items-end pb-3">
                         <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
@@ -255,7 +255,7 @@ const Employees = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link className="btn btn-custom-purple shadow-sm mb-2" to="/dashboard/createemployee">
+                        <Link className="btn btn-custom-purple shadow-sm mb-2 text-decoration-none" to="/dashboard/createemployee">
                             <i className="bi bi-plus-lg me-1"></i> Add Employee
                         </Link>
                     </div>
@@ -276,7 +276,7 @@ const Employees = (props) => {
                         <small className="text-secondary fs-4">Filters</small>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
+                        <select className="shadow border border-2 pe-4 form-select custom-select-filter" value={filterRole} onChange={(e) => setFilterRole(e.target.value)}>
                             <option value="">All Roles</option>
                             <option value="employee">Employee</option>
                             <option value="manager">Manager</option>

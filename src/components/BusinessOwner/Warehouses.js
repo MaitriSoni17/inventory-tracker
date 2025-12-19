@@ -350,7 +350,7 @@ const Warehouses = (props) => {
                 {/* Add Warehouse Modal */}
                 {showAddModal && (
                     <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                        <div className="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                             <div className="modal-content">
                                 <div className="modal-header">
                                     <h1 className="modal-title fs-3">Add Warehouse</h1>
@@ -358,51 +358,51 @@ const Warehouses = (props) => {
                                 </div>
                                 <div className="modal-body p-4">
                                     <form onSubmit={handleAddWarehouse}>
-                                        <div className="row g-4">
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wName" className="form-label">Warehouse Name *</label>
-                                                <input type="text" className="form-control custom-input shadow" id="wName" name="wName" 
+                                        <div className="row g-3">
+                                            <div className="col-12">
+                                                <label htmlFor="wName" className="form-label fw-semibold mb-2">Warehouse Name *</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="wName" name="wName" 
                                                     value={warehouseForm.wName} onChange={handleInputChange} required />
                                             </div>
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wManager" className="form-label">Warehouse Manager *</label>
-                                                <input type="text" className="form-control custom-input shadow" id="wManager" name="wManager"
+                                            <div className="col-12">
+                                                <label htmlFor="wManager" className="form-label fw-semibold mb-2">Warehouse Manager *</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="wManager" name="wManager"
                                                     value={warehouseForm.wManager} onChange={handleInputChange} required />
                                             </div>
                                             <div className="col-12">
-                                                <label htmlFor="wAddress" className="form-label">Warehouse Address *</label>
-                                                <input type="text" className="form-control custom-input shadow" id="wAddress" name="wAddress"
-                                                    value={warehouseForm.wAddress} onChange={handleInputChange} required />
-                                            </div>
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wContact" className="form-label">Contact Number *</label>
-                                                <input type="tel" className="form-control custom-input shadow" id="wContact" name="wContact"
+                                                <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
+                                                <input type="tel" className="form-control rounded-3 shadow-sm" id="wContact" name="wContact"
                                                     value={warehouseForm.wContact} onChange={handleInputChange} required />
                                             </div>
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wEmail" className="form-label">Email *</label>
-                                                <input type="email" className="form-control custom-input shadow" id="wEmail" name="wEmail"
+                                            <div className="col-12">
+                                                <label htmlFor="wEmail" className="form-label fw-semibold mb-2">Email *</label>
+                                                <input type="email" className="form-control rounded-3 shadow-sm" id="wEmail" name="wEmail"
                                                     value={warehouseForm.wEmail} onChange={handleInputChange} required />
                                             </div>
-                                            <div className="col-12 col-md-4">
-                                                <label htmlFor="city" className="form-label">City</label>
-                                                <input type="text" className="form-control custom-input shadow" id="city" name="city"
+                                            <div className="col-12">
+                                                <label htmlFor="city" className="form-label fw-semibold mb-2">City</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="city" name="city"
                                                     value={warehouseForm.city} onChange={handleInputChange} />
                                             </div>
-                                            <div className="col-12 col-md-4">
-                                                <label htmlFor="state" className="form-label">State</label>
-                                                <input type="text" className="form-control custom-input shadow" id="state" name="state"
+                                            <div className="col-12">
+                                                <label htmlFor="state" className="form-label fw-semibold mb-2">State</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="state" name="state"
                                                     value={warehouseForm.state} onChange={handleInputChange} />
                                             </div>
-                                            <div className="col-12 col-md-4">
-                                                <label htmlFor="country" className="form-label">Country</label>
-                                                <input type="text" className="form-control custom-input shadow" id="country" name="country"
+                                            <div className="col-12">
+                                                <label htmlFor="country" className="form-label fw-semibold mb-2">Country</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="country" name="country"
                                                     value={warehouseForm.country} onChange={handleInputChange} />
                                             </div>
+                                            <div className="col-12">
+                                                <label htmlFor="wAddress" className="form-label fw-semibold mb-2">Warehouse Address *</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="wAddress" name="wAddress"
+                                                    value={warehouseForm.wAddress} onChange={handleInputChange} required />
+                                            </div>
                                         </div>
-                                        <div className="modal-footer justify-content-start p-3 mt-4">
-                                            <button type="submit" className="btn btn-custom-purple">Add Warehouse</button>
-                                            <button type="button" className="btn btn-secondary" onClick={() => { setShowAddModal(false); resetForm(); }}>Close</button>
+                                        <div className="d-flex gap-2 mt-4">
+                                            <button type="submit" className="btn btn-custom-purple btn-lg">Add Warehouse</button>
+                                            <button type="button" className="btn btn-outline-secondary btn-lg" onClick={() => { setShowAddModal(false); resetForm(); }}>Close</button>
                                         </div>
                                     </form>
                                 </div>
@@ -422,51 +422,51 @@ const Warehouses = (props) => {
                                 </div>
                                 <div className="modal-body p-4">
                                     <form onSubmit={handleEditWarehouse}>
-                                        <div className="row g-4">
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wName" className="form-label">Warehouse Name *</label>
-                                                <input type="text" className="form-control custom-input shadow" id="wName" name="wName" 
+                                        <div className="row g-3">
+                                            <div className="col-12">
+                                                <label htmlFor="wName" className="form-label fw-semibold mb-2">Warehouse Name *</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="wName" name="wName" 
                                                     value={warehouseForm.wName} onChange={handleInputChange} required />
                                             </div>
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wManager" className="form-label">Warehouse Manager *</label>
-                                                <input type="text" className="form-control custom-input shadow" id="wManager" name="wManager"
+                                            <div className="col-12">
+                                                <label htmlFor="wManager" className="form-label fw-semibold mb-2">Warehouse Manager *</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="wManager" name="wManager"
                                                     value={warehouseForm.wManager} onChange={handleInputChange} required />
                                             </div>
                                             <div className="col-12">
-                                                <label htmlFor="wAddress" className="form-label">Warehouse Address *</label>
-                                                <input type="text" className="form-control custom-input shadow" id="wAddress" name="wAddress"
-                                                    value={warehouseForm.wAddress} onChange={handleInputChange} required />
-                                            </div>
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wContact" className="form-label">Contact Number *</label>
-                                                <input type="tel" className="form-control custom-input shadow" id="wContact" name="wContact"
+                                                <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
+                                                <input type="tel" className="form-control rounded-3 shadow-sm" id="wContact" name="wContact"
                                                     value={warehouseForm.wContact} onChange={handleInputChange} required />
                                             </div>
-                                            <div className="col-12 col-md-6">
-                                                <label htmlFor="wEmail" className="form-label">Email *</label>
-                                                <input type="email" className="form-control custom-input shadow" id="wEmail" name="wEmail"
+                                            <div className="col-12">
+                                                <label htmlFor="wEmail" className="form-label fw-semibold mb-2">Email *</label>
+                                                <input type="email" className="form-control rounded-3 shadow-sm" id="wEmail" name="wEmail"
                                                     value={warehouseForm.wEmail} onChange={handleInputChange} required />
                                             </div>
-                                            <div className="col-12 col-md-4">
-                                                <label htmlFor="city" className="form-label">City</label>
-                                                <input type="text" className="form-control custom-input shadow" id="city" name="city"
+                                            <div className="col-12">
+                                                <label htmlFor="city" className="form-label fw-semibold mb-2">City</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="city" name="city"
                                                     value={warehouseForm.city} onChange={handleInputChange} />
                                             </div>
-                                            <div className="col-12 col-md-4">
-                                                <label htmlFor="state" className="form-label">State</label>
-                                                <input type="text" className="form-control custom-input shadow" id="state" name="state"
+                                            <div className="col-12">
+                                                <label htmlFor="state" className="form-label fw-semibold mb-2">State</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="state" name="state"
                                                     value={warehouseForm.state} onChange={handleInputChange} />
                                             </div>
-                                            <div className="col-12 col-md-4">
-                                                <label htmlFor="country" className="form-label">Country</label>
-                                                <input type="text" className="form-control custom-input shadow" id="country" name="country"
+                                            <div className="col-12">
+                                                <label htmlFor="country" className="form-label fw-semibold mb-2">Country</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="country" name="country"
                                                     value={warehouseForm.country} onChange={handleInputChange} />
                                             </div>
+                                            <div className="col-12">
+                                                <label htmlFor="wAddress" className="form-label fw-semibold mb-2">Warehouse Address *</label>
+                                                <input type="text" className="form-control rounded-3 shadow-sm" id="wAddress" name="wAddress"
+                                                    value={warehouseForm.wAddress} onChange={handleInputChange} required />
+                                            </div>
                                         </div>
-                                        <div className="modal-footer justify-content-start p-3 mt-4">
-                                            <button type="submit" className="btn btn-custom-purple">Update Warehouse</button>
-                                            <button type="button" className="btn btn-secondary" onClick={() => { setShowEditModal(false); resetForm(); }}>Close</button>
+                                        <div className="d-flex gap-2 mt-4">
+                                            <button type="submit" className="btn btn-custom-purple btn-lg">Update Warehouse</button>
+                                            <button type="button" className="btn btn-outline-secondary btn-lg" onClick={() => { setShowEditModal(false); resetForm(); }}>Close</button>
                                         </div>
                                     </form>
                                 </div>
@@ -475,12 +475,23 @@ const Warehouses = (props) => {
                     </div>
                 )}
 
-                <div className="row mb-4">
+                {/* <div className="row mb-4">
+                    <div className="col-12">
+                        <input 
+                            type="text" 
+                            className="form-control rounded-3 shadow-sm" 
+                            placeholder="Search" 
+                            value={searchTerm} 
+                            onChange={(e) => setSearchTerm(e.target.value)} 
+                        />
+                    </div>
+                </div> */}
+
+                <div className="row mb-4 mx-3">
                     <div className="col-12">
                         <div className="input-group input-group-lg search-bar shadow border-3 rounded-pill">
-                            <span className="input-group-text bg-white border-0 ps-3 rounded-pill"><i
-                                className="bi bi-search bg-transparent rounded-pill"></i></span>
-                            <input type="text" className="form-control border-0 bg-transparent rounded-pill shadow-none"
+                            <span className="input-group-text bg-white border-0 ps-3"><i className="bi bi-search"></i></span>
+                            <input type="text" className="form-control text-secondary border-0 rounded-pill shadow-none"
                                 placeholder="Search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                         </div>
                     </div>
@@ -491,7 +502,7 @@ const Warehouses = (props) => {
                         <small className="text-secondary fs-4">Filters</small>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterCity} onChange={(e) => setFilterCity(e.target.value)}>
+                        <select className="shadow border border-2 form-select custom-select-filter pe-5" value={filterCity} onChange={(e) => setFilterCity(e.target.value)}>
                             <option value="">All Cities</option>
                             {cities.map(city => (
                                 <option key={city} value={city}>{city}</option>

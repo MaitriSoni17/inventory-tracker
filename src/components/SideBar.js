@@ -109,14 +109,13 @@ const SideBar = () => {
                                 <li className="nav-item d-flex align-items-center">
                                     <div className="user-menu-wrapper position-relative">
                                         <button 
-                                            className="nav-link icon-link btn btn-link"
-                                            style={{ border: 'none', background: 'none', cursor: 'pointer' }}
+                                            className="user-icon-button"
                                             onClick={() => setShowUserMenu(!showUserMenu)}
                                             title="User menu"
                                             aria-expanded={showUserMenu}
                                             aria-label="User menu"
                                         >
-                                            <i className="fas fa-user-circle"></i>
+                                            <i className="bi bi-person-circle"></i>
                                         </button>
                                         {showUserMenu && (
                                             <div className="user-dropdown-menu">

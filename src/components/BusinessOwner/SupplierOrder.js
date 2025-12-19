@@ -256,20 +256,20 @@ const SupplierOrder = (props) => {
         <>
             <div className="container-fluid">
                 <div className="row mb-3 mx-3">
-                    <div className="col-9 py-3">
+                    <div className="col-8 py-3 me-5">
                         <h1 className="display-5 fw-normal mb-3">{supplierName}</h1>
                         <p className="text-muted">
                             Total Orders: {stats.totalOrders} | Total Amount: ₹{stats.totalAmount.toLocaleString('en-IN')}
                         </p>
                     </div>
-                    <div className="col-3 d-flex justify-content-end align-items-end pb-3">
+                    <div className="col-3 d-flex justify-content-end align-items-end pb-3 ms-5">
                         <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
                         <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
-                        <Link to={`/dashboard/addsupplierorder/${id}`} className="btn btn-custom-purple shadow-sm mb-2">
+                        <Link to={`/dashboard/addsupplierorder/${id}`} className="btn btn-custom-purple shadow-sm mb-2 text-decoration-none">
                             <i className="bi bi-plus-lg me-1"></i> Add Order
                         </Link>
                     </div>
@@ -290,7 +290,7 @@ const SupplierOrder = (props) => {
                         <small className="text-secondary fs-4">Filters</small>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                        <select className="shadow border border-2 form-select custom-select-filter pe-5" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                             <option value="">All Status</option>
                             <option value="Pending">Pending</option>
                             <option value="Paid">Paid</option>
@@ -298,7 +298,7 @@ const SupplierOrder = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterPAvail} onChange={(e) => setFilterPAvail(e.target.value)}>
+                        <select className="shadow border border-2 form-select custom-select-filter pe-5" value={filterPAvail} onChange={(e) => setFilterPAvail(e.target.value)}>
                             <option value="">All Availability</option>
                             <option value="Available">Available</option>
                             <option value="Out of Stock">Out of Stock</option>
@@ -306,7 +306,7 @@ const SupplierOrder = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterDStatus} onChange={(e) => setFilterDStatus(e.target.value)}>
+                        <select className="shadow border border-2 form-select custom-select-filter pe-5" value={filterDStatus} onChange={(e) => setFilterDStatus(e.target.value)}>
                             <option value="">All Delivery Status</option>
                             <option value="Pending">Pending</option>
                             <option value="Packed">Packed</option>

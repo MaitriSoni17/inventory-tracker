@@ -128,68 +128,75 @@ const EditSupplier = (props) => {
         <>
             <div className="container-fluid p-5">
                 <div className="row mb-4">
-                    <div className="col-12">
+                    <div className="col-12 ms-2">
                         <h1 className="display-5 fw-normal">Edit Supplier</h1>
                     </div>
                 </div>
 
                 <form className="needs-validation" onSubmit={handleSubmit} noValidate>
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="fname" className="form-label fw-semibold">First Name *</label>
-                            <input type="text" className="form-control mt-3" id="fname" placeholder="Enter first name" value={formData.fname} onChange={handleChange} required />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="lname" className="form-label fw-semibold">Last Name</label>
-                            <input type="text" className="form-control mt-3" id="lname" placeholder="Enter last name" value={formData.lname} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="email" className="form-label fw-semibold">Email *</label>
-                            <input type="email" className="form-control mt-3" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required disabled />
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="phone" className="form-label fw-semibold">Contact Number</label>
-                            <input type="text" className="form-control mt-3" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="nationality" className="form-label fw-semibold">Nationality</label>
-                            <input type="text" className="form-control mt-3" id="nationality" placeholder="Enter nationality" value={formData.nationality} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="country" className="form-label fw-semibold">Country</label>
-                            <input type="text" className="form-control mt-3" id="country" placeholder="Enter country" value={formData.country} onChange={handleChange} />
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-4">
-                            <label htmlFor="state" className="form-label fw-semibold">State</label>
-                            <input type="text" className="form-control mt-3" id="state" placeholder="Enter state" value={formData.state} onChange={handleChange} />
-                        </div>
-                        <div className="col-md-4">
-                            <label htmlFor="city" className="form-label fw-semibold">City</label>
-                            <input type="text" className="form-control mt-3" id="city" placeholder="Enter city" value={formData.city} onChange={handleChange} />
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-12">
-                            <label htmlFor="address" className="form-label fw-semibold">Address</label>
-                            <textarea className="form-control mt-3" id="address" rows="3" placeholder="Enter address" value={formData.address} onChange={handleChange}></textarea>
-                        </div>
-                    </div>
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-12">
-                            <label htmlFor="about" className="form-label fw-semibold">About</label>
-                            <textarea className="form-control mt-3" id="about" rows="3" placeholder="Enter about/description" value={formData.about} onChange={handleChange}></textarea>
+                    {/* Basic Information Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Basic Information</h5>
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="fname" className="form-label fw-semibold mb-2">First Name *</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="fname" placeholder="Enter first name" value={formData.fname} onChange={handleChange} required />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="lname" className="form-label fw-semibold mb-2">Last Name</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="lname" placeholder="Enter last name" value={formData.lname} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="email" className="form-label fw-semibold mb-2">Email *</label>
+                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required disabled />
+                                </div>
+                            </div>
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="phone" className="form-label fw-semibold mb-2">Contact Number</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="nationality" className="form-label fw-semibold mb-2">Nationality</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="nationality" placeholder="Enter nationality" value={formData.nationality} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="country" className="form-label fw-semibold mb-2">Country</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="country" placeholder="Enter country" value={formData.country} onChange={handleChange} />
+                                </div>
+                            </div>
+                            <div className="d-flex gap-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="state" className="form-label fw-semibold mb-2">State</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="state" placeholder="Enter state" value={formData.state} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="city" className="form-label fw-semibold mb-2">City</label>
+                                    <input type="text" className="form-control rounded-3 shadow-sm" id="city" placeholder="Enter city" value={formData.city} onChange={handleChange} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="row mt-5">
+                    {/* Additional Information Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Additional Information</h5>
+                            <div className="mb-4">
+                                <label htmlFor="address" className="form-label fw-semibold mb-2">Address</label>
+                                <textarea className="form-control rounded-3 shadow-sm" id="address" rows="3" placeholder="Enter full address" value={formData.address} onChange={handleChange}></textarea>
+                            </div>
+                            <div className="mb-4">
+                                <label htmlFor="about" className="form-label fw-semibold mb-2">About</label>
+                                <textarea className="form-control rounded-3 shadow-sm" id="about" rows="4" placeholder="Enter details about the supplier" value={formData.about} onChange={handleChange}></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="row mt-5 ms-1">
                         <div className="col-12 d-flex justify-content-start">
                             <button type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm">Update Supplier</button>
                             <button type="button" className="btn btn-secondary btn-lg shadow-sm" onClick={handleCancel}>Cancel</button>

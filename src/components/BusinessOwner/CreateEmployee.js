@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 const CreateEmployee = (props) => {
     const [showPassword, setShowPassword] = useState(false);
@@ -27,7 +27,35 @@ const CreateEmployee = (props) => {
             password: "",
             cpassword: ""
         }
-    )
+    );
+    const [warehouses, setWarehouses] = useState([]);
+    const [loadingWarehouses, setLoadingWarehouses] = useState(true);
+
+    useEffect(() => {
+        const fetchWarehouses = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch warehouses');
+                    setLoadingWarehouses(false);
+                    return;
+                }
+                const warehouseList = await response.json();
+                setWarehouses(warehouseList);
+            } catch (error) {
+                console.error('Error fetching warehouses:', error);
+            } finally {
+                setLoadingWarehouses(false);
+            }
+        };
+        fetchWarehouses();
+    }, []);
 
     const handleImageClick = () => {
         imageInputRef.current.click();
@@ -300,15 +328,24 @@ const CreateEmployee = (props) => {
 
                     <div className="col-md-4">
                         <label htmlFor="hireAt" className="form-label fw-semibold">Hire At</label>
-                        <select
-                            className="form-select mt-3"
-                            id="hireAt"
-                            name='hireAt' onChange={onChange} value={empDetails.hireAt}
-                        >
-                            <option value="" disabled>Select Warehouse</option>
-                            <option value="Warehouse1">Warehouse1</option>
-                            <option value="Warehouse2">Warehouse2</option>
-                        </select>
+                        <div className="d-flex gap-2 align-items-end">
+                            <div style={{ flex: 1 }}>
+                                <select
+                                    className="form-select mt-3"
+                                    id="hireAt"
+                                    name='hireAt' 
+                                    onChange={onChange} 
+                                    value={empDetails.hireAt}
+                                    disabled={loadingWarehouses}
+                                >
+                                    <option value="" disabled>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouse'}</option>
+                                    {warehouses.map((warehouse) => (
+                                        <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <a href="/dashboard/warehouses" className="btn btn-sm btn-custom-purple text-decoration-none" title="Add new warehouse">+</a>
+                        </div>
                         <div className="invalid-feedback">Please select warehouse.</div>
                     </div>
 

@@ -61,10 +61,9 @@
 
 .btn-custom-purple:hover {
     background-color: var(--primary-dark);
-    border-color: var(--primary-dark);
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(123, 62, 188, 0.25);
+    /* box-shadow: 0 4px 12px rgba(123, 62, 188, 0.25); */
 }
 
 .btn-custom-purple:active {
@@ -87,8 +86,8 @@
 
 /* --- Status Badge --- */
 .custom-badge-purple {
-    background-color: var(--primary-light);
-    color: white;
+    background-color: var(--primary-light) !important;
+    color: white !important;
     font-size: clamp(0.75rem, 1.5vw, 0.875rem);
     padding: clamp(0.25rem, 1vw, 0.35rem) clamp(0.5rem, 2vw, 0.75rem);
 }
@@ -122,12 +121,12 @@
     background-color: #f8f9fa;
     border-top: 1px solid #dee2e6;
     font-weight: 600;
-    padding: clamp(0.75rem, 2vw, 1rem);
+    /* padding: clamp(0.75rem, 2vw, 1rem); */
     white-space: nowrap;
 }
 
 .table td {
-    padding: clamp(0.75rem, 2vw, 1rem);
+    /* padding: clamp(0.75rem, 2vw, 1rem); */
     vertical-align: middle;
 }
 
@@ -228,8 +227,8 @@
 /* --- Action Buttons --- */
 .action-buttons {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    /* gap: 0.5rem; */
+    /* flex-wrap: wrap; */
 }
 
 @media (max-width: 576px) {

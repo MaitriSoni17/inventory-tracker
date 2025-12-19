@@ -13,6 +13,7 @@ const Products = (props) => {
     const [selectedStatus, setSelectedStatus] = useState('');
     const [selectedStock, setSelectedStock] = useState('');
     const [categories, setCategories] = useState([]);
+    const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
     const getImageFileName = (product) => {
         const fileName = (product.images && product.images.length > 0 ? product.images[0] : '');
@@ -41,6 +42,7 @@ const Products = (props) => {
                 }
                 const json = await response.json();
                 setProducts(json);
+                setLastUpdateTime(new Date());
 
                 // Extract unique categories
                 const uniqueCategories = [...new Set(json.map(p => p.category))];
@@ -196,13 +198,13 @@ const Products = (props) => {
     return (
         <>
             <div className="container-fluid">
-                <div className="row mb-3 mx-3 my-2">
-                    <div className="col-9 py-3">
+                <div className="row mb-3 my-2">
+                    <div className="col-8 py-3 me-4">
                         <h1 className="display-5 fw-normal mb-3">Products</h1>
-                        <p className="text-muted">Last Update 7 Aug, 2025 at 11:00 PM</p>
+                        <p className="text-muted">Last Update {lastUpdateTime.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} at {lastUpdateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
 
                     </div>
-                    <div className="col-3 d-flex justify-content-center align-items-center pb-3">
+                    <div className="col-3 ms-5 d-flex justify-content-end align-items-end pb-3">
                         <button
                             className="btn btn-link text-danger me-3 fs-2 p-0 border-0"
                             onClick={exportToPDF}
@@ -216,7 +218,7 @@ const Products = (props) => {
                             <i className="bi bi-file-earmark-excel-fill"></i>
                         </button>
 
-                        <a className="btn btn-custom-purple shadow-sm" href="/dashboard/addproduct">
+                        <a className="btn btn-custom-purple shadow-sm text-decoration-none" href="/dashboard/addproduct">
                             <i className="bi bi-plus-lg me-1"></i> Add Product
                         </a>
                     </div>
@@ -243,7 +245,7 @@ const Products = (props) => {
                     </div>
                     <div className="col-auto">
                         <select
-                            className="shadow border border-2 form-select custom-select-filter"
+                            className="shadow border border-2 pe-4 form-select custom-select-filter"
                             value={selectedCategory}
                             onChange={(e) => setSelectedCategory(e.target.value)}
                         >
@@ -255,7 +257,7 @@ const Products = (props) => {
                     </div>
                     <div className="col-auto">
                         <select
-                            className="shadow border border-2 form-select custom-select-filter"
+                            className="shadow border border-2 pe-5 form-select custom-select-filter"
                             value={selectedStatus}
                             onChange={(e) => setSelectedStatus(e.target.value)}
                         >
@@ -321,8 +323,8 @@ const Products = (props) => {
                                             const imageSrc = `http://localhost:5000/uploads/${imageToDisplay}`;
 
                                             return (
-                                                <tr key={product._id}>
-                                                    <td className="align-middle d-flex justify-content-center">
+                                                <tr key={product._id} className='p-0'>
+                                                    <td className="d-flex justify-content-center">
                                                         <img
                                                             src={imageSrc}
                                                             alt={product.name}
@@ -336,9 +338,9 @@ const Products = (props) => {
                                                     <td>{product.category}</td>
                                                     <td>₹{product.price}</td>
                                                     <td>
-                                                        <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-2"><i
+                                                        <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-3"><i
                                                             className="bi bi-pencil-square fs-5"></i></a>
-                                                        <button className="btn btn-link text-decoration-none text-danger fs-5 p-0 border-0" onClick={() => handleDelete(product._id)}><i className="bi bi-trash"></i></button>
+                                                        <a className="text-decoration-none text-danger fs-5" onClick={() => handleDelete(product._id)} style={{'cursor': 'pointer'}}><i className="bi bi-trash"></i></a>
                                                     </td>
                                                 </tr>
                                             );

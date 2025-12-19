@@ -21,6 +21,10 @@ const EditProduct = (props) => {
     const [newUploadedImages, setNewUploadedImages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [warehouses, setWarehouses] = useState([]);
+    const [loadingWarehouses, setLoadingWarehouses] = useState(true);
+    const [categories, setCategories] = useState([]);
+    const [loadingCategories, setLoadingCategories] = useState(true);
 
     useEffect(() => {
         // Fetch the product details
@@ -84,6 +88,58 @@ const EditProduct = (props) => {
 
         fetchProduct();
     }, [id, navigate, props]);
+
+    useEffect(() => {
+        const fetchWarehouses = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch warehouses');
+                    setLoadingWarehouses(false);
+                    return;
+                }
+                const warehouseList = await response.json();
+                setWarehouses(warehouseList);
+            } catch (error) {
+                console.error('Error fetching warehouses:', error);
+            } finally {
+                setLoadingWarehouses(false);
+            }
+        };
+        fetchWarehouses();
+    }, []);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch categories');
+                    setLoadingCategories(false);
+                    return;
+                }
+                const categoryList = await response.json();
+                setCategories(categoryList);
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            } finally {
+                setLoadingCategories(false);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -252,7 +308,7 @@ const EditProduct = (props) => {
 
     return (
         <>
-            <div className="container-fluid p-4">
+            <div className="container-fluid p-5">
                 {/* Header Section */}
                 <div className="row mb-4">
                     <div className="col-12">
@@ -267,14 +323,14 @@ const EditProduct = (props) => {
                 <form className="needs-validation" onSubmit={handleSubmit}>
                     {/* Product Details Section */}
                     <div className="card border-0 shadow-sm mb-4 rounded-4">
-                        <div className="card-body p-4">
+                        <div className="card-body p-5">
                             <h5 className="card-title display-6 mb-4">
                                 Product Information
                             </h5>
 
                             <div className="row g-4">
                                 {/* Product Name */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="productName" className="form-label fw-semibold">Product Name</label>
                                     <input 
                                         type="text" 
@@ -288,13 +344,13 @@ const EditProduct = (props) => {
                                 </div>
 
                                 {/* Product Price */}
-                                <div className="col-md-6">
-                                    <label htmlFor="productPrice" className="form-label fw-semibold">Product Price</label>
-                                    <div className="input-group">
-                                        <span className="input-group-text rounded-start-3">₹</span>
+                                <div className="col-md-5 me-5">
+                                    <label htmlFor="productPrice" className="form-label fw-semibold mb-2">Product Price</label>
+                                    <div className="input-group gap-0">
+                                        <span className="input-group-text shadow-sm border-1 rounded-start-3 border-end-0">₹</span>
                                         <input 
                                             type="number" 
-                                            className="form-control rounded-end-3 shadow-sm" 
+                                            className="form-control rounded-end-3 shadow-sm border-start-0" 
                                             id="productPrice" 
                                             name="price" 
                                             value={productDetails.price} 
@@ -305,24 +361,30 @@ const EditProduct = (props) => {
                                 </div>
 
                                 {/* Product Category */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="productCategory" className="form-label fw-semibold">Product Category</label>
-                                    <select 
-                                        className="form-select rounded-3 shadow-sm" 
-                                        id="productCategory" 
-                                        name="category" 
-                                        value={productDetails.category} 
-                                        onChange={onChange}
-                                    >
-                                        <option value="" disabled>Select Category</option>
-                                        <option>Electronics</option>
-                                        <option>Clothing</option>
-                                        <option>Books</option>
-                                    </select>
+                                    <div className="d-flex gap-2 align-items-end">
+                                        <div style={{ flex: 1 }}>
+                                            <select 
+                                                className="form-select rounded-3 shadow-sm" 
+                                                id="productCategory" 
+                                                name="category" 
+                                                value={productDetails.category} 
+                                                onChange={onChange}
+                                                disabled={loadingCategories}
+                                            >
+                                                <option value="" disabled>{loadingCategories ? 'Loading categories...' : 'Select Category'}</option>
+                                                {categories.map((category) => (
+                                                    <option key={category._id} value={category._id}>{category.cName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <a href="/dashboard/category" className="btn btn-sm btn-custom-purple text-decoration-none" title="Add new category">+</a>
+                                    </div>
                                 </div>
 
                                 {/* Total Products */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="totalProducts" className="form-label fw-semibold">Total Products</label>
                                     <input 
                                         type="number" 
@@ -336,23 +398,30 @@ const EditProduct = (props) => {
                                 </div>
 
                                 {/* Warehouse */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="warehouse" className="form-label fw-semibold">Warehouse</label>
-                                    <select 
-                                        className="form-select rounded-3 shadow-sm" 
-                                        id="warehouse" 
-                                        name="warehouse" 
-                                        value={productDetails.warehouse} 
-                                        onChange={onChange}
-                                    >
-                                        <option value="" disabled>Select Warehouse</option>
-                                        <option>Warehouse A</option>
-                                        <option>Warehouse B</option>
-                                    </select>
+                                    <div className="d-flex gap-2 align-items-end">
+                                        <div style={{ flex: 1 }}>
+                                            <select 
+                                                className="form-select rounded-3 shadow-sm" 
+                                                id="warehouse" 
+                                                name="warehouse" 
+                                                value={productDetails.warehouse} 
+                                                onChange={onChange}
+                                                disabled={loadingWarehouses}
+                                            >
+                                                <option value="" disabled>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouse'}</option>
+                                                {warehouses.map((warehouse) => (
+                                                    <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <a href="/dashboard/warehouses" className="btn btn-sm btn-custom-purple text-decoration-none" title="Add new warehouse">+</a>
+                                    </div>
                                 </div>
 
                                 {/* Brand */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="brand" className="form-label fw-semibold">Brand</label>
                                     <input 
                                         type="text" 
@@ -366,7 +435,7 @@ const EditProduct = (props) => {
                                 </div>
 
                                 {/* Manufacturing Date */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="manufacturingDate" className="form-label fw-semibold">Manufacturing Date</label>
                                     <input 
                                         type="date" 
@@ -379,7 +448,7 @@ const EditProduct = (props) => {
                                 </div>
 
                                 {/* Expiring Date */}
-                                <div className="col-md-6">
+                                <div className="col-md-5 me-5">
                                     <label htmlFor="expiringDate" className="form-label fw-semibold">Expiring Date</label>
                                     <input 
                                         type="date" 

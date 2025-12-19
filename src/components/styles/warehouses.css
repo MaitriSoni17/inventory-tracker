@@ -37,7 +37,6 @@
 
 .btn-custom-purple:hover {
     background-color: var(--custom-purple-dark);
-    border-color: var(--custom-purple-dark);
     color: white;
 }
 

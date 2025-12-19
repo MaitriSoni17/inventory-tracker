@@ -234,11 +234,11 @@ const Orders = (props) => {
         <>
             <div className="container-fluid">
                 <div className="row mb-3 mx-3">
-                    <div className="col-9 py-3">
+                    <div className="col-8 py-3 me-5">
                         <h1 className="display-5 fw-normal mb-3">Orders</h1>
                         <p className="text-muted">Total Orders: {filteredOrders.length}</p>
                     </div>
-                    <div className="col-3 d-flex justify-content-end align-items-end pb-3">
+                    <div className="col-3 d-flex justify-content-end align-items-end ms-5 pb-3">
                         <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
@@ -267,14 +267,14 @@ const Orders = (props) => {
                         <small className="text-secondary fs-4">Filters</small>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
+                        <select className="shadow border border-2 pe-5 form-select custom-select-filter" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                             <option value="">All Status</option>
                             <option value="Paid">Paid</option>
                             <option value="Not Paid">Not Paid</option>
                         </select>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterDeliveryStatus} onChange={(e) => setFilterDeliveryStatus(e.target.value)}>
+                        <select className="shadow border border-2 pe-5 form-select custom-select-filter" value={filterDeliveryStatus} onChange={(e) => setFilterDeliveryStatus(e.target.value)}>
                             <option value="">All Delivery Status</option>
                             <option value="Packed">Packed</option>
                             <option value="Not Packed">Not Packed</option>

@@ -87,7 +87,6 @@
 .btn-custom-purple:hover {
     background-color: #791bd6;
     /* Slightly darker hover color */
-    border-color: #791bd6;
     color: white;
 }
 

@@ -221,11 +221,11 @@ const Suppliers = (props) => {
         <>
             <div className="container-fluid">
                 <div className="row mb-3 mx-3">
-                    <div className="col-9 py-3">
+                    <div className="col-8 py-3 me-5">
                         <h1 className="display-5 fw-normal mb-3">Suppliers</h1>
                         <p className="text-muted">Total Suppliers: {stats.totalSuppliers}</p>
                     </div>
-                    <div className="col-3 d-flex justify-content-end align-items-end pb-3">
+                    <div className="col-3 d-flex justify-content-end align-items-end pb-3 ms-5">
                         <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
@@ -233,7 +233,7 @@ const Suppliers = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link className="btn btn-custom-purple shadow-sm mb-2" to="/dashboard/createsupplier">
+                        <Link className="btn btn-custom-purple shadow-sm mb-2 text-decoration-none" to="/dashboard/createsupplier">
                             <i className="bi bi-plus-lg me-1"></i> Add Supplier
                         </Link>
                     </div>
@@ -254,7 +254,7 @@ const Suppliers = (props) => {
                         <small className="text-secondary fs-4">Filters</small>
                     </div>
                     <div className="col-auto">
-                        <select className="shadow border border-2 form-select custom-select-filter" value={filterCity} onChange={(e) => setFilterCity(e.target.value)}>
+                        <select className="shadow border pe-5 border-2 form-select custom-select-filter" value={filterCity} onChange={(e) => setFilterCity(e.target.value)}>
                             <option value="">All Cities</option>
                             {cities.map(city => (
                                 <option key={city} value={city}>{city}</option>
