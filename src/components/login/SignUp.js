@@ -60,14 +60,14 @@ function SignUp(props) {
 
             <div className="mb-4">
               <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
-              <div className='input-group mb-3'>
+              <div className='input-group mb-3 gap-0'>
                 <input type={showPassword ? "text" : "password"} className='form-control' name='password' id="password" placeholder="••••••••" onChange={onChange} minLength={5} /><i className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
               </div>
             </div>
 
             <div className="mb-4">
               <label htmlFor="cPassword" className="form-label small text-secondary mb-1">Confirm Password</label>
-              <div className='input-group mb-3'>
+              <div className='input-group mb-3 gap-0'>
                 <input type={showCPassword ? "text" : "password"} name='cpassword' minLength={5} className='form-control' id="cpassword" placeholder="••••••••" onChange={onChange} /><i className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={cpassVisibility}></i>
               </div>
             </div>
