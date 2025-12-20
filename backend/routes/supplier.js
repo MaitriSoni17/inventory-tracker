@@ -185,4 +185,111 @@ router.delete('/deletesupplier/:id', require('../middleware/fetchbusinessowner')
     }
 });
 
+// Update own profile using: PUT "/api/supplier/updatesupplier". Supplier login required
+router.put('/updatesupplier', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const { fname, lname, phone, email, country, state, city, pincode, address } = req.body;
+        const supplier = await Supplier.findById(req.user._id);
+        
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Update fields
+        if (fname) supplier.fname = fname;
+        if (lname) supplier.lname = lname;
+        if (phone) supplier.phone = phone;
+        if (email) supplier.email = email;
+        if (country) supplier.country = country;
+        if (state) supplier.state = state;
+        if (city) supplier.city = city;
+        if (pincode) supplier.pincode = pincode;
+        if (address) supplier.address = address;
+
+        await supplier.save();
+        res.json({ supplier: supplier.toObject({ getters: true }), success: true });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Change password using: PUT "/api/supplier/changepassword". Supplier login required
+router.put('/changepassword', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const { currentPassword, newPassword } = req.body;
+        const supplier = await Supplier.findById(req.user._id);
+
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Verify current password
+        const isPasswordValid = await bcrypt.compare(currentPassword, supplier.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({ message: "Current password is incorrect" });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        supplier.password = await bcrypt.hash(newPassword, salt);
+        await supplier.save();
+
+        res.json({ success: true, message: "Password changed successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Deactivate account using: POST "/api/supplier/deactivate". Supplier login required
+router.post('/deactivate', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const supplier = await Supplier.findById(req.user._id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        supplier.isActive = false;
+        await supplier.save();
+
+        res.json({ success: true, message: "Account deactivated successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Delete own account using: DELETE "/api/supplier/deleteaccount". Supplier login required
+router.delete('/deleteaccount', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const supplier = await Supplier.findById(req.user._id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        await Supplier.findByIdAndDelete(req.user._id);
+        res.json({ success: true, message: "Account deleted successfully" });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 module.exports = router;

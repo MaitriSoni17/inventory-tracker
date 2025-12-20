@@ -1,6 +1,7 @@
 const Notification = require('../models/Notification');
 const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
+const Supplier = require('../models/Supplier');
 
 /**
  * Create and save a notification

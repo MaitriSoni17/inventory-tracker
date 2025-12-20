@@ -4,26 +4,20 @@ const { Schema } = mongoose;
 const NotificationSchema = new Schema({
   recipient: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: function() {
-      return this.recipientRole === 'businessowner' ? 'BusinessOwner' : 'Employee';
-    },
     required: true
   },
   recipientRole: {
     type: String,
-    enum: ['businessowner', 'employee'],
+    enum: ['BusinessOwner', 'Employee', 'Supplier'],
     required: true
   },
   sender: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: function() {
-      return this.senderRole === 'businessowner' ? 'BusinessOwner' : 'Employee';
-    },
     required: true
   },
   senderRole: {
     type: String,
-    enum: ['businessowner', 'employee'],
+    enum: ['BusinessOwner', 'Employee', 'Supplier'],
     required: true
   },
   type: {
@@ -53,7 +47,9 @@ const NotificationSchema = new Schema({
       'supplier_order_deleted',
       'supplier_order_created_by_employee',
       'supplier_order_updated_by_employee',
-      'supplier_order_deleted_by_employee'
+      'supplier_order_deleted_by_employee',
+      'supplier_order_status_updated',
+      'supplier_order_payment_status_updated'
     ],
     required: true
   },

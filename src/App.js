@@ -6,6 +6,9 @@ import SideBar from './components/SideBar';
 import BusinessOwner from './components/BusinessOwner';
 import Employee from './components/Employee';
 import Supplier from './components/Supplier';
+import SupplierOrders from './components/Supplier/SupplierOrders';
+import SupplierOrderDetail from './components/Supplier/SupplierOrderDetail';
+import SupplierSettings from './components/Supplier/Settings';
 import CreateEmployee from './components/BusinessOwner/CreateEmployee';
 import Alert from './components/Alert';
 import CreateSupplier from "./components/BusinessOwner/CreateSupplier";
@@ -51,6 +54,10 @@ function App() {
                   <Supplier showAlert={showAlert} />
             } />
 
+            {/* Supplier Orders */}
+            <Route path="suppliersorders" element={<SupplierOrders showAlert={showAlert} />} />
+            <Route path="supplierorderdetail/:id" element={<SupplierOrderDetail showAlert={showAlert} />} />
+
             {/* Other nested pages */}
             <Route path="employee" element={<Employees showAlert={showAlert} />} />
             <Route path="createemployee" element={<CreateEmployee showAlert={showAlert} />} />
@@ -73,6 +80,7 @@ function App() {
             <Route path="notifications" element={<NotificationsPage showAlert={showAlert} />} />
             
             <Route path="empsettings" element={<EmpSettings showAlert={showAlert} />} />
+            <Route path="suppliersettings" element={<SupplierSettings showAlert={showAlert} />} />
           </Route>
 
         </Routes>

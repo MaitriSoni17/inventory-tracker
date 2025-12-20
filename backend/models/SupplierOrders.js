@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const SupplierOrders = new Schema({
-    businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-    supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner' },
+    supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
     pName: { type: String, required: true },
     category: { type: String, required: true },
     amount: { type: Number, required: true },
@@ -11,6 +11,7 @@ const SupplierOrders = new Schema({
     oDate: { type: Date, required: true },
     dDate: { type: Date, required: true },
     status: { type: String },
+    paymentStatus: { type: String, default: 'Pending' },
     pAvail: { type: String },
     dStatus: { type: String },
     desc: { type: String },

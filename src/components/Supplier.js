@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './styles/businessowner.css';
 import {
     Chart as ChartJS,
@@ -31,6 +32,7 @@ ChartJS.register(
     Filler
 );
 function Supplier(props) {
+    const navigate = useNavigate();
     const salesRef = useRef(null);
     const salesChartInstance = useRef(null);
     const resizeObserver = useRef(null);
@@ -40,6 +42,7 @@ function Supplier(props) {
 
     const [supplierOrders, setSupplierOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [timePeriod, setTimePeriod] = useState('monthly');
     const [stats, setStats] = useState({
         totalOrders: 0,
         pendingOrders: 0,
@@ -49,36 +52,59 @@ function Supplier(props) {
     // Fetch supplier orders on mount
     useEffect(() => {
         fetchSupplierOrders();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Initialize charts when data changes
+    // Initialize charts when data changes or time period changes
     useEffect(() => {
-        if (supplierOrders.length > 0) {
+        if (supplierOrders && supplierOrders.length > 0) {
             initCharts();
         }
-    }, [supplierOrders]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [supplierOrders, timePeriod]);
     const fetchSupplierOrders = async () => {
         try {
+            setLoading(true);
             const headers = {
                 'Content-Type': 'application/json',
                 'auth-token': localStorage.getItem('token')
             };
 
             // Fetch supplier orders
-            const response = await fetch('http://localhost:5000/api/supplierorder/getsupplierorder', {
+            const response = await fetch('http://localhost:5000/api/supplierorders/getorders', {
                 method: 'POST',
                 headers
             });
 
-            const data = response.ok ? await response.json() : [];
-            setSupplierOrders(data);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    console.error('Unauthorized: Token may have expired');
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('role');
+                    window.location.href = '/';
+                    return;
+                }
+                console.error('Error response:', response.status);
+                setSupplierOrders([]);
+                setStats({
+                    totalOrders: 0,
+                    pendingOrders: 0,
+                    completedOrders: 0
+                });
+                setLoading(false);
+                return;
+            }
+
+            const data = await response.json();
+            setSupplierOrders(Array.isArray(data) ? data : []);
 
             // Calculate statistics
-            const completed = data.filter(o => o.status?.toLowerCase() === 'completed').length;
-            const pending = data.filter(o => o.status?.toLowerCase() === 'pending').length;
+            const orders = Array.isArray(data) ? data : [];
+            const completed = orders.filter(o => o.status?.toLowerCase() === 'completed').length;
+            const pending = orders.filter(o => o.status?.toLowerCase() === 'pending').length;
 
             setStats({
-                totalOrders: data.length,
+                totalOrders: orders.length,
                 pendingOrders: pending,
                 completedOrders: completed
             });
@@ -87,48 +113,120 @@ function Supplier(props) {
         } catch (error) {
             console.error('Error fetching supplier orders:', error);
             props.showAlert?.('Failed to load supplier orders', 'danger');
+            setSupplierOrders([]);
+            setStats({
+                totalOrders: 0,
+                pendingOrders: 0,
+                completedOrders: 0
+            });
             setLoading(false);
         }
     };
 
-    const aggregateMonthlyOrders = (orders) => {
-        const monthlyData = {};
+    // Handle card clicks to navigate to filtered orders page
+    const handleCardClick = (filterType) => {
+        navigate('/dashboard/suppliersorders', { 
+            state: { filterType } 
+        });
+    };
+
+    const aggregateOrdersByPeriod = (orders, period = 'monthly') => {
         const currentYear = new Date().getFullYear();
-        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        let aggregatedData = {};
+        let labels = [];
 
-        // Initialize all months with 0
-        monthNames.forEach(month => {
-            monthlyData[month] = 0;
-        });
+        if (period === 'monthly') {
+            // Monthly aggregation
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            monthNames.forEach(month => {
+                aggregatedData[month] = 0;
+            });
 
-        // Aggregate order counts by month
-        orders.forEach(order => {
-            if (order.orderDate) {
-                const orderDate = new Date(order.orderDate);
-                if (orderDate.getFullYear() === currentYear) {
-                    const monthIndex = orderDate.getMonth();
-                    const monthName = monthNames[monthIndex];
-                    monthlyData[monthName] += 1;
+            orders.forEach(order => {
+                if (order.oDate) {
+                    const orderDate = new Date(order.oDate);
+                    if (orderDate.getFullYear() === currentYear) {
+                        const monthIndex = orderDate.getMonth();
+                        const monthName = monthNames[monthIndex];
+                        aggregatedData[monthName] += 1;
+                    }
                 }
+            });
+            labels = Object.keys(aggregatedData);
+        } else if (period === 'quarterly') {
+            // Quarterly aggregation
+            const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+            quarters.forEach(quarter => {
+                aggregatedData[quarter] = 0;
+            });
+
+            orders.forEach(order => {
+                if (order.oDate) {
+                    const orderDate = new Date(order.oDate);
+                    if (orderDate.getFullYear() === currentYear) {
+                        const monthIndex = orderDate.getMonth();
+                        const quarterIndex = Math.floor(monthIndex / 3);
+                        const quarter = quarters[quarterIndex];
+                        aggregatedData[quarter] += 1;
+                    }
+                }
+            });
+            labels = Object.keys(aggregatedData);
+        } else if (period === 'annually') {
+            // Annually aggregation - show last 5 years
+            const startYear = currentYear - 4;
+            for (let year = startYear; year <= currentYear; year++) {
+                aggregatedData[year.toString()] = 0;
             }
-        });
+
+            orders.forEach(order => {
+                if (order.oDate) {
+                    const orderDate = new Date(order.oDate);
+                    const year = orderDate.getFullYear();
+                    if (year >= startYear && year <= currentYear) {
+                        aggregatedData[year.toString()] += 1;
+                    }
+                }
+            });
+            labels = Object.keys(aggregatedData);
+        }
 
         return {
-            labels: monthNames,
-            data: monthNames.map(month => monthlyData[month])
+            labels: labels,
+            data: labels.map(label => aggregatedData[label])
         };
     };
 
     const initCharts = () => {
         // Destroy existing charts if they exist
-        if (salesChartInstance.current) {
-            salesChartInstance.current.destroy();
-        }
-        if (orderInstance.current) {
-            orderInstance.current.destroy();
+        try {
+            if (salesChartInstance.current) {
+                salesChartInstance.current.destroy();
+                salesChartInstance.current = null;
+            }
+        } catch (error) {
+            console.warn('Error destroying existing sales chart:', error);
         }
 
-        const monthlyOrders = aggregateMonthlyOrders(supplierOrders);
+        try {
+            if (orderInstance.current) {
+                orderInstance.current.destroy();
+                orderInstance.current = null;
+            }
+        } catch (error) {
+            console.warn('Error destroying existing order chart:', error);
+        }
+
+        // Validate refs exist and canvas elements are in DOM before creating charts
+        if (!salesRef.current || !orderRef.current) {
+            console.warn('Chart containers not found. Chart refs:', {
+                salesRef: !!salesRef.current,
+                orderRef: !!orderRef.current
+            });
+            return;
+        }
+
+        const monthlyOrders = aggregateOrdersByPeriod(supplierOrders, timePeriod);
         const completedOrders = stats.completedOrders;
         const pendingOrders = stats.pendingOrders;
         const totalOrders = stats.totalOrders;
@@ -140,6 +238,10 @@ function Supplier(props) {
 
         if (salesRef.current) {
             const ctx = salesRef.current.getContext('2d');
+            if (!ctx) {
+                console.error('Failed to get 2D context for sales chart');
+                return;
+            }
             salesChartInstance.current = new ChartJS(ctx, {
                 type: 'line',
                 data: {
@@ -201,13 +303,39 @@ function Supplier(props) {
 
         if (orderRef.current) {
             const ctx = orderRef.current.getContext('2d');
+            if (!ctx) {
+                console.error('Failed to get 2D context for order chart');
+                return;
+            }
+
+            // Build distribution data dynamically based on actual order statuses
+            const statusCounts = {};
+            const statusColors = {
+                'completed': '#6a1b9a',
+                'pending': '#7a96ff',
+                'confirmed': '#17a2b8',
+                'shipped': '#ffc107'
+            };
+
+            supplierOrders.forEach(order => {
+                const status = order.status?.toLowerCase() || 'pending';
+                statusCounts[status] = (statusCounts[status] || 0) + 1;
+            });
+
+            // Filter out statuses with 0 count and create labels and data arrays
+            const labels = Object.keys(statusCounts)
+                .map(status => status.charAt(0).toUpperCase() + status.slice(1) + ' Orders');
+            const data = Object.values(statusCounts);
+            const backgroundColor = Object.keys(statusCounts)
+                .map(status => statusColors[status] || '#999999');
+
             orderInstance.current = new ChartJS(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Completed Orders', 'Pending Orders'],
+                    labels: labels,
                     datasets: [{
-                        data: [completedOrders, pendingOrders],
-                        backgroundColor: [colors.completed, colors.pending],
+                        data: data,
+                        backgroundColor: backgroundColor,
                         hoverOffset: 4,
                         borderWidth: 0
                     }]
@@ -237,20 +365,61 @@ function Supplier(props) {
         }
 
         resizeObserver.current = new ResizeObserver(() => {
-            salesChartInstance.current?.resize();
-            orderInstance.current?.resize();
+            if (salesChartInstance.current && salesChartInstance.current.ctx) {
+                try {
+                    salesChartInstance.current.resize();
+                } catch (error) {
+                    console.warn('Error resizing sales chart:', error);
+                }
+            }
+            if (orderInstance.current && orderInstance.current.ctx) {
+                try {
+                    orderInstance.current.resize();
+                } catch (error) {
+                    console.warn('Error resizing order chart:', error);
+                }
+            }
         });
 
-        document.querySelectorAll('.chart-container').forEach(container => {
-            resizeObserver.current.observe(container);
-        });
+        const chartContainers = document.querySelectorAll('.chart-container');
+        if (chartContainers && chartContainers.length > 0) {
+            chartContainers.forEach(container => {
+                if (container && resizeObserver.current) {
+                    resizeObserver.current.observe(container);
+                }
+            });
+        }
     };
 
     useEffect(() => {
         return () => {
-            salesChartInstance.current?.destroy();
-            orderInstance.current?.destroy();
-            resizeObserver.current?.disconnect();
+            // Properly cleanup charts and observer
+            try {
+                if (salesChartInstance.current) {
+                    salesChartInstance.current.destroy();
+                    salesChartInstance.current = null;
+                }
+            } catch (error) {
+                console.warn('Error destroying sales chart:', error);
+            }
+
+            try {
+                if (orderInstance.current) {
+                    orderInstance.current.destroy();
+                    orderInstance.current = null;
+                }
+            } catch (error) {
+                console.warn('Error destroying order chart:', error);
+            }
+
+            try {
+                if (resizeObserver.current) {
+                    resizeObserver.current.disconnect();
+                    resizeObserver.current = null;
+                }
+            } catch (error) {
+                console.warn('Error disconnecting ResizeObserver:', error);
+            }
         };
     }, []);
 
@@ -270,7 +439,10 @@ function Supplier(props) {
                     <div className="row g-3 my-2">
                         <div className="col-md-4">
                             <div
-                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                onClick={() => handleCardClick('all')}
+                                style={{ cursor: 'pointer' }}
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card"
+                                title="Click to view all orders">
                                 <i
                                     className="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
                                 <div className="mt-3">
@@ -282,7 +454,10 @@ function Supplier(props) {
 
                         <div className="col-md-4">
                             <div
-                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                onClick={() => handleCardClick('pending')}
+                                style={{ cursor: 'pointer' }}
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card"
+                                title="Click to view pending orders">
                                 <i
                                     className="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
                                 <div className="mt-3">
@@ -294,7 +469,10 @@ function Supplier(props) {
 
                         <div className="col-md-4">
                             <div
-                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                onClick={() => handleCardClick('completed')}
+                                style={{ cursor: 'pointer' }}
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card"
+                                title="Click to view completed orders">
                                 <i
                                     className="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
                                 <div className="mt-3">
@@ -311,10 +489,13 @@ function Supplier(props) {
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
                                 <div className="d-flex justify-content-between mb-3">
                                     <h3 className="fs-4">Orders Overview</h3>
-                                    <select className="form-select w-auto">
-                                        <option>Monthly</option>
-                                        <option value="1">Quarterly</option>
-                                        <option value="2">Annually</option>
+                                    <select 
+                                        className="form-select w-auto pe-5"
+                                        value={timePeriod}
+                                        onChange={(e) => setTimePeriod(e.target.value)}>
+                                        <option value="monthly">Monthly</option>
+                                        <option value="quarterly">Quarterly</option>
+                                        <option value="annually">Annually</option>
                                     </select>
                                 </div>
                                 {supplierOrders.length === 0 ? (
@@ -332,7 +513,7 @@ function Supplier(props) {
                     </div>
 
                     <div className="row my-4 g-3">
-                        <div className="col-md-6">
+                        <div className="col-md-5 me-5">
                             <div className="p-3 bg-white shadow rounded-4 border border-4">
                                 <h3 className="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
                                 <table className="table align-middle mt-4">
@@ -358,7 +539,7 @@ function Supplier(props) {
                             <div className="p-3 bg-white shadow border border-4 rounded-4">
                                 <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
                                     Recent Orders
-                                    <a href="#orders" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                                    <a href="/dashboard/supplierorders" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
                                 </h3>
                                 <table className="table table-borderless align-middle mb-0">
                                     <thead className="text-secondary">
@@ -377,10 +558,10 @@ function Supplier(props) {
                                         ) : (
                                             supplierOrders.slice(0, 3).map((order, index) => (
                                                 <tr key={index}>
-                                                    <td>{order.productName || 'N/A'}</td>
-                                                    <td>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</td>
+                                                    <td>{order.pName || 'N/A'}</td>
+                                                    <td>{order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}</td>
                                                     <td><span className={`badge ${order.status?.toLowerCase() === 'completed' ? 'bg-success' : 'bg-warning'}`}>{order.status || 'Pending'}</span></td>
-                                                    <td>₹{order.totalAmount || 0}</td>
+                                                    <td>₹{order.amount || 0}</td>
                                                 </tr>
                                             ))
                                         )}

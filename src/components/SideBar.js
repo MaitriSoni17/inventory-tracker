@@ -65,7 +65,7 @@ const SideBar = () => {
                         <Link to={(role === "businessowner" || role === "employee")  ? "/dashboard/products" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "supplier" ? "d-none" : ""} ${(location.pathname === "/dashboard/products" || location.pathname === "/dashboard/addproduct" || location.pathname.startsWith("/dashboard/editproduct/")) ? "active" : ""}`}>
                             <i className="fas fa-box me-2"></i>Products
                         </Link>
-                        <Link to={(role === "businessowner" || role === "employee")  ? "/dashboard/orders" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/")) ? "active" : ""}`}>
+                        <Link to={(role === "businessowner" || role === "employee")  ? "/dashboard/orders" : (role === "supplier" ? "/dashboard/suppliersorders" : "/")} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/") || location.pathname === "/dashboard/suppliersorders") ? "active" : ""}`}>
                             <i className="bi bi-cart me-2"></i>Orders
                         </Link>
                         <Link to={role === "businessowner"  ? "/dashboard/employee" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${(location.pathname === "/dashboard/createemployee" || location.pathname === "/dashboard/employee" || location.pathname.startsWith("/dashboard/editemployee/")) ? "active" : ""}`}>
@@ -77,7 +77,7 @@ const SideBar = () => {
                         <Link to={role === "businessowner"  ? "/dashboard/warehouses" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${role === "businessowner"  ? "" : "d-none"} ${location.pathname === "/dashboard/warehouses" ? "active" : ""}`}>
                             <i className="fas fa-warehouse me-2"></i>Warehouses
                         </Link>
-                        <Link to={role === "employee" ? "/dashboard/empsettings" : role === "businessowner" ? "/dashboard/settings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" ? "active" : ""}`}>
+                        <Link to={role === "employee" ? "/dashboard/empsettings" : role === "businessowner" ? "/dashboard/settings" : role === "supplier" ? "/dashboard/suppliersettings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" || location.pathname === "/dashboard/suppliersettings" ? "active" : ""}`}>
                             <i className="fas fa-cog me-2"></i>Settings
                         </Link>
                         <Link to="/" className="list-group-item list-group-item-action bg-transparent text-danger">
@@ -120,7 +120,7 @@ const SideBar = () => {
                                         {showUserMenu && (
                                             <div className="user-dropdown-menu">
                                                 <Link 
-                                                    to="/dashboard/settings" 
+                                                    to={role === "employee" ? "/dashboard/empsettings" : role === "businessowner" ? "/dashboard/settings" : role === "supplier" ? "/dashboard/suppliersettings" : "/"} 
                                                     className="dropdown-item"
                                                     onClick={() => setShowUserMenu(false)}
                                                 >

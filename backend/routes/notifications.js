@@ -4,6 +4,21 @@ const fetchuser = require('../middleware/fetchuser');
 const Notification = require('../models/Notification');
 const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
+const Supplier = require('../models/Supplier');
+
+// Helper function to populate sender based on role
+async function populateSenderData(notifications) {
+  for (let notification of notifications) {
+    if (notification.senderRole === 'BusinessOwner') {
+      notification.sender = await BusinessOwner.findById(notification.sender).select('fname lname email');
+    } else if (notification.senderRole === 'Employee') {
+      notification.sender = await Employee.findById(notification.sender).select('fname lname email');
+    } else if (notification.senderRole === 'Supplier') {
+      notification.sender = await Supplier.findById(notification.sender).select('fname lname email phone');
+    }
+  }
+  return notifications;
+}
 
 // Get all notifications for current user
 // GET /api/notifications/getnotifications
@@ -14,20 +29,25 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
     console.log('User Role:', req.role);
     
     const userId = req.user._id;
-    const userRole = req.role;
+    // Map lowercase role to capitalized role for notification query
+    const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
+                            req.role === 'employee' ? 'Employee' : 
+                            req.role === 'supplier' ? 'Supplier' : req.role;
 
     console.log('Searching for notifications with:', {
       recipient: userId,
-      recipientRole: userRole
+      recipientRole: capitalizedRole
     });
 
-    const notifications = await Notification.find({
+    let notifications = await Notification.find({
       recipient: userId,
-      recipientRole: userRole
+      recipientRole: capitalizedRole
     })
-      .populate('sender', 'fname lname email')
       .sort({ createdAt: -1 })
       .limit(50);
+
+    // Populate sender data based on role
+    notifications = await populateSenderData(notifications);
 
     console.log(`Found ${notifications.length} notifications`);
     res.json(notifications);
@@ -42,11 +62,14 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
 router.get('/unreadcount', fetchuser, async (req, res) => {
   try {
     const userId = req.user._id;
-    const userRole = req.role;
+    // Map lowercase role to capitalized role
+    const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
+                            req.role === 'employee' ? 'Employee' : 
+                            req.role === 'supplier' ? 'Supplier' : req.role;
 
     const count = await Notification.countDocuments({
       recipient: userId,
-      recipientRole: userRole,
+      recipientRole: capitalizedRole,
       isRead: false
     });
 
@@ -89,12 +112,15 @@ router.put('/markasread/:id', fetchuser, async (req, res) => {
 router.put('/markallasread', fetchuser, async (req, res) => {
   try {
     const userId = req.user._id;
-    const userRole = req.role;
+    // Map lowercase role to capitalized role
+    const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
+                            req.role === 'employee' ? 'Employee' : 
+                            req.role === 'supplier' ? 'Supplier' : req.role;
 
     await Notification.updateMany(
       {
         recipient: userId,
-        recipientRole: userRole,
+        recipientRole: capitalizedRole,
         isRead: false
       },
       { isRead: true }
@@ -138,11 +164,14 @@ router.delete('/deletenotification/:id', fetchuser, async (req, res) => {
 router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
   try {
     const userId = req.user._id;
-    const userRole = req.role;
+    // Map lowercase role to capitalized role
+    const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
+                            req.role === 'employee' ? 'Employee' : 
+                            req.role === 'supplier' ? 'Supplier' : req.role;
 
     await Notification.deleteMany({
       recipient: userId,
-      recipientRole: userRole
+      recipientRole: capitalizedRole
     });
 
     res.json({ message: 'All notifications deleted successfully' });
@@ -156,10 +185,14 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
 // GET /api/notifications/debug/allnotifications
 router.get('/debug/allnotifications', async (req, res) => {
   try {
-    const allNotifications = await Notification.find({}).populate('sender').populate('recipient');
+    let allNotifications = await Notification.find({});
     console.log(`\n=== DEBUG: Found ${allNotifications.length} total notifications ===`);
+    
+    // Populate sender data
+    allNotifications = await populateSenderData(allNotifications);
+    
     allNotifications.forEach((notif, idx) => {
-      console.log(`${idx + 1}. Type: ${notif.type}, Recipient: ${notif.recipient?._id}, RecipientRole: ${notif.recipientRole}, Sender: ${notif.sender?._id}`);
+      console.log(`${idx + 1}. Type: ${notif.type}, Recipient: ${notif.recipient}, RecipientRole: ${notif.recipientRole}, Sender: ${notif.sender?._id}`);
     });
     res.json({
       totalCount: allNotifications.length,

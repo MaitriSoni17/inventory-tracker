@@ -11,10 +11,22 @@ const Supplier = new Schema({
     country: { type: String },
     state: { type: String },
     city: { type: String },
+    pincode: { type: String },
     jDate: {type: Date, default: Date.now},
-    phone: { type: Number },
+    phone: { type: String },
     address: { type: String },
     about: { type: String },
+    companyName: { type: String },
+    companyPhone: { type: String },
+    companyEmail: { type: String },
+    companyAddress: { type: String },
+    companyCountry: { type: String },
+    companyState: { type: String },
+    companyCity: { type: String },
+    companyPincode: { type: String },
+    companyLogo: { type: String },
+    image: { type: String },
+    isActive: { type: Boolean, default: true },
     role: { type: String, default: 'supplier' }
 });
 
