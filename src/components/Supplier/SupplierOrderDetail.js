@@ -45,23 +45,29 @@ const SupplierOrderDetail = (props) => {
                         desc: selectedOrder.desc || ''
                     });
                 } else {
-                    props.showAlert?.('Order not found', 'danger');
+                    if (props.showAlert) {
+                        props.showAlert('Order not found', 'danger');
+                    }
                     navigate('/dashboard/suppliersorders');
                 }
             } else {
-                props.showAlert?.('Failed to fetch order details', 'danger');
+                if (props.showAlert) {
+                    props.showAlert('Failed to fetch order details', 'danger');
+                }
             }
         } catch (error) {
             console.error('Error fetching order detail:', error);
-            props.showAlert?.('Error fetching order details', 'danger');
+            if (props.showAlert) {
+                props.showAlert('Error fetching order details', 'danger');
+            }
         } finally {
             setLoading(false);
         }
-    }, [id, props, navigate]);
+    }, [id]);
 
     useEffect(() => {
         fetchOrderDetail();
-    }, [fetchOrderDetail]);
+    }, [id]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -174,35 +180,35 @@ const SupplierOrderDetail = (props) => {
                         <div className="card-body p-5">
                             <h1 className="card-title mb-4">Order Information</h1>
 
-                            <div className="row mb-4">
-                                <div className="col-md-6">
+                            <div className="row mb-4 px-3">
+                                <div className="col-md-4">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Product Name</label>
                                         <input type="text" className="form-control" value={formData.pName} disabled />
                                     </div>
                                 </div>
-                                <div className="col-md-6">
+                                <div className="col-md-4">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Category</label>
                                         <input type="text" className="form-control" value={formData.category} disabled />
                                     </div>
                                 </div>
-                            </div>
-
-                            <div className="row mb-4">
                                 <div className="col-md-3">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Units</label>
                                         <input type="number" className="form-control" value={formData.ounits} disabled />
                                     </div>
                                 </div>
-                                <div className="col-md-3">
+                            </div>
+
+                            <div className="row mb-4 px-3">
+                                <div className="col-md-4">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Amount (₹)</label>
                                         <input type="number" className="form-control" value={formData.amount} disabled />
                                     </div>
                                 </div>
-                                <div className="col-md-3">
+                                <div className="col-md-4">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Order Date</label>
                                         <input type="date" className="form-control" value={formData.oDate} disabled />
@@ -216,8 +222,8 @@ const SupplierOrderDetail = (props) => {
                                 </div>
                             </div>
 
-                            <div className="row mb-4">
-                                <div className="col-md-6">
+                            <div className="row mb-4 px-3">
+                                <div className="col-md-5">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Business Owner</label>
                                         <input type="text" className="form-control" value={getBusinessOwnerName(order.businessowner)} disabled />
@@ -226,19 +232,19 @@ const SupplierOrderDetail = (props) => {
                                 <div className="col-md-6">
                                     <div className="mb-3">
                                         <label className="form-label fw-bold">Description</label>
-                                        <textarea className="form-control" value={formData.desc} disabled rows="2"></textarea>
+                                        <textarea className="form-control" value={formData.desc} disabled rows="1"></textarea>
                                     </div>
                                 </div>
                             </div>
 
                             <hr className="my-4" />
 
-                            <h5 className="card-title mb-4">Status Updates</h5>
+                            <h1 className="card-title mb-4">Status Updates</h1>
 
-                            <div className="row mb-4">
-                                <div className="col-md-6">
+                            <div className="row mb-4 px-3">
+                                <div className="col-md-5">
                                     <label className="form-label fw-bold">Order Status</label>
-                                    <div className="input-group">
+                                    <div className="input-group gap-0">
                                         <select className="form-select" name="status" value={formData.status} onChange={handleInputChange}>
                                             <option value="Pending">Pending</option>
                                             <option value="Confirmed">Confirmed</option>
@@ -259,7 +265,7 @@ const SupplierOrderDetail = (props) => {
 
                                 <div className="col-md-6">
                                     <label className="form-label fw-bold">Payment Status</label>
-                                    <div className="input-group">
+                                    <div className="input-group gap-0">
                                         <select className="form-select" name="paymentStatus" value={formData.paymentStatus} onChange={handleInputChange}>
                                             <option value="Pending">Pending</option>
                                             <option value="Partial">Partial</option>

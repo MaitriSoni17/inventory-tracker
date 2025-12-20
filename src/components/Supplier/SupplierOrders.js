@@ -26,21 +26,27 @@ const SupplierOrders = (props) => {
                 const data = await response.json();
                 setSupplierOrders(data);
                 setFilteredOrders(data);
-                props.showAlert?.('Orders loaded successfully', 'success');
+                if (props.showAlert) {
+                    props.showAlert('Orders loaded successfully', 'success');
+                }
             } else {
-                props.showAlert?.('Failed to fetch supplier orders', 'danger');
+                if (props.showAlert) {
+                    props.showAlert('Failed to fetch supplier orders', 'danger');
+                }
             }
         } catch (error) {
             console.error('Error fetching supplier orders:', error);
-            props.showAlert?.('Error fetching supplier orders', 'danger');
+            if (props.showAlert) {
+                props.showAlert('Error fetching supplier orders', 'danger');
+            }
         } finally {
             setLoading(false);
         }
-    }, [props]);
+    }, []);
 
     useEffect(() => {
         fetchSupplierOrders();
-    }, [fetchSupplierOrders]);
+    }, []);
 
     const formatDate = (dateString) => {
         if (!dateString) return '';
