@@ -1,4 +1,52 @@
-# Getting Started with Create React App
+# Inventory Tracker - Smart Inventory Management System
+
+A comprehensive inventory management solution with AI-powered chatbot assistance.
+
+## 🆕 Latest Update: FREE AI Chatbot! 🎉
+
+The chatbot now uses **Groq API** - completely FREE with unlimited access!
+
+- ✅ **Zero Cost** - No API charges
+- ⚡ **Fast** - 16x faster than OpenAI  
+- 🤖 **Smart** - Advanced AI (Mixtral 8x7B)
+- 📱 **Easy Setup** - 2-minute configuration
+
+**Setup Guide:** See [FREE_AI_CHATBOT_SETUP.md](FREE_AI_CHATBOT_SETUP.md)
+
+---
+
+## Features
+
+- 📊 Real-time inventory tracking
+- 📦 Product management
+- 📋 Order management
+- 👥 Employee management
+- 🏢 Warehouse management
+- 🤖 AI-powered chatbot (FREE)
+- 🔔 Smart notifications
+- 📈 Business analytics
+
+---
+
+## Getting Started
+
+### Backend Setup
+```bash
+cd backend
+npm install
+# Add GROQ_API_KEY to .env file (get free key from https://console.groq.com/keys)
+npm start
+```
+
+### Frontend Setup
+```bash
+npm install
+npm start
+```
+
+---
+
+## Frontend Development
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 

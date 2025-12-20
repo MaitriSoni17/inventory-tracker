@@ -5,10 +5,21 @@ const Supplier = require('../models/Supplier');
 const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
 const axios = require('axios');
+const { Groq } = require('groq-sdk');
 
-// Check if OpenAI API key is available
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || null;
-const USE_OPENAI = !!OPENAI_API_KEY;
+// Initialize Groq client (FREE API)
+// Get your free API key from: https://console.groq.com/keys
+const GROQ_API_KEY = process.env.GROQ_API_KEY || null;
+const USE_GROQ = !!GROQ_API_KEY;
+
+// Initialize Groq client if API key is available
+let groqClient = null;
+if (USE_GROQ) {
+  groqClient = new Groq({ apiKey: GROQ_API_KEY });
+  console.log('✅ Groq AI API initialized - Using FREE AI inference');
+} else {
+  console.warn('⚠️ GROQ_API_KEY not found. Using rule-based responses. To enable AI, set GROQ_API_KEY in your .env file');
+}
 
 /**
  * Get context based on user role and fetch relevant data
@@ -384,7 +395,49 @@ const formatWarehouseDetailsResponse = (warehouses) => {
 };
 
 /**
- * Generate response using OpenAI API
+ * Generate response using Groq API (FREE)
+ * Groq provides fast, free LLM inference without API costs
+ */
+const generateGroqResponse = async (userMessage, role, context) => {
+  try {
+    if (!USE_GROQ || !groqClient) {
+      console.log('Groq not configured, using fallback');
+      return generateEnhancedResponse(userMessage, role, context);
+    }
+
+    const systemPrompt = generateSystemPrompt(role);
+    const contextString = formatContextForAI(context, role);
+
+    const messages = [
+      {
+        role: 'system',
+        content: `${systemPrompt}\n\nCurrent Business Context:\n${contextString}\n\nIMPORTANT INSTRUCTION: You MUST respond ONLY in English language. Do not use any other language. Provide helpful, concise, and accurate responses based on the user's query and the provided context. If the user asks something not related to inventory management, politely redirect them.`
+      },
+      {
+        role: 'user',
+        content: userMessage
+      }
+    ];
+
+    const response = await groqClient.chat.completions.create({
+      messages: messages,
+      model: 'mixtral-8x7b-32768', // Free Groq model - very fast and capable
+      max_tokens: 500,
+      temperature: 0.7
+    });
+
+    return response.choices[0].message.content.trim();
+  } catch (error) {
+    console.error('Groq API error:', error.message);
+    // Fallback to rule-based response
+    return generateEnhancedResponse(userMessage, role, context);
+  }
+};
+
+/**
+ * Generate response using OpenAI API (DEPRECATED)
+ * This function is kept for reference only
+ * New implementations should use Groq API instead
  */
 const generateOpenAIResponse = async (userMessage, role, context) => {
   try {
@@ -412,7 +465,7 @@ const generateOpenAIResponse = async (userMessage, role, context) => {
       },
       {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           'Content-Type': 'application/json'
         }
       }
