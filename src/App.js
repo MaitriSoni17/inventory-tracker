@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from './components/Home';
 import Login from './components/login/Login';
 import SignUp from './components/login/SignUp';
 import SideBar from './components/SideBar';
@@ -11,25 +12,25 @@ import SupplierOrderDetail from './components/Supplier/SupplierOrderDetail';
 import SupplierSettings from './components/Supplier/Settings';
 import CreateEmployee from './components/BusinessOwner/CreateEmployee';
 import Alert from './components/Alert';
-import CreateSupplier from "./components/BusinessOwner/CreateSupplier";
-import Category from "./components/BusinessOwner/Category";
-import Products from "./components/BusinessOwner/Products";
-import AddProduct from "./components/BusinessOwner/AddProduct";
-import EditProduct from "./components/BusinessOwner/EditProduct";
-import Orders from "./components/BusinessOwner/Orders";
-import AddOrder from "./components/BusinessOwner/AddOrder";
-import EditOrder from "./components/BusinessOwner/EditOrder";
-import Employees from "./components/BusinessOwner/Employees";
-import EditEmployee from "./components/BusinessOwner/EditEmployee";
-import Suppliers from "./components/BusinessOwner/Suppliers";
-import EditSupplier from "./components/BusinessOwner/EditSupplier";
-import SupplierOrder from "./components/BusinessOwner/SupplierOrder";
-import AddSupplierOrder from "./components/BusinessOwner/AddSupplierOrder";
-import EditSupplierOrder from "./components/BusinessOwner/EditSupplierOrder";
-import Warehouses from "./components/BusinessOwner/Warehouses";
-import Settings from "./components/BusinessOwner/Settings";
-import EmpSettings from "./components/Employee/Settings";
-import NotificationsPage from "./components/NotificationsPage";
+import CreateSupplier from './components/BusinessOwner/CreateSupplier';
+import Category from './components/BusinessOwner/Category';
+import Products from './components/BusinessOwner/Products';
+import AddProduct from './components/BusinessOwner/AddProduct';
+import EditProduct from './components/BusinessOwner/EditProduct';
+import Orders from './components/BusinessOwner/Orders';
+import AddOrder from './components/BusinessOwner/AddOrder';
+import EditOrder from './components/BusinessOwner/EditOrder';
+import Employees from './components/BusinessOwner/Employees';
+import EditEmployee from './components/BusinessOwner/EditEmployee';
+import Suppliers from './components/BusinessOwner/Suppliers';
+import EditSupplier from './components/BusinessOwner/EditSupplier';
+import SupplierOrder from './components/BusinessOwner/SupplierOrder';
+import AddSupplierOrder from './components/BusinessOwner/AddSupplierOrder';
+import EditSupplierOrder from './components/BusinessOwner/EditSupplierOrder';
+import Warehouses from './components/BusinessOwner/Warehouses';
+import Settings from './components/BusinessOwner/Settings';
+import EmpSettings from './components/Employee/Settings';
+import NotificationsPage from './components/NotificationsPage';
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -43,7 +44,11 @@ function App() {
       <Alert alert={alert} />
       <Router>
         <Routes>
-          <Route path="/" element={<Login showAlert={showAlert} />} />
+          {/* Landing Pages */}
+          <Route path="/" element={<Home />} />
+          
+          {/* Auth Pages */}
+          <Route path="/login" element={<Login showAlert={showAlert} />} />
           <Route path="/signup" element={<SignUp showAlert={showAlert} />} />
 
           <Route path="/dashboard" element={<SideBar showAlert={showAlert} />}>
