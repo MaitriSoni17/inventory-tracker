@@ -54,8 +54,8 @@ router.post('/message', fetchuser, async (req, res) => {
     // Get context based on user's role and data
     const context = await getContextForRole(userId, role);
 
-    // Generate AI response
-    const aiResponse = await generateAIResponse(message, role, context);
+    // Generate AI response (pass userId for specific entity queries)
+    const aiResponse = await generateAIResponse(message, role, context, userId);
 
     // Return response
     res.json({

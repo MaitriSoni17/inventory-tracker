@@ -4,6 +4,8 @@
   "description": "Smart Inventory Tracker for Small Businesses",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -17,7 +19,8 @@
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.0",
-    "multer": "^2.0.2"
+    "multer": "^2.0.2",
+    "openai": "^4.52.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
