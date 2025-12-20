@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { Link, useLocation } from "react-router-dom";
 import './styles/sidebar.css'
 import Notifications from './Notifications';
+import Chatbot from './Chatbot';
 
 const SideBar = () => {
     const role = localStorage.getItem('role');
@@ -144,6 +145,7 @@ const SideBar = () => {
                     <Outlet />
                 </div>
             </div>
+            <Chatbot />
         </>
     )
 }

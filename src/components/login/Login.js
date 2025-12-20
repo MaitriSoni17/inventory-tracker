@@ -22,6 +22,7 @@ function Login(props) {
         if (json.success) {
             localStorage.setItem('token', json.authtoken);
             localStorage.setItem('role', json.role);
+            localStorage.setItem('userId', json.userId || '');
             props.showAlert("Loged in Successfully", "success")
             // console.log(json.role)
             history("/dashboard");

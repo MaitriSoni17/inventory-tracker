@@ -42,7 +42,7 @@ const SupplierOrders = (props) => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    });
 
     useEffect(() => {
         fetchSupplierOrders();
