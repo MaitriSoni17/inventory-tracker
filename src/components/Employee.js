@@ -376,7 +376,7 @@ function Employee(props) {
                     {/* Dashboard Cards */}
                     <div className="row g-3 my-2">
                         <div className="col-md-4">
-                            <a href="#products" className="text-decoration-none"> <div
+                            <a href="/dashboard/products" className="text-decoration-none"> <div
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
                                 <i
                                     className="fas fa-box dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
@@ -388,7 +388,7 @@ function Employee(props) {
                         </div>
 
                         <div className="col-md-4">
-                            <a href="#orders" className="text-decoration-none"><div
+                            <a href="/dashboard/orders" className="text-decoration-none"><div
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
                                 <i
                                     className="bi bi-cart dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
@@ -400,7 +400,7 @@ function Employee(props) {
                         </div>
 
                         <div className="col-md-4">
-                            <a href="#categories" className="text-decoration-none"><div
+                            <a href="/dashboard/category" className="text-decoration-none"><div
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
                                 <i
                                     className="bi bi-boxes dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
@@ -416,9 +416,9 @@ function Employee(props) {
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
-                                <div className="d-flex justify-content-between mb-3">
-                                    <h3 className="fs-4">Orders Overview</h3>
-                                    <select className="form-select w-auto" value={ordersView} onChange={(e) => setOrdersView(e.target.value)}>
+                                <div className="d-flex justify-content-between mb-4">
+                                    <h1>Orders Overview</h1>
+                                    <select className="form-select w-auto pe-5" value={ordersView} onChange={(e) => setOrdersView(e.target.value)}>
                                         <option value="monthly">Monthly</option>
                                         <option value="quarterly">Quarterly</option>
                                         <option value="annually">Annually</option>
@@ -439,7 +439,7 @@ function Employee(props) {
                     </div>
 
                     <div className="row my-4 g-3">
-                        <div className="col-md-6">
+                        <div className="col-md-5 me-5">
                             <div className="p-3 bg-white shadow rounded-4 border border-4">
                                 <h3 className="fs-4 mb-4 mt-2 ms-2">Stock Numbers</h3>
                                 <table className="table align-middle mt-4">
@@ -465,7 +465,7 @@ function Employee(props) {
                             <div className="p-3 bg-white shadow border border-4 rounded-4">
                                 <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
                                     Top Products
-                                    <a href="#products" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                                    <a href="/dashboard/products" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
                                 </h3>
                                 <table className="table table-borderless align-middle mb-0">
                                     <thead className="text-secondary">
@@ -500,8 +500,8 @@ function Employee(props) {
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
-                                <div className="d-flex justify-content-between mb-3">
-                                    <h3 className="fs-4">Stock Overview</h3>
+                                <div className="d-flex justify-content-between mb-4">
+                                    <h1>Stock Overview</h1>
                                 </div>
                                 {products.length === 0 ? (
                                     <div className="alert alert-info m-4" role="alert">
