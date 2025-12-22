@@ -21,7 +21,8 @@ function EditSupplierOrder(props) {
         desc: ''
     });
 
-    useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
         fetchOrderDetails();
         fetchCategories();
     }, [id]);

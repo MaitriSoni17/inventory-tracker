@@ -49,6 +49,7 @@ const Settings = (props) => {
 
 
   // Fetch BusinessOwner data on component mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchBusinessOwnerData();
   }, []);

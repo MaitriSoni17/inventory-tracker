@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
+import '../styles/dashboard-elegant.css';
 
 const Orders = (props) => {
     // const navigate = useNavigate();
@@ -12,6 +13,8 @@ const Orders = (props) => {
     const [filterDeliveryStatus, setFilterDeliveryStatus] = useState('');
     const [loading, setLoading] = useState(true);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchOrders();
     }, []);

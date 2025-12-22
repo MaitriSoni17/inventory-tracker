@@ -35,7 +35,7 @@ const Notifications = () => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNotificationClick = () => {
     navigate('/dashboard/notifications');

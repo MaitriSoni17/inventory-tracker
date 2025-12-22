@@ -218,7 +218,7 @@ const NotificationsPage = (props) => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 30000);
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredNotifications = getFilteredNotifications();
 

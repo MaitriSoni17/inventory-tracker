@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import '../styles/category.css';
+import '../styles/dashboard-elegant.css';
 
 const Category = (props) => {
   const [categoryDetails, setcategoryDetails] = useState({ cName: "", cDesc: "" });

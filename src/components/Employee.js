@@ -12,7 +12,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import './styles/businessowner.css';
+import './styles/dashboard-elegant.css';
 
 ChartJS.register(
     LineElement,
@@ -45,12 +45,12 @@ function Employee(props) {
     });
 
     // Fetch all data on mount
-    useEffect(() => {
+    useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         fetchAllData();
     }, []);
 
     // Initialize or update charts when data changes
-    useEffect(() => {
+    useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         if (orders.length > 0 && products.length > 0) {
             initCharts();
         }

@@ -1,6 +1,9 @@
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Home from './components/Home';
+import Features from './components/Features';
+import About from './components/About';
+import Contact from './components/Contact';
 import Login from './components/login/Login';
 import SignUp from './components/login/SignUp';
 import SideBar from './components/SideBar';
@@ -46,6 +49,9 @@ function App() {
         <Routes>
           {/* Landing Pages */}
           <Route path="/" element={<Home />} />
+          <Route path="/features" element={<Features />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
           
           {/* Auth Pages */}
           <Route path="/login" element={<Login showAlert={showAlert} />} />

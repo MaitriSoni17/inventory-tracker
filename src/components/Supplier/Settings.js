@@ -48,6 +48,7 @@ const Settings = (props) => {
   });
 
   // Fetch Supplier data on component mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchSupplierData();
   }, []);

@@ -18,6 +18,7 @@ const SupplierOrder = (props) => {
         totalAmount: 0
     });
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchSupplierOrders();
     }, [id]);

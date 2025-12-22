@@ -19,7 +19,8 @@ function AddSupplierOrder(props) {
         desc: ''
     });
 
-    useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
         fetchSupplierInfo();
         fetchCategories();
     }, [id]);

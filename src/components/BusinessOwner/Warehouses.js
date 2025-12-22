@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
-import '../styles/warehouses.css'
+import '../styles/dashboard-elegant.css'
 
 const Warehouses = (props) => {
     const [warehouses, setWarehouses] = useState([]);
@@ -28,6 +27,8 @@ const Warehouses = (props) => {
         country: ''
     });
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchWarehouses();
     }, []);

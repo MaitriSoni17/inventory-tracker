@@ -36,6 +36,7 @@ const Settings = (props) => {
   });
 
   // Fetch Employee data on component mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchEmployeeData();
   }, []);

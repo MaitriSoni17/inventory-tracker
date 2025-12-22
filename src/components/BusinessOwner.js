@@ -12,7 +12,7 @@ import {
     Legend,
     Filler
 } from 'chart.js';
-import './styles/businessowner.css';
+import './styles/dashboard-elegant.css';
 
 ChartJS.register(
     LineElement,
@@ -37,6 +37,7 @@ const BusinessOwner = (props) => {
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
+    // eslint-disable-next-line no-unused-vars
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [salesView, setSalesView] = useState('monthly');
@@ -50,12 +51,12 @@ const BusinessOwner = (props) => {
     });
 
     // Fetch all data on component mount
-    useEffect(() => {
+    useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         fetchAllData();
     }, []);
 
     // Initialize or update charts when data changes
-    useEffect(() => {
+    useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         if (orders.length > 0 || products.length > 0) {
             // Use setTimeout to ensure DOM is updated before accessing refs
             const timer = setTimeout(() => {

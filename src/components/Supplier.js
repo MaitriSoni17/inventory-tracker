@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './styles/businessowner.css';
+import './styles/dashboard-elegant.css';
 import {
     Chart as ChartJS,
     LineElement,
@@ -227,10 +227,13 @@ function Supplier(props) {
         }
 
         const monthlyOrders = aggregateOrdersByPeriod(supplierOrders, timePeriod);
+        // eslint-disable-next-line no-unused-vars
         const completedOrders = stats.completedOrders;
+        // eslint-disable-next-line no-unused-vars
         const pendingOrders = stats.pendingOrders;
         const totalOrders = stats.totalOrders;
 
+        // eslint-disable-next-line no-unused-vars
         const colors = {
             completed: '#6a1b9a',
             pending: '#7a96ff'

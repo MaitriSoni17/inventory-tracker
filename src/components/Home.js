@@ -1,314 +1,223 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import HomepageChatbot from './HomepageChatbot';
 import './styles/home.css';
 
 function Home() {
   const navigate = useNavigate();
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+
+  const testimonials = [
+    {
+      name: 'Sarah Johnson',
+      company: 'Tech Supplies Co.',
+      text: 'Reduced inventory errors by 80% and gained complete warehouse visibility.',
+      avatar: 'SJ'
+    },
+    {
+      name: 'Mike Chen',
+      company: 'Retail Plus',
+      text: 'AI chatbot saves us hours every week with instant insights.',
+      avatar: 'MC'
+    },
+    {
+      name: 'Emily Rodriguez',
+      company: 'Logistics Experts',
+      text: 'Seamless implementation with fantastic support.',
+      avatar: 'ER'
+    }
+  ];
 
   return (
-    <div className="home-page">
-      {/* Navigation Bar */}
-      <nav className="navbar-home">
+    <div className="home-elegant">
+      {/* Navigation */}
+      <nav className="navbar-elegant">
         <div className="nav-container">
-          <div className="nav-logo">
-            <span className="logo-text">Inline Tracker</span>
-          </div>
+          <button className="nav-logo" onClick={() => navigate('/')}>
+            <i className="bi bi-box-seam"></i> Inline Tracker
+          </button>
           <ul className="nav-menu">
-            <li><a href="#features" className="nav-link">Features</a></li>
-            <li><a href="#about" className="nav-link">About</a></li>
-            <li><a href="#contact" className="nav-link">Contact</a></li>
-            <li><button onClick={() => navigate('/login')} className="nav-link btn-login-nav">Login</button></li>
+            <li><button onClick={() => navigate('/features')}>Features</button></li>
+            <li><button onClick={() => navigate('/about')}>About</button></li>
+            <li><button onClick={() => navigate('/contact')}>Contact</button></li>
+            <li><button onClick={() => navigate('/login')}>Login</button></li>
+            <li><button onClick={() => navigate('/signup')} className="btn-primary-nav">Get Started</button></li>
           </ul>
-          <div className="hamburger">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="hero-section">
-        <div className="hero-background">
-          <div className="shape shape-1"></div>
-          <div className="shape shape-2"></div>
-          <div className="shape shape-3"></div>
-        </div>
-
+      <section className="hero-elegant">
         <div className="hero-content">
-          <h1 className="hero-title">Welcome to <span className="brand-name">Inline Tracker</span></h1>
-          <p className="hero-subtitle">Smart Inventory Management for Modern Businesses</p>
-          <p className="hero-description">
-            Streamline your inventory operations with our AI-powered management system. Track products, manage orders, and optimize your supply chain effortlessly.
-          </p>
+          <h1>Inventory Management<br/><span className="highlight">Simplified</span></h1>
+          <p>Smart, AI-powered inventory tracking that saves time and reduces costs. Perfect for businesses of all sizes.</p>
           <div className="hero-buttons">
-            <button onClick={() => navigate('/login')} className="btn btn-primary-hero">Login Now</button>
-            <button onClick={() => navigate('/signup')} className="btn btn-secondary-hero">Get Started</button>
+            <button className="btn btn-primary-elegant" onClick={() => navigate('/signup')}>Start Free Trial</button>
+            <button className="btn btn-secondary-elegant" onClick={() => navigate('/login')}>Sign In</button>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="features-section">
-        <div className="section-container">
-          <h2 className="section-title">Powerful Features</h2>
-          <p className="section-subtitle">Everything you need to manage your inventory efficiently</p>
-
-          <div className="features-grid">
-            {/* Feature 1 */}
-            <div className="feature-card">
-              <div className="feature-icon">
-                <i className="bi bi-boxes"></i>
-              </div>
-              <h3>Inventory Management</h3>
-              <p>Real-time tracking of products across multiple warehouses. Monitor stock levels, set reorder points, and get low-stock alerts automatically.</p>
-              <ul className="feature-list">
-                <li>✓ Real-time stock tracking</li>
-                <li>✓ Multi-warehouse support</li>
-                <li>✓ Low-stock alerts</li>
-                <li>✓ Category organization</li>
-              </ul>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="feature-card">
-              <div className="feature-icon">
-                <i className="bi bi-clipboard-check"></i>
-              </div>
-              <h3>Order Management</h3>
-              <p>Manage customer orders from creation to delivery. Track order status, set deadlines, and ensure timely fulfillment with ease.</p>
-              <ul className="feature-list">
-                <li>✓ Order creation & tracking</li>
-                <li>✓ Delivery scheduling</li>
-                <li>✓ Status monitoring</li>
-                <li>✓ Order history</li>
-              </ul>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="feature-card">
-              <div className="feature-icon">
-                <i className="bi bi-person-badge"></i>
-              </div>
-              <h3>Employee Management</h3>
-              <p>Manage your team efficiently. Assign tasks, track performance, and optimize workforce productivity with role-based access control.</p>
-              <ul className="feature-list">
-                <li>✓ Team management</li>
-                <li>✓ Task assignment</li>
-                <li>✓ Performance tracking</li>
-                <li>✓ Role-based access</li>
-              </ul>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="feature-card">
-              <div className="feature-icon">
-                <i className="bi bi-truck"></i>
-              </div>
-              <h3>Supplier Management</h3>
-              <p>Streamline supplier relationships and orders. Manage supplier orders, track deliveries, and maintain supply chain efficiency.</p>
-              <ul className="feature-list">
-                <li>✓ Supplier profiles</li>
-                <li>✓ Purchase orders</li>
-                <li>✓ Delivery tracking</li>
-                <li>✓ Order history</li>
-              </ul>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="feature-card">
-              <div className="feature-icon">
-                <i className="bi bi-building"></i>
-              </div>
-              <h3>Warehouse Management</h3>
-              <p>Organize and manage multiple warehouse locations. Track inventory distribution and optimize storage across your facilities.</p>
-              <ul className="feature-list">
-                <li>✓ Multi-location tracking</li>
-                <li>✓ Location management</li>
-                <li>✓ Capacity monitoring</li>
-                <li>✓ Distribution optimization</li>
-              </ul>
-            </div>
-
-            {/* Feature 6 */}
-            <div className="feature-card">
-              <div className="feature-icon">
-                <i className="bi bi-chat-dots"></i>
-              </div>
-              <h3>AI Chatbot Assistant</h3>
-              <p>Get instant answers to your inventory questions. Our AI-powered chatbot provides real-time insights and recommendations.</p>
-              <ul className="feature-list">
-                <li>✓ Natural language queries</li>
-                <li>✓ Instant insights</li>
-                <li>✓ Smart recommendations</li>
-                <li>✓ 24/7 availability</li>
-              </ul>
-            </div>
+      {/* Features Grid */}
+      <section className="features-elegant">
+        <h2>Why Choose Inline Tracker?</h2>
+        <div className="features-grid">
+          <div className="feature-card">
+            <div className="feature-icon"><i className="bi bi-speedometer2"></i></div>
+            <h3>Real-time Tracking</h3>
+            <p>Track inventory across all locations instantly with our intuitive dashboard.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon"><i className="bi bi-robot"></i></div>
+            <h3>AI Assistant</h3>
+            <p>Get intelligent insights and recommendations powered by advanced AI.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon"><i className="bi bi-graph-up"></i></div>
+            <h3>Smart Analytics</h3>
+            <p>Make data-driven decisions with comprehensive reports and forecasting.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon"><i className="bi bi-shield-check"></i></div>
+            <h3>Enterprise Security</h3>
+            <p>Your data is protected with bank-level encryption and compliance.</p>
           </div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="about-section">
-        <div className="section-container">
-          <div className="about-grid">
-            <div className="about-content">
-              <h2 className="section-title">About Inline Tracker</h2>
-              <p className="about-text">
-                Inline Tracker is a modern inventory management solution designed specifically for small to medium-sized businesses. We understand the challenges of managing complex supply chains, and we've built a platform that makes it simple.
-              </p>
-              <p className="about-text">
-                Our mission is to empower businesses with intelligent inventory management tools that reduce costs, improve efficiency, and enhance decision-making through real-time data and AI-powered insights.
-              </p>
-
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <h4 className="stat-number">1000+</h4>
-                  <p className="stat-label">Active Users</p>
-                </div>
-                <div className="stat-card">
-                  <h4 className="stat-number">50+</h4>
-                  <p className="stat-label">Companies</p>
-                </div>
-                <div className="stat-card">
-                  <h4 className="stat-number">99.9%</h4>
-                  <p className="stat-label">Uptime</p>
-                </div>
-                <div className="stat-card">
-                  <h4 className="stat-number">24/7</h4>
-                  <p className="stat-label">Support</p>
-                </div>
-              </div>
-
-              <div className="about-values">
-                <h3>Our Values</h3>
-                <ul className="values-list">
-                  <li><span className="value-icon">🎯</span> <strong>Accuracy:</strong> Precise inventory tracking</li>
-                  <li><span className="value-icon">⚡</span> <strong>Efficiency:</strong> Streamlined operations</li>
-                  <li><span className="value-icon">🔐</span> <strong>Security:</strong> Enterprise-grade protection</li>
-                  <li><span className="value-icon">🤝</span> <strong>Support:</strong> Dedicated customer service</li>
-                </ul>
-              </div>
-            </div>
-
-            <div className="about-image">
-              <div className="about-visual">
-                <div className="visual-shape"></div>
-                <div className="visual-content">
-                  <div className="visual-item">📊 Analytics</div>
-                  <div className="visual-item">📦 Inventory</div>
-                  <div className="visual-item">🚚 Logistics</div>
-                  <div className="visual-item">💼 Business</div>
-                </div>
-              </div>
-            </div>
+      {/* How It Works */}
+      <section className="how-works">
+        <h2>How It Works</h2>
+        <div className="steps-container">
+          <div className="step">
+            <div className="step-number">1</div>
+            <h3>Sign Up</h3>
+            <p>Create your account in seconds</p>
+          </div>
+          <div className="step">
+            <div className="step-number">2</div>
+            <h3>Connect</h3>
+            <p>Integrate with your systems</p>
+          </div>
+          <div className="step">
+            <div className="step-number">3</div>
+            <h3>Track</h3>
+            <p>Monitor inventory in real-time</p>
+          </div>
+          <div className="step">
+            <div className="step-number">4</div>
+            <h3>Optimize</h3>
+            <p>Use AI insights to improve</p>
           </div>
         </div>
       </section>
 
-      {/* Contact Section */}
-      <section id="contact" className="contact-section">
-        <div className="section-container">
-          <h2 className="section-title">Get In Touch</h2>
-          <p className="section-subtitle">We're here to help. Contact us for any questions or support.</p>
-
-          <div className="contact-grid">
-            {/* Contact Card 1 */}
-            <div className="contact-card">
-              <div className="contact-icon">
-                <i className="bi bi-envelope"></i>
+      {/* Testimonials */}
+      <section className="testimonials-elegant">
+        <h2>What Our Customers Say</h2>
+        <div className="testimonial-container">
+          <div className="testimonial-card">
+            <div className="stars">★★★★★</div>
+            <p>"{testimonials[currentTestimonial].text}"</p>
+            <div className="customer-info">
+              <div className="avatar">{testimonials[currentTestimonial].avatar}</div>
+              <div>
+                <h4>{testimonials[currentTestimonial].name}</h4>
+                <small>{testimonials[currentTestimonial].company}</small>
               </div>
-              <h3>Email</h3>
-              <p className="contact-info">support@inlinetracker.com</p>
-              <p className="contact-desc">Send us your queries anytime</p>
-            </div>
-
-            {/* Contact Card 2 */}
-            <div className="contact-card">
-              <div className="contact-icon">
-                <i className="bi bi-telephone"></i>
-              </div>
-              <h3>Phone</h3>
-              <p className="contact-info">+1 (555) 123-4567</p>
-              <p className="contact-desc">Available Monday to Friday, 9 AM to 6 PM</p>
-            </div>
-
-            {/* Contact Card 3 */}
-            <div className="contact-card">
-              <div className="contact-icon">
-                <i className="bi bi-geo-alt"></i>
-              </div>
-              <h3>Address</h3>
-              <p className="contact-info">123 Business Street</p>
-              <p className="contact-desc">New York, NY 10001, USA</p>
-            </div>
-
-            {/* Contact Card 4 */}
-            <div className="contact-card">
-              <div className="contact-icon">
-                <i className="bi bi-chat-left-text"></i>
-              </div>
-              <h3>Live Chat</h3>
-              <p className="contact-info">Start a conversation</p>
-              <p className="contact-desc">Instant support from our team</p>
             </div>
           </div>
+        </div>
+        <div className="testimonial-dots">
+          {testimonials.map((_, idx) => (
+            <button 
+              key={idx} 
+              className={`dot ${idx === currentTestimonial ? 'active' : ''}`}
+              onClick={() => setCurrentTestimonial(idx)}
+            ></button>
+          ))}
+        </div>
+      </section>
 
-          {/* Contact Form */}
-          <div className="contact-form-container">
-            <h3 className="form-title">Send us a Message</h3>
-            <form className="contact-form">
-              <div className="form-row">
-                <div className="form-group">
-                  <input type="text" placeholder="Your Name" required />
-                </div>
-                <div className="form-group">
-                  <input type="email" placeholder="Your Email" required />
-                </div>
-              </div>
-              <div className="form-group">
-                <input type="text" placeholder="Subject" required />
-              </div>
-              <div className="form-group">
-                <textarea placeholder="Your Message" rows="5" required></textarea>
-              </div>
-              <button type="submit" className="btn btn-primary-hero">Send Message</button>
-            </form>
+      {/* Pricing Section */}
+      <section className="pricing-elegant">
+        <h2>Simple, Transparent Pricing</h2>
+        <div className="pricing-cards">
+          <div className="price-card">
+            <h3>Starter</h3>
+            <p className="price">Free</p>
+            <ul>
+              <li>✓ Up to 1,000 items</li>
+              <li>✓ Basic dashboard</li>
+              <li>✓ Email support</li>
+            </ul>
+            <button className="btn btn-outline" onClick={() => navigate('/signup')}>Get Started</button>
           </div>
+          <div className="price-card featured">
+            <h3>Professional</h3>
+            <p className="price">$49<span>/month</span></p>
+            <ul>
+              <li>✓ Unlimited items</li>
+              <li>✓ Advanced analytics</li>
+              <li>✓ AI chatbot</li>
+              <li>✓ Priority support</li>
+            </ul>
+            <button className="btn btn-primary-elegant" onClick={() => navigate('/signup')}>Start Trial</button>
+          </div>
+          <div className="price-card">
+            <h3>Enterprise</h3>
+            <p className="price">Custom</p>
+            <ul>
+              <li>✓ Everything in Pro</li>
+              <li>✓ Custom integrations</li>
+              <li>✓ Dedicated account manager</li>
+              <li>✓ SLA guarantee</li>
+            </ul>
+            <button className="btn btn-outline" onClick={() => navigate('/login')}>Contact Us</button>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="cta-elegant">
+        <h2>Ready to Transform Your Inventory?</h2>
+        <p>Join hundreds of businesses using Inline Tracker</p>
+        <div className="cta-buttons">
+          <button className="btn btn-primary-elegant" onClick={() => navigate('/signup')}>Start Free 14-Day Trial</button>
+          <button className="btn btn-secondary-elegant" onClick={() => navigate('/login')}>Already a member? Sign In</button>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="footer">
-        <div className="section-container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h4>Inline Tracker</h4>
-              <p>Smart inventory management for modern businesses.</p>
-            </div>
-            <div className="footer-section">
-              <h4>Quick Links</h4>
-              <ul>
-                <li><a href="#features">Features</a></li>
-                <li><a href="#about">About</a></li>
-                <li><a href="#contact">Contact</a></li>
-              </ul>
-            </div>
-            <div className="footer-section">
-              <h4>Follow Us</h4>
-              <div className="social-links">
-                <a href="#" className="social-link"><i className="bi bi-facebook"></i></a>
-                <a href="#" className="social-link"><i className="bi bi-twitter"></i></a>
-                <a href="#" className="social-link"><i className="bi bi-linkedin"></i></a>
-                <a href="#" className="social-link"><i className="bi bi-instagram"></i></a>
-              </div>
-            </div>
+      <footer className="footer-elegant">
+        <div className="footer-content">
+          <div className="footer-section">
+            <h4>Inline Tracker</h4>
+            <p>Smart inventory management for modern businesses.</p>
           </div>
-          <div className="footer-bottom">
-            <p>&copy; 2025 Inline Tracker. All rights reserved.</p>
+          <div className="footer-section">
+            <h4>Product</h4>
+            <ul>
+              <li><button onClick={() => navigate('/features')}>Features</button></li>
+              <li><button onClick={() => navigate('/pricing')}>Pricing</button></li>
+              <li><button onClick={() => navigate('/about')}>About</button></li>
+            </ul>
+          </div>
+          <div className="footer-section">
+            <h4>Support</h4>
+            <ul>
+              <li><a href="mailto:support@inlinetracker.com">Email Support</a></li>
+              <li><button onClick={() => {}}>Documentation</button></li>
+              <li><button onClick={() => {}}>FAQ</button></li>
+            </ul>
           </div>
         </div>
+        <div className="footer-bottom">
+          <p>&copy; 2024 Inline Tracker. All rights reserved.</p>
+        </div>
       </footer>
+
+      <HomepageChatbot />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import '../styles/products.css';
+import '../styles/dashboard-elegant.css';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -340,7 +340,7 @@ const Products = (props) => {
                                                     <td>
                                                         <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-3"><i
                                                             className="bi bi-pencil-square fs-5"></i></a>
-                                                        <a className="text-decoration-none text-danger fs-5" onClick={() => handleDelete(product._id)} style={{'cursor': 'pointer'}}><i className="bi bi-trash"></i></a>
+                                                        <button className="text-decoration-none text-danger fs-5 border-0 bg-transparent p-0" onClick={() => handleDelete(product._id)} style={{'cursor': 'pointer'}}><i className="bi bi-trash"></i></button>
                                                     </td>
                                                 </tr>
                                             );
