@@ -311,7 +311,7 @@ const EditProduct = (props) => {
             <div className="container-fluid p-5">
                 {/* Header Section */}
                 <div className="row mb-4">
-                    <div className="col-12">
+                    <div className="col-12 ms-5">
                         <div className="d-flex align-items-center">
                             <h1 className="mb-0 display-3">
                                 Edit Product
@@ -599,7 +599,7 @@ const EditProduct = (props) => {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="row">
+                    <div className="row mt-4 ms-1 mb-5 pb-5">
                         <div className="col-12 d-flex gap-3 justify-content-start">
                             <button 
                                 type="submit" 

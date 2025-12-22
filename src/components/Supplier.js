@@ -446,8 +446,9 @@ function Supplier(props) {
                                 style={{ cursor: 'pointer' }}
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card"
                                 title="Click to view all orders">
-                                <i
-                                    className="bi bi-box-seam dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                    <i className="bi bi-box-seam-fill"></i>
+                                </div>
                                 <div className="mt-3">
                                     <h3 className="fs-2">{stats.totalOrders}</h3>
                                     <p className="fs-5">Total Orders</p>
@@ -461,8 +462,9 @@ function Supplier(props) {
                                 style={{ cursor: 'pointer' }}
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card"
                                 title="Click to view pending orders">
-                                <i
-                                    className="bi bi-clock dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                    <i className="bi bi-clock"></i>
+                                </div>
                                 <div className="mt-3">
                                     <h3 className="fs-2">{stats.pendingOrders}</h3>
                                     <p className="fs-5">Pending Orders</p>
@@ -476,8 +478,9 @@ function Supplier(props) {
                                 style={{ cursor: 'pointer' }}
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card"
                                 title="Click to view completed orders">
-                                <i
-                                    className="bi bi-send-check dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                               <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                    <i className="bi bi-send-check"></i>
+                                </div>
                                 <div className="mt-3">
                                     <h3 className="fs-2">{stats.completedOrders}</h3>
                                     <p className="fs-5">Completed Orders</p>

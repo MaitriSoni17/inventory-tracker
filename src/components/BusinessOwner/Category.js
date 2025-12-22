@@ -12,7 +12,7 @@ const Category = (props) => {
   // Fetch categories on component mount
   useEffect(() => {
     fetchCategories();
-  });
+  }, []);
 
   const fetchCategories = async () => {
     try {
@@ -222,9 +222,11 @@ const Category = (props) => {
                     <div className="ps-3 pb-3 pe-3">
                       <h5 className="card-title mb-1">{category.cName}</h5>
                       <p className="card-text text-muted">{category.cDesc}</p>
-                      <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); handleShowCategory(category); }} data-bs-toggle="modal" data-bs-target="#editCategoryModal">
-                        <i className="bi bi-pencil-square text-secondary fs-5 m-1"></i></a>
-                      <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); handleShowCategory(category); handleDeleteCategory(); }}><i className="bi bi-trash-fill text-danger fs-5 m-1"></i></a>
+                      <div className='d-flex g-2'>
+                        <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); handleShowCategory(category); }} data-bs-toggle="modal" data-bs-target="#editCategoryModal">
+                          <i className="bi bi-pencil-square text-secondary fs-4 me-3"></i></a>
+                        <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); handleShowCategory(category); handleDeleteCategory(); }}><i className="bi bi-trash-fill text-danger fs-4 m-1"></i></a>
+                      </div>
                     </div>
                   </div>
                 </div>

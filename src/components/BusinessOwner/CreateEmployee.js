@@ -369,7 +369,7 @@ const CreateEmployee = (props) => {
                 <div className="row g-4 mb-4">
                     <div className="col-md-6">
                         <label htmlFor="password" className="form-label fw-semibold">Password</label>
-                        <div className='input-group mb-3'>
+                        <div className='input-group mb-3 gap-0'>
                             <input type={showPassword ? "text" : "password"} value={empDetails.password} className='form-control' name='password' id="password" placeholder="••••••••" onChange={onChange} minLength={5} /><i className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
                         </div>
                         <div className="invalid-feedback">Password is required.</div>
@@ -377,7 +377,7 @@ const CreateEmployee = (props) => {
 
                     <div className="col-md-6">
                         <label htmlFor="cPassword" className="form-label fw-semibold">Confirm Password</label>
-                        <div className='input-group mb-3'>
+                        <div className='input-group mb-3 gap-0'>
                             <input type={showCPassword ? "text" : "password"} name='cpassword' minLength={5} className='form-control' id="cpassword" value={empDetails.cpassword} placeholder="••••••••" onChange={onChange} required /><i className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={cpassVisibility}></i>
                         </div>
                         <div className="invalid-feedback">Confirm Password is required.</div>
@@ -385,13 +385,13 @@ const CreateEmployee = (props) => {
                 </div>
 
                 {/* Submit and Cancel Buttons */}
-                <div className="row mt-5">
+                <div className="row mt-5 mb-5 pb-5">
                     <div className="col-12 d-flex justify-content-start">
                         <input
                             type="submit"
                             className="btn btn-custom-purple me-3 px-2 shadow-sm"
                             value='Add Employee' />
-                        <a href="/dashboard/employee" type="button" className="btn btn-secondary btn-lg shadow-sm text-center px-3">
+                        <a href="/dashboard/employee" type="button" className="btn btn-secondary btn-lg shadow-sm text-center px-3 text-decoration-none">
                             Cancel
                         </a>
                     </div>

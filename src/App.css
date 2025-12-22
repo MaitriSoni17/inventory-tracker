@@ -104,19 +104,19 @@ a:hover {
 
 /* Buttons */
 .btn {
-    padding: 0.5rem 1rem;
+    /* padding: 0.5rem 1rem; */
     border-radius: var(--border-radius);
     font-weight: 500;
-    font-size: 0.95rem;
+    /* font-size: 0.95rem; */
     border: none;
     cursor: pointer;
     transition: all var(--transition-speed) ease;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    white-space: nowrap;
-    user-select: none;
+    /* gap: 0.5rem; */
+    /* white-space: nowrap;
+    user-select: none; */
 }
 
 .btn:disabled {

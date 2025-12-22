@@ -333,7 +333,7 @@ const AddProduct = (props) => {
                         </div>
                     </div>
 
-                    <div className="row mt-4">
+                    <div className="row mt-4 mb-5 pb-5">
                         <div className="col-12 d-flex justify-content-start">
                             <input type="submit" className="btn btn-custom-purple text-decoration-none btn-lg me-3 shadow-sm" value="Add Product" />
                             <a href="/dashboard/products" className="btn btn-secondary btn-lg shadow-sm text-decoration-none">Cancel</a>

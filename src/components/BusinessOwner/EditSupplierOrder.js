@@ -164,7 +164,7 @@ function EditSupplierOrder(props) {
     return (
         <>
             <div className="container-fluid p-5">
-                <div className="mb-5">
+                <div className="mb-5 ms-5">
                     <h1 className="display-5 fw-semibold mb-1">Edit Supplier Order</h1>
                     <p className="text-muted">Supplier: <span className="fw-semibold text-dark">{supplierName}</span></p>
                 </div>
@@ -334,7 +334,7 @@ function EditSupplierOrder(props) {
                                 </div>
                             </div>
 
-                            <div className="d-flex gap-2">
+                            <div className="d-flex gap-2 mb-5">
                                 <button type="submit" className="btn btn-custom-purple btn-lg px-5">Update Order</button>
                                 <button type="button" className="btn btn-outline-secondary btn-lg px-5" onClick={() => navigate(`/dashboard/supplierordes/${supplierId}`)}>
                                     Cancel

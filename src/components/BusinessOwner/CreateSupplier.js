@@ -88,7 +88,7 @@ function CreateSupplier(props) {
         <>
             <div className="container-fluid p-5">
                 <div className="row mb-3">
-                    <div className="col-9 ms-1">
+                    <div className="col-9 ms-5">
                         <h1 className="display-5 fw-normal mb-3">Add Supplier</h1>
                     </div>
                 </div>
@@ -191,7 +191,7 @@ function CreateSupplier(props) {
                             </div>
                         </div>
                     </div>
-                    <div className="row mt-4 ms-1">
+                    <div className="row mt-4 ms-1 mb-5 pb-5">
                         <div className="col-12 d-flex justify-content-start">
                             <input type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm" value="Add Supplier" />
                             <a href="/dashboard/suppliers" type="button" className="btn btn-secondary btn-lg shadow-sm text-decoration-none">Cancel</a>

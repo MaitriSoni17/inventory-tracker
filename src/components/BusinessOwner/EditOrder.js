@@ -162,7 +162,7 @@ const EditOrder = (props) => {
         <>
             <div className="container-fluid p-5">
                 <div className="row mb-4">
-                    <div className="col-12 ms-2">
+                    <div className="col-12 ms-5">
                         <h1 className="display-5 fw-normal">Edit Order</h1>
                     </div>
                 </div>
@@ -296,7 +296,7 @@ const EditOrder = (props) => {
                         </div>
                     </div>
 
-                    <div className="row mt-4 ms-1">
+                    <div className="row mt-4 ms-1 mb-5 pb-5">
                         <div className="col-12 d-flex gap-3 justify-content-start">
                             <button type="submit" className="btn btn-custom-purple btn-lg rounded-3 px-5 shadow-sm">Update Order</button>
                             <button type="button" className="btn btn-outline-secondary btn-lg rounded-3 px-5 shadow-sm" onClick={handleCancel}>Cancel</button>

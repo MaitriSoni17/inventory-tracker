@@ -128,7 +128,7 @@ const EditSupplier = (props) => {
         <>
             <div className="container-fluid p-5">
                 <div className="row mb-4">
-                    <div className="col-12 ms-2">
+                    <div className="col-12 ms-5">
                         <h1 className="display-5 fw-normal">Edit Supplier</h1>
                     </div>
                 </div>
@@ -196,7 +196,7 @@ const EditSupplier = (props) => {
                         </div>
                     </div>
 
-                    <div className="row mt-5 ms-1">
+                    <div className="row mt-5 ms-1 mb-5 pb-5">
                         <div className="col-12 d-flex justify-content-start">
                             <button type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm">Update Supplier</button>
                             <button type="button" className="btn btn-secondary btn-lg shadow-sm" onClick={handleCancel}>Cancel</button>
