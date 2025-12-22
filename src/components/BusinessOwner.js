@@ -418,7 +418,9 @@ const BusinessOwner = (props) => {
                         <div className="col-md-4">
                             <a href="/dashboard/products" className="text-decoration-none">
                                 <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                                    <i className="fas fa-box dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                    <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                        <i className="bi bi-box-seam-fill"></i>
+                                    </div>
                                     <div className="mt-3">
                                         <h3 className="fs-2">{stats.totalProducts}</h3>
                                         <p className="fs-5">Total Products</p>
@@ -430,7 +432,9 @@ const BusinessOwner = (props) => {
                         <div className="col-md-4">
                             <a href="/dashboard/orders" className="text-decoration-none">
                                 <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                                    <i className="bi bi-cart dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                    <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                        <i className="bi bi-cart"></i>
+                                    </div>
                                     <div className="mt-3">
                                         <h3 className="fs-2">{stats.totalOrders}</h3>
                                         <p className="fs-5">Total Orders</p>
@@ -442,7 +446,9 @@ const BusinessOwner = (props) => {
                         <div className="col-md-4">
                             <a href="/dashboard/employee" className="text-decoration-none">
                                 <div className="dashboard-card p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4">
-                                    <i className="bi bi-people dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3"></i>
+                                    <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                        <i className="bi bi-people"></i>
+                                    </div>
                                     <div className="mt-3">
                                         <h3 className="fs-2">{stats.totalEmployees}</h3>
                                         <p className="fs-5">Total Employees</p>

@@ -340,10 +340,10 @@ const Orders = (props) => {
                                             </span>
                                         </td>
                                         <td>
-                                            <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-sm btn-info me-2" title="Edit">
+                                            <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-info me-2" title="Edit">
                                                 <i className="bi bi-pencil"></i>
                                             </Link>
-                                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(order._id)} title="Delete">
+                                            <button className="btn btn-danger" onClick={() => handleDelete(order._id)} title="Delete">
                                                 <i className="bi bi-trash"></i>
                                             </button>
                                         </td>
