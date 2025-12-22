@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from "react-router-dom";
 import '../styles/login.css';
+
 function Login(props) {
     const [credentials, setCredentials] = useState({ email: "", password: "" })
     const [showPassword, setShowPassword] = useState(false);
@@ -36,53 +37,74 @@ function Login(props) {
         setCredentials({ ...credentials, [e.target.name]: e.target.value })
     }
     return (
-        <div className='login-wrapper w-100'>
-            <div className="container-fluid scene-container w-100 min-vh-100 d-flex align-items-center justify-content-center shadow-lg">
-
-                <div className="abstract-shape shape-1"></div>
-                <div className="abstract-shape shape-2"></div>
-                <div className="abstract-shape shape-3"></div>
-                <div className="abstract-shape shape-4"></div>
-
-                <div className="login-card p-4 p-sm-5 rounded-5 position-relative">
-
-                    <h1 className="logo-font text-white text-center mb-4 fw-semibold">
-                        Inline Tracker
-                    </h1>
-
-                    <h2 className="text-white h5 mb-4 text-center fw-normal">
-                        Login
-                    </h2>
-
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-3">
-                            <label htmlFor="email" className="form-label small text-secondary mb-1">Email</label>
-                            <input type="email" name='email' id="email" placeholder="username@gmail.com" onChange={onChange}
-                                className="form-control bg-white text-secondary p-2 rounded-3 border-1" required
-                            />
-                        </div>
-
-                        <div className="mb-4">
-                            <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
-                            <div className='input-group mb-3 bg-white rounded-3 border-1'>
-                                <input type={showPassword ? "text" : "password"} onChange={onChange} className='form-control m-0 p-0' name='password' id="password" placeholder="••••••••" required />
-                                <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"} fs-4 text-primary input-group-text bg-white m-0`} onClick={passVisibility}></i>
-                            </div>
-                        </div>
-
-                        <div className="text-end mb-3">
-                            <Link to="/" className="small text-secondary text-decoration-none">Forgot Password?</Link>
-                        </div>
-
-                        <input type="submit" className="btn btn-primary w-100 py-2" value='Sign in' />
-                    </form>
-
-                    <div className="text-center mt-4 small text-secondary">Don't have an account yet?
-                        <span><Link to='/signup' className="text-decoration-none">Register for free</Link></span>
+        <div className='login-wrapper w-100 min-vh-100 d-flex align-items-center justify-content-center'>
+            <div className="login-container d-flex">
+                <div className="login-card w-100 justify-content-center">
+                    <div className="login-header">
+                        <button className="logo-button" onClick={() => history('/')}>
+                            <i className="bi bi-box-seam"></i>
+                            <span>Inline Tracker</span>
+                        </button>
                     </div>
 
+                    <div className="login-content">
+                        <h1 className="login-title">Welcome Back</h1>
+                        <p className="login-subtitle">Sign in to your account to continue</p>
+
+                        <form onSubmit={handleSubmit} className="login-form">
+                            <div className="form-group">
+                                <label htmlFor="email" className="form-label">Email Address</label>
+                                <input
+                                    type="email"
+                                    name='email'
+                                    id="email"
+                                    placeholder="you@example.com"
+                                    onChange={onChange}
+                                    className="form-input"
+                                    required
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label htmlFor="password" className="form-label">Password</label>
+                                <div className='password-input-group'>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        onChange={onChange}
+                                        className='password-input'
+                                        name='password'
+                                        id="password"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        className='password-toggle'
+                                        onClick={passVisibility}
+                                    >
+                                        <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="forgot-password-link">
+                                <Link to="/" className="link">Forgot Password?</Link>
+                            </div>
+
+                            <button type="submit" className="login-button">Sign In</button>
+                        </form>
+
+                        <div className="login-footer">
+                            <p>Don't have an account? <Link to='/signup' className="link highlight-link">Sign up for free</Link></p>
+                        </div>
+                    </div>
                 </div>
 
+                <div className="login-decoration">
+                    <div className="decoration-shape shape-1"></div>
+                    <div className="decoration-shape shape-2"></div>
+                    <div className="decoration-shape shape-3"></div>
+                </div>
             </div>
         </div>
     );

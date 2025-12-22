@@ -1,217 +1,383 @@
-html,
-body {
+/* Login Page Elegant Design */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* {
     margin: 0;
-    /* padding: 0;
-    width: 100%;
-    height: 100%; */
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
     font-family: 'Inter', sans-serif;
-    /* background-color: #5500FF;
-    min-height: 100vh; */
+    overflow-x: hidden;
 }
 
 .login-wrapper {
-    position: fixed;
-    /* top: 0;
-    left: 0; */
-    overflow-y: auto;
-    overflow-x: hidden;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f0ff 0%, #f0e6ff 100%);
+    position: relative;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
 }
 
-/* The overall dark container that holds the scene */
-.scene-container {
-    background-color: #240046;
-    overflow: hidden;
+.login-container {
+    width: 100%;
+    max-width: 1200px;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    align-items: center;
     position: relative;
+    z-index: 10;
 }
 
-/* Custom CSS for the abstract, glowing shapes in the background */
-.abstract-shape {
+@media (min-width: 1024px) {
+    .login-container {
+        grid-template-columns: 1.2fr 1fr;
+        max-width: 1300px;
+    }
+}
+
+/* Decoration shapes */
+.login-decoration {
     position: absolute;
-    opacity: 0.8;
-    filter: blur(50px);
-    border-radius: 50%;
-    background: rgba(123, 44, 191, 0.7);
-    /* Lighter purple/magenta */
-    z-index: 1;
-    pointer-events: none; /* allow clicks through decorative shapes */
-    /* Animation for subtle movement (optional but enhances the feel) */
-    animation: moveShape 15s infinite alternate ease-in-out;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+    overflow: hidden;
 }
 
-/* Specific shapes */
+.decoration-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.6;
+    animation: float 15s infinite ease-in-out;
+}
+
 .shape-1 {
-    width: 300px;
-    height: 300px;
+    width: 400px;
+    height: 400px;
+    background: rgba(175, 80, 255, 0.3);
     top: -100px;
-    left: -100px;
-    background: rgba(76, 0, 255, 0.7);
-    /* Deep blue/violet */
-    animation-duration: 18s;
+    right: -100px;
+    animation-duration: 20s;
 }
 
 .shape-2 {
-    width: 250px;
-    height: 250px;
+    width: 300px;
+    height: 300px;
+    background: rgba(123, 44, 191, 0.2);
     bottom: -50px;
-    right: -50px;
-    background: rgba(175, 80, 255, 0.6);
-    /* Violet */
+    left: -50px;
+    animation-duration: 25s;
     animation-delay: -5s;
 }
 
 .shape-3 {
-    width: 150px;
-    height: 150px;
+    width: 250px;
+    height: 250px;
+    background: rgba(243, 232, 255, 0.4);
     top: 50%;
     left: 10%;
-    background: rgba(123, 44, 191, 0.8);
-    animation-duration: 20s;
-}
-
-.shape-4 {
-    width: 200px;
-    height: 200px;
-    bottom: 10%;
-    right: 40%;
-    background: rgba(76, 0, 255, 0.5);
+    animation-duration: 18s;
     animation-delay: -10s;
 }
 
-/* Responsive shapes for mobile */
-@media (max-width: 576px) {
-    .shape-1 {
-        width: 150px;
-        height: 150px;
-        top: -50px;
-        left: -50px;
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px) translateX(0px);
     }
-
-    .shape-2 {
-        width: 120px;
-        height: 120px;
-        bottom: -30px;
-        right: -30px;
-    }
-
-    .shape-3 {
-        width: 80px;
-        height: 80px;
-        top: 50%;
-        left: 5%;
-    }
-
-    .shape-4 {
-        width: 100px;
-        height: 100px;
-        bottom: 10%;
-        right: 30%;
+    50% {
+        transform: translateY(20px) translateX(20px);
     }
 }
 
-@keyframes moveShape {
-    from {
-        transform: translate(0, 0) rotate(0deg);
-    }
-
-    to {
-        transform: translate(20px, 20px) rotate(5deg);
-    }
-}
-
-/* Style for the logo text to mimic the script font */
-.logo-font {
-    font-family: 'Dancing Script', cursive;
-    font-size: clamp(1.5rem, 5vw, 2.5rem);
-}
-
-/* Styling the login card for the frosted glass effect (subtle transparency and shadow) */
+/* Login Card */
 .login-card {
-    background-color: rgba(43, 0, 88, 0.75);
-    /* Darker purple, slightly transparent */
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    backdrop-filter: blur(8px);
-    /* Optional: can look good if supported */
-    -webkit-backdrop-filter: blur(8px);
-    z-index: 2; /* ensure the card sits above the decorative shapes */
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(115, 0, 255, 0.1);
+    padding: 3.5rem;
+    position: relative;
+    z-index: 5;
+    min-width: 450px;
+}
+
+@media (min-width: 1024px) {
+    .login-card {
+        min-width: 600px;
+    }
+}
+
+@media (max-width: 768px) {
+    .login-card {
+        padding: 2rem;
+    }
+}
+
+/* Logo */
+.login-header {
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.logo-button {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #240046;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0;
+}
+
+.logo-button:hover {
+    color: #af50ff;
+    transform: scale(1.05);
+}
+
+.logo-button i {
+    font-size: 1.8rem;
+}
+
+.logo-button span {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+}
+
+/* Login Content */
+.login-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.login-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #240046;
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.5px;
+}
+
+.login-subtitle {
+    font-size: 0.95rem;
+    color: #666;
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+/* Form */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.75rem;
+}
+
+.form-input {
+    padding: 0.875rem 1rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    color: #333;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #af50ff;
+    box-shadow: 0 0 0 3px rgba(175, 80, 255, 0.1);
+}
+
+.form-input::placeholder {
+    color: #999;
+}
+
+/* Password Input Group */
+.password-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input {
     width: 100%;
-    max-width: 500px;
-    min-width: 280px;
-    border-radius: 2rem;
+    padding: 0.875rem 1rem;
+    padding-right: 2.75rem;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.3s ease;
+    background: #ffffff;
+    color: #333;
 }
 
-/* Responsive text sizes */
-.login-card h1 {
-    font-size: clamp(1.75rem, 6vw, 2.5rem) !important;
+.password-input:focus {
+    outline: none;
+    border-color: #af50ff;
+    box-shadow: 0 0 0 3px rgba(175, 80, 255, 0.1);
 }
 
-.login-card h2 {
-    font-size: clamp(1rem, 4vw, 1.25rem) !important;
+.password-toggle {
+    position: absolute;
+    right: 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #999;
+    font-size: 1.1rem;
+    transition: all 0.3s ease;
+    padding: 0.5rem;
 }
 
-.login-card label {
-    font-size: clamp(0.8rem, 2vw, 0.9rem) !important;
+.password-toggle:hover {
+    color: #af50ff;
 }
 
-.login-card .form-control {
-    font-size: clamp(0.85rem, 2.5vw, 1rem) !important;
-    padding: 0.5rem 0.75rem !important;
+/* Forgot Password Link */
+.forgot-password-link {
+    text-align: right;
 }
 
-.login-card .btn {
-    font-size: clamp(0.9rem, 2.5vw, 1rem) !important;
-    padding: 0.5rem 1rem !important;
+.forgot-password-link .link {
+    font-size: 0.85rem;
+    color: #af50ff;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
 }
 
-/* Responsive padding for login card */
-@media (max-width: 576px) {
+.forgot-password-link .link:hover {
+    color: #7b2cbf;
+    text-decoration: underline;
+}
+
+/* Login Button */
+.login-button {
+    padding: 0.95rem 1.5rem;
+    background: linear-gradient(135deg, #af50ff 0%, #7b2cbf 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 20px rgba(175, 80, 255, 0.25);
+}
+
+.login-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(175, 80, 255, 0.4);
+}
+
+.login-button:active {
+    transform: translateY(0);
+}
+
+/* Footer */
+.login-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.login-footer p {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.link {
+    color: #af50ff;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.link:hover {
+    color: #7b2cbf;
+    text-decoration: underline;
+}
+
+.highlight-link {
+    color: #af50ff;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .login-wrapper {
+        padding: 1rem 0;
+    }
+
+    .login-container {
+        max-width: 100%;
+        padding: 1rem;
+    }
+
     .login-card {
-        padding: 1.5rem !important;
-        min-width: 250px;
+        padding: 2rem 1.5rem;
     }
 
-    .login-card h1 {
-        margin-bottom: 1rem !important;
+    .login-title {
+        font-size: 1.5rem;
     }
 
-    .login-card h2 {
-        margin-bottom: 1.5rem !important;
+    .login-subtitle {
+        font-size: 0.85rem;
     }
 
-    .form-control,
-    .input-group {
-        margin-bottom: 0.75rem !important;
-    }
-
-    .login-card .mb-3 {
-        margin-bottom: 0.5rem !important;
-    }
-
-    .login-card .mb-4 {
-        margin-bottom: 0.75rem !important;
-    }
-
-    .login-card .text-center {
-        font-size: 0.75rem !important;
+    .shape-1, .shape-2, .shape-3 {
+        filter: blur(80px);
     }
 }
 
-@media (min-width: 577px) and (max-width: 768px) {
+@media (max-width: 480px) {
     .login-card {
-        padding: 2rem !important;
-        max-width: 450px;
+        padding: 1.5rem 1rem;
     }
-}
 
-@media (min-width: 769px) {
-    .login-card {
-        padding: 2.5rem !important;
-        max-width: 500px;
+    .login-title {
+        font-size: 1.25rem;
+    }
+
+    .form-label {
+        font-size: 0.8rem;
+    }
+
+    .form-input,
+    .password-input {
+        padding: 0.75rem 0.875rem;
+        font-size: 0.9rem;
+    }
+
+    .login-button {
+        padding: 0.875rem 1rem;
+        font-size: 0.95rem;
     }
 }

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HomepageChatbot from './HomepageChatbot';
+import Navigation from './Navigation';
 import './styles/home.css';
+import Footer from './Footer';
 
 function Home() {
   const navigate = useNavigate();
@@ -31,20 +33,7 @@ function Home() {
   return (
     <div className="home-elegant">
       {/* Navigation */}
-      <nav className="navbar-elegant">
-        <div className="nav-container">
-          <button className="nav-logo" onClick={() => navigate('/')}>
-            <i className="bi bi-box-seam"></i> Inline Tracker
-          </button>
-          <ul className="nav-menu">
-            <li><button onClick={() => navigate('/features')}>Features</button></li>
-            <li><button onClick={() => navigate('/about')}>About</button></li>
-            <li><button onClick={() => navigate('/contact')}>Contact</button></li>
-            <li><button onClick={() => navigate('/login')}>Login</button></li>
-            <li><button onClick={() => navigate('/signup')} className="btn-primary-nav">Get Started</button></li>
-          </ul>
-        </div>
-      </nav>
+      <Navigation />
 
       {/* Hero Section */}
       <section className="hero-elegant">
@@ -180,42 +169,15 @@ function Home() {
 
       {/* CTA Section */}
       <section className="cta-elegant">
-        <h2>Ready to Transform Your Inventory?</h2>
-        <p>Join hundreds of businesses using Inline Tracker</p>
+        <h2 className='text-white'>Ready to Transform Your Inventory?</h2>
+        <p className='text-muted'>Join hundreds of businesses using Inline Tracker</p>
         <div className="cta-buttons">
           <button className="btn btn-primary-elegant" onClick={() => navigate('/signup')}>Start Free 14-Day Trial</button>
           <button className="btn btn-secondary-elegant" onClick={() => navigate('/login')}>Already a member? Sign In</button>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="footer-elegant">
-        <div className="footer-content">
-          <div className="footer-section">
-            <h4>Inline Tracker</h4>
-            <p>Smart inventory management for modern businesses.</p>
-          </div>
-          <div className="footer-section">
-            <h4>Product</h4>
-            <ul>
-              <li><button onClick={() => navigate('/features')}>Features</button></li>
-              <li><button onClick={() => navigate('/pricing')}>Pricing</button></li>
-              <li><button onClick={() => navigate('/about')}>About</button></li>
-            </ul>
-          </div>
-          <div className="footer-section">
-            <h4>Support</h4>
-            <ul>
-              <li><a href="mailto:support@inlinetracker.com">Email Support</a></li>
-              <li><button onClick={() => {}}>Documentation</button></li>
-              <li><button onClick={() => {}}>FAQ</button></li>
-            </ul>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>&copy; 2024 Inline Tracker. All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />  
 
       <HomepageChatbot />
     </div>

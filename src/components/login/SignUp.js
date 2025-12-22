@@ -44,47 +44,96 @@ function SignUp(props) {
     setCredentials({ ...credentials, [e.target.name]: e.target.value })
   }
   return (
-    <>
-      <div className='main-container d-flex justify-content-center align-items-center'>
-        <div className="signup-card p-4 shadow-lg w-50 p-5 rounded-5 border-1 m-5">
+    <div className='signup-wrapper w-100 min-vh-100 d-flex align-items-center justify-content-center'>
+      <div className="signup-container d-flex">
+        <div className="signup-card w-100 justify-content-center">
+          <div className="signup-header">
+            <button className="logo-button" onClick={() => navigate('/')}>
+              <i className="bi bi-box-seam"></i>
+              <span>Inline Tracker</span>
+            </button>
+          </div>
 
-          <h1 className="text-center mb-4 app-title">Inline Tracker</h1>
-          <p className="text-center fs-5 mb-4">Sign up</p>
+          <div className="signup-content">
+            <h1 className="signup-title">Create Account</h1>
+            <p className="signup-subtitle">Join us and start managing your inventory efficiently</p>
 
-          <form  onSubmit={handleSubmit}>
-            <div className="mb-3">
-              <label htmlFor="email" className="form-label">Email address</label>
-              <input type="email" className="form-control text-secondary p-2 rounded-3 border-1" id="email" onChange={onChange} name='email'
-                placeholder="Email address" required />
-            </div>
-
-            <div className="mb-4">
-              <label htmlFor="password" className="form-label small text-secondary mb-1">Password</label>
-              <div className='input-group mb-3 gap-0'>
-                <input type={showPassword ? "text" : "password"} className='form-control' name='password' id="password" placeholder="••••••••" onChange={onChange} minLength={5} /><i className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
+            <form onSubmit={handleSubmit} className="signup-form">
+              <div className="form-group">
+                <label htmlFor="email" className="form-label">Email Address</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  id="email"
+                  onChange={onChange}
+                  name='email'
+                  placeholder="you@example.com"
+                  required
+                />
               </div>
-            </div>
 
-            <div className="mb-4">
-              <label htmlFor="cPassword" className="form-label small text-secondary mb-1">Confirm Password</label>
-              <div className='input-group mb-3 gap-0'>
-                <input type={showCPassword ? "text" : "password"} name='cpassword' minLength={5} className='form-control' id="cpassword" placeholder="••••••••" onChange={onChange} /><i className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={cpassVisibility}></i>
+              <div className="form-group">
+                <label htmlFor="password" className="form-label">Password</label>
+                <div className='password-input-group'>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    className='password-input'
+                    name='password'
+                    id="password"
+                    placeholder="••••••••"
+                    onChange={onChange}
+                    minLength={5}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className='password-toggle'
+                    onClick={passVisibility}
+                  >
+                    <i className={`bi ${showPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="d-grid gap-2">
-              <input type="submit"
-                className="btn btn-custom-purple btn-lg" value="Sign Up" />
-            </div>
+              <div className="form-group">
+                <label htmlFor="cPassword" className="form-label">Confirm Password</label>
+                <div className='password-input-group'>
+                  <input
+                    type={showCPassword ? "text" : "password"}
+                    name='cpassword'
+                    minLength={5}
+                    className='password-input'
+                    id="cpassword"
+                    placeholder="••••••••"
+                    onChange={onChange}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className='password-toggle'
+                    onClick={cpassVisibility}
+                  >
+                    <i className={`bi ${showCPassword ? "bi-eye-slash" : "bi-eye"}`}></i>
+                  </button>
+                </div>
+              </div>
 
-            <div className="text-center mt-3 login-link-container">
-              Already have an account? <Link to='/' className="login-link">Login Now!!</Link>
+              <button type="submit" className="signup-button">Create Account</button>
+            </form>
+
+            <div className="signup-footer">
+              <p>Already have an account? <Link to='/login' className="link highlight-link">Sign in here</Link></p>
             </div>
-          </form>
+          </div>
         </div>
 
+        <div className="signup-decoration">
+          <div className="decoration-shape shape-1"></div>
+          <div className="decoration-shape shape-2"></div>
+          <div className="decoration-shape shape-3"></div>
+        </div>
       </div>
-    </>
+    </div>
   )
 }
 

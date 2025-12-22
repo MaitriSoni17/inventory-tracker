@@ -1,6 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import Navigation from './Navigation';
 import './styles/home.css';
+import Footer from './Footer';
+import HomepageChatbot from './HomepageChatbot';
 
 function About() {
   const navigate = useNavigate();
@@ -31,20 +34,7 @@ function About() {
   return (
     <div className="home-elegant">
       {/* Navigation */}
-      <nav className="navbar-elegant">
-        <div className="nav-container">
-          <button className="nav-logo" onClick={() => navigate('/')}>
-            <i className="bi bi-box-seam"></i> Inline Tracker
-          </button>
-          <ul className="nav-menu">
-            <li><button onClick={() => navigate('/features')}>Features</button></li>
-            <li><button onClick={() => navigate('/about')}>About</button></li>
-            <li><button onClick={() => navigate('/contact')}>Contact</button></li>
-            <li><button onClick={() => navigate('/login')}>Login</button></li>
-            <li><button onClick={() => navigate('/signup')} className="btn-primary-nav">Get Started</button></li>
-          </ul>
-        </div>
-      </nav>
+      <Navigation />
 
       {/* Hero Section */}
       <section className="hero-elegant">
@@ -53,7 +43,7 @@ function About() {
           <div className="shape shape-2"></div>
           <div className="shape shape-3"></div>
         </div>
-        <div className="hero-content">
+        <div className="hero-content ms-5 mt-5">
           <h1 className="hero-title">About Inline Tracker</h1>
           <p className="hero-subtitle">Empowering businesses with intelligent inventory management</p>
         </div>
@@ -211,7 +201,7 @@ function About() {
       <section className="team-section">
         <div className="section-container">
           <h2 className="section-title">Meet Our Team</h2>
-          <p className="section-subtitle">Talented professionals dedicated to your success</p>
+          <p className="section-subtitle text-start">Talented professionals dedicated to your success</p>
           <div className="team-grid">
             {team.map((member, index) => (
               <div key={index} className="team-card">
@@ -227,43 +217,14 @@ function About() {
       {/* CTA Section */}
       <section className="cta-elegant">
         <div className="section-container">
-          <h2>Join Thousands of Satisfied Customers</h2>
-          <p>Experience the difference that smart inventory management can make</p>
-          <button onClick={() => navigate('/signup')} className="btn-primary-elegant">Start Free Trial</button>
+          <h2 className='text-white'>Join Thousands of Satisfied Customers</h2>
+          <p className='text-muted'>Experience the difference that smart inventory management can make</p>
+          <button onClick={() => navigate('/signup')} className="btn btn-primary-elegant p-3 rounded-pill">Start Free Trial</button>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="footer-elegant">
-        <div className="section-container">
-          <div className="footer-content">
-            <div className="footer-section">
-              <h4>Inline Tracker</h4>
-              <p>Smart inventory management for modern businesses.</p>
-            </div>
-            <div className="footer-section">
-              <h4>Quick Links</h4>
-              <ul>
-                <li><button onClick={() => navigate('/features')} className="footer-link">Features</button></li>
-                <li><button onClick={() => navigate('/about')} className="footer-link">About</button></li>
-                <li><button onClick={() => navigate('/contact')} className="footer-link">Contact</button></li>
-              </ul>
-            </div>
-            <div className="footer-section">
-              <h4>Follow Us</h4>
-              <div className="social-links">
-                <button className="social-link" aria-label="Facebook"><i className="bi bi-facebook"></i></button>
-                <button className="social-link" aria-label="Twitter"><i className="bi bi-twitter"></i></button>
-                <button className="social-link" aria-label="LinkedIn"><i className="bi bi-linkedin"></i></button>
-                <button className="social-link" aria-label="Instagram"><i className="bi bi-instagram"></i></button>
-              </div>
-            </div>
-          </div>
-          <div className="footer-bottom">
-            <p>&copy; 2025 Inline Tracker. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+      <HomepageChatbot />
     </div>
   );
 }

@@ -82,11 +82,40 @@ body {
   font-size: 0.95rem;
   color: #333;
   font-weight: 500;
-  transition: color 0.3s ease;
+  transition: all 0.3s ease;
+  position: relative;
+  padding-bottom: 0.25rem;
 }
 
 .nav-menu button:hover {
   color: #af50ff;
+}
+
+.nav-link {
+  position: relative;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: linear-gradient(135deg, #af50ff, #7b2cbf);
+  transition: width 0.3s ease;
+}
+
+.nav-link:hover::after {
+  width: 100%;
+}
+
+.nav-link.active {
+  color: #af50ff;
+}
+
+.nav-link.active::after {
+  width: 100%;
 }
 
 .btn-primary-nav {

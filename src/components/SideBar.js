@@ -54,7 +54,9 @@ const SideBar = () => {
                     role="navigation"
                     aria-label="Navigation menu"
                 >
-                    <div className="sidebar-heading text-center py-4 fs-4 fw-bold app-title">Inline Tracker</div>
+                    <div className="sidebar-heading text-center py-4 fs-4 fw-bold app-title">
+                        <i className="bi bi-box-seam me-2"></i>Inline Tracker
+                    </div>
                     <div className="list-group list-group-flush my-3">
                         
                         <Link to="/dashboard" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
