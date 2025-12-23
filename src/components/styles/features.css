@@ -9,9 +9,9 @@
 /* Features Hero Section */
 .features-hero {
   position: relative;
-  padding: 5rem 2rem;
+  /* padding: 5rem 2rem; */
   overflow: hidden;
-  min-height: 500px;
+  /* min-height: 500px; */
   display: flex;
   align-items: center;
   background: linear-gradient(135deg, #7300FF 0%, #9333EA 50%, #7300FF 100%);
@@ -31,7 +31,7 @@
 .features-hero .hero-content {
   position: relative;
   z-index: 1;
-  max-width: 1200px;
+  /* max-width: 1200px; */
   margin: 0 auto;
   width: 100%;
   text-align: center;
@@ -45,7 +45,7 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 2.5rem;
   margin-top: 3rem;
 }

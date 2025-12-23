@@ -43,6 +43,8 @@ function Supplier(props) {
     const [supplierOrders, setSupplierOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [timePeriod, setTimePeriod] = useState('monthly');
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [showOrderModal, setShowOrderModal] = useState(false);
     const [stats, setStats] = useState({
         totalOrders: 0,
         pendingOrders: 0,
@@ -524,15 +526,24 @@ function Supplier(props) {
                                 <h3 className="fs-4 mb-4 mt-2 ms-2">Order Numbers</h3>
                                 <table className="table align-middle mt-4">
                                     <tbody>
-                                        <tr>
+                                        <tr 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/suppliersorders')}
+                                        >
                                             <td>Total Orders</td>
                                             <td><span className="fw-bold">{stats.totalOrders}</span></td>
                                         </tr>
-                                        <tr>
+                                        <tr 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/suppliersorders?filter=pending')}
+                                        >
                                             <td>Pending Orders</td>
                                             <td><span className="fw-bold">{stats.pendingOrders}</span></td>
                                         </tr>
-                                        <tr>
+                                        <tr 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/suppliersorders?filter=completed')}
+                                        >
                                             <td>Completed Orders</td>
                                             <td><span className="fw-bold">{stats.completedOrders}</span></td>
                                         </tr>
@@ -563,7 +574,15 @@ function Supplier(props) {
                                             </tr>
                                         ) : (
                                             supplierOrders.slice(0, 3).map((order, index) => (
-                                                <tr key={index}>
+                                                <tr 
+                                                    key={index}
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setShowOrderModal(true);
+                                                        navigate('/dashboard/suppliersorders');
+                                                    }}
+                                                >
                                                     <td>{order.pName || 'N/A'}</td>
                                                     <td>{order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}</td>
                                                     <td><span className={`badge ${order.status?.toLowerCase() === 'completed' ? 'bg-success' : 'bg-warning'}`}>{order.status || 'Pending'}</span></td>
@@ -601,6 +620,70 @@ function Supplier(props) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Order Details Modal */}
+                    {showOrderModal && selectedOrder && (
+                        <div 
+                            className="modal fade show d-block" 
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                        >
+                            <div className="modal-dialog modal-dialog-centered">
+                                <div className="modal-content">
+                                    <div className="modal-header">
+                                        <h5 className="modal-title">Order Details</h5>
+                                        <button 
+                                            type="button" 
+                                            className="btn-close" 
+                                            onClick={() => setShowOrderModal(false)}
+                                        ></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Product Name</label>
+                                            <p className="form-control-plaintext">{selectedOrder.pName || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Order Date</label>
+                                            <p className="form-control-plaintext">{selectedOrder.oDate ? new Date(selectedOrder.oDate).toLocaleDateString() : 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Status</label>
+                                            <p className="form-control-plaintext">
+                                                <span className={`badge ${selectedOrder.status?.toLowerCase() === 'completed' ? 'bg-success' : 'bg-warning'}`}>
+                                                    {selectedOrder.status || 'Pending'}
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Amount</label>
+                                            <p className="form-control-plaintext">₹{selectedOrder.amount || 0}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Quantity</label>
+                                            <p className="form-control-plaintext">{selectedOrder.quantity || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Supplier Name</label>
+                                            <p className="form-control-plaintext">{selectedOrder.sName || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Notes</label>
+                                            <p className="form-control-plaintext">{selectedOrder.notes || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary" 
+                                            onClick={() => setShowOrderModal(false)}
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

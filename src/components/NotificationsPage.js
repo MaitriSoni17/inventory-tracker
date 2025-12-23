@@ -265,7 +265,7 @@ const NotificationsPage = (props) => {
           <div className="action-buttons">
             {unreadCount > 0 && (
               <button 
-                className="action-btn mark-read w-75 me-3"
+                className="action-btn mark-read w-100 me-3"
                 onClick={markAllAsRead}
                 disabled={loading}
               >
@@ -274,7 +274,7 @@ const NotificationsPage = (props) => {
             )}
             {notifications.length > 0 && (
               <button 
-                className="action-btn delete-all w-75"
+                className="action-btn delete-all w-100"
                 onClick={deleteAllNotifications}
                 disabled={loading}
               >

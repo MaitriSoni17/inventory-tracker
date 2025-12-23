@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Chart as ChartJS,
     LineElement,
@@ -27,6 +28,7 @@ ChartJS.register(
     Filler
 );
 function Employee(props) {
+    const navigate = useNavigate();
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
@@ -37,6 +39,8 @@ function Employee(props) {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [ordersView, setOrdersView] = useState('monthly');
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [showProductModal, setShowProductModal] = useState(false);
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalOrders: 0,
@@ -447,15 +451,24 @@ function Employee(props) {
                                 <h3 className="fs-4 mb-4 mt-2 ms-2">Stock Numbers</h3>
                                 <table className="table align-middle mt-4">
                                     <tbody>
-                                        <tr>
+                                        <tr 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/products?filter=lowStock')}
+                                        >
                                             <td>Low Stock Items</td>
                                             <td><span className="fw-bold">{stats.lowStockItems}</span></td>
                                         </tr>
-                                        <tr>
+                                        <tr 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/category')}
+                                        >
                                             <td>Items Categories</td>
                                             <td><span className="fw-bold">{stats.totalCategories}</span></td>
                                         </tr>
-                                        <tr>
+                                        <tr 
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/products')}
+                                        >
                                             <td>Total Products</td>
                                             <td><span className="fw-bold">{stats.totalProducts}</span></td>
                                         </tr>
@@ -486,11 +499,19 @@ function Employee(props) {
                                             </tr>
                                         ) : (
                                             products.slice(0, 3).map((product, index) => (
-                                                <tr key={index}>
-                                                    <td>{product.name}</td>
-                                                    <td>{product.category}</td>
-                                                    <td>{product.totalProducts} Units</td>
-                                                    <td>₹{product.price}</td>
+                                                <tr 
+                                                    key={index}
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        setSelectedProduct(product);
+                                                        setShowProductModal(true);
+                                                        navigate('/dashboard/products');
+                                                    }}
+                                                >
+                                                    <td>{product.name || 'N/A'}</td>
+                                                    <td>{product.category || 'N/A'}</td>
+                                                    <td>{product.totalProducts || 0} Units</td>
+                                                    <td>₹{product.salePrice || 0}</td>
                                                 </tr>
                                             ))
                                         )}
@@ -519,6 +540,62 @@ function Employee(props) {
                             </div>
                         </div>
                     </div>
+
+                    {/* Product Details Modal */}
+                    {showProductModal && selectedProduct && (
+                        <div 
+                            className="modal fade show d-block" 
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                        >
+                            <div className="modal-dialog modal-dialog-centered">
+                                <div className="modal-content">
+                                    <div className="modal-header">
+                                        <h5 className="modal-title">Product Details</h5>
+                                        <button 
+                                            type="button" 
+                                            className="btn-close" 
+                                            onClick={() => setShowProductModal(false)}
+                                        ></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Product Name</label>
+                                            <p className="form-control-plaintext">{selectedProduct.name || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Category</label>
+                                            <p className="form-control-plaintext">{selectedProduct.category || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Stock</label>
+                                            <p className="form-control-plaintext">{selectedProduct.totalProducts || 0} Units</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Sale Price</label>
+                                            <p className="form-control-plaintext">₹{selectedProduct.salePrice || 0}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Cost Price</label>
+                                            <p className="form-control-plaintext">₹{selectedProduct.costPrice || 0}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Description</label>
+                                            <p className="form-control-plaintext">{selectedProduct.description || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary" 
+                                            onClick={() => setShowProductModal(false)}
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

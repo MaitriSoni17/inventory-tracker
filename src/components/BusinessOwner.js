@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Chart as ChartJS,
     LineElement,
@@ -28,6 +29,7 @@ ChartJS.register(
 );
 
 const BusinessOwner = (props) => {
+    const navigate = useNavigate();
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
@@ -41,6 +43,10 @@ const BusinessOwner = (props) => {
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
     const [salesView, setSalesView] = useState('monthly');
+    const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+    const [showWarehouseModal, setShowWarehouseModal] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [showProductModal, setShowProductModal] = useState(false);
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalOrders: 0,
@@ -490,15 +496,27 @@ const BusinessOwner = (props) => {
                                 <h3 className="fs-4 mb-4 mt-2">Stock Numbers</h3>
                                 <table className="table">
                                     <tbody>
-                                        <tr className=''>
+                                        <tr 
+                                            className=''
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/products?filter=lowStock')}
+                                        >
                                             <td className="fs-6 fw-medium">Low Stock Items</td>
                                             <td className="fs-6 fw-medium">{stats.lowStockItems}</td>
                                         </tr>
-                                        <tr className=''>
+                                        <tr 
+                                            className=''
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/category')}
+                                        >
                                             <td className="fs-6 fw-medium">Items Categories</td>
                                             <td className="fs-6 fw-medium">{stats.totalCategories}</td>
                                         </tr>
-                                        <tr className=''>
+                                        <tr 
+                                            className=''
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => navigate('/dashboard/products')}
+                                        >
                                             <td className="fs-6 fw-medium">Total Products</td>
                                             <td className="fs-6 fw-medium">{stats.totalProducts}</td>
                                         </tr>
@@ -529,7 +547,15 @@ const BusinessOwner = (props) => {
                                             </tr>
                                         ) : (
                                             warehouses.slice(0, 3).map((warehouse, index) => (
-                                                <tr key={index}>
+                                                <tr 
+                                                    key={index} 
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        setSelectedWarehouse(warehouse);
+                                                        setShowWarehouseModal(true);
+                                                        navigate('/dashboard/warehouses');
+                                                    }}
+                                                >
                                                     <td>{warehouse.wName}</td>
                                                     <td>{warehouse.wAddress || 'N/A'}</td>
                                                     <td>{warehouse.wManager || 'N/A'}</td>
@@ -542,6 +568,51 @@ const BusinessOwner = (props) => {
                             </div>
                         </div>
                     </div>
+
+                    {/* <div className="row g-3 mt-3">
+                        <div className="col-md-12">
+                            <div className="p-3 bg-white shadow border border-4 rounded-4">
+                                <h3 className="fs-4 mb-3 ms-2 mt-2 d-flex justify-content-between align-items-baseline">
+                                    Top Products
+                                    <a href="/dashboard/products" className="text-decoration-none me-3 text-violet fs-6 fw-normal">View All</a>
+                                </h3>
+                                <table className="table table-borderless align-middle mb-0">
+                                    <thead className="text-secondary">
+                                        <tr>
+                                            <th scope="col">Product Name</th>
+                                            <th scope="col">Category</th>
+                                            <th scope="col">Stock</th>
+                                            <th scope="col">Price</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {products.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="4" className="text-center text-muted">No products found</td>
+                                            </tr>
+                                        ) : (
+                                            products.slice(0, 5).map((product, index) => (
+                                                <tr 
+                                                    key={index} 
+                                                    style={{ cursor: 'pointer' }}
+                                                    onClick={() => {
+                                                        setSelectedProduct(product);
+                                                        setShowProductModal(true);
+                                                        navigate('/dashboard/products');
+                                                    }}
+                                                >
+                                                    <td>{product.name || 'N/A'}</td>
+                                                    <td>{product.category || 'N/A'}</td>
+                                                    <td>{product.totalProducts || 0} Units</td>
+                                                    <td>₹{product.salePrice || 0}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div> */}
 
                     <div className="row my-5 mb-5">
                         <div className="col-12">
@@ -562,6 +633,110 @@ const BusinessOwner = (props) => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Warehouse Details Modal */}
+                    {showWarehouseModal && selectedWarehouse && (
+                        <div 
+                            className="modal fade show d-block" 
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                        >
+                            <div className="modal-dialog modal-dialog-centered">
+                                <div className="modal-content">
+                                    <div className="modal-header">
+                                        <h5 className="modal-title">Warehouse Details</h5>
+                                        <button 
+                                            type="button" 
+                                            className="btn-close" 
+                                            onClick={() => setShowWarehouseModal(false)}
+                                        ></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Warehouse Name</label>
+                                            <p className="form-control-plaintext">{selectedWarehouse.wName}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Location</label>
+                                            <p className="form-control-plaintext">{selectedWarehouse.wAddress || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Manager</label>
+                                            <p className="form-control-plaintext">{selectedWarehouse.wManager || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">City</label>
+                                            <p className="form-control-plaintext">{selectedWarehouse.city || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary" 
+                                            onClick={() => setShowWarehouseModal(false)}
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Product Details Modal */}
+                    {showProductModal && selectedProduct && (
+                        <div 
+                            className="modal fade show d-block" 
+                            style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
+                        >
+                            <div className="modal-dialog modal-dialog-centered">
+                                <div className="modal-content">
+                                    <div className="modal-header">
+                                        <h5 className="modal-title">Product Details</h5>
+                                        <button 
+                                            type="button" 
+                                            className="btn-close" 
+                                            onClick={() => setShowProductModal(false)}
+                                        ></button>
+                                    </div>
+                                    <div className="modal-body">
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Product Name</label>
+                                            <p className="form-control-plaintext">{selectedProduct.name || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Category</label>
+                                            <p className="form-control-plaintext">{selectedProduct.category || 'N/A'}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Stock</label>
+                                            <p className="form-control-plaintext">{selectedProduct.totalProducts || 0} Units</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Sale Price</label>
+                                            <p className="form-control-plaintext">₹{selectedProduct.salePrice || 0}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Cost Price</label>
+                                            <p className="form-control-plaintext">₹{selectedProduct.costPrice || 0}</p>
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label fw-bold text-muted">Description</label>
+                                            <p className="form-control-plaintext">{selectedProduct.description || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-secondary" 
+                                            onClick={() => setShowProductModal(false)}
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>

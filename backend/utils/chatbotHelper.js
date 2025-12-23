@@ -112,12 +112,22 @@ const getContextForRole = async (userId, role) => {
  * Generate system prompt based on user role
  */
 const generateSystemPrompt = (role) => {
-  const basePrompt = `You are a helpful AI assistant for an Inventory Tracking System. IMPORTANT: You MUST respond ONLY in English. You provide helpful, concise responses about inventory management, orders, products, and related topics.`;
+  const basePrompt = `You are a helpful AI assistant for an Inventory Tracking System. IMPORTANT: You MUST respond ONLY in English. You provide helpful, concise responses about inventory management, orders, products, and related topics.
+
+CRITICAL FORMATTING INSTRUCTION: Always format your responses as NUMBERED LISTS or BULLET POINTS, NEVER as paragraphs. Use bullet points (•) or numbered lists (1., 2., 3., etc.) for every response. When listing features, benefits, or information, always use list format with emojis and clear formatting.
+
+Example of CORRECT format:
+• Feature 1 description
+• Feature 2 description
+• Feature 3 description
+
+Example of INCORRECT format (DO NOT USE):
+"Feature 1 is described as... Feature 2 provides... Feature 3 allows..."`;
 
   const rolePrompts = {
-    businessowner: `${basePrompt} You are assisting a Business Owner who manages inventory, products, suppliers, employees, and customer orders. Help them with insights about their business operations, inventory levels, order status, and business metrics. Be professional and business-oriented. ALWAYS respond in English only.`,
-    employee: `${basePrompt} You are assisting an Employee who works with products and orders. Help them understand their assigned tasks, product information, and order statuses. Be helpful and supportive. ALWAYS respond in English only.`,
-    supplier: `${basePrompt} You are assisting a Supplier who provides products. Help them with information about their orders, delivery statuses, and product supplies. Be professional and focus on supplier-related queries. ALWAYS respond in English only.`
+    businessowner: `${basePrompt} You are assisting a Business Owner who manages inventory, products, suppliers, employees, and customer orders. Help them with insights about their business operations, inventory levels, order status, and business metrics. Be professional and business-oriented. ALWAYS respond in English only. ALWAYS use list format with bullet points or numbers for all responses.`,
+    employee: `${basePrompt} You are assisting an Employee who works with products and orders. Help them understand their assigned tasks, product information, and order statuses. Be helpful and supportive. ALWAYS respond in English only. ALWAYS use list format with bullet points or numbers for all responses.`,
+    supplier: `${basePrompt} You are assisting a Supplier who provides products. Help them with information about their orders, delivery statuses, and product supplies. Be professional and focus on supplier-related queries. ALWAYS respond in English only. ALWAYS use list format with bullet points or numbers for all responses.`
   };
 
   return rolePrompts[role] || basePrompt;
@@ -395,6 +405,35 @@ const formatWarehouseDetailsResponse = (warehouses) => {
 };
 
 /**
+ * Convert paragraph response to list format
+ */
+const convertToListFormat = (text) => {
+  if (!text) return text;
+  
+  // If already formatted as a list, return as is
+  if (text.includes('\n•') || text.includes('\n-') || text.includes('\n✅') || text.includes('\n1.')) {
+    return text;
+  }
+  
+  // Split by periods and convert to bullet points
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+  
+  if (sentences.length > 1) {
+    // Multiple sentences - convert to bullet list
+    let listResponse = '';
+    sentences.forEach((sentence, index) => {
+      const cleanSentence = sentence.replace(/^[0-9]+\.\s*/, '').trim();
+      if (cleanSentence.length > 0) {
+        listResponse += `• ${cleanSentence}\n`;
+      }
+    });
+    return listResponse.trim();
+  }
+  
+  return text;
+};
+
+/**
  * Generate response using Groq API (FREE)
  * Groq provides fast, free LLM inference without API costs
  */
@@ -426,7 +465,12 @@ const generateGroqResponse = async (userMessage, role, context) => {
       temperature: 0.7
     });
 
-    return response.choices[0].message.content.trim();
+    let responseText = response.choices[0].message.content.trim();
+    
+    // Convert paragraph response to list format
+    responseText = convertToListFormat(responseText);
+    
+    return responseText;
   } catch (error) {
     console.error('Groq API error:', error.message);
     // Fallback to rule-based response
@@ -1163,5 +1207,6 @@ module.exports = {
   analyzeUserIntent,
   extractQueryParameters,
   formatResponseAsList,
-  generateIntelligentResponse
+  generateIntelligentResponse,
+  convertToListFormat
 };

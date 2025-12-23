@@ -162,7 +162,7 @@ function Home() {
               <li>✓ Dedicated account manager</li>
               <li>✓ SLA guarantee</li>
             </ul>
-            <button className="btn btn-outline" onClick={() => navigate('/login')}>Contact Us</button>
+            <button className="btn btn-outline" onClick={() => navigate('/contact')}>Contact Us</button>
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navigation from './Navigation';
 import './styles/home.css';
+import './styles/features.css';
 import Footer from './Footer';
 import HomepageChatbot from './HomepageChatbot';
 
