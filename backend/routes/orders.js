@@ -31,7 +31,7 @@ router.post('/createorder', fetchuser, [
         
         // Send notification to business owner if created by employee
         if (req.role === 'employee') {
-            console.log('📢 Employee order creation - sending notification to business owner...');
+
             
             notifyBusinessOwnerAboutOrder(
                 order.businessowner,
@@ -40,11 +40,11 @@ router.post('/createorder', fetchuser, [
                 order._id,
                 { orderId: order._id, customerName: order.customerName }
             ).catch(notifError => {
-                console.error('✗ Error sending notification to business owner:', notifError);
+
             });
         } else if (req.role === 'businessowner') {
             // Send notification to employees if created by business owner
-            console.log('📢 Business owner order creation - sending notifications to employees...');
+
             
             notifyEmployeesAboutOrder(
                 req.user._id,
@@ -52,13 +52,13 @@ router.post('/createorder', fetchuser, [
                 order._id,
                 { orderId: order._id, customerName: order.customerName }
             ).catch(notifError => {
-                console.error('✗ Error sending notification to employees:', notifError);
+
             });
         }
         
         res.json({order, success: true});
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -80,7 +80,7 @@ router.post('/getorders', fetchuser, async (req, res) => {
         }   
         res.json(orders);
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -97,10 +97,10 @@ router.put('/updateorder/:id', fetchuser, [
     body('deliveryStatus', 'Enter Delivery Status').optional().exists(),
     body('pAvailability', 'Enter Product Availability').optional().exists(),
 ], async (req, res) => {
-    console.log('\n=== UPDATE ORDER ENDPOINT ===');
-    console.log('Order ID:', req.params.id);
-    console.log('User Role:', req.role);
-    console.log('User ID:', req.user._id);
+
+
+
+
     
     if (!['businessowner', 'employee'].includes(req.role)) {
         return res.status(401).send("Unauthorized access");
@@ -109,16 +109,16 @@ router.put('/updateorder/:id', fetchuser, [
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { customerName, productName, productCategory, totalAmt, orderDate, deliveryDeadline, productStatus, deliveryStatus, pAvailability, address, additionalNotes } = req.body;
     try {
-        console.log('=== ORDER UPDATE DETAILS ===');
-        console.log('Request body received:', req.body);
+
+
         
         let order = await Order.findById(req.params.id);
         if (!order) {
-            console.error('Order not found with ID:', req.params.id);
+
             return res.status(404).send("Order not found");
         }
         
-        console.log('Order found in DB:', { id: order._id, businessowner: order.businessowner });
+
         
         // Build update object - only update fields that are explicitly provided
         const newOrder = {};
@@ -134,11 +134,10 @@ router.put('/updateorder/:id', fetchuser, [
         if (address !== undefined) newOrder.address = address;
         if (additionalNotes !== undefined) newOrder.additionalNotes = additionalNotes;
         
-        console.log('Update object to be applied:', newOrder);
-        console.log('Number of fields to update:', Object.keys(newOrder).length);
+
         
         if (Object.keys(newOrder).length === 0) {
-            console.log('No fields to update, returning existing order');
+
             return res.json({ order, success: true, message: 'No changes provided' });
         }
         
@@ -153,25 +152,23 @@ router.put('/updateorder/:id', fetchuser, [
             }
         }
         
-        console.log('Access check passed, attempting to update order with ID:', req.params.id);
-        console.log('Update data:', JSON.stringify({ $set: newOrder }));
+
         
         order = await Order.findByIdAndUpdate(req.params.id, { $set: newOrder }, { new: true, runValidators: false });
         
-        console.log('✓ Order updated successfully');
-        console.log('Order after update:', order);
+
+
         if (!order) {
-            console.error('ERROR: Order is null after update!');
+
             return res.status(500).send("Error updating order");
         }
         
         // Send notification to business owner if updated by employee
         if (req.role === 'employee') {
-            console.log('📢 Employee order update - sending notification to business owner...');
-            console.log('  Business Owner ID:', order.businessowner);
-            console.log('  Employee ID:', req.user._id);
-            console.log('  Order ID:', order._id);
-            console.log('  Updates made:', JSON.stringify(newOrder));
+
+
+
+
             
             // Send notification and log result
             try {
@@ -186,15 +183,14 @@ router.put('/updateorder/:id', fetchuser, [
                         updatedFields: newOrder
                     }
                 );
-                console.log('✓ Notification sent successfully');
+
             } catch (notifError) {
-                console.error('✗ Error sending notification to business owner:', notifError.message);
-                console.error('  Stack:', notifError.stack);
+
+
             }
         } else if (req.role === 'businessowner') {
             // Send notification to employees if updated by business owner
-            console.log('📢 Business owner order update - sending notifications to employees...');
-            console.log('  Updates made:', JSON.stringify(newOrder));
+
             
             try {
                 await notifyEmployeesAboutOrder(
@@ -207,19 +203,19 @@ router.put('/updateorder/:id', fetchuser, [
                         updatedFields: newOrder
                     }
                 );
-                console.log('✓ Notifications sent successfully');
+
             } catch (notifError) {
-                console.error('✗ Error sending notification to employees:', notifError.message);
-                console.error('  Stack:', notifError.stack);
+
+
             }
         }
         
         res.json({ order });
     } catch (err) {
-        console.error('=== ERROR IN UPDATE ORDER ===');
-        console.error('Error message:', err.message);
-        console.error('Error stack:', err.stack);
-        console.error('Full error:', err);
+
+
+
+
         res.status(500).json({ success: false, error: err.message });
     }
 });
@@ -250,7 +246,7 @@ router.delete('/deleteorder/:id', fetchuser, async (req, res) => {
         
         // Send notification to business owner if deleted by employee
         if (req.role === 'employee') {
-            console.log('📢 Employee order delete - sending notification to business owner...');
+
             
             notifyBusinessOwnerAboutOrder(
                 businessOwnerId,
@@ -259,11 +255,11 @@ router.delete('/deleteorder/:id', fetchuser, async (req, res) => {
                 orderId,
                 { orderId: orderId }
             ).catch(notifError => {
-                console.error('✗ Error sending notification to business owner:', notifError);
+
             });
         } else if (req.role === 'businessowner') {
             // Send notification to employees if deleted by business owner
-            console.log('📢 Business owner order delete - sending notifications to employees...');
+
             
             notifyEmployeesAboutOrder(
                 businessOwnerId,
@@ -271,15 +267,17 @@ router.delete('/deleteorder/:id', fetchuser, async (req, res) => {
                 orderId,
                 { orderId: orderId }
             ).catch(notifError => {
-                console.error('✗ Error sending notification to employees:', notifError);
+
             });
         }
         
         res.json({ "Success": "Order has been deleted" });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }   
 });
 
 module.exports = router;
+
+

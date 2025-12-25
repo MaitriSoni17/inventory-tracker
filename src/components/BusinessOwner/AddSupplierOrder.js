@@ -43,7 +43,6 @@ function AddSupplierOrder(props) {
                 props.showAlert('Failed to fetch supplier information', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching supplier info:', error);
             props.showAlert('Error fetching supplier information', 'danger');
         }
     };
@@ -63,7 +62,6 @@ function AddSupplierOrder(props) {
                 setCategories(data);
             }
         } catch (error) {
-            console.error('Error fetching categories:', error);
         }
     };
 
@@ -162,7 +160,6 @@ function AddSupplierOrder(props) {
                 props.showAlert(errorData.errors?.[0]?.msg || 'Failed to create order', 'danger');
             }
         } catch (error) {
-            console.error('Error creating order:', error);
             props.showAlert('Error creating order', 'danger');
         }
     };
@@ -419,3 +416,5 @@ function AddSupplierOrder(props) {
 }
 
 export default AddSupplierOrder;
+
+

@@ -60,7 +60,6 @@ function EditSupplierOrder(props) {
                 props.showAlert('Failed to fetch order details', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching order details:', error);
             props.showAlert('Error fetching order details', 'danger');
         } finally {
             setLoading(false);
@@ -82,7 +81,6 @@ function EditSupplierOrder(props) {
                 setSupplierName(`${data.fname} ${data.lname || ''}`);
             }
         } catch (error) {
-            console.error('Error fetching supplier info:', error);
         }
     };
 
@@ -101,7 +99,6 @@ function EditSupplierOrder(props) {
                 setCategories(data);
             }
         } catch (error) {
-            console.error('Error fetching categories:', error);
         }
     };
 
@@ -146,7 +143,6 @@ function EditSupplierOrder(props) {
                 props.showAlert(errorData.errors?.[0]?.msg || 'Failed to update order', 'danger');
             }
         } catch (error) {
-            console.error('Error updating order:', error);
             props.showAlert('Error updating order', 'danger');
         }
     };
@@ -407,3 +403,5 @@ function EditSupplierOrder(props) {
 }
 
 export default EditSupplierOrder;
+
+

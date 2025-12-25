@@ -22,3 +22,4 @@ const BusinessOwner = mongoose.model('BusinessOwner', BusinessOwnerSchema);
 // BusinessOwner.createIndexes();
 
 module.exports = BusinessOwner;
+

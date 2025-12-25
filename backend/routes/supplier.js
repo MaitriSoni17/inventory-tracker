@@ -50,7 +50,6 @@ router.post('/createsupplier', fetchbusinessowner, [
         const authToken = jwt.sign({ id: supplier._id, role: 'supplier' }, JWT_SECRET);
         res.json({ authToken, success: true });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -81,7 +80,6 @@ router.post('/loginsupplier', [
         const authToken = jwt.sign({ id: supplier._id, role: 'supplier' }, JWT_SECRET);
         res.json({ success: true, authtoken: authToken });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -100,7 +98,6 @@ router.post('/getsupplier', fetchuser, async (req, res) => {
 
         res.json(supplier);
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -115,7 +112,6 @@ router.post('/getsupplier/:id', fetchuser, async (req, res) => {
 
         res.json(supplier);
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -126,7 +122,6 @@ router.post('/getallsuppliers', require('../middleware/fetchbusinessowner'), asy
         const suppliers = await Supplier.find({ businessowner: req.businessowner._id }).select('-password');
         res.json(suppliers);
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -160,7 +155,6 @@ router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), a
         await supplier.save();
         res.json({ supplier, success: true });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -181,7 +175,6 @@ router.delete('/deletesupplier/:id', require('../middleware/fetchbusinessowner')
         await Supplier.findByIdAndDelete(req.params.id);
         res.json({ success: true, message: "Supplier deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -214,7 +207,6 @@ router.put('/updatesupplier', fetchuser, async (req, res) => {
         await supplier.save();
         res.json({ supplier: supplier.toObject({ getters: true }), success: true });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -246,7 +238,6 @@ router.put('/changepassword', fetchuser, async (req, res) => {
 
         res.json({ success: true, message: "Password changed successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -268,7 +259,6 @@ router.post('/deactivate', fetchuser, async (req, res) => {
 
         res.json({ success: true, message: "Account deactivated successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -288,9 +278,9 @@ router.delete('/deleteaccount', fetchuser, async (req, res) => {
         await Supplier.findByIdAndDelete(req.user._id);
         res.json({ success: true, message: "Account deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 
 module.exports = router;
+

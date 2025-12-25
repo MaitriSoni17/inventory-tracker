@@ -23,7 +23,6 @@ const Notifications = () => {
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error);
     }
   };
 
@@ -58,3 +57,5 @@ const Notifications = () => {
 };
 
 export default Notifications;
+
+

@@ -34,14 +34,12 @@ const AddProduct = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch warehouses');
                     setLoadingWarehouses(false);
                     return;
                 }
                 const warehouseList = await response.json();
                 setWarehouses(warehouseList);
             } catch (error) {
-                console.error('Error fetching warehouses:', error);
             } finally {
                 setLoadingWarehouses(false);
             }
@@ -60,14 +58,12 @@ const AddProduct = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch categories');
                     setLoadingCategories(false);
                     return;
                 }
                 const categoryList = await response.json();
                 setCategories(categoryList);
             } catch (error) {
-                console.error('Error fetching categories:', error);
             } finally {
                 setLoadingCategories(false);
             }
@@ -215,11 +211,6 @@ const AddProduct = (props) => {
                 formData.append('images', image);
             });
 
-            console.log('Sending product data with', uploadedImages.length, 'images');
-            uploadedImages.forEach((img, idx) => {
-                console.log(`Image ${idx + 1}:`, img.name);
-            });
-
             const response = await fetch('http://localhost:5000/api/products/createproduct', {
                 method: 'POST',
                 headers: {
@@ -229,7 +220,6 @@ const AddProduct = (props) => {
             });
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`API Error: Status ${response.status}`, errorText);
                 props.showAlert(`Product creation failed (Status ${response.status}). ${errorText}`, "danger");
                 return;
             }
@@ -252,7 +242,6 @@ const AddProduct = (props) => {
                 props.showAlert(json.message || json.errors?.[0]?.msg || "Invalid Credentials or server error.", "danger");
             }
         } catch (error) {
-            console.error("Network or Parsing Error:", error);
             props.showAlert("An unexpected network error occurred: " + error.message, "danger");
         } finally {
             setIsSubmitting(false);
@@ -662,3 +651,4 @@ const AddProduct = (props) => {
 }
 
 export default AddProduct
+

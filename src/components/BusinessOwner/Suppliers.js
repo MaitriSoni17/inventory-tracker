@@ -50,7 +50,6 @@ const Suppliers = (props) => {
                 props.showAlert('Failed to fetch suppliers', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching suppliers:', error);
             props.showAlert('Error fetching suppliers', 'danger');
         } finally {
             setLoading(false);
@@ -96,7 +95,6 @@ const Suppliers = (props) => {
                     props.showAlert('Failed to delete supplier', 'danger');
                 }
             } catch (error) {
-                console.error('Error deleting supplier:', error);
                 props.showAlert('Error deleting supplier', 'danger');
             }
         }
@@ -174,7 +172,6 @@ const Suppliers = (props) => {
             XLSX.writeFile(workbook, fileName);
             props.showAlert('Suppliers exported to Excel successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to Excel:', error);
             props.showAlert('Error exporting to Excel', 'danger');
         }
     };
@@ -232,7 +229,6 @@ const Suppliers = (props) => {
             html2pdf().set(opt).from(element).save();
             props.showAlert('Suppliers exported to PDF successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to PDF:', error);
             props.showAlert('Error exporting to PDF', 'danger');
         }
     };
@@ -347,3 +343,4 @@ const Suppliers = (props) => {
 }
 
 export default Suppliers
+

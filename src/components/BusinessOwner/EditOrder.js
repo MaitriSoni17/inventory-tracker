@@ -41,14 +41,12 @@ const EditOrder = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch categories');
                     setLoadingCategories(false);
                     return;
                 }
                 const categoryList = await response.json();
                 setCategories(categoryList);
             } catch (error) {
-                console.error('Error fetching categories:', error);
             } finally {
                 setLoadingCategories(false);
             }
@@ -91,7 +89,6 @@ const EditOrder = (props) => {
                 navigate('/dashboard/orders');
             }
         } catch (error) {
-            console.error('Error fetching order:', error);
             props.showAlert('Error fetching order', 'danger');
         } finally {
             setLoading(false);
@@ -136,7 +133,6 @@ const EditOrder = (props) => {
                 props.showAlert(data.errors?.[0]?.msg || 'Failed to update order', 'danger');
             }
         } catch (error) {
-            console.error('Error:', error);
             props.showAlert('Error updating order', 'danger');
         }
     };
@@ -310,3 +306,5 @@ const EditOrder = (props) => {
 }
 
 export default EditOrder
+
+

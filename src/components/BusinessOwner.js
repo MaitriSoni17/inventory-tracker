@@ -93,7 +93,6 @@ const BusinessOwner = (props) => {
                 headers
             });
             const productsData = productsRes.ok ? await productsRes.json() : [];
-            console.log('Products fetched:', productsData);
             setProducts(productsData);
 
             // Fetch warehouses
@@ -127,7 +126,6 @@ const BusinessOwner = (props) => {
 
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching dashboard data:', error);
             props.showAlert?.('Failed to load dashboard data', 'danger');
             setLoading(false);
         }
@@ -232,15 +230,10 @@ const BusinessOwner = (props) => {
                 name: p.name || 'Unknown',
                 quantity: p.totalProducts || 0
             }));
-        console.log('Top products for chart:', topProducts);
         return topProducts;
     };
 
     const initCharts = () => {
-        console.log('initCharts called');
-        console.log('stockRef.current exists?', !!stockRef.current);
-        console.log('salesRef.current exists?', !!salesRef.current);
-        
         // Destroy existing charts if they exist
         if (salesChartInstance.current) {
             salesChartInstance.current.destroy();
@@ -744,3 +737,5 @@ const BusinessOwner = (props) => {
 };
 
 export default BusinessOwner;
+
+

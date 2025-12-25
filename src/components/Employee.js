@@ -98,7 +98,6 @@ function Employee(props) {
 
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching employee dashboard data:', error);
             props.showAlert?.('Failed to load dashboard data', 'danger');
             setLoading(false);
         }
@@ -213,8 +212,6 @@ function Employee(props) {
     };
 
     const initCharts = useCallback(() => {
-        console.log('initCharts function called');
-        
         // Destroy existing charts if they exist
         if (salesChartInstance.current) {
             salesChartInstance.current.destroy();
@@ -227,22 +224,13 @@ function Employee(props) {
 
         const monthlyOrders = getOrdersData(orders);
         const topProducts = getTopProductsByOrders(products);
-        
-        console.log('Chart data:', { monthlyOrders, topProducts });
 
         // Use setTimeout to ensure DOM is fully rendered
         setTimeout(() => {
-            console.log('Creating charts after timeout...');
-            console.log('salesRef.current:', salesRef.current);
-            console.log('stockRef.current:', stockRef.current);
-            
             if (salesRef.current) {
                 try {
                     const ctx = salesRef.current.getContext('2d');
-                    console.log('Sales canvas context:', ctx);
-                    
                     if (ctx) {
-                        console.log('Creating sales chart...');
                         salesChartInstance.current = new ChartJS(ctx, {
                         type: 'line',
                         data: {
@@ -296,20 +284,15 @@ function Employee(props) {
                             }
                         }
                     });
-                        console.log('Sales chart created successfully');
                     }
                 } catch (error) {
-                    console.error('Error creating sales chart:', error);
                 }
             }
 
             if (stockRef.current) {
                 try {
                     const ctx = stockRef.current.getContext('2d');
-                    console.log('Stock canvas context:', ctx);
-                    
                     if (ctx) {
-                        console.log('Creating stock chart...');
                         stockChartInstance.current = new ChartJS(ctx, {
                             type: 'bar',
                             data: {
@@ -348,10 +331,8 @@ function Employee(props) {
                                 }
                             }
                         });
-                        console.log('Stock chart created successfully');
                     }
                 } catch (error) {
-                    console.error('Error creating stock chart:', error);
                 }
             }
         }, 100); // Increased timeout
@@ -359,13 +340,8 @@ function Employee(props) {
 
     // Initialize or update charts when data changes
     useEffect(() => {
-        console.log('useEffect triggered:', { ordersLength: orders.length, productsLength: products.length });
         if (orders.length > 0 && products.length > 0) {
-            console.log('Calling initCharts...');
             initCharts();
-        } else {
-            console.log('Not calling initCharts - insufficient data');
-            console.warn('Orders:', orders.length, 'Products:', products.length);
         }
     }, [orders, products, ordersView, initCharts]);
 
@@ -607,3 +583,4 @@ function Employee(props) {
 }
 
 export default Employee
+

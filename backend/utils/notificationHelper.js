@@ -25,12 +25,6 @@ async function createNotification(
   data = {}
 ) {
   try {
-    console.log(`\n  [createNotification] CREATING NOTIFICATION`);
-    console.log(`    recipient: ${recipientId} (role: ${recipientRole})`);
-    console.log(`    sender: ${senderId} (role: ${senderRole})`);
-    console.log(`    type: ${type}`);
-    console.log(`    title: ${title}`);
-    
     const notificationData = {
       recipient: recipientId,
       recipientRole,
@@ -41,28 +35,12 @@ async function createNotification(
       message,
       data
     };
-
-    console.log(`    Full data object:`, JSON.stringify(notificationData, null, 2));
     
     const notification = new Notification(notificationData);
-    
-    console.log(`    Notification instance created, attempting to save...`);
     const savedNotif = await notification.save();
-    
-    console.log(`  ✓✓✓ NOTIFICATION SAVED TO DB ✓✓✓`);
-    console.log(`    Saved ID: ${savedNotif._id}`);
-    console.log(`    Saved recipient: ${savedNotif.recipient}`);
-    console.log(`    Saved recipientRole: ${savedNotif.recipientRole}`);
     
     return savedNotif;
   } catch (error) {
-    console.error(`  ✗✗✗ ERROR CREATING NOTIFICATION ✗✗✗`);
-    console.error(`    Error message: ${error.message}`);
-    console.error(`    Error code: ${error.code}`);
-    if (error.errors) {
-      console.error(`    Validation errors:`, error.errors);
-    }
-    console.error(`    Full error:`, error);
     throw error;
   }
 }
@@ -161,7 +139,6 @@ async function notifyEmployeesAboutProduct(
       }
     }
   } catch (error) {
-    console.error('Error notifying employees about product changes:', error);
   }
 }
 
@@ -175,12 +152,7 @@ async function notifyEmployeesAboutOrder(
   details = {}
 ) {
   try {
-    console.log(`\n→ notifyEmployeesAboutOrder called`);
-    console.log(`  businessOwnerId: ${businessOwnerId}`);
-    console.log(`  action: ${action}`);
-
     const employees = await Employee.find({ businessowner: businessOwnerId });
-    console.log(`  Found ${employees.length} employees to notify`);
 
     for (const employee of employees) {
       const notificationTypes = {
@@ -203,7 +175,6 @@ async function notifyEmployeesAboutOrder(
 
       const notification = notificationTypes[action];
       if (notification) {
-        console.log(`  Notifying employee ${employee._id}...`);
         await createNotification(
           employee._id,
           'Employee',
@@ -216,9 +187,7 @@ async function notifyEmployeesAboutOrder(
         );
       }
     }
-    console.log(`✓ All employee notifications sent\n`);
   } catch (error) {
-    console.error('✗ Error notifying employees about order changes:', error.message);
   }
 }
 
@@ -268,7 +237,6 @@ async function notifyEmployeesAboutCategory(
       }
     }
   } catch (error) {
-    console.error('Error notifying employees about category changes:', error);
   }
 }
 
@@ -315,7 +283,6 @@ async function notifyBusinessOwnerAboutProduct(
       );
     }
   } catch (error) {
-    console.error('Error notifying business owner about product changes:', error);
   }
 }
 
@@ -329,12 +296,6 @@ async function notifyBusinessOwnerOwnProductChanges(
   details = {}
 ) {
   try {
-    console.log(`\n→ notifyBusinessOwnerOwnProductChanges called:`, {
-      businessOwnerId,
-      action,
-      productName
-    });
-
     const notificationTypes = {
       created: {
         type: 'product_created',
@@ -349,10 +310,8 @@ async function notifyBusinessOwnerOwnProductChanges(
     };
 
     const notification = notificationTypes[action];
-    console.log(`  Notification config found:`, notification ? 'Yes' : 'No (action: ' + action + ')');
     
     if (notification) {
-      console.log(`  Sending notification to business owner...`);
       await createNotification(
         businessOwnerId,
         'BusinessOwner',
@@ -363,10 +322,9 @@ async function notifyBusinessOwnerOwnProductChanges(
         notification.message,
         details
       );
-      console.log(`✓ Business owner notification sent successfully\n`);
     }
   } catch (error) {
-    console.error('✗ Error notifying business owner about own product changes:', error.message);
+    console.error('Error notifying business owner about product changes:', error);
   }
 }
 
@@ -381,11 +339,6 @@ async function notifyBusinessOwnerAboutOrder(
   details = {}
 ) {
   try {
-    console.log(`\n→→→ notifyBusinessOwnerAboutOrder CALLED ←←←`);
-    console.log(`  businessOwnerId: ${businessOwnerId} (type: ${typeof businessOwnerId})`);
-    console.log(`  employeeId: ${employeeId} (type: ${typeof employeeId})`);
-    console.log(`  action: ${action}`);
-    console.log(`  orderDetails: ${orderDetails}`);
 
     const notificationTypes = {
       created: {
@@ -406,15 +359,8 @@ async function notifyBusinessOwnerAboutOrder(
     };
 
     const notification = notificationTypes[action];
-    console.log(`  Notification type found: ${notification ? 'Yes' : 'No'}`);
     
     if (notification) {
-      console.log(`  About to call createNotification with:`);
-      console.log(`    - recipient: ${businessOwnerId}`);
-      console.log(`    - recipientRole: 'businessowner'`);
-      console.log(`    - sender: ${employeeId}`);
-      console.log(`    - senderRole: 'employee'`);
-      console.log(`    - type: ${notification.type}`);
       
       const result = await createNotification(
         businessOwnerId,
@@ -426,14 +372,10 @@ async function notifyBusinessOwnerAboutOrder(
         notification.message,
         details
       );
-      console.log(`✓✓✓ Order notification creation completed ✓✓✓\n`);
       return result;
     } else {
-      console.log(`  ⚠️  No notification type found for action: ${action}\n`);
     }
   } catch (error) {
-    console.error('✗ Error notifying business owner about order changes:', error.message);
-    console.error('  Stack:', error.stack);
   }
 }
 
@@ -448,11 +390,6 @@ async function notifyBusinessOwnerAboutCategory(
   details = {}
 ) {
   try {
-    console.log(`\n→ notifyBusinessOwnerAboutCategory called`);
-    console.log(`  businessOwnerId: ${businessOwnerId}`);
-    console.log(`  employeeId: ${employeeId}`);
-    console.log(`  action: ${action}`);
-    console.log(`  categoryName: ${categoryName}`);
 
     const notificationTypes = {
       created: {
@@ -473,15 +410,8 @@ async function notifyBusinessOwnerAboutCategory(
     };
 
     const notification = notificationTypes[action];
-    console.log(`  Notification type found: ${notification ? 'Yes' : 'No'}`);
     
     if (notification) {
-      console.log(`  About to call createNotification with:`);
-      console.log(`    - recipient: ${businessOwnerId}`);
-      console.log(`    - recipientRole: 'BusinessOwner'`);
-      console.log(`    - sender: ${employeeId}`);
-      console.log(`    - senderRole: 'Employee'`);
-      console.log(`    - type: ${notification.type}`);
       
       const result = await createNotification(
         businessOwnerId,
@@ -493,14 +423,10 @@ async function notifyBusinessOwnerAboutCategory(
         notification.message,
         details
       );
-      console.log(`✓✓✓ Category notification creation completed ✓✓✓\n`);
       return result;
     } else {
-      console.log(`  ⚠️  No notification type found for action: ${action}\n`);
     }
   } catch (error) {
-    console.error('✗ Error notifying business owner about category changes:', error.message);
-    console.error('  Stack:', error.stack);
   }
 }
 
@@ -515,10 +441,6 @@ async function notifyBusinessOwnerAboutOrderByEmployee(
   details = {}
 ) {
   try {
-    console.log(`\n→ notifyBusinessOwnerAboutOrderByEmployee called`);
-    console.log(`  businessOwnerId: ${businessOwnerId}`);
-    console.log(`  employeeId: ${employeeId}`);
-    console.log(`  action: ${action}`);
 
     const notificationTypes = {
       created: {
@@ -539,15 +461,8 @@ async function notifyBusinessOwnerAboutOrderByEmployee(
     };
 
     const notification = notificationTypes[action];
-    console.log(`  Notification type found: ${notification ? 'Yes' : 'No'}`);
     
     if (notification) {
-      console.log(`  About to call createNotification with:`);
-      console.log(`    - recipient: ${businessOwnerId}`);
-      console.log(`    - recipientRole: 'BusinessOwner'`);
-      console.log(`    - sender: ${employeeId}`);
-      console.log(`    - senderRole: 'Employee'`);
-      console.log(`    - type: ${notification.type}`);
       
       const result = await createNotification(
         businessOwnerId,
@@ -559,14 +474,10 @@ async function notifyBusinessOwnerAboutOrderByEmployee(
         notification.message,
         details
       );
-      console.log(`✓✓✓ Order notification creation completed ✓✓✓\n`);
       return result;
     } else {
-      console.log(`  ⚠️  No notification type found for action: ${action}\n`);
     }
   } catch (error) {
-    console.error('✗ Error notifying business owner about order changes by employee:', error.message);
-    console.error('  Stack:', error.stack);
   }
 }
 
@@ -598,7 +509,6 @@ async function notifyBusinessOwnerAboutEmployeeLogin(
       { ...details, loginTime }
     );
   } catch (error) {
-    console.error('Error notifying business owner about employee login:', error);
   }
 }
 
@@ -630,7 +540,6 @@ async function notifyBusinessOwnerAboutSupplierLogin(
       { ...details, loginTime }
     );
   } catch (error) {
-    console.error('Error notifying business owner about supplier login:', error);
   }
 }
 
@@ -648,3 +557,5 @@ module.exports = {
   notifyBusinessOwnerAboutEmployeeLogin,
   notifyBusinessOwnerAboutSupplierLogin
 };
+
+

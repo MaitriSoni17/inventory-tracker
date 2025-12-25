@@ -9,3 +9,4 @@ const LoginInfo = new Schema({
 const LoginDesc = mongoose.model('LoginInfo', LoginInfo);
 
 module.exports = LoginDesc;
+

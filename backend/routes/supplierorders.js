@@ -25,11 +25,9 @@ router.post('/createsupplierorder/:id', fetchuser, [
         // Set businessowner for both businessowner and employee roles
         if (req.role === 'businessowner' || req.role === 'employee') {
             supplierorderdata.businessowner = req.user._id;
-            console.log('Setting businessowner to:', req.user._id);
         }
 
         const supplierorder = await SupplierOrders.create(supplierorderdata);
-        console.log('Created order:', supplierorder);
 
         // Send notification to supplier
         try {
@@ -45,12 +43,10 @@ router.post('/createsupplierorder/:id', fetchuser, [
                 { orderId: supplierorder._id, productName: pName, amount }
             );
         } catch (notifyErr) {
-            console.error('Error creating notification:', notifyErr.message);
         }
 
         res.json(supplierorder);
     } catch (err) {
-        console.error('Error creating order:', err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -67,7 +63,6 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
         }
         res.json(supplierorder);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -75,8 +70,6 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
 // Get Supplier Orders — accessible by Supplier
 router.post('/getorders', fetchuser, async (req, res) => {
     try {
-        console.log('getorders called - req.role:', req.role, 'req.user._id:', req.user?._id);
-        
         if (req.role !== 'supplier') {
             return res.status(403).send("Only suppliers can access their orders");
         }
@@ -87,17 +80,14 @@ router.post('/getorders', fetchuser, async (req, res) => {
 
         let supplierorders = await SupplierOrders.find({ supplier: req.user._id })
             .populate('businessowner', 'fname lname email phone address')
-            .lean() // Use lean for better performance
+            .lean()
             .exec();
-        
-        console.log('Found orders:', supplierorders?.length);
         
         // Additional fallback: ensure businessowner is properly populated
         if (supplierorders && supplierorders.length > 0) {
             const BusinessOwner = require('../models/BusinessOwner');
             
             supplierorders = await Promise.all(supplierorders.map(async (order) => {
-                // If businessowner is null or just an ID string, fetch it
                 if (!order.businessowner || (typeof order.businessowner === 'string')) {
                     if (order.businessowner) {
                         try {
@@ -105,32 +95,18 @@ router.post('/getorders', fetchuser, async (req, res) => {
                                 .select('fname lname email phone address')
                                 .lean();
                             order.businessowner = owner;
-                            console.log(`Populated businessowner for order ${order._id}:`, owner?.fname, owner?.lname);
                         } catch (e) {
-                            console.error('Error fetching businessowner:', e.message);
                             order.businessowner = null;
                         }
                     }
-                } else {
-                    console.log(`Order ${order._id} has populated businessowner:`, order.businessowner?.fname, order.businessowner?.lname);
                 }
                 
                 return order;
             }));
-            
-            if (supplierorders.length > 0) {
-                console.log('First order businessowner after enrichment:', {
-                    id: supplierorders[0]?.businessowner?._id,
-                    fname: supplierorders[0]?.businessowner?.fname,
-                    lname: supplierorders[0]?.businessowner?.lname
-                });
-            }
         }
         
         res.json(supplierorders || []);
     } catch (err) {
-        console.error('Error in getorders:', err.message);
-        console.error('Error stack:', err.stack);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -179,12 +155,10 @@ router.put('/updatesupplierorder/:id', fetchuser, [
                 { orderId: supplierorder._id, productName: pName, amount }
             );
         } catch (notifyErr) {
-            console.error('Error creating notification:', notifyErr.message);
         }
 
         res.json({ supplierorder });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -225,12 +199,10 @@ router.put('/updateorderstatus/:id', fetchuser, [
                 { orderId: supplierorder._id, productName: supplierorder.pName, status }
             );
         } catch (notifyErr) {
-            console.error('Error creating notification:', notifyErr.message);
         }
         
         res.json(supplierorder);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -271,12 +243,10 @@ router.put('/updatepaymentstatus/:id', fetchuser, [
                 { orderId: supplierorder._id, productName: supplierorder.pName, paymentStatus }
             );
         } catch (notifyErr) {
-            console.error('Error creating notification:', notifyErr.message);
         }
         
         res.json(supplierorder);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -308,15 +278,14 @@ router.delete('/deletesupplierorder/:id', fetchuser, async (req, res) => {
                 { orderId: supplierorder._id, productName: supplierorder.pName }
             );
         } catch (notifyErr) {
-            console.error('Error creating notification:', notifyErr.message);
         }
 
         await SupplierOrders.findByIdAndDelete(req.params.id);
         res.json({ message: "Supplier Order deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
 module.exports = router;
+

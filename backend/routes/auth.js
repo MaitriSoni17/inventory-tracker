@@ -79,10 +79,10 @@ router.post('/login', [
 
         res.json({ success: true, authtoken: token, role: role, userId: user._id.toString() });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 
 
 module.exports = router;
+

@@ -29,7 +29,6 @@ router.post('/homepage', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error processing homepage chatbot message:', error);
     res.status(500).json({
       success: false,
       error: 'Error processing your message'
@@ -279,7 +278,6 @@ router.get('/history', fetchuser, async (req, res) => {
       message: 'Chat history retrieved successfully'
     });
   } catch (error) {
-    console.error('Error fetching chat history:', error);
     res.status(500).json({
       success: false,
       error: 'Error fetching chat history'
@@ -330,7 +328,6 @@ router.post('/message', fetchuser, async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error processing chatbot message:', error);
     res.status(500).json({
       success: false,
       error: 'Error processing your message'
@@ -339,3 +336,5 @@ router.post('/message', fetchuser, async (req, res) => {
 });
 
 module.exports = router;
+
+

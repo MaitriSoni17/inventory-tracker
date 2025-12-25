@@ -33,16 +33,15 @@ router.post('/createcustomerorder', fetchuser, [
             customerorderData.employee = req.user._id;
         }
 
-        console.log(`\n→ Creating customer order:`);
-        console.log(`  req.role: ${req.role}`);
-        console.log(`  req.user._id: ${req.user._id}`);
-        console.log(`  req.user.businessowner: ${req.user.businessowner}`);
+
+
+
+
 
         const customerorder = await CustomerOrders.create(customerorderData);
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
-            console.log(`  Notifying employees (business owner created order)`);
             await notifyEmployeesAboutOrder(
                 req.user._id,
                 'created',
@@ -51,10 +50,9 @@ router.post('/createcustomerorder', fetchuser, [
             );
         } else if (req.role === 'employee') {
             // Send notification to business owner if created by employee
-            console.log(`  Notifying business owner (employee created order)`);
-            console.log(`  Calling notifyBusinessOwnerAboutOrderByEmployee with:`);
-            console.log(`    - businessOwnerId: ${req.user.businessowner}`);
-            console.log(`    - employeeId: ${req.user._id}`);
+
+
+
             
             await notifyBusinessOwnerAboutOrderByEmployee(
                 req.user.businessowner,
@@ -67,7 +65,7 @@ router.post('/createcustomerorder', fetchuser, [
 
         res.json(customerorder);
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -76,7 +74,7 @@ router.post('/createcustomerorder', fetchuser, [
 router.post('/getcustomerorder', fetchuser, async (req, res) => {
     try {
         let customerorder = [];
-        console.log(req.user, req.role);
+
 
         if (req.role === 'businessowner') {
             customerorder = await CustomerOrders.find({ businessowner: req.user._id });
@@ -91,7 +89,7 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
 
         res.json(customerorder);
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -155,7 +153,7 @@ router.put('/updatecustomerorder/:id', fetchuser, [
 
         res.json({ customerorder });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -203,9 +201,11 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
 
         res.json({ message: "Customer Order deleted successfully" });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).send("Internal Server error occurred");
     }
 });
 
 module.exports = router;
+
+

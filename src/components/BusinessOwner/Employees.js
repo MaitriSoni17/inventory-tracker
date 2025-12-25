@@ -43,7 +43,6 @@ const Employees = (props) => {
                 setWarehouseMap(map);
             }
         } catch (error) {
-            console.error('Error fetching warehouses:', error);
         }
     };
 
@@ -69,7 +68,6 @@ const Employees = (props) => {
                 props.showAlert('Failed to fetch employees', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching employees:', error);
             props.showAlert('Error fetching employees', 'danger');
         } finally {
             setLoading(false);
@@ -115,7 +113,6 @@ const Employees = (props) => {
                     props.showAlert('Failed to delete employee', 'danger');
                 }
             } catch (error) {
-                console.error('Error deleting employee:', error);
                 props.showAlert('Error deleting employee', 'danger');
             }
         }
@@ -216,7 +213,6 @@ const Employees = (props) => {
             XLSX.writeFile(workbook, fileName);
             props.showAlert('Employees exported to Excel successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to Excel:', error);
             props.showAlert('Error exporting to Excel', 'danger');
         }
     };
@@ -276,7 +272,6 @@ const Employees = (props) => {
             html2pdf().set(opt).from(element).save();
             props.showAlert('Employees exported to PDF successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to PDF:', error);
             props.showAlert('Error exporting to PDF', 'danger');
         }
     };
@@ -402,3 +397,4 @@ const Employees = (props) => {
 
 
 export default Employees;
+

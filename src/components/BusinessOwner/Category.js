@@ -25,17 +25,14 @@ const Category = (props) => {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API Error: Status ${response.status}`, errorText);
         props.showAlert(`Failed to fetch categories (Status ${response.status})`, "danger");
         setLoading(false);
         return;
       }
       const json = await response.json();
-      console.log("Categories fetched:", json); // Debug: See what's being returned
       setCategories(json);
       setLoading(false);
     } catch (error) {
-      console.error("Network or Parsing Error:", error);
       props.showAlert("Failed to fetch categories", "danger");
       setLoading(false);
     }
@@ -54,7 +51,6 @@ const Category = (props) => {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API Error: Status ${response.status}`, errorText);
         props.showAlert(`Category creation failed (Status ${response.status}). Check server logs.`, "danger");
         return;
       }
@@ -69,7 +65,6 @@ const Category = (props) => {
         props.showAlert(json.message || "Invalid Credentials or server error.", "danger");
       }
     } catch (error) {
-      console.error("Network or Parsing Error:", error);
       props.showAlert("An unexpected network error occurred.", "danger");
     }
   }
@@ -104,7 +99,6 @@ const Category = (props) => {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API Error: Status ${response.status}`, errorText);
         props.showAlert(`Failed to update category (Status ${response.status})`, "danger");
         return;
       }
@@ -112,7 +106,6 @@ const Category = (props) => {
       fetchCategories();
       setSelectedCategory(null);
     } catch (error) {
-      console.error("Network or Parsing Error:", error);
       props.showAlert("Failed to update category", "danger");
     }
   };
@@ -143,7 +136,6 @@ const Category = (props) => {
       });
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`API Error: Status ${response.status}`, errorText);
         props.showAlert(`Failed to delete category (Status ${response.status})`, "danger");
         return;
       }
@@ -151,7 +143,6 @@ const Category = (props) => {
       fetchCategories();
       setSelectedCategory(null);
     } catch (error) {
-      console.error("Network or Parsing Error:", error);
       props.showAlert("Failed to delete category", "danger");
     }
   };
@@ -296,3 +287,4 @@ const Category = (props) => {
 }
 
 export default Category
+

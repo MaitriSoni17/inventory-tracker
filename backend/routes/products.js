@@ -40,12 +40,8 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
     body('mDate').exists().trim().notEmpty().withMessage('Enter Manufacturing Date'),
     body('eDate').exists().trim().notEmpty().withMessage('Enter Expiring Date'),
 ], async (req, res) => {
-    console.log('=== CREATE PRODUCT DEBUG ===');
-    console.log('req.body:', req.body);
-    console.log('req.files:', req.files ? req.files.map(f => ({ fieldname: f.fieldname, filename: f.filename })) : 'no files');
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.log('Validation errors:', errors.array());
         return res.status(400).json({ errors: errors.array() });
     }
 
@@ -61,9 +57,6 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
             productData.image = req.files[0].filename;
         }
 
-        console.log('Creating product with data:', productData);
-        console.log('User info:', req.user, 'Role:', req.role);
-
         if (req.role === 'businessowner') {
             productData.businessowner = req.user._id;
         } else if (req.role === 'employee') {
@@ -72,20 +65,16 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
         }
 
         const product = await Product.create(productData);
-        console.log('✓ Product created:', { id: product._id, name: product.name });
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
-            console.log('📢 Business owner product creation - sending notifications...');
             try {
-                console.log('  1. Notifying employees...');
                 await notifyEmployeesAboutProduct(
                     req.user._id,
                     'created',
                     name,
                     { productId: product._id, category, price }
                 );
-                console.log('  2. Notifying business owner...');
                 // Also notify the business owner about their own product creation
                 await notifyBusinessOwnerOwnProductChanges(
                     req.user._id,
@@ -93,13 +82,10 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
-                console.log('✓ All notifications sent');
             } catch (notifError) {
-                console.error('Error sending notifications:', notifError);
             }
         } else if (req.role === 'employee') {
             // Send notification to business owner if created by employee
-            console.log('Employee creation detected. Sending notification to business owner:', req.user.businessowner);
             try {
                 await notifyBusinessOwnerAboutProduct(
                     req.user.businessowner,
@@ -108,15 +94,12 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
-                console.log('Notification sent successfully to business owner');
             } catch (notifError) {
-                console.error('Error sending notification to business owner:', notifError);
             }
         }
 
         res.json({product, success: true});
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ success: false, message: "Internal Server error occurred", error: err.message });
     }
 });
@@ -142,7 +125,6 @@ router.post('/getproduct', fetchuser, async (req, res) => {
         }
         res.json(products);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -169,13 +151,6 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
         let product = await Product.findById(req.params.id);
         if (!product) return res.status(404).send("Not Found");
 
-        console.log('=== UPDATE PRODUCT DEBUG ===');
-        console.log('Product ID:', req.params.id);
-        console.log('Request body images field:', images);
-        console.log('Request body removedImages field:', removedImages);
-        console.log('Request body existingImages[]:', req.body['existingImages[]']);
-        console.log('Request files count:', req.files ? req.files.length : 0);
-        console.log('Current product images in DB:', product.images);
 
         // Delete removed image files from the uploads directory
         if (removedImages && removedImages.length > 0) {
@@ -184,7 +159,6 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                 const imagePath = path.join(__dirname, '../uploads', imageName);
                 if (fs.existsSync(imagePath)) {
                     fs.unlinkSync(imagePath);
-                    console.log('Deleted image from disk:', imageName);
                 }
             });
         }
@@ -196,7 +170,6 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
         // Get new uploaded files
         if (req.files && req.files.length > 0) {
             newImageFiles = req.files.map(f => f.filename);
-            console.log('New uploaded files:', newImageFiles);
         }
 
         // Get existing images from either FormData or JSON body
@@ -207,22 +180,18 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
             existingImages = Array.isArray(req.body['existingImages[]']) 
                 ? req.body['existingImages[]'] 
                 : [req.body['existingImages[]']];
-            console.log('Using existing images from FormData:', existingImages);
         } 
         // Check JSON format (images array)
         else if (images && Array.isArray(images)) {
             existingImages = images;
-            console.log('Using existing images from JSON body:', existingImages);
         }
         // Fallback to product's existing images if nothing provided
         else if (product.images && product.images.length > 0) {
             existingImages = product.images;
-            console.log('Using fallback - product existing images:', existingImages);
         }
 
         // Combine existing and new images
         updatedImages = [...existingImages, ...newImageFiles];
-        console.log('Final combined images array:', updatedImages);
 
         const newProduct = { 
             name, 
@@ -238,23 +207,18 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
             images: updatedImages
         };
 
-        console.log('Updating product with:', { image: newProduct.image, images: newProduct.images });
 
         product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true });
-        console.log('Product updated in DB. New images in DB:', product.images);
 
         // Send notification to employees if updated by business owner
         if (req.role === 'businessowner') {
-            console.log('📢 Business owner product update - sending notifications...');
             try {
-                console.log('  1. Notifying employees...');
                 await notifyEmployeesAboutProduct(
                     req.user._id,
                     'updated',
                     name,
                     { productId: product._id, category, price }
                 );
-                console.log('  2. Notifying business owner...');
                 // Also notify the business owner about their own product update
                 await notifyBusinessOwnerOwnProductChanges(
                     req.user._id,
@@ -262,13 +226,10 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
-                console.log('✓ All notifications sent');
             } catch (notifError) {
-                console.error('Error sending notifications:', notifError);
             }
         } else if (req.role === 'employee') {
             // Send notification to business owner if updated by employee
-            console.log('Employee update detected. Sending notification to business owner:', req.user.businessowner);
             try {
                 await notifyBusinessOwnerAboutProduct(
                     req.user.businessowner,
@@ -277,15 +238,12 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
-                console.log('Notification sent successfully to business owner');
             } catch (notifError) {
-                console.error('Error sending notification to business owner:', notifError);
             }
         }
 
         res.json({ product, success: true });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -323,11 +281,9 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
                     { productId: req.params.id }
                 );
             } catch (notifError) {
-                console.error('Error sending notification to employees:', notifError);
             }
         } else if (req.role === 'employee') {
             // Send notification to business owner if deleted by employee
-            console.log('Employee deletion detected. Sending notification to business owner:', businessOwnerId);
             try {
                 await notifyBusinessOwnerAboutProduct(
                     businessOwnerId,
@@ -336,17 +292,15 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
                     productName,
                     { productId: req.params.id }
                 );
-                console.log('Notification sent successfully to business owner');
             } catch (notifError) {
-                console.error('Error sending notification to business owner:', notifError);
             }
         }
 
         res.json({ message: "Product deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
 module.exports = router;
+

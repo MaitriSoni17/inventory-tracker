@@ -24,20 +24,11 @@ async function populateSenderData(notifications) {
 // GET /api/notifications/getnotifications
 router.get('/getnotifications', fetchuser, async (req, res) => {
   try {
-    console.log('\n=== GET NOTIFICATIONS ===');
-    console.log('User ID:', req.user._id);
-    console.log('User Role:', req.role);
-    
     const userId = req.user._id;
     // Map lowercase role to capitalized role for notification query
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
                             req.role === 'employee' ? 'Employee' : 
                             req.role === 'supplier' ? 'Supplier' : req.role;
-
-    console.log('Searching for notifications with:', {
-      recipient: userId,
-      recipientRole: capitalizedRole
-    });
 
     let notifications = await Notification.find({
       recipient: userId,
@@ -49,7 +40,7 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
     // Populate sender data based on role
     notifications = await populateSenderData(notifications);
 
-    console.log(`Found ${notifications.length} notifications`);
+
     res.json(notifications);
   } catch (error) {
     console.error('Error fetching notifications:', error);
@@ -186,14 +177,10 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
 router.get('/debug/allnotifications', async (req, res) => {
   try {
     let allNotifications = await Notification.find({});
-    console.log(`\n=== DEBUG: Found ${allNotifications.length} total notifications ===`);
-    
+
     // Populate sender data
     allNotifications = await populateSenderData(allNotifications);
-    
-    allNotifications.forEach((notif, idx) => {
-      console.log(`${idx + 1}. Type: ${notif.type}, Recipient: ${notif.recipient}, RecipientRole: ${notif.recipientRole}, Sender: ${notif.sender?._id}`);
-    });
+
     res.json({
       totalCount: allNotifications.length,
       notifications: allNotifications
@@ -208,11 +195,6 @@ router.get('/debug/allnotifications', async (req, res) => {
 // GET /api/notifications/debug/userinfo
 router.get('/debug/userinfo', fetchuser, async (req, res) => {
   try {
-    console.log(`\n=== USER INFO ===`);
-    console.log(`User ID: ${req.user._id}`);
-    console.log(`User Role: ${req.role}`);
-    console.log(`User Data:`, JSON.stringify(req.user, null, 2));
-    
     res.json({
       userId: req.user._id,
       userRole: req.role,
@@ -225,3 +207,5 @@ router.get('/debug/userinfo', fetchuser, async (req, res) => {
 });
 
 module.exports = router;
+
+

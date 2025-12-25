@@ -16,9 +16,7 @@ const USE_GROQ = !!GROQ_API_KEY;
 let groqClient = null;
 if (USE_GROQ) {
   groqClient = new Groq({ apiKey: GROQ_API_KEY });
-  console.log('✅ Groq AI API initialized - Using FREE AI inference');
 } else {
-  console.warn('⚠️ GROQ_API_KEY not found. Using rule-based responses. To enable AI, set GROQ_API_KEY in your .env file');
 }
 
 /**
@@ -209,7 +207,6 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
     const response = await generateIntelligentResponse(userMessage, role, context, userId);
     return response;
   } catch (error) {
-    console.error('Error generating AI response:', error);
     return generateEnhancedResponse(userMessage, role, context);
   }
 };
@@ -440,7 +437,6 @@ const convertToListFormat = (text) => {
 const generateGroqResponse = async (userMessage, role, context) => {
   try {
     if (!USE_GROQ || !groqClient) {
-      console.log('Groq not configured, using fallback');
       return generateEnhancedResponse(userMessage, role, context);
     }
 
@@ -472,7 +468,6 @@ const generateGroqResponse = async (userMessage, role, context) => {
     
     return responseText;
   } catch (error) {
-    console.error('Groq API error:', error.message);
     // Fallback to rule-based response
     return generateEnhancedResponse(userMessage, role, context);
   }
@@ -517,7 +512,6 @@ const generateOpenAIResponse = async (userMessage, role, context) => {
 
     return response.data.choices[0].message.content.trim();
   } catch (error) {
-    console.error('OpenAI API error:', error.message);
     // Fallback to rule-based response
     return generateEnhancedResponse(userMessage, role, context);
   }
@@ -541,7 +535,6 @@ const searchProducts = async (productName, businessownerId) => {
     }).select('name category price totalProducts brand mDate eDate desc warehouse').limit(5);
     return products;
   } catch (error) {
-    console.error('Error searching products:', error);
     return [];
   }
 };
@@ -564,7 +557,6 @@ const searchOrders = async (searchTerm, businessownerId) => {
     }).select('customerName productName totalAmt orderDate productStatus deliveryStatus address notes').limit(5);
     return orders;
   } catch (error) {
-    console.error('Error searching orders:', error);
     return [];
   }
 };
@@ -592,7 +584,6 @@ const getCategoryDetails = async (businessownerId) => {
     );
     return categoriesWithCounts;
   } catch (error) {
-    console.error('Error getting categories:', error);
     return [];
   }
 };
@@ -606,7 +597,6 @@ const getWarehouseDetails = async (businessownerId) => {
       .select('wName wManager wAddress wContact wEmail city state country');
     return warehouses;
   } catch (error) {
-    console.error('Error getting warehouse details:', error);
     return [];
   }
 };
@@ -1189,7 +1179,6 @@ const generateIntelligentResponse = async (userMessage, role, context, userId) =
     
     return response;
   } catch (error) {
-    console.error('Error in intelligent response:', error);
     return `❌ **Error Occurred**\n\nPlease try again or type 'help' for assistance.`;
   }
 };
@@ -1210,3 +1199,5 @@ module.exports = {
   generateIntelligentResponse,
   convertToListFormat
 };
+
+

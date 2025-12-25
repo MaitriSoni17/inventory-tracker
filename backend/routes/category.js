@@ -25,18 +25,11 @@ router.post('/createcategory', fetchuser, [
             categoryData.employee = req.user._id;
         }
 
-        console.log(`\n→ Creating category:`);
-        console.log(`  req.role: ${req.role}`);
-        console.log(`  req.user._id: ${req.user._id}`);
-        console.log(`  req.user.businessowner: ${req.user.businessowner}`);
-        console.log(`  categoryData.businessowner: ${categoryData.businessowner}`);
-        console.log(`  categoryData.employee: ${categoryData.employee}`);
 
         const category = await Category.create(categoryData);
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
-            console.log(`  Notifying employees (business owner created category)`);
             await notifyEmployeesAboutCategory(
                 req.user._id,
                 'created',
@@ -45,12 +38,6 @@ router.post('/createcategory', fetchuser, [
             );
         } else if (req.role === 'employee') {
             // Send notification to business owner if created by employee
-            console.log(`  Notifying business owner (employee created category)`);
-            console.log(`  Calling notifyBusinessOwnerAboutCategory with:`);
-            console.log(`    - businessOwnerId: ${req.user.businessowner}`);
-            console.log(`    - employeeId: ${req.user._id}`);
-            console.log(`    - action: created`);
-            console.log(`    - categoryName: ${cName}`);
             
             await notifyBusinessOwnerAboutCategory(
                 req.user.businessowner,
@@ -63,7 +50,6 @@ router.post('/createcategory', fetchuser, [
 
         res.json({category, success: true});
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -88,7 +74,6 @@ router.post('/getcategory', fetchuser, async (req, res) => {
 
         res.json(category);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -143,7 +128,6 @@ router.put('/updatecategory/:id', fetchuser, [
 
         res.json({ category });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -168,7 +152,6 @@ router.post('/getcategories', fetchuser, async (req, res) => {
 
         res.json(categories);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -216,9 +199,9 @@ router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
 
         res.json({ message: "Category deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
 module.exports = router;
+

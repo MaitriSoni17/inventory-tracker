@@ -33,9 +33,9 @@ const deleteUploadedFile = (filePath) => {
     if (filePath && fs.existsSync(filePath)) {
         try {
             fs.unlinkSync(filePath);
-            console.log(`Successfully deleted file: ${filePath}`);
+
         } catch (error) {
-            console.error(`Error deleting file: ${filePath}`, error);
+
         }
     }
 };
@@ -116,9 +116,9 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         const authToken = jwt.sign({ id: employee._id, role: employee.role }, JWT_SECRET);
         res.json({ authToken, success: true });
     } catch (err) {
-        console.error('Employee creation error:', err);
-        console.error('Error message:', err.message);
-        console.error('Error stack:', err.stack);
+
+
+
         // Delete file on internal error
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
@@ -153,7 +153,7 @@ router.post('/loginemployee', [
         const authToken = jwt.sign({ id: employee._id, role: 'employee' }, JWT_SECRET);
         res.json({ success: true, authtoken: authToken });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -172,7 +172,7 @@ router.post('/getemployee', fetchuser, async (req, res) => {
 
         res.json(employee);
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -183,7 +183,7 @@ router.post('/getallemployees', fetchbusinessowner, async (req, res) => {
         const employees = await Employee.find({ businessowner: req.businessowner._id }).select("-password");
         res.json(employees);
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -227,7 +227,7 @@ router.put('/updateemployee', fetchemployee, upload.single('image'), async (req,
         
         res.json({ success: true, message: "Profile updated successfully" });
     } catch (err) {
-        console.error(err.message);
+
         if (req.file) {
             deleteUploadedFile(req.file.path);
         }
@@ -297,7 +297,7 @@ router.put('/updateemployee/:id', fetchbusinessowner, upload.single('image'), as
 
         res.json({ employee, success: true });
     } catch (err) {
-        console.error(err.message);
+
         // Delete file on error
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
@@ -343,7 +343,7 @@ router.put('/changepassword/:id', fetchbusinessowner, [
 
         res.json({ success: true, message: "Password changed successfully" });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -381,7 +381,7 @@ router.delete('/deleteemployee/:id', fetchbusinessowner, async (req, res) => {
 
         res.json({ message: "Employee deleted successfully" });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -403,7 +403,7 @@ router.post('/getpreferences', fetchemployee, async (req, res) => {
         
         res.json(preferences);
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -432,9 +432,10 @@ router.put('/updatepreferences', fetchemployee, async (req, res) => {
         
         res.json({ message: "Preferences updated successfully", preferences: employee.preferences });
     } catch (err) {
-        console.error(err.message);
+
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 
 module.exports = router;
+

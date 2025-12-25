@@ -67,7 +67,6 @@ const EditSupplier = (props) => {
                 props.showAlert('Failed to fetch supplier', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching supplier:', error);
             props.showAlert('Error fetching supplier', 'danger');
         } finally {
             setLoading(false);
@@ -128,7 +127,6 @@ const EditSupplier = (props) => {
                 props.showAlert('Failed to change password', 'danger');
             }
         } catch (error) {
-            console.error('Error changing password:', error);
             props.showAlert('Error changing password', 'danger');
         } finally {
             setSaving(false);
@@ -163,7 +161,6 @@ const EditSupplier = (props) => {
                 props.showAlert(data.error || 'Failed to update supplier', 'danger');
             }
         } catch (error) {
-            console.error('Error:', error);
             props.showAlert('Error updating supplier', 'danger');
         }
     };
@@ -361,3 +358,5 @@ const EditSupplier = (props) => {
 }
 
 export default EditSupplier
+
+

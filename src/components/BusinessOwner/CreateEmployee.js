@@ -52,14 +52,12 @@ const CreateEmployee = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch warehouses');
                     setLoadingWarehouses(false);
                     return;
                 }
                 const warehouseList = await response.json();
                 setWarehouses(warehouseList);
             } catch (error) {
-                console.error('Error fetching warehouses:', error);
             } finally {
                 setLoadingWarehouses(false);
             }
@@ -198,7 +196,6 @@ const CreateEmployee = (props) => {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`API Error: Status ${response.status}`, errorText);
                 props.showAlert(`Employee creation failed (Status ${response.status}). Check server logs.`, "danger");
                 return;
             }
@@ -236,7 +233,6 @@ const CreateEmployee = (props) => {
             }
 
         } catch (error) {
-            console.error("Network or Parsing Error:", error);
             props.showAlert("An unexpected network error occurred.", "danger");
         } finally {
             setIsSubmitting(false);
@@ -845,3 +841,4 @@ const CreateEmployee = (props) => {
 };
 
 export default CreateEmployee;
+

@@ -30,7 +30,6 @@ router.post('/createwarehouse', fetchuser, [
         const warehouse = await Warehouse.create(warehouseData);
         res.json(warehouse);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -55,7 +54,6 @@ router.post('/getwarehouse', fetchuser, async (req, res) => {
 
         res.json(warehouse);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -94,7 +92,6 @@ router.put('/updatewarehouse/:id', fetchuser, [
         warehouse = await Warehouse.findByIdAndUpdate(req.params.id, { $set: newWarehouse }, { new: true });
         res.json({ warehouse });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -116,9 +113,9 @@ router.delete('/deletewarehouse/:id', fetchuser, async (req, res) => {
         await Warehouse.findByIdAndDelete(req.params.id);
         res.json({ message: "Warehouse deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
 module.exports = router;
+

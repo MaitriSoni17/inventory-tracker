@@ -68,7 +68,6 @@ const Orders = (props) => {
                 props.showAlert('Failed to fetch orders', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching orders:', error);
             props.showAlert('Error fetching orders', 'danger');
         } finally {
             setLoading(false);
@@ -93,7 +92,6 @@ const Orders = (props) => {
                 setCategoryMap(map);
             }
         } catch (error) {
-            console.error('Error fetching categories:', error);
         }
     };
 
@@ -115,7 +113,6 @@ const Orders = (props) => {
                     props.showAlert('Failed to delete order', 'danger');
                 }
             } catch (error) {
-                console.error('Error deleting order:', error);
                 props.showAlert('Error deleting order', 'danger');
             }
         }
@@ -192,7 +189,6 @@ const Orders = (props) => {
             XLSX.writeFile(workbook, fileName);
             props.showAlert('Orders exported to Excel successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to Excel:', error);
             props.showAlert('Error exporting to Excel', 'danger');
         }
     };
@@ -252,7 +248,6 @@ const Orders = (props) => {
             html2pdf().set(opt).from(element).save();
             props.showAlert('Orders exported to PDF successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to PDF:', error);
             props.showAlert('Error exporting to PDF', 'danger');
         }
     };
@@ -384,3 +379,4 @@ const Orders = (props) => {
 }
 
 export default Orders
+

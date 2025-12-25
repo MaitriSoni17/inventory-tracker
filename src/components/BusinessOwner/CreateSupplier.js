@@ -135,7 +135,6 @@ function CreateSupplier(props) {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error(`API Error: Status ${response.status}`, errorText);
                 props.showAlert(`Supplier creation failed (Status ${response.status}). Check server logs.`, "danger");
                 return;
             }
@@ -164,7 +163,6 @@ function CreateSupplier(props) {
             }
 
         } catch (error) {
-            console.error("Network or Parsing Error:", error);
             props.showAlert("An unexpected network error occurred.", "danger");
         }
     }
@@ -335,3 +333,4 @@ function CreateSupplier(props) {
 }
 
 export default CreateSupplier
+

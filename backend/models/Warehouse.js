@@ -15,3 +15,4 @@ const Warehouse = new Schema({
 });
 
 module.exports = mongoose.model('Warehouse', Warehouse);
+

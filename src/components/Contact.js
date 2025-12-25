@@ -104,7 +104,6 @@ function Contact() {
         setIsSubmitting(true);
         // Simulate API call
         setTimeout(() => {
-            console.log('Form submitted:', formData);
             setSubmitStatus('success');
             setFormData({
                 name: '',
@@ -400,3 +399,5 @@ function Contact() {
 }
 
 export default Contact;
+
+

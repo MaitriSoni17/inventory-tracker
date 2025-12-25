@@ -12,7 +12,6 @@ const multer = require('multer');
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('Uploads directory created:', uploadsDir);
 }
 
 // Configure multer for file uploads
@@ -62,7 +61,6 @@ app.use('/api/chatbot', require('./routes/chatbot'));
 
 // Global error handler middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
   res.status(statusCode).json({
@@ -77,5 +75,6 @@ app.upload = upload;
 module.exports = upload;
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
 })
+
+

@@ -22,3 +22,4 @@ const fetchbusinessowner = async (req, res, next) => {
 };
 
 module.exports = fetchbusinessowner;
+

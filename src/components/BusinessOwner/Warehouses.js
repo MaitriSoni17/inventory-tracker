@@ -61,7 +61,6 @@ const Warehouses = (props) => {
                 props.showAlert('Failed to fetch warehouses', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching warehouses:', error);
             props.showAlert('Error fetching warehouses', 'danger');
         } finally {
             setLoading(false);
@@ -138,7 +137,6 @@ const Warehouses = (props) => {
                 props.showAlert(errorData.errors?.[0]?.msg || 'Failed to add warehouse', 'danger');
             }
         } catch (error) {
-            console.error('Error adding warehouse:', error);
             props.showAlert('Error adding warehouse', 'danger');
         }
     };
@@ -172,7 +170,6 @@ const Warehouses = (props) => {
                 props.showAlert(errorData.errors?.[0]?.msg || 'Failed to update warehouse', 'danger');
             }
         } catch (error) {
-            console.error('Error updating warehouse:', error);
             props.showAlert('Error updating warehouse', 'danger');
         }
     };
@@ -195,7 +192,6 @@ const Warehouses = (props) => {
                     props.showAlert('Failed to delete warehouse', 'danger');
                 }
             } catch (error) {
-                console.error('Error deleting warehouse:', error);
                 props.showAlert('Error deleting warehouse', 'danger');
             }
         }
@@ -263,7 +259,6 @@ const Warehouses = (props) => {
             XLSX.writeFile(workbook, fileName);
             props.showAlert('Warehouses exported to Excel successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to Excel:', error);
             props.showAlert('Error exporting to Excel', 'danger');
         }
     };
@@ -321,7 +316,6 @@ const Warehouses = (props) => {
             html2pdf().set(opt).from(element).save();
             props.showAlert('Warehouses exported to PDF successfully', 'success');
         } catch (error) {
-            console.error('Error exporting to PDF:', error);
             props.showAlert('Error exporting to PDF', 'danger');
         }
     };
@@ -562,3 +556,4 @@ const Warehouses = (props) => {
 }
 
 export default Warehouses
+

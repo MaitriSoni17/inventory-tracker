@@ -37,14 +37,12 @@ const AddOrder = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch categories');
                     setLoadingCategories(false);
                     return;
                 }
                 const categoryList = await response.json();
                 setCategories(categoryList);
             } catch (error) {
-                console.error('Error fetching categories:', error);
             } finally {
                 setLoadingCategories(false);
             }
@@ -273,7 +271,6 @@ const AddOrder = (props) => {
                 props.showAlert(data.errors?.[0]?.msg || 'Failed to create order', 'danger');
             }
         } catch (error) {
-            console.error('Error:', error);
             props.showAlert('Error creating order', 'danger');
         } finally {
             setIsSubmitting(false);
@@ -462,3 +459,4 @@ const AddOrder = (props) => {
 }
 
 export default AddOrder
+

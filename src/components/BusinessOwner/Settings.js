@@ -85,7 +85,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to load profile data', 'danger');
       }
     } catch (error) {
-      console.error('Error fetching business owner data:', error);
       props.showAlert?.('Error loading profile', 'danger');
     } finally {
       setLoading(false);
@@ -166,7 +165,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to update profile: ' + (errorData.errors?.[0]?.msg || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
       props.showAlert?.('Error updating profile', 'danger');
     } finally {
       setSaving(false);
@@ -233,7 +231,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to change password', 'danger');
       }
     } catch (error) {
-      console.error('Error changing password:', error);
       props.showAlert?.('Error changing password', 'danger');
     } finally {
       setSaving(false);
@@ -286,7 +283,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to delete account: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
       props.showAlert?.('Error deleting account', 'danger');
     } finally {
       setSaving(false);
@@ -326,7 +322,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to deactivate account: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error deactivating account:', error);
       props.showAlert?.('Error deactivating account', 'danger');
     } finally {
       setSaving(false);
@@ -950,3 +945,4 @@ const Settings = (props) => {
 };
 
 export default Settings;
+

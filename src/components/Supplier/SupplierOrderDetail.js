@@ -56,7 +56,6 @@ const SupplierOrderDetail = (props) => {
                 }
             }
         } catch (error) {
-            console.error('Error fetching order detail:', error);
             if (props.showAlert) {
                 props.showAlert('Error fetching order details', 'danger');
             }
@@ -99,7 +98,6 @@ const SupplierOrderDetail = (props) => {
                 props.showAlert?.('Failed to update order status', 'danger');
             }
         } catch (error) {
-            console.error('Error updating order status:', error);
             props.showAlert?.('Error updating order status', 'danger');
         }
     };
@@ -125,7 +123,6 @@ const SupplierOrderDetail = (props) => {
                 props.showAlert?.('Failed to update payment status', 'danger');
             }
         } catch (error) {
-            console.error('Error updating payment status:', error);
             props.showAlert?.('Error updating payment status', 'danger');
         }
     };
@@ -301,3 +298,5 @@ const SupplierOrderDetail = (props) => {
 };
 
 export default SupplierOrderDetail;
+
+

@@ -40,7 +40,6 @@ router.post('/createbusinessowner', [
 
         res.json({ success: true, authtoken: token });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -88,7 +87,6 @@ router.post('/getbusinessowner', fetchbusinessowner, async (req, res) => {
         }
         res.json(businessowner);
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -119,7 +117,6 @@ router.put('/updatebusinessowner', fetchbusinessowner, [
         businessowner = await BusinessOwner.findByIdAndUpdate(req.businessowner._id, { $set: newBusinessOwner }, { new: true });
         res.send(businessowner);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -131,7 +128,6 @@ router.post('/getallemployees', fetchbusinessowner, async (req, res) => {
         const employee = await Employee.find({ businessowner: userId }).select("-password");
         res.send(employee);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -180,7 +176,6 @@ router.put('/updateemployee/:id', fetchuser, [
         employee = await Employee.findByIdAndUpdate(req.params.id, { $set: newEmployee }, { new: true });
         res.send(employee);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -199,7 +194,6 @@ router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
         await Employee.findByIdAndDelete(req.params.id);
         res.json({ "Success": "Employee has been deleted", employee: employee });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -211,7 +205,6 @@ router.post('/getallsuppliers', fetchbusinessowner, async (req, res) => {
         const supplier = await Supplier.find({ businessowner: userId }).select("-password");
         res.send(supplier);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -234,7 +227,6 @@ router.put('/updatesupplier/:id', fetchbusinessowner, [
         supplier = await Supplier.findByIdAndUpdate(req.params.id, { $set: newSupplier }, { new: true });
         res.send(supplier);
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -250,7 +242,6 @@ router.delete('/deletesupplier/:id', fetchbusinessowner, async (req, res) => {
         await Supplier.findByIdAndDelete(req.params.id);
         res.json({ "Success": "Supplier has been deleted", supplier: supplier });
     } catch (err) {
-        console.error(err.message);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -317,7 +308,6 @@ router.get('/notifications', fetchbusinessowner, async (req, res) => {
         
         res.json(limitedNotifications);
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -329,7 +319,6 @@ router.post('/deactivate', fetchbusinessowner, async (req, res) => {
         await BusinessOwner.findByIdAndUpdate(userId, { active: false });
         res.json({ success: true, message: "Account deactivated successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -341,9 +330,9 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
         await BusinessOwner.findByIdAndDelete(userId);
         res.json({ success: true, message: "Account deleted successfully" });
     } catch (err) {
-        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
 
 module.exports = router;
+

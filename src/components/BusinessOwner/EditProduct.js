@@ -40,7 +40,6 @@ const EditProduct = (props) => {
                 });
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`API Error: Status ${response.status}`, errorText);
                     props.showAlert(`Failed to fetch products (Status ${response.status})`, "danger");
                     setLoading(false);
                     return;
@@ -81,7 +80,6 @@ const EditProduct = (props) => {
                 setExistingImages(product.images || []);
                 setLoading(false);
             } catch (error) {
-                console.error("Network or Parsing Error:", error);
                 props.showAlert("Failed to fetch product", "danger");
                 setLoading(false);
             }
@@ -101,14 +99,12 @@ const EditProduct = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch warehouses');
                     setLoadingWarehouses(false);
                     return;
                 }
                 const warehouseList = await response.json();
                 setWarehouses(warehouseList);
             } catch (error) {
-                console.error('Error fetching warehouses:', error);
             } finally {
                 setLoadingWarehouses(false);
             }
@@ -127,14 +123,12 @@ const EditProduct = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch categories');
                     setLoadingCategories(false);
                     return;
                 }
                 const categoryList = await response.json();
                 setCategories(categoryList);
             } catch (error) {
-                console.error('Error fetching categories:', error);
             } finally {
                 setLoadingCategories(false);
             }
@@ -209,7 +203,6 @@ const EditProduct = (props) => {
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`API Error: Status ${response.status}`, errorText);
                     props.showAlert(`Product update failed (Status ${response.status})`, "danger");
                     setSubmitting(false);
                     return;
@@ -226,7 +219,6 @@ const EditProduct = (props) => {
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`API Error: Status ${response.status}`, errorText);
                     props.showAlert(`Product update failed (Status ${response.status})`, "danger");
                     setSubmitting(false);
                     return;
@@ -236,7 +228,6 @@ const EditProduct = (props) => {
             props.showAlert("Product Updated Successfully", "success");
             navigate('/dashboard/products');
         } catch (error) {
-            console.error("Network or Parsing Error:", error);
             props.showAlert("An unexpected network error occurred: " + error.message, "danger");
         } finally {
             setSubmitting(false);
@@ -634,3 +625,5 @@ const EditProduct = (props) => {
 }
 
 export default EditProduct
+
+

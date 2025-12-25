@@ -41,9 +41,8 @@ const Chatbot = () => {
     const userId = localStorage.getItem('userId') || '';
     const authToken = localStorage.getItem('token') || '';
 
-    // Debug: Check if token exists
+    // Check if token exists
     if (!authToken) {
-      console.warn('No auth token found in localStorage');
       const errorMessage = {
         id: messages.length + 1,
         text: 'Authentication error: Please login again.',
@@ -89,7 +88,6 @@ const Chatbot = () => {
         setMessages(prev => [...prev, botMessage]);
       }
     } catch (error) {
-      console.error('Error sending message:', error.response?.status, error.response?.data);
       let errorText = 'Sorry, I encountered an error. Please try again.';
       
       if (error.response?.status === 401) {
@@ -264,3 +262,6 @@ const Chatbot = () => {
 };
 
 export default Chatbot;
+
+
+

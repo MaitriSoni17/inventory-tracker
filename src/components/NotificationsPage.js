@@ -29,7 +29,6 @@ const NotificationsPage = (props) => {
         fetchUnreadCount();
       }
     } catch (error) {
-      console.error('Error fetching notifications:', error);
       props.showAlert?.('Error fetching notifications', 'danger');
     } finally {
       setLoading(false);
@@ -52,7 +51,6 @@ const NotificationsPage = (props) => {
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {
-      console.error('Error fetching unread count:', error);
     }
   };
 
@@ -76,7 +74,6 @@ const NotificationsPage = (props) => {
         fetchUnreadCount();
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
     }
   };
 
@@ -100,7 +97,6 @@ const NotificationsPage = (props) => {
         props.showAlert?.('All notifications marked as read', 'success');
       }
     } catch (error) {
-      console.error('Error marking all as read:', error);
       props.showAlert?.('Error marking notifications as read', 'danger');
     } finally {
       setLoading(false);
@@ -126,7 +122,6 @@ const NotificationsPage = (props) => {
         props.showAlert?.('Notification deleted', 'success');
       }
     } catch (error) {
-      console.error('Error deleting notification:', error);
       props.showAlert?.('Error deleting notification', 'danger');
     }
   };
@@ -150,7 +145,6 @@ const NotificationsPage = (props) => {
           props.showAlert?.('All notifications deleted', 'success');
         }
       } catch (error) {
-        console.error('Error deleting all notifications:', error);
         props.showAlert?.('Error deleting notifications', 'danger');
       } finally {
         setLoading(false);
@@ -364,3 +358,5 @@ const NotificationsPage = (props) => {
 };
 
 export default NotificationsPage;
+
+

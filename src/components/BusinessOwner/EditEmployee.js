@@ -63,7 +63,6 @@ const EditEmployee = (props) => {
                 setWarehouseMap(map);
             }
         } catch (error) {
-            console.error('Error fetching warehouses:', error);
         }
     };
 
@@ -119,7 +118,6 @@ const EditEmployee = (props) => {
                 props.showAlert('Failed to fetch employee', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching employee:', error);
             props.showAlert('Error fetching employee', 'danger');
         } finally {
             setLoading(false);
@@ -206,7 +204,6 @@ const EditEmployee = (props) => {
                 props.showAlert(data.error || 'Failed to change password', 'danger');
             }
         } catch (error) {
-            console.error('Error:', error);
             props.showAlert('Error changing password', 'danger');
         }
     };
@@ -302,7 +299,6 @@ const EditEmployee = (props) => {
                 props.showAlert(data.errors?.[0]?.msg || 'Failed to update employee', 'danger');
             }
         } catch (error) {
-            console.error('Error:', error);
             props.showAlert('Error updating employee', 'danger');
         }
     };
@@ -598,3 +594,5 @@ const EditEmployee = (props) => {
 }
 
 export default EditEmployee
+
+

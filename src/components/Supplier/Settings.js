@@ -68,13 +68,11 @@ const Settings = (props) => {
 
       if (!res.ok) {
         if (res.status === 401) {
-          console.error('Unauthorized: Token may have expired');
           localStorage.removeItem('token');
           localStorage.removeItem('role');
           window.location.href = '/';
           return;
         }
-        console.error('Error fetching supplier data:', res.status);
         props.showAlert?.('Failed to load profile data', 'danger');
         setLoading(false);
         return;
@@ -108,7 +106,6 @@ const Settings = (props) => {
       
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching supplier data:', error);
       props.showAlert?.('Error loading profile', 'danger');
       setLoading(false);
     }
@@ -182,7 +179,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to update profile: ' + (errorData.errors?.[0]?.msg || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
       props.showAlert?.('Error updating profile', 'danger');
     } finally {
       setSaving(false);
@@ -245,7 +241,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to change password: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error changing password:', error);
       props.showAlert?.('Error changing password', 'danger');
     } finally {
       setSaving(false);
@@ -287,7 +282,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to delete account: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
       props.showAlert?.('Error deleting account', 'danger');
     } finally {
       setSaving(false);
@@ -325,7 +319,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to deactivate account: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error deactivating account:', error);
       props.showAlert?.('Error deactivating account', 'danger');
     } finally {
       setSaving(false);
@@ -923,3 +916,5 @@ const Settings = (props) => {
 };
 
 export default Settings;
+
+

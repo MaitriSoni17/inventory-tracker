@@ -73,7 +73,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to load profile data', 'danger');
       }
     } catch (error) {
-      console.error('Error fetching employee data:', error);
       props.showAlert?.('Error loading profile', 'danger');
     } finally {
       setLoading(false);
@@ -102,7 +101,6 @@ const Settings = (props) => {
         });
       }
     } catch (error) {
-      console.error('Error fetching preferences:', error);
     }
   };
 
@@ -153,7 +151,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to update preferences', 'danger');
       }
     } catch (error) {
-      console.error('Error saving preferences:', error);
       props.showAlert?.('Error updating preferences', 'danger');
     } finally {
       setSaving(false);
@@ -202,7 +199,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to update profile', 'danger');
       }
     } catch (error) {
-      console.error('Error updating profile:', error);
       props.showAlert?.('Error updating profile', 'danger');
     } finally {
       setSaving(false);
@@ -255,7 +251,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to change password', 'danger');
       }
     } catch (error) {
-      console.error('Error changing password:', error);
       props.showAlert?.('Error changing password', 'danger');
     } finally {
       setSaving(false);
@@ -304,7 +299,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to delete account: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
       props.showAlert?.('Error deleting account', 'danger');
     } finally {
       setSaving(false);
@@ -342,7 +336,6 @@ const Settings = (props) => {
         props.showAlert?.('Failed to deactivate account', 'danger');
       }
     } catch (error) {
-      console.error('Error deactivating account:', error);
       props.showAlert?.('Error deactivating account', 'danger');
     } finally {
       setSaving(false);
@@ -828,3 +821,5 @@ const Settings = (props) => {
 };
 
 export default Settings;
+
+

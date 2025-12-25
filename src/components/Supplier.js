@@ -80,13 +80,11 @@ function Supplier(props) {
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    console.error('Unauthorized: Token may have expired');
                     localStorage.removeItem('token');
                     localStorage.removeItem('role');
                     window.location.href = '/';
                     return;
                 }
-                console.error('Error response:', response.status);
                 setSupplierOrders([]);
                 setStats({
                     totalOrders: 0,
@@ -113,7 +111,6 @@ function Supplier(props) {
 
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching supplier orders:', error);
             props.showAlert?.('Failed to load supplier orders', 'danger');
             setSupplierOrders([]);
             setStats({
@@ -207,7 +204,6 @@ function Supplier(props) {
                 salesChartInstance.current = null;
             }
         } catch (error) {
-            console.warn('Error destroying existing sales chart:', error);
         }
 
         try {
@@ -216,15 +212,10 @@ function Supplier(props) {
                 orderInstance.current = null;
             }
         } catch (error) {
-            console.warn('Error destroying existing order chart:', error);
         }
 
         // Validate refs exist and canvas elements are in DOM before creating charts
         if (!salesRef.current || !orderRef.current) {
-            console.warn('Chart containers not found. Chart refs:', {
-                salesRef: !!salesRef.current,
-                orderRef: !!orderRef.current
-            });
             return;
         }
 
@@ -244,7 +235,6 @@ function Supplier(props) {
         if (salesRef.current) {
             const ctx = salesRef.current.getContext('2d');
             if (!ctx) {
-                console.error('Failed to get 2D context for sales chart');
                 return;
             }
             salesChartInstance.current = new ChartJS(ctx, {
@@ -309,7 +299,6 @@ function Supplier(props) {
         if (orderRef.current) {
             const ctx = orderRef.current.getContext('2d');
             if (!ctx) {
-                console.error('Failed to get 2D context for order chart');
                 return;
             }
 
@@ -374,14 +363,12 @@ function Supplier(props) {
                 try {
                     salesChartInstance.current.resize();
                 } catch (error) {
-                    console.warn('Error resizing sales chart:', error);
                 }
             }
             if (orderInstance.current && orderInstance.current.ctx) {
                 try {
                     orderInstance.current.resize();
                 } catch (error) {
-                    console.warn('Error resizing order chart:', error);
                 }
             }
         });
@@ -405,7 +392,6 @@ function Supplier(props) {
                     salesChartInstance.current = null;
                 }
             } catch (error) {
-                console.warn('Error destroying sales chart:', error);
             }
 
             try {
@@ -414,7 +400,6 @@ function Supplier(props) {
                     orderInstance.current = null;
                 }
             } catch (error) {
-                console.warn('Error destroying order chart:', error);
             }
 
             try {
@@ -423,7 +408,6 @@ function Supplier(props) {
                     resizeObserver.current = null;
                 }
             } catch (error) {
-                console.warn('Error disconnecting ResizeObserver:', error);
             }
         };
     }, []);
@@ -691,3 +675,4 @@ function Supplier(props) {
 }
 
 export default Supplier
+

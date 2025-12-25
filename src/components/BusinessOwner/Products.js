@@ -36,7 +36,6 @@ const Products = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch categories');
                     return;
                 }
                 const categoryList = await response.json();
@@ -46,7 +45,6 @@ const Products = (props) => {
                 });
                 setCategoryMap(map);
             } catch (error) {
-                console.error('Error fetching categories:', error);
             }
         };
 
@@ -61,7 +59,6 @@ const Products = (props) => {
                     }
                 });
                 if (!response.ok) {
-                    console.error('Failed to fetch warehouses');
                     return;
                 }
                 const warehouseList = await response.json();
@@ -71,7 +68,6 @@ const Products = (props) => {
                 });
                 setWarehouseMap(map);
             } catch (error) {
-                console.error('Error fetching warehouses:', error);
             }
         };
         
@@ -93,7 +89,6 @@ const Products = (props) => {
                 });
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`API Error: Status ${response.status}`, errorText);
                     props.showAlert(`Failed to fetch products (Status ${response.status})`, "danger");
                     setLoading(false);
                     return;
@@ -108,7 +103,6 @@ const Products = (props) => {
 
                 setLoading(false);
             } catch (error) {
-                console.error("Network or Parsing Error:", error);
                 props.showAlert("Failed to fetch products", "danger");
                 setLoading(false);
             }
@@ -130,7 +124,6 @@ const Products = (props) => {
 
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error(`Delete Error: Status ${response.status}`, errorText);
                     props.showAlert(`Failed to delete product (Status ${response.status})`, "danger");
                     return;
                 }
@@ -138,7 +131,6 @@ const Products = (props) => {
                 setProducts(products.filter(product => product._id !== productId));
                 props.showAlert("Product deleted successfully", "success");
             } catch (error) {
-                console.error("Error deleting product:", error);
                 props.showAlert("Failed to delete product", "danger");
             }
         }
@@ -252,7 +244,6 @@ const Products = (props) => {
             pdf.save(`Products_${new Date().toISOString().split('T')[0]}.pdf`);
             props.showAlert("Products exported to PDF successfully", "success");
         } catch (error) {
-            console.error("PDF Export Error:", error);
             props.showAlert("Failed to export PDF", "danger");
         }
     };
@@ -425,3 +416,4 @@ const Products = (props) => {
 }
 
 export default Products
+
