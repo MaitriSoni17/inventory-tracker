@@ -119,11 +119,12 @@ function Home() {
         </div>
         <div className="testimonial-dots">
           {testimonials.map((_, idx) => (
-            <button 
+            <hr 
               key={idx} 
-              className={`dot ${idx === currentTestimonial ? 'active' : ''}`}
+              className={`dot shadow ${idx === currentTestimonial ? 'active' : ''}`}
               onClick={() => setCurrentTestimonial(idx)}
-            ></button>
+              aria-label={`Go to testimonial ${idx + 1}`}
+            />
           ))}
         </div>
       </section>

@@ -391,18 +391,22 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .homepage-chatbot-container {
-    width: 100%;
-    height: 100vh;
-    max-width: none;
-    bottom: 0;
-    right: 0;
-    border-radius: 0;
-    max-height: 100vh;
+    width: calc(100% - 24px);
+    max-width: 400px;
+    height: 80vh;
+    height: 80dvh;
+    max-height: 600px;
+    bottom: 90px;
+    right: 12px;
+    border-radius: 12px;
   }
 
   .homepage-chatbot-button {
     bottom: 20px;
     right: 20px;
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
   }
 
   .message-content {
@@ -416,8 +420,22 @@
 
 @media (max-width: 480px) {
   .homepage-chatbot-container {
-    width: 100%;
-    height: 100vh;
+    width: calc(100% - 16px);
+    max-width: none;
+    height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
+    max-height: none;
+    bottom: 80px;
+    right: 8px;
+    left: 8px;
+  }
+
+  .homepage-chatbot-button {
+    bottom: 16px;
+    right: 16px;
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
   }
 
   .chatbot-header {
@@ -435,5 +453,9 @@
   .message-text {
     padding: 0.6rem 0.8rem;
     font-size: 0.9rem;
+  }
+
+  .chat-input {
+    font-size: 16px; /* Prevent iOS zoom */
   }
 }

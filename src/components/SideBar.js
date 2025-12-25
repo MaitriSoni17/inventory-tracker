@@ -92,10 +92,10 @@ const SideBar = () => {
 
                 {/* Main Content */}
                 <div id="page-content-wrapper" className="p-0 m-0">
-                    <nav className="navbar navbar-expand-lg navbar-light bg-light border-1 border-bottom py-4 px-4 m-0" role="navigation" aria-label="Top navigation">
+                    <nav className="navbar navbar-expand-lg navbar-light bg-light border-1 border-bottom py-3 px-3 px-lg-4 m-0" role="navigation" aria-label="Top navigation">
                         <div className="d-flex align-items-center justify-content-between w-100">
                             <button 
-                                className="btn btn-link d-lg-none me-3"
+                                className="btn btn-link d-lg-none me-2"
                                 onClick={() => setSidebarOpen(!sidebarOpen)}
                                 aria-label="Toggle sidebar"
                                 aria-expanded={sidebarOpen}

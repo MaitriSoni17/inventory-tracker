@@ -22,12 +22,38 @@
 .container-fluid {
   background: #ffffff;
   min-height: 100vh;
-  padding: 2rem 3rem !important;
+  padding: 1.5rem !important;
+}
+
+@media (min-width: 768px) {
+  .container-fluid {
+    padding: 2rem 2.5rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-fluid {
+    padding: 2rem 3rem !important;
+  }
 }
 
 .px-5 {
-  padding-left: 3rem !important;
-  padding-right: 3rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+@media (min-width: 768px) {
+  .px-5 {
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .px-5 {
+    padding-left: 3rem !important;
+    padding-right: 3rem !important;
+  }
 }
 
 .mt-4 {
@@ -64,7 +90,7 @@
   background: #ffffff !important;
   border: 1px solid var(--border-light) !important;
   border-radius: 16px !important;
-  padding: 2.5rem 1.75rem !important;
+  padding: 1.5rem 1.25rem !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   display: flex !important;
@@ -72,11 +98,30 @@
   align-items: center !important;
   justify-content: center !important;
   text-align: center;
-  min-height: 220px;
+  min-height: 180px;
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }
+
+@media (min-width: 768px) {
+  .dashboard-card {
+    padding: 2rem 1.5rem !important;
+    min-height: 200px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-card {
+    padding: 2.5rem 1.75rem !important;
+    min-height: 220px;
+  }
+}
+  /* min-height: 220px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+} */
 
 /* Override Bootstrap utility classes for dashboard cards */
 .dashboard-card.p-3 {
@@ -265,11 +310,24 @@
 
 /* Dashboard Card Grid */
 .row.g-3.my-2 {
-  gap: 2rem !important;
-  margin-bottom: 3rem !important;
+  gap: 1.5rem !important;
+  margin-bottom: 2rem !important;
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   width: 100%;
+}
+
+@media (max-width: 992px) {
+  .row.g-3.my-2 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .row.g-3.my-2 {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
 }
 
 .row.g-3.my-2 .col-md-4 {
@@ -287,10 +345,17 @@
 /* Single row layout for dashboard cards */
 .dashboard-cards-row {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   width: 100%;
   margin-bottom: 2rem;
+}
+
+@media (max-width: 576px) {
+  .dashboard-cards-row {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 /* ============ CHARTS & SECTIONS ============ */

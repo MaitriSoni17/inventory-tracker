@@ -26,19 +26,27 @@ body {
 .login-container {
     width: 100%;
     max-width: 1200px;
-    padding: 2rem;
+    padding: 1rem;
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
     align-items: center;
+    justify-items: center;
     position: relative;
     z-index: 10;
+}
+
+@media (min-width: 768px) {
+    .login-container {
+        padding: 2rem;
+    }
 }
 
 @media (min-width: 1024px) {
     .login-container {
         grid-template-columns: 1.2fr 1fr;
         max-width: 1300px;
+        justify-items: stretch;
     }
 }
 
@@ -107,18 +115,21 @@ body {
     padding: 3.5rem;
     position: relative;
     z-index: 5;
-    min-width: 450px;
+    /* width: 100%; */
+    /* max-width: 500px; */
 }
 
-@media (min-width: 1024px) {
+/* @media (min-width: 1024px) {
     .login-card {
-        min-width: 600px;
+        max-width: 600px;
     }
-}
+} */
 
 @media (max-width: 768px) {
     .login-card {
         padding: 2rem;
+        max-width: 100%;
+        border-radius: 16px;
     }
 }
 
@@ -333,6 +344,8 @@ body {
 @media (max-width: 768px) {
     .login-wrapper {
         padding: 1rem 0;
+        min-height: 100vh;
+        min-height: 100dvh;
     }
 
     .login-container {
@@ -355,11 +368,21 @@ body {
     .shape-1, .shape-2, .shape-3 {
         filter: blur(80px);
     }
+
+    .logo-button {
+        justify-content: center;
+        width: 100%;
+    }
 }
 
 @media (max-width: 480px) {
+    .login-wrapper {
+        padding: 0.5rem;
+    }
+
     .login-card {
         padding: 1.5rem 1rem;
+        border-radius: 12px;
     }
 
     .login-title {
@@ -373,11 +396,19 @@ body {
     .form-input,
     .password-input {
         padding: 0.75rem 0.875rem;
-        font-size: 0.9rem;
+        font-size: 16px; /* Prevent iOS zoom */
     }
 
     .login-button {
         padding: 0.875rem 1rem;
         font-size: 0.95rem;
+    }
+
+    .login-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .login-form {
+        gap: 1rem;
     }
 }

@@ -143,22 +143,62 @@ img {
     left: 0;
     top: 0;
     height: 100vh;
-    width: 100%;
-    max-width: 15rem;
+    height: 100dvh;
+    width: 80vw;
+    max-width: 280px;
     transform: translateX(-100%);
     transition: transform 0.3s ease;
-    z-index: 999;
+    z-index: 1050;
     overflow-y: auto;
+    background: white;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 #sidebar-wrapper.show {
     transform: translateX(0);
 }
 
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.sidebar-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
 #page-content-wrapper {
     width: 100%;
     transition: margin-left 0.3s ease;
     min-height: 100vh;
+    min-height: 100dvh;
+}
+
+@media (min-width: 992px) {
+    #sidebar-wrapper {
+        position: relative;
+        transform: translateX(0);
+        width: 15rem;
+        max-width: 15rem;
+        box-shadow: none;
+    }
+
+    .sidebar-overlay {
+        display: none !important;
+    }
+
+    #page-content-wrapper {
+        width: calc(100% - 15rem);
+    }
 }
 
 /* ============ CARDS - RESPONSIVE ============ */
@@ -465,17 +505,6 @@ table th {
 
     .col-lg-3 {
         width: 25% !important;
-    }
-
-    #sidebar-wrapper {
-        position: relative;
-        width: 15rem;
-        transform: translateX(0);
-        height: 100vh;
-    }
-
-    #page-content-wrapper {
-        margin-left: 15rem;
     }
 
     .hamburger {

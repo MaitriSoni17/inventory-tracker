@@ -408,8 +408,11 @@
 /* Responsive Design */
 @media (max-width: 768px) {
   .chatbot-container {
-    width: 320px;
+    width: 340px;
+    max-width: calc(100vw - 24px);
     height: 500px;
+    max-height: calc(100vh - 120px);
+    max-height: calc(100dvh - 120px);
     bottom: 80px;
     right: 12px;
   }
@@ -436,15 +439,23 @@
 
 @media (max-width: 480px) {
   .chatbot-container {
-    width: 280px;
-    height: 450px;
+    width: calc(100vw - 16px);
+    max-width: none;
+    height: calc(100vh - 100px);
+    height: calc(100dvh - 100px);
+    max-height: 500px;
     bottom: 70px;
     right: 8px;
+    left: 8px;
+    border-radius: 12px;
   }
 
   .chatbot-button {
     bottom: 12px;
     right: 12px;
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
   }
 
   .chatbot-header {
@@ -464,6 +475,10 @@
     width: 28px;
     height: 28px;
     font-size: 12px;
+  }
+
+  .chatbot-input {
+    font-size: 16px; /* Prevent iOS zoom */
   }
 }
 
