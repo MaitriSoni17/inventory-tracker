@@ -16,7 +16,7 @@ const Employees = (props) => {
 
     useEffect(() => {
         fetchEmployees();
-    });
+    }, []);
 
     useEffect(() => {
         filterEmployees();

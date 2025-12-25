@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navigation from './Navigation';
+import validationRules from '../utils/validationHelper';
 import './styles/home.css';
+import './styles/validation.css';
 import Footer from './Footer';
 import HomepageChatbot from './HomepageChatbot';
 
@@ -14,7 +16,44 @@ function Contact() {
         subject: '',
         message: ''
     });
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
     const [submitStatus, setSubmitStatus] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        const nameError = validationRules.required(formData.name, 'Name');
+        if (nameError) newErrors.name = nameError;
+
+        const emailError = validationRules.required(formData.email, 'Email');
+        if (emailError) {
+            newErrors.email = emailError;
+        } else {
+            const emailValidError = validationRules.email(formData.email);
+            if (emailValidError) newErrors.email = emailValidError;
+        }
+
+        const subjectError = validationRules.required(formData.subject, 'Subject');
+        if (subjectError) newErrors.subject = subjectError;
+
+        const messageError = validationRules.required(formData.message, 'Message');
+        if (messageError) {
+            newErrors.message = messageError;
+        } else {
+            const lengthError = validationRules.minLength(formData.message, 10, 'Message');
+            if (lengthError) newErrors.message = lengthError;
+        }
+
+        if (formData.phone) {
+            const phoneError = validationRules.phone(formData.phone);
+            if (phoneError) newErrors.phone = phoneError;
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -22,21 +61,62 @@ function Contact() {
             ...prev,
             [name]: value
         }));
+
+        // Clear error when user starts typing
+        if (errors[name]) {
+            setErrors({ ...errors, [name]: '' });
+        }
+    };
+
+    const handleBlur = (fieldName) => {
+        setTouched({ ...touched, [fieldName]: true });
+
+        // Validate individual field
+        let error = '';
+        if (fieldName === 'name') {
+            error = validationRules.required(formData.name, 'Name');
+        } else if (fieldName === 'email') {
+            error = validationRules.required(formData.email, 'Email');
+            if (!error) error = validationRules.email(formData.email);
+        } else if (fieldName === 'phone' && formData.phone) {
+            error = validationRules.phone(formData.phone);
+        } else if (fieldName === 'subject') {
+            error = validationRules.required(formData.subject, 'Subject');
+        } else if (fieldName === 'message') {
+            error = validationRules.required(formData.message, 'Message');
+            if (!error) error = validationRules.minLength(formData.message, 10, 'Message');
+        }
+
+        if (error) {
+            setErrors({ ...errors, [fieldName]: error });
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Here you would typically send the form data to a backend
-        console.log('Form submitted:', formData);
-        setSubmitStatus('success');
-        setFormData({
-            name: '',
-            email: '',
-            phone: '',
-            subject: '',
-            message: ''
-        });
-        setTimeout(() => setSubmitStatus(null), 3000);
+
+        if (!validateForm()) {
+            setSubmitStatus('error');
+            setTimeout(() => setSubmitStatus(null), 3000);
+            return;
+        }
+
+        setIsSubmitting(true);
+        // Simulate API call
+        setTimeout(() => {
+            console.log('Form submitted:', formData);
+            setSubmitStatus('success');
+            setFormData({
+                name: '',
+                email: '',
+                phone: '',
+                subject: '',
+                message: ''
+            });
+            setTouched({});
+            setIsSubmitting(false);
+            setTimeout(() => setSubmitStatus(null), 3000);
+        }, 1000);
     };
 
     return (
@@ -118,16 +198,33 @@ function Contact() {
                         </div>
 
                         {submitStatus === 'success' && (
-                            <div className="success-message">
-                                <i className="bi bi-check-circle"></i>
-                                <span>Thank you! Your message has been sent successfully.</span>
+                            <div className="validation-summary" style={{ backgroundColor: '#ecfdf5', borderColor: '#bbf7d0' }}>
+                                <div className="validation-summary-title" style={{ color: '#065f46' }}>
+                                    Success!
+                                </div>
+                                <p style={{ color: '#047857', margin: 0 }}>Thank you! Your message has been sent successfully. We'll get back to you soon.</p>
+                            </div>
+                        )}
+
+                        {submitStatus === 'error' && Object.keys(errors).length > 0 && (
+                            <div className="validation-summary">
+                                <div className="validation-summary-title">
+                                    Please fix the following errors:
+                                </div>
+                                <ul className="validation-summary-list">
+                                    {errors.name && <li>{errors.name}</li>}
+                                    {errors.email && <li>{errors.email}</li>}
+                                    {errors.phone && <li>{errors.phone}</li>}
+                                    {errors.subject && <li>{errors.subject}</li>}
+                                    {errors.message && <li>{errors.message}</li>}
+                                </ul>
                             </div>
                         )}
 
                         <form className="contact-form" onSubmit={handleSubmit}>
                             <div className="form-row">
                                 <div className="form-group">
-                                    <label htmlFor="name">Full Name *</label>
+                                    <label htmlFor="name">Full Name <span className="required">*</span></label>
                                     <input
                                         type="text"
                                         id="name"
@@ -135,11 +232,16 @@ function Contact() {
                                         placeholder="Your Name"
                                         value={formData.name}
                                         onChange={handleChange}
-                                        required
+                                        onBlur={() => handleBlur('name')}
+                                        className={`form-control ${errors.name && touched.name ? 'is-invalid' : ''} ${!errors.name && touched.name && formData.name ? 'is-valid' : ''}`}
+                                        disabled={isSubmitting}
                                     />
+                                    {errors.name && touched.name && (
+                                        <div className="error-message">{errors.name}</div>
+                                    )}
                                 </div>
                                 <div className="form-group">
-                                    <label htmlFor="email">Email Address *</label>
+                                    <label htmlFor="email">Email Address <span className="required">*</span></label>
                                     <input
                                         type="email"
                                         id="email"
@@ -147,8 +249,13 @@ function Contact() {
                                         placeholder="your@email.com"
                                         value={formData.email}
                                         onChange={handleChange}
-                                        required
+                                        onBlur={() => handleBlur('email')}
+                                        className={`form-control ${errors.email && touched.email ? 'is-invalid' : ''} ${!errors.email && touched.email && formData.email ? 'is-valid' : ''}`}
+                                        disabled={isSubmitting}
                                     />
+                                    {errors.email && touched.email && (
+                                        <div className="error-message">{errors.email}</div>
+                                    )}
                                 </div>
                             </div>
 
@@ -162,10 +269,19 @@ function Contact() {
                                         placeholder="+1 (555) 123-4567"
                                         value={formData.phone}
                                         onChange={handleChange}
+                                        onBlur={() => handleBlur('phone')}
+                                        className={`form-control ${errors.phone && touched.phone ? 'is-invalid' : ''} ${!errors.phone && touched.phone && formData.phone ? 'is-valid' : ''}`}
+                                        disabled={isSubmitting}
                                     />
+                                    {errors.phone && touched.phone && (
+                                        <div className="error-message">{errors.phone}</div>
+                                    )}
+                                    {!errors.phone && !touched.phone && (
+                                        <div className="info-message">Optional - 10 digit number</div>
+                                    )}
                                 </div>
                                 <div className="form-group">
-                                    <label htmlFor="subject">Subject *</label>
+                                    <label htmlFor="subject">Subject <span className="required">*</span></label>
                                     <input
                                         type="text"
                                         id="subject"
@@ -173,13 +289,18 @@ function Contact() {
                                         placeholder="How can we help?"
                                         value={formData.subject}
                                         onChange={handleChange}
-                                        required
+                                        onBlur={() => handleBlur('subject')}
+                                        className={`form-control ${errors.subject && touched.subject ? 'is-invalid' : ''} ${!errors.subject && touched.subject && formData.subject ? 'is-valid' : ''}`}
+                                        disabled={isSubmitting}
                                     />
+                                    {errors.subject && touched.subject && (
+                                        <div className="error-message">{errors.subject}</div>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="form-group full-width">
-                                <label htmlFor="message">Message *</label>
+                                <label htmlFor="message">Message <span className="required">*</span></label>
                                 <textarea
                                     id="message"
                                     name="message"
@@ -187,18 +308,28 @@ function Contact() {
                                     rows="6"
                                     value={formData.message}
                                     onChange={handleChange}
-                                    required
+                                    onBlur={() => handleBlur('message')}
+                                    className={`form-control ${errors.message && touched.message ? 'is-invalid' : ''} ${!errors.message && touched.message && formData.message ? 'is-valid' : ''}`}
+                                    disabled={isSubmitting}
                                 ></textarea>
+                                {errors.message && touched.message && (
+                                    <div className="error-message">{errors.message}</div>
+                                )}
+                                {!errors.message && formData.message && (
+                                    <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                                        {formData.message.length} characters
+                                    </div>
+                                )}
                             </div>
 
-                            <button type="submit" className="btn btn-primary-elegant">Send Message</button>
+                            <button type="submit" className="btn btn-primary-elegant" disabled={isSubmitting}>
+                                {isSubmitting ? 'Sending...' : 'Send Message'}
+                            </button>
                         </form>
                     </div>
-
-
                 </div>
-
             </section>
+
             {/* FAQ Section */}
             <div className="faq-container">
                 <h2 className="faq-title">Frequently Asked Questions</h2>

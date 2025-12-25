@@ -14,6 +14,7 @@ const Products = (props) => {
     const [selectedStatus, setSelectedStatus] = useState('');
     const [selectedStock, setSelectedStock] = useState('');
     const [categories, setCategories] = useState([]);
+    const [categoryMap, setCategoryMap] = useState({});
     const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
     const getImageFileName = (product) => {
@@ -21,6 +22,35 @@ const Products = (props) => {
         // Ensure the filename is a string and not null/undefined
         return fileName ? String(fileName) : '';
     };
+
+    useEffect(() => {
+        // Fetch categories data
+        const fetchCategories = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch categories');
+                    return;
+                }
+                const categoryList = await response.json();
+                const map = {};
+                categoryList.forEach(cat => {
+                    map[cat._id] = cat.cName;
+                });
+                setCategoryMap(map);
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            }
+        };
+        
+        fetchCategories();
+    }, []);
 
     useEffect(() => {
         // Fetch products data from an API or database
@@ -58,7 +88,7 @@ const Products = (props) => {
         };
 
         fetchProducts();
-    });
+    }, []);
 
     const handleDelete = async (productId) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
@@ -90,8 +120,10 @@ const Products = (props) => {
     // Filter products based on search and filter criteria
     const getFilteredProducts = () => {
         return products.filter(product => {
+            const categoryName = categoryMap[product.category] || '';
             const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 product.brand?.toLowerCase().includes(searchTerm.toLowerCase());
 
             const matchesCategory = !selectedCategory || product.category === selectedCategory;
@@ -251,8 +283,8 @@ const Products = (props) => {
                             onChange={(e) => setSelectedCategory(e.target.value)}
                         >
                             <option value="">Category</option>
-                            {categories.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
+                            {categories.map(catId => (
+                                <option key={catId} value={catId}>{categoryMap[catId] || catId}</option>
                             ))}
                         </select>
                     </div>
@@ -336,7 +368,7 @@ const Products = (props) => {
                                                     <td className="fw-bold">{product.name}</td>
                                                     <td><span className="badge custom-badge-purple rounded-pill px-3 py-2">Active</span></td>
                                                     <td>{product.totalProducts} In Stock</td>
-                                                    <td>{product.category}</td>
+                                                    <td>{categoryMap[product.category] || product.category}</td>
                                                     <td>₹{product.price}</td>
                                                     <td>
                                                         {/* <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-3"><i

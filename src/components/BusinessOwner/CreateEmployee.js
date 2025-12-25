@@ -1,8 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react';
+import '../styles/validation.css';
 
 const CreateEmployee = (props) => {
     const [showPassword, setShowPassword] = useState(false);
     const [showCPassword, setShowCPassword] = useState(false);
+    const [errors, setErrors] = useState({});
+    const [touched, setTouched] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
     const passVisibility = () => {
         setShowPassword(prev => !prev);
     }
@@ -12,7 +17,7 @@ const CreateEmployee = (props) => {
     const imageInputRef = useRef(null);
     const [empDetails, setEmpDetails] = useState(
         {
-            image: null, // Will hold the File object
+            image: null,
             imagePreview: null,
             fname: "",
             lname: "",
@@ -61,13 +66,93 @@ const CreateEmployee = (props) => {
         imageInputRef.current.click();
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+
+        // First name validation
+        if (!empDetails.fname.trim()) {
+            newErrors.fname = 'First name is required';
+        }
+
+        // Email validation
+        if (!empDetails.email.trim()) {
+            newErrors.email = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(empDetails.email)) {
+            newErrors.email = 'Please enter a valid email';
+        }
+
+        // Phone validation
+        if (!empDetails.phone.trim()) {
+            newErrors.phone = 'Contact number is required';
+        } else if (!/^\d{10}$/.test(empDetails.phone.replace(/\D/g, ''))) {
+            newErrors.phone = 'Please enter a valid 10-digit phone number';
+        }
+
+        // Birth date validation
+        if (!empDetails.birthDate.trim()) {
+            newErrors.birthDate = 'Birth date is required';
+        }
+
+        // Gender validation
+        if (!empDetails.gender.trim()) {
+            newErrors.gender = 'Gender is required';
+        }
+
+        // Nationality validation
+        if (!empDetails.nationality.trim()) {
+            newErrors.nationality = 'Nationality is required';
+        }
+
+        // Joining date validation
+        if (!empDetails.jDate.trim()) {
+            newErrors.jDate = 'Joining date is required';
+        }
+
+        // Hire location validation
+        if (!empDetails.hireAt.trim()) {
+            newErrors.hireAt = 'Warehouse selection is required';
+        }
+
+        // Role validation
+        if (!empDetails.role.trim()) {
+            newErrors.role = 'Role is required';
+        }
+
+        // Password validation
+        if (!empDetails.password.trim()) {
+            newErrors.password = 'Password is required';
+        } else if (empDetails.password.length < 5) {
+            newErrors.password = 'Password must be at least 5 characters';
+        }
+
+        // Confirm password validation
+        if (!empDetails.cpassword.trim()) {
+            newErrors.cpassword = 'Confirm password is required';
+        } else if (empDetails.password !== empDetails.cpassword) {
+            newErrors.cpassword = 'Passwords do not match';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleBlur = (field) => {
+        setTouched({ ...touched, [field]: true });
+    };
+
+    const hasErrors = () => {
+        return Object.values(errors).some(error => error && error.trim() !== '');
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        if (empDetails.password !== empDetails.cpassword) {
-            props.showAlert("Password and Confirm Password must be the same!", "danger");
+        // Validate form first
+        if (!validateForm()) {
             return;
         }
+
+        setIsSubmitting(true);
 
         const { image, fname, lname, birthDate, phone, gender, nationality, jDate, hireAt, role, email, password } = empDetails;
 
@@ -135,8 +220,10 @@ const CreateEmployee = (props) => {
         } catch (error) {
             console.error("Network or Parsing Error:", error);
             props.showAlert("An unexpected network error occurred.", "danger");
+        } finally {
+            setIsSubmitting(false);
         }
-    }
+    };
 
     const onChange = (e) => {
         if (e.target.name === 'image') {
@@ -166,238 +253,422 @@ const CreateEmployee = (props) => {
     }
 
     return (
-        <div className="container-fluid p-5">
-            <h1 className="display-5 fw-normal mb-4">Add Employee</h1>
-
-            <form className="needs-validation" onSubmit={handleSubmit}>
-                <div className="row g-4 mb-4">
-
-                    {/* Profile Image Upload (UPDATED) */}
-                    <div className="col-md-3">
-                        <label htmlFor="imageUpload" className="form-label fw-semibold">Profile Image</label>
-                        <div
-                            className="image-upload-area text-center d-flex flex-column justify-content-center align-items-center shadow p-3 rounded-4 mt-3 h-75"
-                            style={{ cursor: 'pointer', overflow: 'hidden' }}
-                            onClick={handleImageClick} // Trigger file dialog on click
-                        >
-                            {empDetails.imagePreview ? (
-                                // Show image preview if available
-                                <img
-                                    src={empDetails.imagePreview}
-                                    alt="Profile Preview"
-                                    className="w-25 rounded-2"
-                                />
-                            ) : (
-                                // Show placeholder icon if no image
-                                <i className="bi bi-images fs-2 text-secondary p-4 border border-3 rounded-4 w-100">
-                                    <br />
-                                    <span className="fs-6">Click to Select Image</span>
-                                </i>
-                            )}
-                            <input
-                                type="file"
-                                name='image'
-                                className="form-control-file d-none"
-                                id="imageUpload"
-                                accept="image/*"
-                                onChange={onChange}
-                                ref={imageInputRef} // Attach the ref
-                            />
-                        </div>
-                    </div>
-
-                    {/* First Name & Email */}
-                    <div className="col-md-4 ms-5 me-5">
-                        <label htmlFor="fname" className="form-label fw-semibold">First Name</label>
-                        <input
-                            type="text"
-                            name='fname'
-                            className="form-control mt-3"
-                            id="fname"
-                            required
-                            onChange={onChange} value={empDetails.fname}
-                        />
-                        <div className="invalid-feedback">First name is required.</div>
-
-                        <div className="col mt-5">
-                            <label htmlFor="email" className="form-label fw-semibold">Email</label>
-                            <input
-                                type="email"
-                                name='email'
-                                className="form-control mt-3"
-                                id="email"
-                                required
-                                onChange={onChange} value={empDetails.email}
-                            />
-                            <div className="invalid-feedback">Email is required.</div>
-                        </div>
-                    </div>
-
-                    {/* Last Name & Contact Number */}
-                    <div className="col-md-4 mt-4">
-                        <label htmlFor="lname" className="form-label fw-semibold">Last Name</label>
-                        <input
-                            type="text"
-                            name='lname'
-                            className="form-control mt-3"
-                            id="lname"
-                            onChange={onChange} value={empDetails.lname}
-                        />
-                        <div className="invalid-feedback">Last name is required.</div>
-
-                        <div className="col mt-5">
-                            <label htmlFor="phone" className="form-label fw-semibold">Contact Number</label>
-                            <input
-                                type="text"
-                                name='phone'
-                                className="form-control mt-3"
-                                id="phone"
-                                onChange={onChange} value={empDetails.phone}
-                            />
-                            <div className="invalid-feedback">Contact Number is required.</div>
-                        </div>
-                    </div>
+        <>
+            <div className="container-fluid" style={{ background: '#fff', padding: '3rem' }}>
+                {/* Header */}
+                <div style={{ marginBottom: '3rem' }}>
+                    <h1 style={{ fontSize: '2.5rem', fontWeight: '700', color: '#333', marginBottom: '0.5rem' }}>Add Employee</h1>
+                    <p style={{ color: '#666', fontSize: '1rem' }}>Create a new employee account in your system</p>
                 </div>
 
-                {/* Second Row of Fields (Dates, Gender, Nationality) */}
-                <div className="row g-4 mb-4">
-                    <div className="col-md-4">
-                        <label htmlFor="birthDate" className="form-label fw-semibold">Birth Date</label>
-                        <div className="input-group mt-3">
-                            <input
-                                name='birthDate'
-                                type="text"
-                                className="form-control"
-                                id="birthDate" // Controlled component
-                                placeholder="DD/MM/YYYY"
-                                onFocus={(e) => e.target.type = 'date'}
-                                onBlur={(e) => e.target.type = 'text'}
-                                onChange={onChange} value={empDetails.birthDate}
-                            />
+                {/* Error Summary */}
+                {Object.keys(errors).length > 0 && Object.values(touched).some(v => v) && (
+                    <div className="validation-summary" style={{ marginBottom: '2rem' }}>
+                        <div className="validation-summary-title">
+                            <i className="bi bi-exclamation-circle me-2"></i>Please fix the following errors:
                         </div>
-                        <div className="invalid-feedback">Birth date is required.</div>
+                        <ul className="validation-summary-list">
+                            {errors.fname && <li>{errors.fname}</li>}
+                            {errors.lname && <li>{errors.lname}</li>}
+                            {errors.email && <li>{errors.email}</li>}
+                            {errors.phone && <li>{errors.phone}</li>}
+                            {errors.birthDate && <li>{errors.birthDate}</li>}
+                            {errors.gender && <li>{errors.gender}</li>}
+                            {errors.nationality && <li>{errors.nationality}</li>}
+                            {errors.jDate && <li>{errors.jDate}</li>}
+                            {errors.hireAt && <li>{errors.hireAt}</li>}
+                            {errors.role && <li>{errors.role}</li>}
+                            {errors.password && <li>{errors.password}</li>}
+                            {errors.cpassword && <li>{errors.cpassword}</li>}
+                        </ul>
                     </div>
+                )}
 
-                    <div className="col-md-4">
-                        <label htmlFor="gender" className="form-label fw-semibold">Gender</label>
-                        <select
-                            className="form-select mt-3"
-                            id="gender"
-                            name='gender' onChange={onChange} value={empDetails.gender}
-                        >
-                            <option value="" disabled>Select Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                        <div className="invalid-feedback">Please select gender.</div>
-                    </div>
-
-                    <div className="col-md-4">
-                        <label htmlFor="nationality" className="form-label fw-semibold">Nationality</label>
-                        <select
-                            className="form-select mt-3"
-                            id="nationality"
-                            name='nationality' onChange={onChange} value={empDetails.nationality}
-                        >
-                            <option value="" disabled>Select Nationality</option>
-                            <option value="Indian">Indian</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <div className="invalid-feedback">Please select nationality.</div>
-                    </div>
-                </div>
-
-                {/* Third Row of Fields (Joining Date, Hire At, Role) */}
-                <div className="row g-4 mb-4">
-                    <div className="col-md-4">
-                        <label htmlFor="jDate" className="form-label fw-semibold">Joining Date</label>
-                        <div className="input-group mt-3">
-                            <input
-                                type="text"
-                                name='jDate'
-                                className="form-control"
-                                id="jDate" // Controlled component
-                                placeholder="DD/MM/YYYY"
-                                onFocus={(e) => e.target.type = 'date'}
-                                onBlur={(e) => e.target.type = 'text'}
-                                onChange={onChange} value={empDetails.jDate}
-                            />
-                        </div>
-                        <div className="invalid-feedback">Joining date is required.</div>
-                    </div>
-
-                    <div className="col-md-4">
-                        <label htmlFor="hireAt" className="form-label fw-semibold">Hire At</label>
-                        <div className="d-flex gap-2 align-items-end">
-                            <div style={{ flex: 1 }}>
-                                <select
-                                    className="form-select mt-3"
-                                    id="hireAt"
-                                    name='hireAt' 
-                                    onChange={onChange} 
-                                    value={empDetails.hireAt}
-                                    disabled={loadingWarehouses}
+                {/* Form Container */}
+                <div style={{ background: '#fafafa', borderRadius: '16px', padding: '2.5rem', border: '1px solid #f0f0f0' }}>
+                    <form onSubmit={handleSubmit}>
+                        {/* Row 1: Profile Image & Basic Info */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Profile Image */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Profile Image
+                                </label>
+                                <div
+                                    className="image-upload-area"
+                                    onClick={handleImageClick}
+                                    style={{
+                                        cursor: 'pointer',
+                                        border: '2px dashed #ddd',
+                                        borderRadius: '12px',
+                                        padding: '2rem',
+                                        textAlign: 'center',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        minHeight: '200px',
+                                        background: '#f9f9f9',
+                                        transition: 'all 0.3s ease'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = '#af50ff'}
+                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = '#ddd'}
                                 >
-                                    <option value="" disabled>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouse'}</option>
-                                    {warehouses.map((warehouse) => (
-                                        <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
-                                    ))}
-                                </select>
+                                    {empDetails.imagePreview ? (
+                                        <img
+                                            src={empDetails.imagePreview}
+                                            alt="Profile Preview"
+                                            style={{ maxWidth: '100%', maxHeight: '180px', borderRadius: '8px' }}
+                                        />
+                                    ) : (
+                                        <div>
+                                            <i className="bi bi-cloud-upload fs-1 text-secondary mb-2" style={{ display: 'block' }}></i>
+                                            <p style={{ color: '#666', marginBottom: '0.5rem', fontWeight: '500' }}>Click to upload image</p>
+                                            <p style={{ color: '#999', fontSize: '0.85rem', margin: '0' }}>PNG, JPG up to 5MB</p>
+                                        </div>
+                                    )}
+                                    <input
+                                        type="file"
+                                        name='image'
+                                        className="d-none"
+                                        id="imageUpload"
+                                        accept="image/*"
+                                        onChange={onChange}
+                                        ref={imageInputRef}
+                                    />
+                                </div>
                             </div>
-                            <a href="/dashboard/warehouses" className="btn btn-sm btn-custom-purple text-decoration-none" title="Add new warehouse">+</a>
+
+                            {/* First Name */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    First Name <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    name="fname"
+                                    placeholder="Enter first name"
+                                    value={empDetails.fname}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('fname')}
+                                    disabled={isSubmitting}
+                                    className={`form-control ${errors.fname && touched.fname ? 'is-invalid' : ''} ${!errors.fname && touched.fname && empDetails.fname ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                />
+                                {errors.fname && touched.fname && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.fname}</div>}
+                            </div>
+
+                            {/* Last Name */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Last Name
+                                </label>
+                                <input
+                                    type="text"
+                                    name="lname"
+                                    placeholder="Enter last name"
+                                    value={empDetails.lname}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('lname')}
+                                    disabled={isSubmitting}
+                                    className={`form-control ${errors.lname && touched.lname ? 'is-invalid' : ''} ${!errors.lname && touched.lname && empDetails.lname ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                />
+                                {errors.lname && touched.lname && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.lname}</div>}
+                            </div>
                         </div>
-                        <div className="invalid-feedback">Please select warehouse.</div>
-                    </div>
 
-                    <div className="col-md-4">
-                        <label htmlFor="role" className="form-label fw-semibold">Role</label>
-                        <select
-                            className="form-select mt-3"
-                            id="role"
-                            name='role' onChange={onChange} value={empDetails.role}
-                        >
-                            <option value="" disabled>Select Role</option>
-                            <option value="employee">Employee</option>
-                            <option value="manager">Manager</option>
-                        </select>
-                        <div className="invalid-feedback">Please select role.</div>
-                    </div>
-                </div>
+                        {/* Row 2: Email & Phone */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Email */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Email <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    placeholder="Enter email address"
+                                    value={empDetails.email}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('email')}
+                                    disabled={isSubmitting}
+                                    className={`form-control ${errors.email && touched.email ? 'is-invalid' : ''} ${!errors.email && touched.email && empDetails.email ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                />
+                                {errors.email && touched.email && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.email}</div>}
+                            </div>
 
+                            {/* Phone */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Contact Number <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input
+                                    type="tel"
+                                    name="phone"
+                                    placeholder="Enter 10-digit phone number"
+                                    value={empDetails.phone}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('phone')}
+                                    disabled={isSubmitting}
+                                    className={`form-control ${errors.phone && touched.phone ? 'is-invalid' : ''} ${!errors.phone && touched.phone && empDetails.phone ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                />
+                                {errors.phone && touched.phone && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.phone}</div>}
+                            </div>
 
-                {/* Password Fields */}
-                <div className="row g-4 mb-4">
-                    <div className="col-md-6">
-                        <label htmlFor="password" className="form-label fw-semibold">Password</label>
-                        <div className='input-group mb-3 gap-0'>
-                            <input type={showPassword ? "text" : "password"} value={empDetails.password} className='form-control' name='password' id="password" placeholder="••••••••" onChange={onChange} minLength={5} /><i className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={passVisibility}></i>
+                            {/* Birth Date */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Birth Date <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    name="birthDate"
+                                    value={empDetails.birthDate}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('birthDate')}
+                                    disabled={isSubmitting}
+                                    className={`form-control ${errors.birthDate && touched.birthDate ? 'is-invalid' : ''} ${!errors.birthDate && touched.birthDate && empDetails.birthDate ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                />
+                                {errors.birthDate && touched.birthDate && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.birthDate}</div>}
+                            </div>
                         </div>
-                        <div className="invalid-feedback">Password is required.</div>
-                    </div>
 
-                    <div className="col-md-6">
-                        <label htmlFor="cPassword" className="form-label fw-semibold">Confirm Password</label>
-                        <div className='input-group mb-3 gap-0'>
-                            <input type={showCPassword ? "text" : "password"} name='cpassword' minLength={5} className='form-control' id="cpassword" value={empDetails.cpassword} placeholder="••••••••" onChange={onChange} required /><i className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white`} onClick={cpassVisibility}></i>
+                        {/* Row 3: Gender, Nationality, Role */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Gender */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Gender <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <select
+                                    name="gender"
+                                    value={empDetails.gender}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('gender')}
+                                    disabled={isSubmitting}
+                                    className={`form-select ${errors.gender && touched.gender ? 'is-invalid' : ''} ${!errors.gender && touched.gender && empDetails.gender ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                >
+                                    <option value="" disabled>Select Gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                                {errors.gender && touched.gender && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.gender}</div>}
+                            </div>
+
+                            {/* Nationality */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Nationality <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <select
+                                    name="nationality"
+                                    value={empDetails.nationality}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('nationality')}
+                                    disabled={isSubmitting}
+                                    className={`form-select ${errors.nationality && touched.nationality ? 'is-invalid' : ''} ${!errors.nationality && touched.nationality && empDetails.nationality ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                >
+                                    <option value="" disabled>Select Nationality</option>
+                                    <option value="Indian">Indian</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                {errors.nationality && touched.nationality && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.nationality}</div>}
+                            </div>
+
+                            {/* Role */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Role <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <select
+                                    name="role"
+                                    value={empDetails.role}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('role')}
+                                    disabled={isSubmitting}
+                                    className={`form-select ${errors.role && touched.role ? 'is-invalid' : ''} ${!errors.role && touched.role && empDetails.role ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                >
+                                    <option value="" disabled>Select Role</option>
+                                    <option value="employee">Employee</option>
+                                    <option value="manager">Manager</option>
+                                </select>
+                                {errors.role && touched.role && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.role}</div>}
+                            </div>
                         </div>
-                        <div className="invalid-feedback">Confirm Password is required.</div>
-                    </div>
-                </div>
 
-                {/* Submit and Cancel Buttons */}
-                <div className="row mt-5 mb-5 pb-5">
-                    <div className="col-12 d-flex justify-content-start">
-                        <input
-                            type="submit"
-                            className="btn btn-custom-purple me-3 px-2 shadow-sm"
-                            value='Add Employee' />
-                        <a href="/dashboard/employee" type="button" className="btn btn-secondary btn-lg shadow-sm text-center px-3 text-decoration-none">
-                            Cancel
-                        </a>
-                    </div>
+                        {/* Row 4: Joining Date & Hire Location */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Joining Date */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Joining Date <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    name="jDate"
+                                    value={empDetails.jDate}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('jDate')}
+                                    disabled={isSubmitting}
+                                    className={`form-control ${errors.jDate && touched.jDate ? 'is-invalid' : ''} ${!errors.jDate && touched.jDate && empDetails.jDate ? 'is-valid' : ''}`}
+                                    style={{ minHeight: '44px', fontSize: '1rem' }}
+                                />
+                                {errors.jDate && touched.jDate && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.jDate}</div>}
+                            </div>
+
+                            {/* Hire At (Warehouse) */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Hire At (Warehouse) <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <select
+                                            name="hireAt"
+                                            value={empDetails.hireAt}
+                                            onChange={onChange}
+                                            onBlur={() => handleBlur('hireAt')}
+                                            disabled={loadingWarehouses || isSubmitting}
+                                            className={`form-select ${errors.hireAt && touched.hireAt ? 'is-invalid' : ''} ${!errors.hireAt && touched.hireAt && empDetails.hireAt ? 'is-valid' : ''}`}
+                                            style={{ minHeight: '44px', fontSize: '1rem', width: '100%' }}
+                                        >
+                                            <option value="" disabled>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouse'}</option>
+                                            {warehouses.map((warehouse) => (
+                                                <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
+                                            ))}
+                                        </select>
+                                        {empDetails.hireAt && (
+                                            <div style={{ fontSize: '0.85rem', color: '#7300FF', fontWeight: '600', marginTop: '0.25rem' }}>
+                                                Selected: {warehouses.find(w => w._id === empDetails.hireAt)?.wName || 'Unknown'}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <a href="/dashboard/warehouses" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Add new warehouse">+</a>
+                                </div>
+                                {errors.hireAt && touched.hireAt && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.hireAt}</div>}
+                            </div>
+                        </div>
+
+                        {/* Row 5: Password Fields */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Password */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Password <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        name="password"
+                                        placeholder="Enter password"
+                                        value={empDetails.password}
+                                        onChange={onChange}
+                                        onBlur={() => handleBlur('password')}
+                                        disabled={isSubmitting}
+                                        className={`form-control ${errors.password && touched.password ? 'is-invalid' : ''} ${!errors.password && touched.password && empDetails.password ? 'is-valid' : ''}`}
+                                        style={{ minHeight: '44px', fontSize: '1rem', paddingRight: '40px' }}
+                                    />
+                                    <i
+                                        className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-5 text-secondary`}
+                                        onClick={passVisibility}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            cursor: 'pointer'
+                                        }}
+                                    ></i>
+                                </div>
+                                {errors.password && touched.password && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.password}</div>}
+                            </div>
+
+                            {/* Confirm Password */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Confirm Password <span style={{ color: '#ef4444' }}>*</span>
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showCPassword ? "text" : "password"}
+                                        name="cpassword"
+                                        placeholder="Re-enter password"
+                                        value={empDetails.cpassword}
+                                        onChange={onChange}
+                                        onBlur={() => handleBlur('cpassword')}
+                                        disabled={isSubmitting}
+                                        className={`form-control ${errors.cpassword && touched.cpassword ? 'is-invalid' : ''} ${!errors.cpassword && touched.cpassword && empDetails.cpassword ? 'is-valid' : ''}`}
+                                        style={{ minHeight: '44px', fontSize: '1rem', paddingRight: '40px' }}
+                                    />
+                                    <i
+                                        className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-5 text-secondary`}
+                                        onClick={cpassVisibility}
+                                        style={{
+                                            position: 'absolute',
+                                            right: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            cursor: 'pointer'
+                                        }}
+                                    ></i>
+                                </div>
+                                {errors.cpassword && touched.cpassword && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.cpassword}</div>}
+                            </div>
+                        </div>
+
+                        {/* Submit & Cancel Buttons */}
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e0e0e0' }}>
+                            <button
+                                type="submit"
+                                disabled={hasErrors() || isSubmitting}
+                                style={{
+                                    background: hasErrors() || isSubmitting ? '#ccc' : '#af50ff',
+                                    color: 'white',
+                                    padding: '0.75rem 2rem',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    fontWeight: '600',
+                                    cursor: hasErrors() || isSubmitting ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseEnter={(e) => !hasErrors() && !isSubmitting && (e.target.style.background = '#9939d9')}
+                                onMouseLeave={(e) => !hasErrors() && !isSubmitting && (e.target.style.background = '#af50ff')}
+                            >
+                                {isSubmitting ? 'Creating...' : 'Add Employee'}
+                            </button>
+                            <a
+                                href="/dashboard/employee"
+                                style={{
+                                    background: '#f0f0f0',
+                                    color: '#333',
+                                    padding: '0.75rem 2rem',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '1rem',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    textDecoration: 'none',
+                                    display: 'inline-block',
+                                    transition: 'all 0.3s ease'
+                                }}
+                                onMouseEnter={(e) => e.target.style.background = '#e0e0e0'}
+                                onMouseLeave={(e) => e.target.style.background = '#f0f0f0'}
+                            >
+                                Cancel
+                            </a>
+                        </div>
+                    </form>
                 </div>
-            </form>
-        </div>
+            </div>
+        </>
     );
 };
 
