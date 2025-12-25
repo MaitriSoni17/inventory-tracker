@@ -127,6 +127,23 @@ const Employees = (props) => {
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
+    const formatLastLogin = (dateString) => {
+        if (!dateString) return 'Never';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
     const getImageUrl = (imagePath) => {
         if (!imagePath) return null;
         // Extract just the filename if path contains /
@@ -333,6 +350,7 @@ const Employees = (props) => {
                                     <th scope="col" className="py-2">Role</th>
                                     <th scope="col" className="py-2">Hire Location</th>
                                     <th scope="col" className="py-2">Joining Date</th>
+                                    <th scope="col" className="py-2">Last Login</th>
                                     <th scope="col" className="py-2">Location</th>
                                     <th scope="col" className="py-2">Actions</th>
                                 </tr>
@@ -356,6 +374,11 @@ const Employees = (props) => {
                                         <td><span className="badge bg-info rounded-pill px-3 py-2">{emp.role}</span></td>
                                         <td>{warehouseMap[emp.hireAt] || emp.hireAt || 'N/A'}</td>
                                         <td>{formatDate(emp.jDate)}</td>
+                                        <td>
+                                            <small className="text-muted" title={emp.lastLogin ? new Date(emp.lastLogin).toLocaleString('en-IN') : 'Never'}>
+                                                {formatLastLogin(emp.lastLogin)}
+                                            </small>
+                                        </td>
                                         <td>{emp.city || ''}{emp.city && emp.country ? ', ' : ''}{emp.country || ''}</td>
                                         <td>
                                             <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">

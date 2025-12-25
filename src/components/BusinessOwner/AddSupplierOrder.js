@@ -6,6 +6,7 @@ function AddSupplierOrder(props) {
     const navigate = useNavigate();
     const [supplierName, setSupplierName] = useState('');
     const [categories, setCategories] = useState([]);
+    const [errors, setErrors] = useState({});
     const [orderDetails, setOrderDetails] = useState({
         pName: '',
         category: '',
@@ -72,20 +73,74 @@ function AddSupplierOrder(props) {
             ...prev,
             [name]: value
         }));
+        // Clear error for this field when user starts typing
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ""
+            }));
+        }
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        // Product Name validation
+        if (!orderDetails.pName.trim()) {
+            newErrors.pName = "Product name is required";
+        } else if (orderDetails.pName.trim().length < 2) {
+            newErrors.pName = "Product name must be at least 2 characters";
+        }
+
+        // Category validation
+        if (!orderDetails.category) {
+            newErrors.category = "Category is required";
+        }
+
+        // Amount validation
+        if (!orderDetails.amount) {
+            newErrors.amount = "Amount is required";
+        } else if (parseFloat(orderDetails.amount) <= 0) {
+            newErrors.amount = "Amount must be greater than 0";
+        }
+
+        // Units validation
+        if (!orderDetails.ounits) {
+            newErrors.ounits = "Units is required";
+        } else if (parseInt(orderDetails.ounits) <= 0) {
+            newErrors.ounits = "Units must be greater than 0";
+        }
+
+        // Order Date validation
+        if (!orderDetails.oDate) {
+            newErrors.oDate = "Order date is required";
+        }
+
+        // Delivery Date validation
+        if (!orderDetails.dDate) {
+            newErrors.dDate = "Delivery date is required";
+        }
+
+        // Date comparison validation
+        if (orderDetails.oDate && orderDetails.dDate) {
+            const orderDate = new Date(orderDetails.oDate);
+            const deliveryDate = new Date(orderDetails.dDate);
+            
+            if (deliveryDate < orderDate) {
+                newErrors.dDate = "Delivery date must be after order date";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validation
-        if (!orderDetails.pName || !orderDetails.category || !orderDetails.amount || 
-            !orderDetails.ounits || !orderDetails.oDate || !orderDetails.dDate) {
-            props.showAlert('Please fill in all required fields', 'danger');
-            return;
-        }
-
-        if (new Date(orderDetails.dDate) < new Date(orderDetails.oDate)) {
-            props.showAlert('Delivery date must be after order date', 'danger');
+        // Validate form before submission
+        if (!validateForm()) {
+            props.showAlert('Please fix the errors in the form', 'danger');
             return;
         }
 
@@ -132,7 +187,7 @@ function AddSupplierOrder(props) {
                                             <label htmlFor="pName" className="form-label fw-semibold mb-2">Product Name *</label>
                                             <input 
                                                 type="text" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.pName ? 'is-invalid' : ''}`}
                                                 id="pName"
                                                 name="pName"
                                                 value={orderDetails.pName}
@@ -140,11 +195,12 @@ function AddSupplierOrder(props) {
                                                 placeholder="Enter product name"
                                                 required
                                             />
+                                            {errors.pName && <div className="invalid-feedback d-block">{errors.pName}</div>}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label htmlFor="category" className="form-label fw-semibold mb-2">Category *</label>
                                             <select 
-                                                className="form-select rounded-3 shadow-sm" 
+                                                className={`form-select rounded-3 shadow-sm ${errors.category ? 'is-invalid' : ''}`}
                                                 id="category"
                                                 name="category"
                                                 value={orderDetails.category}
@@ -156,12 +212,13 @@ function AddSupplierOrder(props) {
                                                     <option key={cat._id} value={cat.cName}>{cat.cName}</option>
                                                 ))}
                                             </select>
+                                            {errors.category && <div className="invalid-feedback d-block">{errors.category}</div>}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label htmlFor="amount" className="form-label fw-semibold mb-2">Amount (₹) *</label>
                                             <input 
                                                 type="number" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.amount ? 'is-invalid' : ''}`}
                                                 id="amount"
                                                 name="amount"
                                                 value={orderDetails.amount}
@@ -171,6 +228,7 @@ function AddSupplierOrder(props) {
                                                 step="0.01"
                                                 required
                                             />
+                                            {errors.amount && <div className="invalid-feedback d-block">{errors.amount}</div>}
                                         </div>
                                     </div>
                                 </div>
@@ -185,7 +243,7 @@ function AddSupplierOrder(props) {
                                             <label htmlFor="ounits" className="form-label fw-semibold mb-2">Units *</label>
                                             <input 
                                                 type="number" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.ounits ? 'is-invalid' : ''}`}
                                                 id="ounits"
                                                 name="ounits"
                                                 value={orderDetails.ounits}
@@ -194,30 +252,33 @@ function AddSupplierOrder(props) {
                                                 min="0"
                                                 required
                                             />
+                                            {errors.ounits && <div className="invalid-feedback d-block">{errors.ounits}</div>}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label htmlFor="oDate" className="form-label fw-semibold mb-2">Order Date *</label>
                                             <input 
                                                 type="date" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.oDate ? 'is-invalid' : ''}`}
                                                 id="oDate"
                                                 name="oDate"
                                                 value={orderDetails.oDate}
                                                 onChange={handleInputChange}
                                                 required
                                             />
+                                            {errors.oDate && <div className="invalid-feedback d-block">{errors.oDate}</div>}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label htmlFor="dDate" className="form-label fw-semibold mb-2">Delivery Date *</label>
                                             <input 
                                                 type="date" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.dDate ? 'is-invalid' : ''}`}
                                                 id="dDate"
                                                 name="dDate"
                                                 value={orderDetails.dDate}
                                                 onChange={handleInputChange}
                                                 required
                                             />
+                                            {errors.dDate && <div className="invalid-feedback d-block">{errors.dDate}</div>}
                                         </div>
                                     </div>
                                     <div className="d-flex gap-4">

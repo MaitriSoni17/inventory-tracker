@@ -3,7 +3,7 @@ const fetchuser = require('../middleware/fetchuser');
 const Category = require('../models/Category');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const { notifyEmployeesAboutCategory } = require('../utils/notificationHelper');
+const { notifyEmployeesAboutCategory, notifyBusinessOwnerAboutCategory } = require('../utils/notificationHelper');
 
 // Create Category — accessible by BusinessOwner or Employee
 router.post('/createcategory', fetchuser, [
@@ -25,11 +25,35 @@ router.post('/createcategory', fetchuser, [
             categoryData.employee = req.user._id;
         }
 
+        console.log(`\n→ Creating category:`);
+        console.log(`  req.role: ${req.role}`);
+        console.log(`  req.user._id: ${req.user._id}`);
+        console.log(`  req.user.businessowner: ${req.user.businessowner}`);
+        console.log(`  categoryData.businessowner: ${categoryData.businessowner}`);
+        console.log(`  categoryData.employee: ${categoryData.employee}`);
+
         const category = await Category.create(categoryData);
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
+            console.log(`  Notifying employees (business owner created category)`);
             await notifyEmployeesAboutCategory(
+                req.user._id,
+                'created',
+                cName,
+                { categoryId: category._id, description: cDesc }
+            );
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if created by employee
+            console.log(`  Notifying business owner (employee created category)`);
+            console.log(`  Calling notifyBusinessOwnerAboutCategory with:`);
+            console.log(`    - businessOwnerId: ${req.user.businessowner}`);
+            console.log(`    - employeeId: ${req.user._id}`);
+            console.log(`    - action: created`);
+            console.log(`    - categoryName: ${cName}`);
+            
+            await notifyBusinessOwnerAboutCategory(
+                req.user.businessowner,
                 req.user._id,
                 'created',
                 cName,
@@ -106,6 +130,15 @@ router.put('/updatecategory/:id', fetchuser, [
                 cName,
                 { categoryId: category._id, description: cDesc }
             );
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if updated by employee
+            await notifyBusinessOwnerAboutCategory(
+                req.user.businessowner,
+                req.user._id,
+                'updated',
+                cName,
+                { categoryId: category._id, description: cDesc }
+            );
         }
 
         res.json({ category });
@@ -166,6 +199,15 @@ router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
         if (req.role === 'businessowner') {
             await notifyEmployeesAboutCategory(
                 businessOwnerId,
+                'deleted',
+                categoryName,
+                { categoryId: req.params.id }
+            );
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if deleted by employee
+            await notifyBusinessOwnerAboutCategory(
+                businessOwnerId,
+                req.user._id,
                 'deleted',
                 categoryName,
                 { categoryId: req.params.id }

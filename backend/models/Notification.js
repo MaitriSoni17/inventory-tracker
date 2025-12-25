@@ -27,6 +27,7 @@ const NotificationSchema = new Schema({
       'employee_updated',
       'employee_deleted',
       'employee_deactivated',
+      'employee_login',
       'product_created',
       'product_updated',
       'product_deleted',
@@ -42,6 +43,9 @@ const NotificationSchema = new Schema({
       'category_created',
       'category_updated',
       'category_deleted',
+      'category_created_by_employee',
+      'category_updated_by_employee',
+      'category_deleted_by_employee',
       'supplier_order_created',
       'supplier_order_updated',
       'supplier_order_deleted',
@@ -49,7 +53,8 @@ const NotificationSchema = new Schema({
       'supplier_order_updated_by_employee',
       'supplier_order_deleted_by_employee',
       'supplier_order_status_updated',
-      'supplier_order_payment_status_updated'
+      'supplier_order_payment_status_updated',
+      'supplier_login'
     ],
     required: true
   },

@@ -39,6 +39,7 @@ const Settings = (props) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchEmployeeData();
+    fetchEmployeePreferences();
   }, []);
 
   const fetchEmployeeData = async () => {
@@ -79,6 +80,32 @@ const Settings = (props) => {
     }
   };
 
+  const fetchEmployeePreferences = async () => {
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'auth-token': localStorage.getItem('token')
+      };
+
+      const res = await fetch('http://localhost:5000/api/employee/getpreferences', {
+        method: 'POST',
+        headers
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPreferences({
+          emailNotifications: data.emailNotifications !== false,
+          orderAlerts: data.orderAlerts !== false,
+          lowStockAlerts: data.lowStockAlerts !== false,
+          weeklyReport: data.weeklyReport === true
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching preferences:', error);
+    }
+  };
+
   const handleProfileChange = (e) => {
     const { id, value } = e.target;
     setProfileData(prev => ({
@@ -89,10 +116,48 @@ const Settings = (props) => {
 
   const handlePreferencesChange = (e) => {
     const { id, type, checked, value } = e.target;
-    setPreferences(prev => ({
-      ...prev,
+    const newPreferences = {
+      ...preferences,
       [id]: type === 'checkbox' ? checked : value
-    }));
+    };
+    setPreferences(newPreferences);
+    
+    // Save preferences immediately
+    savePreferencesAsync(newPreferences);
+  };
+
+  const savePreferencesAsync = async (prefsToSave) => {
+    try {
+      setSaving(true);
+      const headers = {
+        'Content-Type': 'application/json',
+        'auth-token': localStorage.getItem('token')
+      };
+
+      const dataToSend = {
+        emailNotifications: prefsToSave.emailNotifications,
+        orderAlerts: prefsToSave.orderAlerts,
+        lowStockAlerts: prefsToSave.lowStockAlerts,
+        weeklyReport: prefsToSave.weeklyReport
+      };
+
+      const res = await fetch('http://localhost:5000/api/employee/updatepreferences', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(dataToSend)
+      });
+
+      if (res.ok) {
+        props.showAlert?.('Preferences updated successfully', 'success');
+      } else {
+        props.showAlert?.('Failed to update preferences', 'danger');
+      }
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      props.showAlert?.('Error updating preferences', 'danger');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePasswordChange = (e) => {
@@ -198,11 +263,7 @@ const Settings = (props) => {
   };
 
   const handleSavePreferences = () => {
-    setSaving(true);
-    setTimeout(() => {
-      props.showAlert?.('Preferences saved successfully', 'success');
-      setSaving(false);
-    }, 500);
+    savePreferencesAsync(preferences);
   };
 
   const handleDeleteAccountClick = () => {

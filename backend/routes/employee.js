@@ -386,4 +386,55 @@ router.delete('/deleteemployee/:id', fetchbusinessowner, async (req, res) => {
     }
 });
 
+// Get employee preferences
+router.post('/getpreferences', fetchemployee, async (req, res) => {
+    try {
+        const employee = await Employee.findById(req.employee._id);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+        
+        const preferences = employee.preferences || {
+            emailNotifications: true,
+            orderAlerts: true,
+            lowStockAlerts: true,
+            weeklyReport: false
+        };
+        
+        res.json(preferences);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Update employee preferences
+router.put('/updatepreferences', fetchemployee, async (req, res) => {
+    try {
+        const { emailNotifications, orderAlerts, lowStockAlerts, weeklyReport } = req.body;
+        
+        const employee = await Employee.findByIdAndUpdate(
+            req.employee._id,
+            {
+                preferences: {
+                    emailNotifications: emailNotifications !== false,
+                    orderAlerts: orderAlerts !== false,
+                    lowStockAlerts: lowStockAlerts !== false,
+                    weeklyReport: weeklyReport === true
+                }
+            },
+            { new: true }
+        );
+        
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+        
+        res.json({ message: "Preferences updated successfully", preferences: employee.preferences });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 module.exports = router;

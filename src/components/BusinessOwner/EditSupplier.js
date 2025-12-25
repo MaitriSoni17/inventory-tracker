@@ -16,6 +16,15 @@ const EditSupplier = (props) => {
         address: '',
         about: ''
     });
+    const [passwordData, setPasswordData] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -71,6 +80,59 @@ const EditSupplier = (props) => {
             ...prev,
             [id]: value
         }));
+    };
+
+    const handlePasswordChange = (e) => {
+        const { id, value } = e.target;
+        setPasswordData(prev => ({
+            ...prev,
+            [id]: value
+        }));
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            props.showAlert('Passwords do not match', 'warning');
+            return;
+        }
+
+        if (passwordData.newPassword.length < 6) {
+            props.showAlert('Password must be at least 6 characters', 'warning');
+            return;
+        }
+
+        try {
+            setSaving(true);
+            const headers = {
+                'Content-Type': 'application/json',
+                'auth-token': localStorage.getItem('token')
+            };
+
+            const dataToSend = {
+                ...formData,
+                password: passwordData.newPassword
+            };
+
+            const res = await fetch(`http://localhost:5000/api/supplier/updatesupplier/${id}`, {
+                method: 'PUT',
+                headers,
+                body: JSON.stringify(dataToSend)
+            });
+
+            if (res.ok) {
+                props.showAlert('Password changed successfully', 'success');
+                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            } else {
+                props.showAlert('Failed to change password', 'danger');
+            }
+        } catch (error) {
+            console.error('Error changing password:', error);
+            props.showAlert('Error changing password', 'danger');
+        } finally {
+            setSaving(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -186,19 +248,109 @@ const EditSupplier = (props) => {
                         <div className="card-body p-5">
                             <h5 className="card-title display-6 mb-4">Additional Information</h5>
                             <div className="mb-4">
+                                <label htmlFor="about" className="form-label fw-semibold mb-2">About</label>
+                                <textarea className="form-control rounded-3 shadow-sm" id="about" rows="4" placeholder="Enter details about the supplier" value={formData.about} onChange={handleChange}></textarea>
+                            </div>
+                            <div className="mb-4">
                                 <label htmlFor="address" className="form-label fw-semibold mb-2">Address</label>
                                 <textarea className="form-control rounded-3 shadow-sm" id="address" rows="3" placeholder="Enter full address" value={formData.address} onChange={handleChange}></textarea>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Change Password Section */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Change Password</h5>
                             <div className="mb-4">
-                                <label htmlFor="about" className="form-label fw-semibold mb-2">About</label>
-                                <textarea className="form-control rounded-3 shadow-sm" id="about" rows="4" placeholder="Enter details about the supplier" value={formData.about} onChange={handleChange}></textarea>
+                                <label htmlFor="currentPassword" className="form-label fw-semibold mb-2">Current Password</label>
+                                <div className="position-relative">
+                                    <input
+                                        type={showCurrentPassword ? "text" : "password"}
+                                        className="form-control rounded-3 shadow-sm pe-5"
+                                        id="currentPassword"
+                                        placeholder="Enter current password"
+                                        value={passwordData.currentPassword}
+                                        onChange={handlePasswordChange}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
+                                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                        tabIndex="-1"
+                                        style={{ marginRight: '12px' }}
+                                    >
+                                        <i className={`bi ${showCurrentPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="row">
+                                <div className="col-md-6">
+                                    <div className="mb-4">
+                                        <label htmlFor="newPassword" className="form-label fw-semibold mb-2">New Password</label>
+                                        <div className="position-relative">
+                                            <input
+                                                type={showNewPassword ? "text" : "password"}
+                                                className="form-control rounded-3 shadow-sm pe-5"
+                                                id="newPassword"
+                                                placeholder="Enter new password"
+                                                value={passwordData.newPassword}
+                                                onChange={handlePasswordChange}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
+                                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                                tabIndex="-1"
+                                                style={{ marginRight: '12px' }}
+                                            >
+                                                <i className={`bi ${showNewPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
+                                            </button>
+                                        </div>
+                                        <small className="text-muted d-block mt-2">At least 6 characters</small>
+                                    </div>
+                                </div>
+                                <div className="col-md-6">
+                                    <div className="mb-4">
+                                        <label htmlFor="confirmPassword" className="form-label fw-semibold mb-2">Confirm Password</label>
+                                        <div className="position-relative">
+                                            <input
+                                                type={showConfirmPassword ? "text" : "password"}
+                                                className="form-control rounded-3 shadow-sm pe-5"
+                                                id="confirmPassword"
+                                                placeholder="Confirm new password"
+                                                value={passwordData.confirmPassword}
+                                                onChange={handlePasswordChange}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
+                                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                tabIndex="-1"
+                                                style={{ marginRight: '12px' }}
+                                            >
+                                                <i className={`bi ${showConfirmPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-3">
+                                <button 
+                                    type="button"
+                                    className="btn btn-link text-primary fw-semibold p-0"
+                                    onClick={handleChangePassword}
+                                    disabled={saving}
+                                >
+                                    {saving ? 'Changing Password...' : 'Change Password'}
+                                </button>
                             </div>
                         </div>
                     </div>
 
                     <div className="row mt-5 ms-1 mb-5 pb-5">
-                        <div className="col-12 d-flex justify-content-start">
-                            <button type="submit" className="btn btn-custom-purple btn-lg me-3 shadow-sm">Update Supplier</button>
+                        <div className="col-12 d-flex justify-content-start gap-3">
+                            <button type="submit" className="btn btn-custom-purple btn-lg shadow-sm">Update Supplier</button>
                             <button type="button" className="btn btn-secondary btn-lg shadow-sm" onClick={handleCancel}>Cancel</button>
                         </div>
                     </div>

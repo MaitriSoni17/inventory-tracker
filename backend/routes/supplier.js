@@ -43,6 +43,7 @@ router.post('/createsupplier', fetchbusinessowner, [
             city: req.body.city,
             phone: req.body.phone,
             address: req.body.address,
+            about: req.body.about,
             role: 'supplier'
         });
 

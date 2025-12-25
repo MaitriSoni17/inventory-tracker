@@ -27,7 +27,8 @@ const Supplier = new Schema({
     companyLogo: { type: String },
     image: { type: String },
     isActive: { type: Boolean, default: true },
-    role: { type: String, default: 'supplier' }
+    role: { type: String, default: 'supplier' },
+    lastLogin: { type: Date }
 });
 
 module.exports = mongoose.model('Supplier', Supplier);

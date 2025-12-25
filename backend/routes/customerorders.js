@@ -3,7 +3,7 @@ const fetchuser = require('../middleware/fetchuser');
 const CustomerOrders = require('../models/CustomerOrders');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const { notifyEmployeesAboutOrder } = require('../utils/notificationHelper');
+const { notifyEmployeesAboutOrder, notifyBusinessOwnerAboutOrderByEmployee } = require('../utils/notificationHelper');
 
 // Create Customer Order — accessible by BusinessOwner or Employee
 router.post('/createcustomerorder', fetchuser, [
@@ -33,11 +33,31 @@ router.post('/createcustomerorder', fetchuser, [
             customerorderData.employee = req.user._id;
         }
 
+        console.log(`\n→ Creating customer order:`);
+        console.log(`  req.role: ${req.role}`);
+        console.log(`  req.user._id: ${req.user._id}`);
+        console.log(`  req.user.businessowner: ${req.user.businessowner}`);
+
         const customerorder = await CustomerOrders.create(customerorderData);
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
+            console.log(`  Notifying employees (business owner created order)`);
             await notifyEmployeesAboutOrder(
+                req.user._id,
+                'created',
+                customerorder._id,
+                { orderId: customerorder._id, customer: cName, product: pName, amount }
+            );
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if created by employee
+            console.log(`  Notifying business owner (employee created order)`);
+            console.log(`  Calling notifyBusinessOwnerAboutOrderByEmployee with:`);
+            console.log(`    - businessOwnerId: ${req.user.businessowner}`);
+            console.log(`    - employeeId: ${req.user._id}`);
+            
+            await notifyBusinessOwnerAboutOrderByEmployee(
+                req.user.businessowner,
                 req.user._id,
                 'created',
                 customerorder._id,
@@ -122,6 +142,15 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: pName, amount }
             );
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if updated by employee
+            await notifyBusinessOwnerAboutOrderByEmployee(
+                req.user.businessowner,
+                req.user._id,
+                'updated',
+                customerorder._id,
+                { orderId: customerorder._id, customer: cName, product: pName, amount }
+            );
         }
 
         res.json({ customerorder });
@@ -157,6 +186,15 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
         if (req.role === 'businessowner') {
             await notifyEmployeesAboutOrder(
                 businessOwnerId,
+                'deleted',
+                req.params.id,
+                { orderId: req.params.id }
+            );
+        } else if (req.role === 'employee') {
+            // Send notification to business owner if deleted by employee
+            await notifyBusinessOwnerAboutOrderByEmployee(
+                businessOwnerId,
+                req.user._id,
                 'deleted',
                 req.params.id,
                 { orderId: req.params.id }

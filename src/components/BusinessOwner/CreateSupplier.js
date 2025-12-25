@@ -3,12 +3,98 @@ import React, { useState } from 'react';
 function CreateSupplier(props) {
     const [showPassword, setShowPassword] = useState(false);
     const [showCPassword, setShowCPassword] = useState(false);
+    const [errors, setErrors] = useState({});
     const passVisibility = () => {
         setShowPassword(prev => !prev);
     }
     const cpassVisibility = () => {
         setShowCPassword(prev => !prev);
     }
+
+    // Validation helper functions
+    const validateEmail = (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    const validatePhone = (phone) => {
+        const phoneRegex = /^[0-9]{10}$/;
+        return phoneRegex.test(phone.replace(/\D/g, ''));
+    };
+
+    const validatePassword = (password) => {
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+        return {
+            isValid: password.length >= 5,
+            strength: [hasUpperCase, hasLowerCase, hasNumber, hasSpecialChar].filter(Boolean).length
+        };
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        // First Name validation
+        if (!supplierDetails.fname.trim()) {
+            newErrors.fname = "First name is required";
+        }
+
+        // Email validation
+        if (!supplierDetails.email.trim()) {
+            newErrors.email = "Email is required";
+        } else if (!validateEmail(supplierDetails.email)) {
+            newErrors.email = "Please enter a valid email address";
+        }
+
+        // Phone validation
+        if (supplierDetails.phone.trim() && !validatePhone(supplierDetails.phone)) {
+            newErrors.phone = "Phone number must be 10 digits";
+        }
+
+        // Password validation
+        if (!supplierDetails.password) {
+            newErrors.password = "Password is required";
+        } else {
+            const passwordValidation = validatePassword(supplierDetails.password);
+            if (!passwordValidation.isValid) {
+                newErrors.password = "Password must be at least 5 characters";
+            } else if (passwordValidation.strength < 2) {
+                newErrors.password = "Password must contain mix of letters and numbers";
+            }
+        }
+
+        // Confirm Password validation
+        if (!supplierDetails.cpassword) {
+            newErrors.cpassword = "Please confirm your password";
+        } else if (supplierDetails.password !== supplierDetails.cpassword) {
+            newErrors.cpassword = "Passwords do not match";
+        }
+
+        // Nationality validation
+        if (!supplierDetails.nationality.trim()) {
+            newErrors.nationality = "Nationality is required";
+        }
+
+        // Country validation
+        if (!supplierDetails.country.trim()) {
+            newErrors.country = "Country is required";
+        }
+
+        // State validation
+        if (!supplierDetails.state.trim()) {
+            newErrors.state = "State is required";
+        }
+
+        // City validation
+        if (!supplierDetails.city.trim()) {
+            newErrors.city = "City is required";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
     const [supplierDetails, setSupplierDetails] = useState(
         {
             fname: "",
@@ -29,12 +115,14 @@ function CreateSupplier(props) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const { fname, lname, phone, nationality, about, address, country, state, city, email, password } = supplierDetails
-
-        if (supplierDetails.password !== supplierDetails.cpassword) {
-            props.showAlert("Password and Confirm Password must be the same!", "danger");
+        // Validate form before submission
+        if (!validateForm()) {
+            props.showAlert("Please fix the errors in the form", "danger");
             return;
         }
+
+        const { fname, lname, phone, nationality, about, address, country, state, city, email, password } = supplierDetails
+
         try {
             const response = await fetch("http://localhost:5000/api/supplier/createsupplier", {
                 method: 'POST',
@@ -69,6 +157,7 @@ function CreateSupplier(props) {
                     password: "",
                     cpassword: ""
                 });
+                setErrors({});
                 props.showAlert("Account Created Successfully", "success");
             } else {
                 props.showAlert(json.message || "Invalid Credentials or server error.", "danger");
@@ -82,7 +171,12 @@ function CreateSupplier(props) {
 
     const onChange = (e) => {
         e.preventDefault()
-        setSupplierDetails({ ...supplierDetails, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+        setSupplierDetails({ ...supplierDetails, [name]: value });
+        // Clear error for this field when user starts typing
+        if (errors[name]) {
+            setErrors({ ...errors, [name]: "" });
+        }
     }
     return (
         <>
@@ -100,7 +194,8 @@ function CreateSupplier(props) {
                             <div className="d-flex gap-4 mb-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="firstName" className="form-label fw-semibold mb-2">First Name *</label>
-                                    <input type="text" className="form-control rounded-3 shadow-sm" id="firstName" placeholder="Enter first name" required name='fname' value={supplierDetails.fname} onChange={onChange}/>
+                                    <input type="text" className={`form-control rounded-3 shadow-sm ${errors.fname ? 'is-invalid' : ''}`} id="firstName" placeholder="Enter first name" required name='fname' value={supplierDetails.fname} onChange={onChange}/>
+                                    {errors.fname && <div className="invalid-feedback d-block">{errors.fname}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="lastName" className="form-label fw-semibold mb-2">Last Name</label>
@@ -108,43 +203,37 @@ function CreateSupplier(props) {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="email" className="form-label fw-semibold mb-2">Email *</label>
-                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" required name='email' value={supplierDetails.email} onChange={onChange}/>
+                                    <input type="email" className={`form-control rounded-3 shadow-sm ${errors.email ? 'is-invalid' : ''}`} id="email" placeholder="Enter email" required name='email' value={supplierDetails.email} onChange={onChange}/>
+                                    {errors.email && <div className="invalid-feedback d-block">{errors.email}</div>}
                                 </div>
                             </div>
                             <div className="d-flex gap-4 mb-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="contactNumber" className="form-label fw-semibold mb-2">Contact Number</label>
-                                    <input type="text" value={supplierDetails.phone} className="form-control rounded-3 shadow-sm" id="contactNumber" placeholder="Enter phone number" name='phone' onChange={onChange}/>
+                                    <input type="text" value={supplierDetails.phone} className={`form-control rounded-3 shadow-sm ${errors.phone ? 'is-invalid' : ''}`} id="contactNumber" placeholder="Enter phone number" name='phone' onChange={onChange}/>
+                                    {errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="nationality" className="form-label fw-semibold mb-2">Nationality</label>
-                                    <select className="form-select rounded-3 shadow-sm" value={supplierDetails.nationality} id="nationality" name='nationality' onChange={onChange}>
-                                        <option value="" disabled>Select Nationality</option>
-                                        <option>Indian</option>
-                                    </select>
+                                    <label htmlFor="nationality" className="form-label fw-semibold mb-2">Nationality *</label>
+                                    <input type='text' className={`form-control rounded-3 shadow-sm ${errors.nationality ? 'is-invalid' : ''}`} id="nationality" name='nationality' placeholder='Enter nationality' value={supplierDetails.nationality} onChange={onChange}/>
+                                    {errors.nationality && <div className="invalid-feedback d-block">{errors.nationality}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="country" className="form-label fw-semibold mb-2">Country</label>
-                                    <select className="form-select rounded-3 shadow-sm" value={supplierDetails.country} id="country" name='country' onChange={onChange}>
-                                        <option value="" disabled>Select Country</option>
-                                        <option>India</option>
-                                    </select>
+                                    <label htmlFor="country" className="form-label fw-semibold mb-2">Country *</label>
+                                    <input type='text' className={`form-control rounded-3 shadow-sm ${errors.country ? 'is-invalid' : ''}`} id="country" name='country' placeholder='Enter country' value={supplierDetails.country} onChange={onChange}/>
+                                    {errors.country && <div className="invalid-feedback d-block">{errors.country}</div>}
                                 </div>
                             </div>
                             <div className="d-flex gap-4">
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="state" className="form-label fw-semibold mb-2">State</label>
-                                    <select className="form-select rounded-3 shadow-sm" id="state" name='state' value={supplierDetails.state} onChange={onChange}>
-                                        <option value="" disabled>Select State</option>
-                                        <option>Gujarat</option>
-                                    </select>
+                                    <label htmlFor="state" className="form-label fw-semibold mb-2">State *</label>
+                                    <input type='text' className={`form-control rounded-3 shadow-sm ${errors.state ? 'is-invalid' : ''}`} id="state" name='state' placeholder='Enter state' value={supplierDetails.state} onChange={onChange}/>
+                                    {errors.state && <div className="invalid-feedback d-block">{errors.state}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="city" className="form-label fw-semibold mb-2">City</label>
-                                    <select className="form-select rounded-3 shadow-sm" id="city" name='city' value={supplierDetails.city} onChange={onChange}>
-                                        <option value="" disabled>Select City</option>
-                                        <option>Mumbai</option>
-                                    </select>
+                                    <label htmlFor="city" className="form-label fw-semibold mb-2">City *</label>
+                                    <input type='text' className={`form-control rounded-3 shadow-sm ${errors.city ? 'is-invalid' : ''}`} id="city" name='city' placeholder='Enter city' value={supplierDetails.city} onChange={onChange}/>
+                                    {errors.city && <div className="invalid-feedback d-block">{errors.city}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>
                                 </div>
@@ -173,11 +262,11 @@ function CreateSupplier(props) {
                             <h5 className="card-title display-6 mb-4">Security Information</h5>
                             <div className="mb-4">
                                 <label htmlFor="password" className="form-label fw-semibold mb-3">Password *</label>
-                                <div className="input-group">
+                                <div className="position-relative">
                                     <input 
                                         type={showPassword ? "text" : "password"} 
                                         value={supplierDetails.password} 
-                                        className='form-control rounded-3 shadow-sm' 
+                                        className={`form-control rounded-3 shadow-sm pe-5 ${errors.password ? 'is-invalid' : ''}`}
                                         name='password' 
                                         id="password" 
                                         placeholder="Enter password" 
@@ -188,24 +277,30 @@ function CreateSupplier(props) {
                                     />
                                     <button 
                                         type="button"
-                                        className="btn btn-light rounded-3" 
+                                        className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent" 
                                         onClick={passVisibility}
                                         tabIndex="-1"
-                                        style={{ borderColor: '#e0e0e0', borderWidth: '1px', marginLeft: '-40px', zIndex: 10 }}
+                                        style={{ marginRight: '12px' }}
                                     >
                                         <i className={`bi ${showPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
                                     </button>
                                 </div>
+                                {errors.password && <div className="invalid-feedback d-block">{errors.password}</div>}
+                                {supplierDetails.password && !errors.password && (
+                                    <small className="text-muted d-block mt-2">
+                                        Password strength: {validatePassword(supplierDetails.password).strength >= 3 ? '✓ Strong' : validatePassword(supplierDetails.password).strength === 2 ? '◐ Medium' : '✗ Weak'}
+                                    </small>
+                                )}
                             </div>
 
                             <div>
                                 <label htmlFor="cpassword" className="form-label fw-semibold mb-3">Confirm Password *</label>
-                                <div className="input-group">
+                                <div className="position-relative">
                                     <input 
                                         type={showCPassword ? "text" : "password"} 
                                         name='cpassword' 
                                         minLength={5} 
-                                        className='form-control rounded-3 shadow-sm' 
+                                        className={`form-control rounded-3 shadow-sm pe-5 ${errors.cpassword ? 'is-invalid' : ''}`}
                                         id="cpassword" 
                                         value={supplierDetails.cpassword} 
                                         placeholder="Confirm password" 
@@ -215,14 +310,15 @@ function CreateSupplier(props) {
                                     />
                                     <button 
                                         type="button"
-                                        className="btn btn-light rounded-3" 
+                                        className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent" 
                                         onClick={cpassVisibility}
                                         tabIndex="-1"
-                                        style={{ borderColor: '#e0e0e0', borderWidth: '1px', marginLeft: '-40px', zIndex: 10 }}
+                                        style={{ marginRight: '12px' }}
                                     >
                                         <i className={`bi ${showCPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
                                     </button>
                                 </div>
+                                {errors.cpassword && <div className="invalid-feedback d-block">{errors.cpassword}</div>}
                             </div>
                         </div>
                     </div>

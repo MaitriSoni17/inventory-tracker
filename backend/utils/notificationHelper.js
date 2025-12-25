@@ -437,6 +437,203 @@ async function notifyBusinessOwnerAboutOrder(
   }
 }
 
+/**
+ * Notify business owner about category changes by employee
+ */
+async function notifyBusinessOwnerAboutCategory(
+  businessOwnerId,
+  employeeId,
+  action,
+  categoryName,
+  details = {}
+) {
+  try {
+    console.log(`\n→ notifyBusinessOwnerAboutCategory called`);
+    console.log(`  businessOwnerId: ${businessOwnerId}`);
+    console.log(`  employeeId: ${employeeId}`);
+    console.log(`  action: ${action}`);
+    console.log(`  categoryName: ${categoryName}`);
+
+    const notificationTypes = {
+      created: {
+        type: 'category_created_by_employee',
+        title: 'Category Added',
+        message: `An employee has added a new category "${categoryName}".`
+      },
+      updated: {
+        type: 'category_updated_by_employee',
+        title: 'Category Updated',
+        message: `An employee has updated the category "${categoryName}".`
+      },
+      deleted: {
+        type: 'category_deleted_by_employee',
+        title: 'Category Removed',
+        message: `An employee has removed the category "${categoryName}".`
+      }
+    };
+
+    const notification = notificationTypes[action];
+    console.log(`  Notification type found: ${notification ? 'Yes' : 'No'}`);
+    
+    if (notification) {
+      console.log(`  About to call createNotification with:`);
+      console.log(`    - recipient: ${businessOwnerId}`);
+      console.log(`    - recipientRole: 'BusinessOwner'`);
+      console.log(`    - sender: ${employeeId}`);
+      console.log(`    - senderRole: 'Employee'`);
+      console.log(`    - type: ${notification.type}`);
+      
+      const result = await createNotification(
+        businessOwnerId,
+        'BusinessOwner',
+        employeeId,
+        'Employee',
+        notification.type,
+        notification.title,
+        notification.message,
+        details
+      );
+      console.log(`✓✓✓ Category notification creation completed ✓✓✓\n`);
+      return result;
+    } else {
+      console.log(`  ⚠️  No notification type found for action: ${action}\n`);
+    }
+  } catch (error) {
+    console.error('✗ Error notifying business owner about category changes:', error.message);
+    console.error('  Stack:', error.stack);
+  }
+}
+
+/**
+ * Notify business owner about order changes by employee
+ */
+async function notifyBusinessOwnerAboutOrderByEmployee(
+  businessOwnerId,
+  employeeId,
+  action,
+  orderDetails,
+  details = {}
+) {
+  try {
+    console.log(`\n→ notifyBusinessOwnerAboutOrderByEmployee called`);
+    console.log(`  businessOwnerId: ${businessOwnerId}`);
+    console.log(`  employeeId: ${employeeId}`);
+    console.log(`  action: ${action}`);
+
+    const notificationTypes = {
+      created: {
+        type: 'order_created_by_employee',
+        title: 'Order Created',
+        message: `An employee has created order #${orderDetails}.`
+      },
+      updated: {
+        type: 'order_updated_by_employee',
+        title: 'Order Updated',
+        message: `An employee has updated order #${orderDetails}.`
+      },
+      deleted: {
+        type: 'order_deleted_by_employee',
+        title: 'Order Canceled',
+        message: `An employee has canceled order #${orderDetails}.`
+      }
+    };
+
+    const notification = notificationTypes[action];
+    console.log(`  Notification type found: ${notification ? 'Yes' : 'No'}`);
+    
+    if (notification) {
+      console.log(`  About to call createNotification with:`);
+      console.log(`    - recipient: ${businessOwnerId}`);
+      console.log(`    - recipientRole: 'BusinessOwner'`);
+      console.log(`    - sender: ${employeeId}`);
+      console.log(`    - senderRole: 'Employee'`);
+      console.log(`    - type: ${notification.type}`);
+      
+      const result = await createNotification(
+        businessOwnerId,
+        'BusinessOwner',
+        employeeId,
+        'Employee',
+        notification.type,
+        notification.title,
+        notification.message,
+        details
+      );
+      console.log(`✓✓✓ Order notification creation completed ✓✓✓\n`);
+      return result;
+    } else {
+      console.log(`  ⚠️  No notification type found for action: ${action}\n`);
+    }
+  } catch (error) {
+    console.error('✗ Error notifying business owner about order changes by employee:', error.message);
+    console.error('  Stack:', error.stack);
+  }
+}
+
+/**
+ * Notify business owner about employee login
+ */
+async function notifyBusinessOwnerAboutEmployeeLogin(
+  businessOwnerId,
+  employeeId,
+  employeeName,
+  loginTime,
+  details = {}
+) {
+  try {
+    const notificationType = {
+      type: 'employee_login',
+      title: 'Employee Login',
+      message: `Employee ${employeeName} logged in at ${new Date(loginTime).toLocaleString()}`
+    };
+
+    await createNotification(
+      businessOwnerId,
+      'BusinessOwner',
+      employeeId,
+      'Employee',
+      notificationType.type,
+      notificationType.title,
+      notificationType.message,
+      { ...details, loginTime }
+    );
+  } catch (error) {
+    console.error('Error notifying business owner about employee login:', error);
+  }
+}
+
+/**
+ * Notify business owner about supplier login
+ */
+async function notifyBusinessOwnerAboutSupplierLogin(
+  businessOwnerId,
+  supplierId,
+  supplierName,
+  loginTime,
+  details = {}
+) {
+  try {
+    const notificationType = {
+      type: 'supplier_login',
+      title: 'Supplier Login',
+      message: `Supplier ${supplierName} logged in at ${new Date(loginTime).toLocaleString()}`
+    };
+
+    await createNotification(
+      businessOwnerId,
+      'BusinessOwner',
+      supplierId,
+      'Supplier',
+      notificationType.type,
+      notificationType.title,
+      notificationType.message,
+      { ...details, loginTime }
+    );
+  } catch (error) {
+    console.error('Error notifying business owner about supplier login:', error);
+  }
+}
+
 module.exports = {
   createNotification,
   notifyBusinessOwnerAboutEmployee,
@@ -445,5 +642,9 @@ module.exports = {
   notifyEmployeesAboutCategory,
   notifyBusinessOwnerAboutProduct,
   notifyBusinessOwnerOwnProductChanges,
-  notifyBusinessOwnerAboutOrder
+  notifyBusinessOwnerAboutOrder,
+  notifyBusinessOwnerAboutCategory,
+  notifyBusinessOwnerAboutOrderByEmployee,
+  notifyBusinessOwnerAboutEmployeeLogin,
+  notifyBusinessOwnerAboutSupplierLogin
 };

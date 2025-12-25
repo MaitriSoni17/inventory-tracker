@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Chart as ChartJS,
@@ -37,6 +37,7 @@ function Employee(props) {
 
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [ordersView, setOrdersView] = useState('monthly');
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -52,13 +53,6 @@ function Employee(props) {
     useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         fetchAllData();
     }, []);
-
-    // Initialize or update charts when data changes
-    useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
-        if (orders.length > 0 && products.length > 0) {
-            initCharts();
-        }
-    }, [orders, products, ordersView]);
 
     const fetchAllData = async () => {
         try {
@@ -82,6 +76,14 @@ function Employee(props) {
             });
             const productsData = productsRes.ok ? await productsRes.json() : [];
             setProducts(productsData);
+
+            // Fetch categories
+            const categoriesRes = await fetch('http://localhost:5000/api/category/getcategories', {
+                method: 'POST',
+                headers
+            });
+            const categoriesData = categoriesRes.ok ? await categoriesRes.json() : [];
+            setCategories(categoriesData);
 
             // Calculate statistics
             const lowStockCount = productsData.filter(p => p.totalProducts <= 10).length;
@@ -203,167 +205,169 @@ function Employee(props) {
             }));
     };
 
-    const initCharts = () => {
+    const getCategoryNameById = (categoryId) => {
+        if (!categoryId) return 'N/A';
+        // Find the category by ObjectId and return the cName
+        const category = categories.find(cat => cat._id === categoryId);
+        return category ? category.cName : categoryId;
+    };
+
+    const initCharts = useCallback(() => {
+        console.log('initCharts function called');
+        
         // Destroy existing charts if they exist
         if (salesChartInstance.current) {
             salesChartInstance.current.destroy();
+            salesChartInstance.current = null;
         }
         if (stockChartInstance.current) {
             stockChartInstance.current.destroy();
+            stockChartInstance.current = null;
         }
 
         const monthlyOrders = getOrdersData(orders);
         const topProducts = getTopProductsByOrders(products);
+        
+        console.log('Chart data:', { monthlyOrders, topProducts });
 
-        if (salesRef.current) {
-            const ctx = salesRef.current.getContext('2d');
-            salesChartInstance.current = new ChartJS(ctx, {
-                type: 'line',
-                data: {
-                    labels: monthlyOrders.labels,
-                    datasets: [{
-                        label: 'Orders',
-                        data: monthlyOrders.data,
-                        backgroundColor: 'rgba(138, 43, 226, 0.2)',
-                        borderColor: '#8a2be2',
-                        borderWidth: 3,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#8a2be2',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: '#8a2be2'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#333',
-                            titleColor: '#fff',
-                            bodyColor: '#fff',
-                            callbacks: {
-                                label: function (context) {
-                                    let label = context.dataset.label || '';
-                                    if (label) label += ': ';
-                                    if (context.parsed.y !== null) {
-                                        label += context.parsed.y + ' orders';
+        // Use setTimeout to ensure DOM is fully rendered
+        setTimeout(() => {
+            console.log('Creating charts after timeout...');
+            console.log('salesRef.current:', salesRef.current);
+            console.log('stockRef.current:', stockRef.current);
+            
+            if (salesRef.current) {
+                try {
+                    const ctx = salesRef.current.getContext('2d');
+                    console.log('Sales canvas context:', ctx);
+                    
+                    if (ctx) {
+                        console.log('Creating sales chart...');
+                        salesChartInstance.current = new ChartJS(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: monthlyOrders.labels,
+                            datasets: [{
+                                label: 'Orders',
+                                data: monthlyOrders.data,
+                                backgroundColor: 'rgba(138, 43, 226, 0.2)',
+                                borderColor: '#8a2be2',
+                                borderWidth: 3,
+                                tension: 0.4,
+                                fill: true,
+                                pointBackgroundColor: '#8a2be2',
+                                pointBorderColor: '#fff',
+                                pointHoverBackgroundColor: '#fff',
+                                pointHoverBorderColor: '#8a2be2'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: '#333',
+                                    titleColor: '#fff',
+                                    bodyColor: '#fff',
+                                    callbacks: {
+                                        label: function (context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) label += ': ';
+                                            if (context.parsed.y !== null) {
+                                                label += context.parsed.y + ' orders';
+                                            }
+                                            return label;
+                                        }
                                     }
-                                    return label;
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        callback: value => value
+                                    },
+                                    grid: { color: '#f0f0f0' }
+                                },
+                                x: {
+                                    grid: { display: false }
                                 }
                             }
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: value => value
-                            },
-                            grid: { color: '#f0f0f0' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
+                    });
+                        console.log('Sales chart created successfully');
                     }
+                } catch (error) {
+                    console.error('Error creating sales chart:', error);
                 }
-            });
-        }
+            }
 
-        if (stockRef.current) {
-            const ctx = stockRef.current.getContext('2d');
-            stockChartInstance.current = new ChartJS(ctx, {
-                type: 'bar',
-                data: {
-                    labels: topProducts.map(p => p.name),
-                    datasets: [{
-                        label: 'Stock Quantity',
-                        data: topProducts.map(p => p.quantity),
-                        backgroundColor: '#8a2be2',
-                        borderColor: '#8a2be2',
-                        borderWidth: 1,
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            backgroundColor: '#333',
-                            titleColor: '#fff',
-                            bodyColor: '#fff'
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: value => value >= 1000 ? `${value / 1000}K` : value
+            if (stockRef.current) {
+                try {
+                    const ctx = stockRef.current.getContext('2d');
+                    console.log('Stock canvas context:', ctx);
+                    
+                    if (ctx) {
+                        console.log('Creating stock chart...');
+                        stockChartInstance.current = new ChartJS(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: topProducts.map(p => p.name),
+                                datasets: [{
+                                    label: 'Stock Quantity',
+                                    data: topProducts.map(p => p.quantity),
+                                    backgroundColor: '#8a2be2',
+                                    borderColor: '#8a2be2',
+                                    borderWidth: 1,
+                                    borderRadius: 5
+                                }]
                             },
-                            grid: { color: '#f0f0f0' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: '#333',
+                                        titleColor: '#fff',
+                                        bodyColor: '#fff'
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        ticks: {
+                                            callback: value => value >= 1000 ? `${value / 1000}K` : value
+                                        },
+                                        grid: { color: '#f0f0f0' }
+                                    },
+                                    x: {
+                                        grid: { display: false }
+                                    }
+                                }
+                            }
+                        });
+                        console.log('Stock chart created successfully');
                     }
+                } catch (error) {
+                    console.error('Error creating stock chart:', error);
                 }
-            });
-        }
-
-        // Disconnect previous observer if it exists
-        if (resizeObserver.current) {
-            resizeObserver.current.disconnect();
-        }
-
-        resizeObserver.current = new ResizeObserver(() => {
-            try {
-                if (salesChartInstance.current &&
-                    salesChartInstance.current.canvas &&
-                    salesChartInstance.current.canvas.parentElement &&
-                    document.body.contains(salesChartInstance.current.canvas)) {
-                    salesChartInstance.current.resize();
-                }
-                if (stockChartInstance.current &&
-                    stockChartInstance.current.canvas &&
-                    stockChartInstance.current.canvas.parentElement &&
-                    document.body.contains(stockChartInstance.current.canvas)) {
-                    stockChartInstance.current.resize();
-                }
-            } catch (error) {
-                // Silently ignore errors when resizing unmounted charts
-                console.debug('Chart resize error (harmless):', error.message);
             }
-        });
+        }, 100); // Increased timeout
+    }, [orders, products, ordersView]);
 
-        document.querySelectorAll('.chart-container').forEach(container => {
-            if (container && resizeObserver.current && document.body.contains(container)) {
-                resizeObserver.current.observe(container);
-            }
-        });
-    };
-
+    // Initialize or update charts when data changes
     useEffect(() => {
-        return () => {
-            // Properly destroy and null out chart instances
-            if (salesChartInstance.current) {
-                salesChartInstance.current.destroy();
-                salesChartInstance.current = null;
-            }
-            if (stockChartInstance.current) {
-                stockChartInstance.current.destroy();
-                stockChartInstance.current = null;
-            }
-            // Disconnect and null out resize observer
-            if (resizeObserver.current) {
-                resizeObserver.current.disconnect();
-                resizeObserver.current = null;
-            }
-        };
-    }, []);
+        console.log('useEffect triggered:', { ordersLength: orders.length, productsLength: products.length });
+        if (orders.length > 0 && products.length > 0) {
+            console.log('Calling initCharts...');
+            initCharts();
+        } else {
+            console.log('Not calling initCharts - insufficient data');
+            console.warn('Orders:', orders.length, 'Products:', products.length);
+        }
+    }, [orders, products, ordersView, initCharts]);
 
     return (
         <div className="container-fluid px-5 mt-4 mb-5">
@@ -431,16 +435,16 @@ function Employee(props) {
                                         <option value="annually">Annually</option>
                                     </select>
                                 </div>
-                                {orders.length === 0 ? (
-                                    <div className="alert alert-info m-4" role="alert">
-                                        <i className="bi bi-info-circle me-2"></i>
-                                        No order data available to display orders overview chart. Please add orders to see the chart.
-                                    </div>
-                                ) : (
-                                    <div className="chart-container" style={{ height: '400px' }}>
+                                <div className="chart-container" style={{ height: '400px' }}>
+                                    {orders.length === 0 ? (
+                                        <div className="alert alert-info m-4" role="alert">
+                                            <i className="bi bi-info-circle me-2"></i>
+                                            No order data available to display orders overview chart. Please add orders to see the chart.
+                                        </div>
+                                    ) : (
                                         <canvas ref={salesRef} />
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -509,9 +513,9 @@ function Employee(props) {
                                                     }}
                                                 >
                                                     <td>{product.name || 'N/A'}</td>
-                                                    <td>{product.category || 'N/A'}</td>
+                                                    <td>{getCategoryNameById(product.category) || 'N/A'}</td>
                                                     <td>{product.totalProducts || 0} Units</td>
-                                                    <td>₹{product.salePrice || 0}</td>
+                                                    <td>₹{product.price || 0}</td>
                                                 </tr>
                                             ))
                                         )}
@@ -527,16 +531,16 @@ function Employee(props) {
                                 <div className="d-flex justify-content-between mb-4">
                                     <h1>Stock Overview</h1>
                                 </div>
-                                {products.length === 0 ? (
-                                    <div className="alert alert-info m-4" role="alert">
-                                        <i className="bi bi-info-circle me-2"></i>
-                                        No product data available to display stock chart. Please add products to see the chart.
-                                    </div>
-                                ) : (
-                                    <div className="chart-container" style={{ height: '400px' }}>
+                                <div className="chart-container" style={{ height: '400px' }}>
+                                    {products.length === 0 ? (
+                                        <div className="alert alert-info m-4" role="alert">
+                                            <i className="bi bi-info-circle me-2"></i>
+                                            No product data available to display stock chart. Please add products to see the chart.
+                                        </div>
+                                    ) : (
                                         <canvas ref={stockRef} />
-                                    </div>
-                                )}
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -564,7 +568,7 @@ function Employee(props) {
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label fw-bold text-muted">Category</label>
-                                            <p className="form-control-plaintext">{selectedProduct.category || 'N/A'}</p>
+                                            <p className="form-control-plaintext">{getCategoryNameById(selectedProduct.category) || 'N/A'}</p>
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label fw-bold text-muted">Stock</label>

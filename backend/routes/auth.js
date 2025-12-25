@@ -9,6 +9,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { body, validationResult } = require('express-validator');
+const { notifyBusinessOwnerAboutEmployeeLogin, notifyBusinessOwnerAboutSupplierLogin } = require('../utils/notificationHelper');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
@@ -44,6 +45,30 @@ router.post('/login', [
         if (!passwordCompare) return res.status(400).json({ error: "Please try to login with correct credentials" });
 
         const token = jwt.sign({ id: user._id, role }, JWT_SECRET);
+        const loginTime = new Date();
+
+        // Update lastLogin timestamp
+        if (role === 'employee') {
+            await Employee.findByIdAndUpdate(user._id, { lastLogin: loginTime });
+            // Notify business owner about employee login
+            await notifyBusinessOwnerAboutEmployeeLogin(
+                user.businessowner,
+                user._id,
+                `${user.fname} ${user.lname || ''}`,
+                loginTime,
+                { userId: user._id }
+            );
+        } else if (role === 'supplier') {
+            await Supplier.findByIdAndUpdate(user._id, { lastLogin: loginTime });
+            // Notify business owner about supplier login
+            await notifyBusinessOwnerAboutSupplierLogin(
+                user.businessowner,
+                user._id,
+                user.fname,
+                loginTime,
+                { supplierId: user._id }
+            );
+        }
 
         await LoginInfo.create(
             {

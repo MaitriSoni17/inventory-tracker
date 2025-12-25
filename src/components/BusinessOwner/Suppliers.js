@@ -113,6 +113,23 @@ const Suppliers = (props) => {
         props.showAlert('Filters reset successfully', 'info');
     };
 
+    const formatLastLogin = (dateString) => {
+        if (!dateString) return 'Never';
+        const date = new Date(dateString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins} min ago`;
+        if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+        if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+        
+        return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    };
+
     const exportToExcel = () => {
         if (filteredSuppliers.length === 0) {
             props.showAlert('No suppliers to export', 'warning');
@@ -288,6 +305,7 @@ const Suppliers = (props) => {
                                     <th scope="col" className="py-2">Phone</th>
                                     <th scope="col" className="py-2">City</th>
                                     <th scope="col" className="py-2">Country</th>
+                                    <th scope="col" className="py-2">Last Login</th>
                                     <th scope="col" className="py-2">Actions</th>
                                 </tr>
                             </thead>
@@ -300,6 +318,11 @@ const Suppliers = (props) => {
                                         <td>{sup.phone || 'N/A'}</td>
                                         <td>{sup.city || 'N/A'}</td>
                                         <td>{sup.country || 'N/A'}</td>
+                                        <td>
+                                            <small className="text-muted" title={sup.lastLogin ? new Date(sup.lastLogin).toLocaleString('en-IN') : 'Never'}>
+                                                {formatLastLogin(sup.lastLogin)}
+                                            </small>
+                                        </td>
                                         <td>
                                             <Link to={`/dashboard/supplierordes/${sup._id}`} className="btn btn-sm btn-success me-2" title="View Orders">
                                                 <i className="bi bi-box-seam"></i>
