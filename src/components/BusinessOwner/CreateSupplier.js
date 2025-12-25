@@ -171,22 +171,57 @@ function CreateSupplier(props) {
                     <div className="card border-0 shadow-sm mb-4 rounded-4">
                         <div className="card-body p-5">
                             <h5 className="card-title display-6 mb-4">Security Information</h5>
-                            <div className="d-flex gap-4">
-                                <div style={{ flex: 1 }}>
-                                    <label htmlFor="password" className="form-label fw-semibold mb-2">Password *</label>
-                                    <div className='input-group mb-3 gap-0'>
-                                        <input type={showPassword ? "text" : "password"} value={supplierDetails.password} className='form-control rounded-start-3 shadow-sm' name='password' id="password" placeholder="••••••••" onChange={onChange} minLength={5} required/><i className={`bi ${showPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white rounded-end-3`} onClick={passVisibility}></i>
-                                    </div>
+                            <div className="mb-4">
+                                <label htmlFor="password" className="form-label fw-semibold mb-3">Password *</label>
+                                <div className="input-group">
+                                    <input 
+                                        type={showPassword ? "text" : "password"} 
+                                        value={supplierDetails.password} 
+                                        className='form-control rounded-3 shadow-sm' 
+                                        name='password' 
+                                        id="password" 
+                                        placeholder="Enter password" 
+                                        onChange={onChange} 
+                                        minLength={5} 
+                                        required
+                                        style={{ borderColor: '#e0e0e0' }}
+                                    />
+                                    <button 
+                                        type="button"
+                                        className="btn btn-light rounded-3" 
+                                        onClick={passVisibility}
+                                        tabIndex="-1"
+                                        style={{ borderColor: '#e0e0e0', borderWidth: '1px', marginLeft: '-40px', zIndex: 10 }}
+                                    >
+                                        <i className={`bi ${showPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
+                                    </button>
                                 </div>
+                            </div>
 
-                                <div style={{ flex: 1 }}>
-                                    <label htmlFor="cPassword" className="form-label fw-semibold mb-2">Confirm Password *</label>
-                                    <div className='input-group mb-3 gap-0'>
-                                        <input type={showCPassword ? "text" : "password"} name='cpassword' minLength={5} className='form-control rounded-start-3 shadow-sm' id="cpassword" value={supplierDetails.cpassword} placeholder="••••••••" onChange={onChange} required /><i className={`bi ${showCPassword ? "bi-eye" : "bi-eye-slash"} fs-4 text-primary input-group-text bg-white rounded-end-3`} onClick={cpassVisibility}></i>
-                                    </div>
-                                </div>
-
-                                <div style={{ flex: 1 }}>
+                            <div>
+                                <label htmlFor="cpassword" className="form-label fw-semibold mb-3">Confirm Password *</label>
+                                <div className="input-group">
+                                    <input 
+                                        type={showCPassword ? "text" : "password"} 
+                                        name='cpassword' 
+                                        minLength={5} 
+                                        className='form-control rounded-3 shadow-sm' 
+                                        id="cpassword" 
+                                        value={supplierDetails.cpassword} 
+                                        placeholder="Confirm password" 
+                                        onChange={onChange} 
+                                        required
+                                        style={{ borderColor: '#e0e0e0' }}
+                                    />
+                                    <button 
+                                        type="button"
+                                        className="btn btn-light rounded-3" 
+                                        onClick={cpassVisibility}
+                                        tabIndex="-1"
+                                        style={{ borderColor: '#e0e0e0', borderWidth: '1px', marginLeft: '-40px', zIndex: 10 }}
+                                    >
+                                        <i className={`bi ${showCPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
+                                    </button>
                                 </div>
                             </div>
                         </div>

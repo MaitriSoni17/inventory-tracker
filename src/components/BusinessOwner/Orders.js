@@ -12,10 +12,12 @@ const Orders = (props) => {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterDeliveryStatus, setFilterDeliveryStatus] = useState('');
     const [loading, setLoading] = useState(true);
+    const [categoryMap, setCategoryMap] = useState({});
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
+        fetchCategories();
         fetchOrders();
     }, []);
 
@@ -70,6 +72,28 @@ const Orders = (props) => {
             props.showAlert('Error fetching orders', 'danger');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchCategories = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const categories = await response.json();
+                const map = {};
+                categories.forEach(cat => {
+                    map[cat._id] = cat.cName;
+                });
+                setCategoryMap(map);
+            }
+        } catch (error) {
+            console.error('Error fetching categories:', error);
         }
     };
 
@@ -128,7 +152,7 @@ const Orders = (props) => {
                 'Customer Email': order.cEmail,
                 'Customer Phone': order.cPhone,
                 'Product Name': order.pName,
-                'Category': order.category,
+                'Category': categoryMap[order.category] || order.categoryName || order.category || '-',
                 'Units': order.ounits,
                 'Amount': `₹${order.amount}`,
                 'Order Date': formatDate(order.oDate),

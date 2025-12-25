@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
+import '../styles/validation.css';
 
 const EditOrder = (props) => {
     const navigate = useNavigate();
@@ -215,8 +216,8 @@ const EditOrder = (props) => {
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="amount" className="form-label fw-semibold mb-2">Total Amount</label>
                                     <div className="input-group gap-0">
-                                        <span className="input-group-text shadow-sm border-1 rounded-start-3 border-end-0">₹</span>
-                                        <input type="number" className="form-control rounded-end-3 shadow-sm border-start-0" id="amount" placeholder="0.00" value={formData.amount} onChange={handleChange} required />
+                                        <span className="input-group-text rounded-start-3 ms-1">₹</span>
+                                        <input type="number" className="form-control" id="amount" placeholder="0.00" value={formData.amount} onChange={handleChange} required />
                                     </div>
                                 </div>
                             </div>

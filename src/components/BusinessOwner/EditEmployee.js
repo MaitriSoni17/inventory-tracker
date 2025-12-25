@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
+import '../styles/validation.css';
 
 const EditEmployee = (props) => {
     const navigate = useNavigate();
     const { id } = useParams();
     const imageInputRef = useRef(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showCPassword, setShowCPassword] = useState(false);
     const [formData, setFormData] = useState({
         fname: '',
         lname: '',
@@ -25,12 +28,44 @@ const EditEmployee = (props) => {
         imagePreview: null,
         currentImage: null
     });
+    const [passwordData, setPasswordData] = useState({
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordErrors, setPasswordErrors] = useState({});
+    const [warehouses, setWarehouses] = useState([]);
+    const [warehouseMap, setWarehouseMap] = useState({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        fetchWarehouses();
         fetchEmployee();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    const fetchWarehouses = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const warehouseList = await response.json();
+                setWarehouses(warehouseList);
+                const map = {};
+                warehouseList.forEach(wh => {
+                    map[wh._id] = wh.wName;
+                });
+                setWarehouseMap(map);
+            }
+        } catch (error) {
+            console.error('Error fetching warehouses:', error);
+        }
+    };
 
     const fetchEmployee = async () => {
         try {
@@ -97,6 +132,83 @@ const EditEmployee = (props) => {
             ...prev,
             [id]: value
         }));
+    };
+
+    const handlePasswordChange = (e) => {
+        const { name, value } = e.target;
+        setPasswordData(prev => ({
+            ...prev,
+            [name]: value
+        }));
+        // Clear error for this field when user starts typing
+        if (passwordErrors[name]) {
+            setPasswordErrors(prev => ({
+                ...prev,
+                [name]: ''
+            }));
+        }
+    };
+
+    const validatePasswords = () => {
+        const errors = {};
+
+        if (!passwordData.oldPassword.trim()) {
+            errors.oldPassword = 'Current password is required';
+        }
+
+        if (!passwordData.newPassword.trim()) {
+            errors.newPassword = 'New password is required';
+        } else if (passwordData.newPassword.length < 5) {
+            errors.newPassword = 'Password must be at least 5 characters';
+        }
+
+        if (!passwordData.confirmPassword.trim()) {
+            errors.confirmPassword = 'Confirm password is required';
+        } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+            errors.confirmPassword = 'Passwords do not match';
+        }
+
+        setPasswordErrors(errors);
+        return Object.keys(errors).length === 0;
+    };
+
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+
+        if (!validatePasswords()) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/employee/changepassword/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({
+                    oldPassword: passwordData.oldPassword,
+                    newPassword: passwordData.newPassword
+                })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                props.showAlert('Password changed successfully', 'success');
+                setPasswordData({
+                    oldPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                });
+                setPasswordErrors({});
+            } else {
+                props.showAlert(data.error || 'Failed to change password', 'danger');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            props.showAlert('Error changing password', 'danger');
+        }
     };
 
     const handleImageClick = () => {
@@ -319,8 +431,18 @@ const EditEmployee = (props) => {
                                     </select>
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="hireAt" className="form-label fw-semibold mb-2">Hire Location</label>
-                                    <input type="text" className="form-control rounded-3 shadow-sm" id="hireAt" placeholder="Enter hire location" value={formData.hireAt} onChange={handleChange} />
+                                    <label htmlFor="hireAt" className="form-label fw-semibold mb-2">Hire At (Warehouse)</label>
+                                    <div className="d-flex gap-2 align-items-end">
+                                        <div style={{ flex: 1 }}>
+                                            <select className="form-select rounded-3 shadow-sm" id="hireAt" value={formData.hireAt} onChange={handleChange}>
+                                                <option value="">Select Warehouse</option>
+                                                {warehouses.map((warehouse) => (
+                                                    <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <a href="/dashboard/warehouses" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Add new warehouse">+</a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -367,6 +489,99 @@ const EditEmployee = (props) => {
                                     <textarea className="form-control rounded-3 shadow-sm" id="about" rows="3" placeholder="Enter about/bio" value={formData.about} onChange={handleChange}></textarea>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Change Password Card */}
+                    <div className="card border-0 shadow-sm mb-4 rounded-4">
+                        <div className="card-body p-5">
+                            <h5 className="card-title display-6 mb-4">Change Password</h5>
+                            {Object.keys(passwordErrors).length > 0 && (
+                                <div className="alert alert-danger alert-dismissible fade show mb-4 rounded-3" role="alert">
+                                    <h6 className="fw-semibold mb-3">Please fix the following errors:</h6>
+                                    <ul className="mb-0">
+                                        {Object.entries(passwordErrors).map(([field, error]) => (
+                                            error && <li key={field}>{error}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="oldPassword" className="form-label fw-semibold mb-2">Current Password</label>
+                                    <div className="position-relative">
+                                        <input 
+                                            type={showPassword ? 'text' : 'password'} 
+                                            className={`form-control rounded-3 shadow-sm ${passwordErrors.oldPassword ? 'is-invalid' : ''}`} 
+                                            id="oldPassword" 
+                                            placeholder="Enter current password" 
+                                            name="oldPassword"
+                                            value={passwordData.oldPassword} 
+                                            onChange={handlePasswordChange}
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-sm position-absolute end-0 top-50 translate-middle-y border-0"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{ zIndex: 10 }}
+                                        >
+                                            <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                                        </button>
+                                    </div>
+                                    {passwordErrors.oldPassword && <div className="error-message">{passwordErrors.oldPassword}</div>}
+                                </div>
+                            </div>
+                            <div className="d-flex gap-4 mb-4">
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="newPassword" className="form-label fw-semibold mb-2">New Password</label>
+                                    <div className="position-relative">
+                                        <input 
+                                            type={showPassword ? 'text' : 'password'} 
+                                            className={`form-control rounded-3 shadow-sm ${passwordErrors.newPassword ? 'is-invalid' : ''}`} 
+                                            id="newPassword" 
+                                            placeholder="Enter new password" 
+                                            name="newPassword"
+                                            value={passwordData.newPassword} 
+                                            onChange={handlePasswordChange}
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-sm position-absolute end-0 top-50 translate-middle-y border-0"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{ zIndex: 10 }}
+                                        >
+                                            <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                                        </button>
+                                    </div>
+                                    {passwordErrors.newPassword && <div className="error-message">{passwordErrors.newPassword}</div>}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label htmlFor="confirmPassword" className="form-label fw-semibold mb-2">Confirm Password</label>
+                                    <div className="position-relative">
+                                        <input 
+                                            type={showCPassword ? 'text' : 'password'} 
+                                            className={`form-control rounded-3 shadow-sm ${passwordErrors.confirmPassword ? 'is-invalid' : ''}`} 
+                                            id="confirmPassword" 
+                                            placeholder="Confirm new password" 
+                                            name="confirmPassword"
+                                            value={passwordData.confirmPassword} 
+                                            onChange={handlePasswordChange}
+                                        />
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-sm position-absolute end-0 top-50 translate-middle-y border-0"
+                                            onClick={() => setShowCPassword(!showCPassword)}
+                                            style={{ zIndex: 10 }}
+                                        >
+                                            <i className={`bi ${showCPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
+                                        </button>
+                                    </div>
+                                    {passwordErrors.confirmPassword && <div className="error-message">{passwordErrors.confirmPassword}</div>}
+                                </div>
+                            </div>
+                            <button type="button" className="btn btn-outline-primary btn-md rounded-3 px-4" onClick={handleChangePassword}>
+                                Change Password
+                            </button>
                         </div>
                     </div>
 

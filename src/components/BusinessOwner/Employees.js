@@ -9,12 +9,14 @@ const Employees = (props) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('');
     const [loading, setLoading] = useState(true);
+    const [warehouseMap, setWarehouseMap] = useState({});
     const [stats, setStats] = useState({
         totalEmployees: 0,
         activeEmployees: 0
     });
 
     useEffect(() => {
+        fetchWarehouses();
         fetchEmployees();
     }, []);
 
@@ -22,6 +24,28 @@ const Employees = (props) => {
         filterEmployees();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [employees, searchTerm, filterRole]);
+
+    const fetchWarehouses = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const warehouseList = await response.json();
+                const map = {};
+                warehouseList.forEach(wh => {
+                    map[wh._id] = wh.wName;
+                });
+                setWarehouseMap(map);
+            }
+        } catch (error) {
+            console.error('Error fetching warehouses:', error);
+        }
+    };
 
     const fetchEmployees = async () => {
         try {
@@ -135,7 +159,7 @@ const Employees = (props) => {
                 'Email': emp.email,
                 'Phone': emp.phone || '',
                 'Role': emp.role,
-                'Hire Location': emp.hireAt || '',
+                'Hire Location': warehouseMap[emp.hireAt] || emp.hireAt || '',
                 'Joining Date': formatDate(emp.jDate),
                 'Birth Date': formatDate(emp.birthDate),
                 'Gender': emp.gender || '',
@@ -330,7 +354,7 @@ const Employees = (props) => {
                                         <td>{emp.email}</td>
                                         <td>{emp.phone || 'N/A'}</td>
                                         <td><span className="badge bg-info rounded-pill px-3 py-2">{emp.role}</span></td>
-                                        <td>{emp.hireAt || 'N/A'}</td>
+                                        <td>{warehouseMap[emp.hireAt] || emp.hireAt || 'N/A'}</td>
                                         <td>{formatDate(emp.jDate)}</td>
                                         <td>{emp.city || ''}{emp.city && emp.country ? ', ' : ''}{emp.country || ''}</td>
                                         <td>

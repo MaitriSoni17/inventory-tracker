@@ -104,9 +104,9 @@ async function notifyBusinessOwnerAboutEmployee(
   if (notification) {
     await createNotification(
       businessOwnerId,
-      'businessowner',
+      'BusinessOwner',
       employeeId,
-      'employee',
+      'Employee',
       notification.type,
       notification.title,
       notification.message,
@@ -150,9 +150,9 @@ async function notifyEmployeesAboutProduct(
       if (notification) {
         await createNotification(
           employee._id,
-          'employee',
+          'Employee',
           businessOwnerId,
-          'businessowner',
+          'BusinessOwner',
           notification.type,
           notification.title,
           notification.message,
@@ -206,9 +206,9 @@ async function notifyEmployeesAboutOrder(
         console.log(`  Notifying employee ${employee._id}...`);
         await createNotification(
           employee._id,
-          'employee',
+          'Employee',
           businessOwnerId,
-          'businessowner',
+          'BusinessOwner',
           notification.type,
           notification.title,
           notification.message,
@@ -257,9 +257,9 @@ async function notifyEmployeesAboutCategory(
       if (notification) {
         await createNotification(
           employee._id,
-          'employee',
+          'Employee',
           businessOwnerId,
-          'businessowner',
+          'BusinessOwner',
           notification.type,
           notification.title,
           notification.message,
@@ -305,9 +305,9 @@ async function notifyBusinessOwnerAboutProduct(
     if (notification) {
       await createNotification(
         businessOwnerId,
-        'businessowner',
+        'BusinessOwner',
         employeeId,
-        'employee',
+        'Employee',
         notification.type,
         notification.title,
         notification.message,
@@ -355,9 +355,9 @@ async function notifyBusinessOwnerOwnProductChanges(
       console.log(`  Sending notification to business owner...`);
       await createNotification(
         businessOwnerId,
-        'businessowner',
+        'BusinessOwner',
         businessOwnerId,
-        'businessowner',
+        'BusinessOwner',
         notification.type,
         notification.title,
         notification.message,
@@ -418,9 +418,9 @@ async function notifyBusinessOwnerAboutOrder(
       
       const result = await createNotification(
         businessOwnerId,
-        'businessowner',
+        'BusinessOwner',
         employeeId,
-        'employee',
+        'Employee',
         notification.type,
         notification.title,
         notification.message,

@@ -116,12 +116,14 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         const authToken = jwt.sign({ id: employee._id, role: employee.role }, JWT_SECRET);
         res.json({ authToken, success: true });
     } catch (err) {
-        console.error(err.message);
+        console.error('Employee creation error:', err);
+        console.error('Error message:', err.message);
+        console.error('Error stack:', err.stack);
         // Delete file on internal error
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
-        res.status(500).send("Internal Server error occurred");
+        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
 
@@ -300,6 +302,48 @@ router.put('/updateemployee/:id', fetchbusinessowner, upload.single('image'), as
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Change Employee Password using: PUT "/api/employee/changepassword/:id". Business Owner login required
+router.put('/changepassword/:id', fetchbusinessowner, [
+    body('oldPassword', 'Old password is required').exists(),
+    body('newPassword', 'New password must be at least 5 characters').isLength({ min: 5 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        // Check if employee belongs to this business owner
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        // Verify old password
+        const passwordCompare = await bcrypt.compare(req.body.oldPassword, employee.password);
+        if (!passwordCompare) {
+            return res.status(400).json({ error: "Current password is incorrect" });
+        }
+
+        // Hash new password
+        const salt = await bcrypt.genSalt(10);
+        const newSecPass = await bcrypt.hash(req.body.newPassword, salt);
+
+        // Update password
+        employee.password = newSecPass;
+        await employee.save();
+
+        res.json({ success: true, message: "Password changed successfully" });
+    } catch (err) {
+        console.error(err.message);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });

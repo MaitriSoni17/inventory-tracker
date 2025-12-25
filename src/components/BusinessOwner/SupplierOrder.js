@@ -147,7 +147,7 @@ const SupplierOrder = (props) => {
             const exportData = filteredOrders.map(order => ({
                 'Order ID': order._id.slice(-6),
                 'Product Name': order.pName,
-                'Category': order.category,
+                'Category': order.categoryName || order.category || '-',
                 'Amount': order.amount,
                 'Units': order.ounits,
                 'Order Date': new Date(order.oDate).toLocaleDateString('en-IN'),

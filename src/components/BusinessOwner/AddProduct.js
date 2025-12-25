@@ -380,17 +380,20 @@ const AddProduct = (props) => {
                                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
                                     Price <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
-                                <input
-                                    type="number"
-                                    name="price"
-                                    placeholder="0.00"
-                                    value={productDetails.price}
-                                    onChange={onChange}
-                                    onBlur={() => handleBlur('price')}
-                                    disabled={isSubmitting}
-                                    className={`form-control ${errors.price && touched.price ? 'is-invalid' : ''} ${!errors.price && touched.price && productDetails.price ? 'is-valid' : ''}`}
-                                    style={{ minHeight: '44px', fontSize: '1rem' }}
-                                />
+                                <div className="input-group gap-0">
+                                    <span className="input-group-text rounded-start-3 ms-1">₹</span>
+                                    <input
+                                        type="number"
+                                        name="price"
+                                        placeholder="0.00"
+                                        value={productDetails.price}
+                                        onChange={onChange}
+                                        onBlur={() => handleBlur('price')}
+                                        disabled={isSubmitting}
+                                        className={`form-control ${errors.price && touched.price ? 'is-invalid' : ''} ${!errors.price && touched.price && productDetails.price ? 'is-valid' : ''}`}
+                                        style={{ minHeight: '44px', fontSize: '1rem' }}
+                                    />
+                                </div>
                                 {errors.price && touched.price && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.price}</div>}
                             </div>
 
@@ -421,7 +424,7 @@ const AddProduct = (props) => {
                                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
                                     Category <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                                     <select
                                         name="category"
                                         value={productDetails.category}
@@ -429,20 +432,15 @@ const AddProduct = (props) => {
                                         onBlur={() => handleBlur('category')}
                                         disabled={loadingCategories || isSubmitting}
                                         className={`form-select ${errors.category && touched.category ? 'is-invalid' : ''} ${!errors.category && touched.category && productDetails.category ? 'is-valid' : ''}`}
-                                        style={{ minHeight: '44px', fontSize: '0.9rem', width: '100%' }}
+                                        style={{ minHeight: '44px', fontSize: '1rem', flex: 1 }}
                                     >
-                                        <option value="" disabled>{loadingCategories ? 'Loading...' : 'Select Category'}</option>
+                                        <option value="">Select Category</option>
                                         {categories.map((category) => (
                                             <option key={category._id} value={category._id}>{category.cName}</option>
                                         ))}
                                     </select>
-                                    {productDetails.category && (
-                                        <div style={{ fontSize: '0.85rem', color: '#7300FF', fontWeight: '600', marginTop: '0.25rem' }}>
-                                            Selected: {getCategoryName(productDetails.category)}
-                                        </div>
-                                    )}
+                                    <a href="/dashboard/category" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="Add new category">+</a>
                                 </div>
-                                <a href="/dashboard/category" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', marginTop: '0.5rem' }} title="Add new category">+</a>
                                 {errors.category && touched.category && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.category}</div>}
                             </div>
 
@@ -451,7 +449,7 @@ const AddProduct = (props) => {
                                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
                                     Warehouse <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', flexDirection: 'column' }}>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
                                     <select
                                         name="warehouse"
                                         value={productDetails.warehouse}
@@ -459,20 +457,15 @@ const AddProduct = (props) => {
                                         onBlur={() => handleBlur('warehouse')}
                                         disabled={loadingWarehouses || isSubmitting}
                                         className={`form-select ${errors.warehouse && touched.warehouse ? 'is-invalid' : ''} ${!errors.warehouse && touched.warehouse && productDetails.warehouse ? 'is-valid' : ''}`}
-                                        style={{ minHeight: '44px', fontSize: '0.9rem', width: '100%' }}
+                                        style={{ minHeight: '44px', fontSize: '1rem', flex: 1 }}
                                     >
-                                        <option value="" disabled>{loadingWarehouses ? 'Loading...' : 'Select Warehouse'}</option>
+                                        <option value="">Select Warehouse</option>
                                         {warehouses.map((warehouse) => (
                                             <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
                                         ))}
                                     </select>
-                                    {productDetails.warehouse && (
-                                        <div style={{ fontSize: '0.85rem', color: '#7300FF', fontWeight: '600', marginTop: '0.25rem' }}>
-                                            Selected: {getWarehouseName(productDetails.warehouse)}
-                                        </div>
-                                    )}
+                                    <a href="/dashboard/warehouses" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="Add new warehouse">+</a>
                                 </div>
-                                <a href="/dashboard/warehouses" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', marginTop: '0.5rem' }} title="Add new warehouse">+</a>
                                 {errors.warehouse && touched.warehouse && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.warehouse}</div>}
                             </div>
 

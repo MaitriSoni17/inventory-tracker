@@ -15,6 +15,7 @@ const Products = (props) => {
     const [selectedStock, setSelectedStock] = useState('');
     const [categories, setCategories] = useState([]);
     const [categoryMap, setCategoryMap] = useState({});
+    const [warehouseMap, setWarehouseMap] = useState({});
     const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
     const getImageFileName = (product) => {
@@ -48,8 +49,34 @@ const Products = (props) => {
                 console.error('Error fetching categories:', error);
             }
         };
+
+        // Fetch warehouses data
+        const fetchWarehouses = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (!response.ok) {
+                    console.error('Failed to fetch warehouses');
+                    return;
+                }
+                const warehouseList = await response.json();
+                const map = {};
+                warehouseList.forEach(warehouse => {
+                    map[warehouse._id] = warehouse.wName;
+                });
+                setWarehouseMap(map);
+            } catch (error) {
+                console.error('Error fetching warehouses:', error);
+            }
+        };
         
         fetchCategories();
+        fetchWarehouses();
     }, []);
 
     useEffect(() => {
@@ -160,11 +187,13 @@ const Products = (props) => {
 
         const dataToExport = filteredProducts.map(product => ({
             'Product Name': product.name,
-            'Category': product.category,
+            'Category': categoryMap[product.category] || product.category || '-',
             'Brand': product.brand || '-',
             'Price': `₹${product.price}`,
             'Stock': product.totalProducts,
-            'Warehouse': product.warehouse?.join(', ') || '-',
+            'Warehouse': Array.isArray(product.warehouse) 
+                ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ')
+                : warehouseMap[product.warehouse] || product.warehouse || '-',
             'Status': 'Active',
             'Mfg Date': new Date(product.mDate).toLocaleDateString(),
             'Exp Date': new Date(product.eDate).toLocaleDateString(),

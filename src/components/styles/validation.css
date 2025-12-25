@@ -503,3 +503,69 @@ button[type="submit"]:not(:disabled) {
   transform: scale(0.85) translateY(-0.5rem) translateX(0.15rem);
   color: #4f46e5;
 }
+
+/* ============================================
+   INPUT-GROUP STYLES
+   Elegant Currency/Prefix Input
+   ============================================ */
+
+.input-group {
+  display: flex;
+  align-items: stretch;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.input-group-text {
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  color: #666;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  font-size: 1rem;
+  border-right: none !important;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.input-group .form-control {
+  border-left: none !important;
+  border-radius: 0 0.75rem 0.75rem 0 !important;
+  border: 2px solid #e0e0e0;
+  border-left: none;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.input-group .form-control:focus {
+  border-color: #af50ff;
+  box-shadow: none;
+  background-color: #fafafa;
+}
+
+.input-group:has(.form-control:focus) .input-group-text {
+  border-color: #af50ff;
+  background: #f8f9fa;
+}
+
+.input-group .form-control.is-invalid {
+  border-color: #ef4444;
+}
+
+.input-group .form-control.is-valid {
+  border-color: #10b981;
+}
+
+.input-group:has(.form-control.is-invalid) .input-group-text {
+  border-color: #ef4444;
+}
+
+.input-group:has(.form-control.is-valid) .input-group-text {
+  border-color: #10b981;
+}
+

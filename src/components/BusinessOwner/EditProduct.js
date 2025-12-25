@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import '../styles/validation.css';
 
 const EditProduct = (props) => {
     const { id } = useParams();
@@ -347,10 +348,10 @@ const EditProduct = (props) => {
                                 <div className="col-md-5 me-5">
                                     <label htmlFor="productPrice" className="form-label fw-semibold mb-2">Product Price</label>
                                     <div className="input-group gap-0">
-                                        <span className="input-group-text shadow-sm border-1 rounded-start-3 border-end-0">₹</span>
+                                        <span className="input-group-text rounded-start-3 ms-1">₹</span>
                                         <input 
                                             type="number" 
-                                            className="form-control rounded-end-3 shadow-sm border-start-0" 
+                                            className="form-control" 
                                             id="productPrice" 
                                             name="price" 
                                             value={productDetails.price} 

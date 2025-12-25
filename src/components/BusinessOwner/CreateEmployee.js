@@ -25,6 +25,11 @@ const CreateEmployee = (props) => {
             phone: "",
             gender: "",
             nationality: "",
+            country: "",
+            state: "",
+            city: "",
+            address: "",
+            about: "",
             jDate: "",
             hireAt: "",
             role: "",
@@ -154,7 +159,7 @@ const CreateEmployee = (props) => {
 
         setIsSubmitting(true);
 
-        const { image, fname, lname, birthDate, phone, gender, nationality, jDate, hireAt, role, email, password } = empDetails;
+        const { image, fname, lname, birthDate, phone, gender, nationality, country, state, city, address, about, jDate, hireAt, role, email, password } = empDetails;
 
         // --- Use FormData for sending files ---
         const formData = new FormData();
@@ -166,6 +171,11 @@ const CreateEmployee = (props) => {
         formData.append('phone', phone);
         formData.append('gender', gender);
         formData.append('nationality', nationality);
+        formData.append('country', country);
+        formData.append('state', state);
+        formData.append('city', city);
+        formData.append('address', address);
+        formData.append('about', about);
         formData.append('jDate', jDate);
         formData.append('hireAt', hireAt);
         formData.append('role', role);
@@ -205,6 +215,11 @@ const CreateEmployee = (props) => {
                     phone: "",
                     gender: "",
                     nationality: "",
+                    country: "",
+                    state: "",
+                    city: "",
+                    address: "",
+                    about: "",
                     jDate: "",
                     hireAt: "",
                     role: "",
@@ -212,6 +227,9 @@ const CreateEmployee = (props) => {
                     password: "",
                     cpassword: ""
                 });
+                // Clear error and touched states
+                setErrors({});
+                setTouched({});
                 props.showAlert("Account Created Successfully", "success");
             } else {
                 props.showAlert(json.message || "Invalid Credentials or server error.", "danger");
@@ -248,7 +266,33 @@ const CreateEmployee = (props) => {
             }
         } else {
             // Handle regular text/select inputs
-            setEmpDetails({ ...empDetails, [e.target.name]: e.target.value });
+            const updatedDetails = { ...empDetails, [e.target.name]: e.target.value };
+            setEmpDetails(updatedDetails);
+
+            // Clear password errors when user modifies password or confirm password
+            if (e.target.name === 'password' || e.target.name === 'cpassword') {
+                setErrors(prevErrors => {
+                    const newErrors = { ...prevErrors };
+                    
+                    // Always clear the field that's being edited
+                    delete newErrors[e.target.name];
+                    
+                    // If confirm password is being edited, check if passwords now match
+                    if (e.target.name === 'cpassword') {
+                        if (updatedDetails.password === updatedDetails.cpassword && updatedDetails.cpassword.trim()) {
+                            delete newErrors.cpassword;
+                        }
+                    }
+                    // If password is being edited, check if it now matches confirm password
+                    else if (e.target.name === 'password') {
+                        if (updatedDetails.password === updatedDetails.cpassword && updatedDetails.password.trim()) {
+                            delete newErrors.cpassword;
+                        }
+                    }
+                    
+                    return newErrors;
+                });
+            }
         }
     }
 
@@ -544,15 +588,143 @@ const CreateEmployee = (props) => {
                                                 <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
                                             ))}
                                         </select>
-                                        {empDetails.hireAt && (
-                                            <div style={{ fontSize: '0.85rem', color: '#7300FF', fontWeight: '600', marginTop: '0.25rem' }}>
-                                                Selected: {warehouses.find(w => w._id === empDetails.hireAt)?.wName || 'Unknown'}
-                                            </div>
-                                        )}
                                     </div>
                                     <a href="/dashboard/warehouses" className="btn btn-sm" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Add new warehouse">+</a>
                                 </div>
                                 {errors.hireAt && touched.hireAt && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.hireAt}</div>}
+                            </div>
+                        </div>
+
+                        {/* Row 4.5: Location Information */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Country */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Country
+                                </label>
+                                <input
+                                    type="text"
+                                    name="country"
+                                    value={empDetails.country}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('country')}
+                                    placeholder="Enter country"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s'
+                                    }}
+                                    onFocus={(e) => (e.target.style.borderColor = '#af50ff')}
+                                />
+                            </div>
+
+                            {/* State */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    State
+                                </label>
+                                <input
+                                    type="text"
+                                    name="state"
+                                    value={empDetails.state}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('state')}
+                                    placeholder="Enter state"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s'
+                                    }}
+                                    onFocus={(e) => (e.target.style.borderColor = '#af50ff')}
+                                />
+                            </div>
+
+                            {/* City */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    City
+                                </label>
+                                <input
+                                    type="text"
+                                    name="city"
+                                    value={empDetails.city}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('city')}
+                                    placeholder="Enter city"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s'
+                                    }}
+                                    onFocus={(e) => (e.target.style.borderColor = '#af50ff')}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Address and About */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginBottom: '2rem' }}>
+                            {/* Address */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    Address
+                                </label>
+                                <textarea
+                                    name="address"
+                                    value={empDetails.address}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('address')}
+                                    placeholder="Enter address"
+                                    rows="3"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s',
+                                        fontFamily: 'inherit'
+                                    }}
+                                    onFocus={(e) => (e.target.style.borderColor = '#af50ff')}
+                                />
+                            </div>
+
+                            {/* About */}
+                            <div>
+                                <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
+                                    About/Bio
+                                </label>
+                                <textarea
+                                    name="about"
+                                    value={empDetails.about}
+                                    onChange={onChange}
+                                    onBlur={() => handleBlur('about')}
+                                    placeholder="Enter about/bio"
+                                    rows="3"
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem 1rem',
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '0.5rem',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'border-color 0.3s',
+                                        fontFamily: 'inherit'
+                                    }}
+                                    onFocus={(e) => (e.target.style.borderColor = '#af50ff')}
+                                />
                             </div>
                         </div>
 
