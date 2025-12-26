@@ -3,21 +3,24 @@
 .contact-page {
   width: 100%;
   background-color: #FAFAFA;
+  min-height: 100vh;
 }
 
 /* Contact Hero Section */
-.contact-hero {
+.hero-elegant {
   position: relative;
+  overflow: visible;
+  min-height: auto;
   padding: 5rem 2rem;
-  overflow: hidden;
-  min-height: 500px;
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #7300FF 0%, #9333EA 50%, #7300FF 100%);
-  color: white;
+  justify-content: center;
+  background: linear-gradient(135deg, #f5f0ff 0%, #f0e6ff 100%);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.contact-hero .hero-background {
+.hero-elegant .hero-background {
   position: absolute;
   top: 0;
   left: 0;
@@ -25,39 +28,56 @@
   height: 100%;
   z-index: 0;
   opacity: 0.1;
+  pointer-events: none;
 }
 
-.contact-hero .hero-content {
+.hero-elegant .hero-content {
   position: relative;
   z-index: 1;
-  /* max-width: 1200px; */
+  max-width: 900px;
   margin: 0 auto;
   width: 100%;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.contact-hero .hero-title {
-  font-size: 3.5rem;
+.hero-elegant .hero-title {
+  font-size: clamp(2rem, 6vw, 3.5rem);
   font-weight: 700;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  line-height: 1.2;
+  color: #240046;
 }
 
-.contact-hero .hero-subtitle {
-  font-size: 1.5rem;
+.hero-elegant .hero-subtitle {
+  font-size: clamp(1rem, 3vw, 1.5rem);
+  margin-bottom: 0;
+  line-height: 1.6;
+  color: #666;
+}
   opacity: 0.95;
 }
 
 /* Contact Info Section */
 .contact-info-section {
-  padding: 5rem 2rem;
+  padding: 4rem 2rem;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1rem;
 }
 
 .contact-cards-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 2.5rem;
-  margin-top: 3rem;
+  gap: 2rem;
+  margin-top: 2rem;
+  width: 100%;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .contact-info-card {
@@ -126,8 +146,11 @@
 
 /* Contact Form Section */
 .contact-form-section {
-  padding: 5rem 2rem;
+  padding: 4rem 2rem;
   background: linear-gradient(135deg, rgba(115, 0, 255, 0.05) 0%, rgba(192, 132, 252, 0.05) 100%);
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 1rem;
 }
 
 .form-container {
@@ -138,6 +161,8 @@
   border-radius: 15px;
   border: 2px solid #e0d5ff;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .form-header {
@@ -311,6 +336,8 @@
 .map-section {
   padding: 5rem 2rem;
   background: white;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .map-section h2 {
@@ -336,6 +363,8 @@
   color: white;
   padding: 4rem 2rem;
   text-align: center;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .cta-section h2 {
@@ -380,19 +409,51 @@
   color: #C084FC;
 }
 
-/* Responsive */
+/* Responsive Design */
+
+/* Tablet (768px and below) */
 @media (max-width: 768px) {
+  .hero-elegant {
+    padding: 3.5rem 1.5rem;
+  }
+
+  .hero-elegant .hero-content {
+    max-width: 100%;
+  }
+
+  .hero-elegant .hero-title {
+    font-size: clamp(1.6rem, 5vw, 2.5rem);
+    margin-bottom: 1rem;
+  }
+
+  .hero-elegant .hero-subtitle {
+    font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+  }
+
   .contact-cards-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 1.8rem;
   }
 
-  .contact-hero {
-    padding: 3rem 2rem;
-    min-height: 350px;
+  .contact-info-section {
+    padding: 2.5rem 1.5rem;
   }
 
-  .contact-hero .hero-title {
-    font-size: 2rem;
+  .contact-icon {
+    font-size: 2.8rem;
+  }
+
+  .contact-info-card {
+    padding: 1.8rem;
+  }
+
+  .contact-form-section {
+    padding: 2.5rem 1.5rem;
+  }
+
+  .form-container {
+    max-width: 600px;
+    padding: 2rem;
   }
 
   .form-row {
@@ -400,54 +461,129 @@
     gap: 1rem;
   }
 
-  .form-container {
-    padding: 2rem;
+  .form-group input,
+  .form-group textarea {
+    padding: 0.8rem;
+    font-size: 0.95rem;
+  }
+
+  .form-group label {
+    font-size: 0.9rem;
   }
 
   .faq-grid {
     grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .faq-item {
+    padding: 1.2rem;
   }
 
   .map-container {
     height: 300px;
   }
 
+  .map-section {
+    padding: 3rem 1.5rem;
+  }
+
+  .cta-section {
+    padding: 3rem 1.5rem;
+  }
+
   .cta-section h2 {
     font-size: 1.8rem;
   }
+
+  .cta-section p {
+    font-size: 1rem;
+  }
 }
 
+/* Mobile Small (576px and below) */
 @media (max-width: 576px) {
+  .hero-elegant {
+    padding: 3rem 1rem;
+  }
+
+  .hero-elegant .hero-title {
+    font-size: clamp(1.4rem, 4vw, 2rem);
+    margin-bottom: 0.8rem;
+  }
+
+  .hero-elegant .hero-subtitle {
+    font-size: clamp(0.85rem, 2vw, 1rem);
+    line-height: 1.5;
+  }
+
+  .contact-info-section {
+    padding: 2rem 1rem;
+  }
+
   .contact-cards-grid {
     grid-template-columns: 1fr;
-  }
-
-  .faq-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .contact-hero .hero-title {
-    font-size: 1.8rem;
-  }
-
-  .contact-hero .hero-subtitle {
-    font-size: 1rem;
+    gap: 1.5rem;
   }
 
   .contact-info-card {
-    padding: 1.5rem;
+    padding: 1.3rem;
   }
 
   .contact-icon {
     font-size: 2.5rem;
+    margin-bottom: 1rem;
   }
 
+  .contact-info-card h3 {
+    font-size: 1.1rem;
+  }
+
+  .contact-value {
+    font-size: 0.95rem;
+  }
+
+  .contact-desc {
+    font-size: 0.9rem;
+  }
+
+  .contact-form-section {
+    padding: 2rem 1rem;
+  }}
+
   .form-container {
+    max-width: 100%;
     padding: 1.5rem;
+    border-radius: 12px;
   }
 
   .form-header h2 {
     font-size: 1.5rem;
+  }
+
+  .form-header p {
+    font-size: 0.95rem;
+  }
+
+  .form-group label {
+    font-size: 0.85rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    padding: 0.7rem;
+    font-size: 0.9rem;
+  }
+
+  .form-group textarea {
+    min-height: 120px;
+  }
+
+  .contact-form button[type="submit"] {
+    padding: 0.8rem 1.5rem;
+    font-size: 0.95rem;
+    margin-top: 0.8rem;
   }
 
   .faq-container {
@@ -458,8 +594,37 @@
     font-size: 1.5rem;
   }
 
+  .faq-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .faq-item {
+    padding: 1rem;
+  }
+
+  .faq-item h4 {
+    font-size: 1rem;
+  }
+
+  .faq-item p {
+    font-size: 0.9rem;
+  }
+
+  .map-section {
+    padding: 2rem 1rem;
+  }
+
+  .map-section h2 {
+    font-size: 1.8rem;
+  }
+
   .map-container {
     height: 250px;
+  }
+
+  .cta-section {
+    padding: 2rem 1rem;
   }
 
   .cta-section h2 {
@@ -467,11 +632,119 @@
   }
 
   .cta-section p {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .cta-section .btn-primary-hero {
+    padding: 0.8rem 1.8rem;
+    font-size: 0.95rem;
+  }
+
+  .success-message {
+    padding: 1.2rem;
+    font-size: 0.95rem;
+  }
+}
+
+/* Mobile Extra Small (414px and below) */
+@media (max-width: 414px) {
+  .hero-elegant {
+    padding: 2.5rem 0.8rem;
+  }
+
+  .hero-elegant .hero-title {
+    font-size: clamp(1.2rem, 3.5vw, 1.8rem);
+  }
+
+  .hero-elegant .hero-subtitle {
+    font-size: clamp(0.8rem, 1.8vw, 0.95rem);
+  }
+
+  .contact-info-section {
+    padding: 1.5rem 0.8rem;
+  }
+
+  .contact-cards-grid {
+    gap: 1.2rem;
+  }
+
+  .contact-info-card {
+    padding: 1rem;
+  }
+
+  .contact-icon {
+    font-size: 2.2rem;
+  }
+
+  .contact-info-card h3 {
     font-size: 1rem;
   }
 
+  .contact-form-section {
+    padding: 1.5rem 0.8rem;
+  }
+
+  .form-container {
+    padding: 1.2rem;
+  }
+
+  .form-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .form-group input,
+  .form-group textarea {
+    font-size: 0.85rem;
+  }
+
   .contact-form button[type="submit"] {
-    padding: 0.9rem 1.5rem;
-    font-size: 1rem;
+    padding: 0.7rem 1.2rem;
+    font-size: 0.9rem;
+  }
+
+  .faq-container {
+    padding: 1.2rem;
+  }
+
+  .faq-item {
+    padding: 0.8rem;
+  }
+
+  .faq-item h4 {
+    font-size: 0.95rem;
+  }
+
+  .faq-item p {
+    font-size: 0.85rem;
+  }
+
+  .map-section {
+    padding: 1.5rem 0.8rem;
+  }
+
+  .map-section h2 {
+    font-size: 1.4rem;
+  }
+
+  .map-container {
+    height: 200px;
+  }
+
+  .cta-section {
+    padding: 1.5rem 0.8rem;
+  }
+
+  .cta-section h2 {
+    font-size: 1.3rem;
+  }
+
+  .cta-section p {
+    font-size: 0.85rem;
+  }
+}
+
+  .cta-section p {
+    font-size: 0.85rem;
   }
 }

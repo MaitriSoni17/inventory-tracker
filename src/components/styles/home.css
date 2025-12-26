@@ -1587,10 +1587,12 @@ body {
   }
 
   .about-image {
+    margin-top: 20px;
     height: 300px;
   }
 
   .visual-highlights {
+    /* margin-top: 50px; */
     gap: 1rem;
   }
 
@@ -1669,6 +1671,7 @@ body {
   }
 
   .mission-vision-section {
+    margin-top: 70px;
     padding: 3rem 0;
   }
 
