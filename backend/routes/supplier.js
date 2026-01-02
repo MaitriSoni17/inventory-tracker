@@ -116,11 +116,21 @@ router.post('/getsupplier/:id', fetchuser, async (req, res) => {
     }
 });
 
-// Get All Suppliers using: POST "/api/supplier/getallsuppliers". Business Owner login required
-router.post('/getallsuppliers', require('../middleware/fetchbusinessowner'), async (req, res) => {
+// Get All Suppliers using: POST "/api/supplier/getallsuppliers". Business Owner, Manager, or Supervisor login required
+router.post('/getallsuppliers', require('../middleware/fetchuser'), async (req, res) => {
     try {
-        const suppliers = await Supplier.find({ businessowner: req.businessowner._id }).select('-password');
-        res.json(suppliers);
+        // Business owner, managers, and supervisors can view suppliers
+        if (req.role === 'businessowner') {
+            const suppliers = await Supplier.find({ businessowner: req.user._id }).select('-password');
+            return res.json(suppliers);
+        }
+        
+        if (['manager', 'supervisor'].includes(req.role)) {
+            const suppliers = await Supplier.find({ businessowner: req.user.businessowner }).select('-password');
+            return res.json(suppliers);
+        }
+        
+        return res.status(403).json({ error: "You do not have permission to view suppliers" });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
     }
@@ -264,21 +274,54 @@ router.post('/deactivate', fetchuser, async (req, res) => {
 });
 
 // Delete own account using: DELETE "/api/supplier/deleteaccount". Supplier login required
+// This endpoint now uses the new deletion request workflow
 router.delete('/deleteaccount', fetchuser, async (req, res) => {
     try {
         if (req.role !== 'supplier') {
             return res.status(403).json({ error: "Access denied" });
         }
 
-        const supplier = await Supplier.findById(req.user._id);
+        // Redirect to the new deletion request system
+        const DeletionRequest = require('../models/DeletionRequest');
+        const supplierId = req.user._id;
+
+        // Check if there's already a pending deletion request
+        const existingRequest = await DeletionRequest.findOne({
+            userId: supplierId,
+            status: { $in: ['pending', 'approved'] }
+        });
+
+        if (existingRequest) {
+            return res.status(400).json({
+                success: false,
+                message: 'You already have an active deletion request. Please wait for it to be processed.'
+            });
+        }
+
+        // Create deletion request for supplier
+        const supplier = await Supplier.findById(supplierId);
         if (!supplier) {
             return res.status(404).json({ error: "Supplier not found" });
         }
 
-        await Supplier.findByIdAndDelete(req.user._id);
-        res.json({ success: true, message: "Account deleted successfully" });
+        const deletionRequest = new DeletionRequest({
+            userId: supplierId,
+            userEmail: supplier.email,
+            userRole: 'supplier',
+            creatorId: supplier.businessowner,
+            reason: 'Supplier initiated account deletion'
+        });
+
+        await deletionRequest.save();
+
+        res.json({
+            success: true,
+            message: 'Your account deletion request has been sent to your Business Owner for approval.',
+            requestId: deletionRequest._id
+        });
     } catch (err) {
-        res.status(500).json({ error: "Internal Server error occurred" });
+        console.error(err);
+        res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
 

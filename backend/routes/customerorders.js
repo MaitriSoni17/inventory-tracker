@@ -21,16 +21,25 @@ router.post('/createcustomerorder', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc } = req.body;
+    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc, warehouse } = req.body;
 
     try {
         let customerorderData = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
 
         if (req.role === 'businessowner') {
             customerorderData.businessowner = req.user._id;
+            // Business owner can assign to specific warehouse
+            if (warehouse) {
+                customerorderData.warehouse = warehouse;
+            }
         } else if (req.role === 'employee') {
             customerorderData.businessowner = req.user.businessowner;
             customerorderData.employee = req.user._id;
+            // Employee's order goes to their warehouse
+            const employee = await require('../models/Employee').findById(req.user._id);
+            if (employee && employee.warehouse) {
+                customerorderData.warehouse = employee.warehouse;
+            }
         }
 
 
@@ -75,26 +84,34 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
     try {
         let customerorder = [];
 
-
         if (req.role === 'businessowner') {
-            customerorder = await CustomerOrders.find({ businessowner: req.user._id });
-        } else if (req.role === 'employee') {
-            const businessownerID = req.user.businessowner;
-            const employeeID = req.user._id;
-            customerorder = await CustomerOrders.find({ $or: [
-                    { businessowner: businessownerID },
-                    { employee: employeeID }
-                ] });
+            // Business owner sees all orders in their organization
+            customerorder = await CustomerOrders.find({ businessowner: req.user._id }).populate('warehouse');
+        } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
+            // Warehouse staff sees only orders assigned to their warehouse
+            const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
+            
+            if (staffMember && staffMember.warehouse) {
+                // Get orders assigned to their warehouse
+                customerorder = await CustomerOrders.find({
+                    warehouse: staffMember.warehouse._id
+                }).populate('warehouse');
+            } else {
+                // If no warehouse assigned, show no orders
+                customerorder = [];
+            }
+        } else {
+            // Fallback for other roles
+            customerorder = [];
         }
 
         res.json(customerorder);
     } catch (err) {
-
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Update Customer Order — only BusinessOwner can update
+// Update Customer Order — BusinessOwner can update all, warehouse staff can update status
 router.put('/updatecustomerorder/:id', fetchuser, [
     body('cName', 'Enter Product Name').exists(),
     body('cEmail', 'Enter valid Email').isEmail(),
@@ -107,28 +124,46 @@ router.put('/updatecustomerorder/:id', fetchuser, [
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
-    // if (req.role !== 'businessowner' || req.role !== 'employee') {
-    //     return res.status(403).send("Only BusinessOwner or Employee can update products");
-    // }
-
-    if (!['businessowner', 'employee'].includes(req.role)) {
-        return res.status(403).send("Only BusinessOwner or Employee can update customer orders");
+    // Authorization: Only businessowner or warehouse staff can update
+    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
+        return res.status(403).send("Only authorized personnel can update customer orders");
     }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc } = req.body;
+    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc, warehouse } = req.body;
 
     try {
-        const newCustomerOrder = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
-
-        let customerorder = await CustomerOrders.findById(req.params.id);
+        let customerorder = await CustomerOrders.findById(req.params.id).populate('warehouse');
         if (!customerorder) return res.status(404).send("Not Found");
 
-        // if (customerorder.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && customerorder.employee.toString() !== req.user._id.toString())) {
-        //     return res.status(401).send("Not Allowed");
-        // }
+        // Permission check
+        if (req.role === 'businessowner') {
+            // Business owner can update everything
+            if (customerorder.businessowner.toString() !== req.user._id.toString()) {
+                return res.status(401).send("Not Allowed");
+            }
+        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+            // Warehouse staff can only update orders assigned to their warehouse
+            const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
+            
+            if (!staffMember || !staffMember.warehouse) {
+                return res.status(401).send("Not Assigned to any warehouse");
+            }
+            
+            if (!customerorder.warehouse || customerorder.warehouse._id.toString() !== staffMember.warehouse._id.toString()) {
+                return res.status(401).send("You can only update orders in your warehouse");
+            }
+        }
+
+        // Prepare update data
+        let newCustomerOrder = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
+        
+        // Only business owner can change warehouse
+        if (req.role === 'businessowner' && warehouse) {
+            newCustomerOrder.warehouse = warehouse;
+        }
 
         customerorder = await CustomerOrders.findByIdAndUpdate(req.params.id, { $set: newCustomerOrder }, { new: true });
 
@@ -140,10 +175,10 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: pName, amount }
             );
-        } else if (req.role === 'employee') {
-            // Send notification to business owner if updated by employee
+        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+            // Send notification to business owner if updated by warehouse staff
             await notifyBusinessOwnerAboutOrderByEmployee(
-                req.user.businessowner,
+                customerorder.businessowner,
                 req.user._id,
                 'updated',
                 customerorder._id,

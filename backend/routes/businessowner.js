@@ -324,13 +324,154 @@ router.post('/deactivate', fetchbusinessowner, async (req, res) => {
 });
 
 // Delete Account using: POST "/api/businessowner/delete". Login required
+// This endpoint now redirects to the new deletion request workflow
 router.post('/delete', fetchbusinessowner, async (req, res) => {
     try {
-        const userId = req.businessowner._id;
-        await BusinessOwner.findByIdAndDelete(userId);
-        res.json({ success: true, message: "Account deleted successfully" });
+        // console.log('Delete account request received');
+        // console.log('req.businessowner:', req.businessowner ? { _id: req.businessowner._id, email: req.businessowner.email } : 'null');
+        
+        const DeletionRequest = require('../models/DeletionRequest');
+        
+        // Validate businessowner is properly authenticated
+        if (!req.businessowner || !req.businessowner._id) {
+            console.error('No businessowner in request');
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid authentication. Please login again.'
+            });
+        }
+
+        const businessOwnerId = req.businessowner._id;
+        const businessOwnerEmail = req.businessowner.email;
+        
+        // Validate email exists
+        if (!businessOwnerEmail) {
+            console.error('Business owner email not found for id:', businessOwnerId);
+            return res.status(400).json({
+                success: false,
+                error: 'Business owner email not found. Please update your profile.'
+            });
+        }
+
+        // Check if there's already a pending deletion request
+        const existingRequest = await DeletionRequest.findOne({
+            userId: businessOwnerId,
+            status: { $in: ['pending', 'approved'] }
+        });
+
+        if (existingRequest) {
+            // console.log('Existing deletion request found:', existingRequest._id);
+            return res.status(400).json({
+                success: false,
+                message: 'You already have an active deletion request. Please wait for it to be processed.'
+            });
+        }
+
+        // Create deletion request for business owner
+        const deletionRequest = new DeletionRequest({
+            userId: businessOwnerId,
+            userEmail: businessOwnerEmail,
+            userRole: 'businessowner',
+            reason: 'Business owner initiated account deletion'
+        });
+
+        // console.log('Saving deletion request:', {
+        //     userId: deletionRequest.userId,
+        //     userEmail: deletionRequest.userEmail,
+        //     userRole: deletionRequest.userRole
+        // });
+
+        await deletionRequest.save();
+        // console.log('Deletion request saved successfully:', deletionRequest._id);
+
+        res.json({
+            success: true,
+            message: 'Your account deletion has been scheduled. You have 7 days to cancel this request.',
+            requestId: deletionRequest._id
+        });
     } catch (err) {
-        res.status(500).json({ error: "Internal Server error occurred" });
+        console.error('Delete account error:', err);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal Server error occurred", 
+            details: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
+    }
+});
+
+// Cancel existing deletion request using: POST "/api/businessowner/cancel-deletion". Login required
+router.post('/cancel-deletion', fetchbusinessowner, async (req, res) => {
+    try {
+        // console.log('Cancel deletion request received');
+        
+        const DeletionRequest = require('../models/DeletionRequest');
+        const businessOwnerId = req.businessowner._id;
+
+        // Find and delete the pending deletion request
+        const deletionRequest = await DeletionRequest.findOneAndDelete({
+            userId: businessOwnerId,
+            status: { $in: ['pending', 'approved'] }
+        });
+
+        if (!deletionRequest) {
+            return res.status(404).json({
+                success: false,
+                message: 'No active deletion request found to cancel.'
+            });
+        }
+
+        // console.log('Deletion request cancelled:', deletionRequest._id);
+
+        res.json({
+            success: true,
+            message: 'Your deletion request has been cancelled successfully.'
+        });
+    } catch (err) {
+        console.error('Cancel deletion error:', err);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal Server error occurred", 
+            details: err.message
+        });
+    }
+});
+
+// Check deletion status using: GET "/api/businessowner/deletion-status". Login required
+router.get('/deletion-status', fetchbusinessowner, async (req, res) => {
+    try {
+        const DeletionRequest = require('../models/DeletionRequest');
+        const businessOwnerId = req.businessowner._id;
+
+        const deletionRequest = await DeletionRequest.findOne({
+            userId: businessOwnerId,
+            status: { $in: ['pending', 'approved'] }
+        });
+
+        if (!deletionRequest) {
+            return res.json({
+                success: true,
+                hasActiveDeletion: false,
+                message: 'No active deletion request'
+            });
+        }
+
+        res.json({
+            success: true,
+            hasActiveDeletion: true,
+            deletionRequest: {
+                id: deletionRequest._id,
+                status: deletionRequest.status,
+                requestDate: deletionRequest.requestDate,
+                scheduledDeletionDate: deletionRequest.scheduledDeletionDate
+            }
+        });
+    } catch (err) {
+        console.error('Check deletion status error:', err);
+        res.status(500).json({ 
+            success: false,
+            error: "Internal Server error occurred"
+        });
     }
 });
 

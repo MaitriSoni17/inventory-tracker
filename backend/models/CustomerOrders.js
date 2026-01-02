@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const CustomerOrders = new Schema({
     businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'businessowner' },
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'employee' },
+    warehouse: { type: mongoose.Schema.Types.ObjectId, ref: 'Warehouse', default: null },
     cName: {  type: String, required: true },
     cEmail: { type: String, required: true },
     cPhone: { type: Number, required: true },

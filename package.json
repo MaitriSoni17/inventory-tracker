@@ -1,58 +1,22 @@
 {
   "name": "inventory-tracker",
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "Smart Inventory Tracker - Full Stack Application",
   "private": true,
-  "dependencies": {
-    "@coreui/icons": "^3.0.1",
-    "@coreui/icons-react": "^2.3.0",
-    "@coreui/react": "^5.9.1",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "axios": "^1.13.2",
-    "chart.js": "^4.5.1",
-    "concurrently": "^9.2.1",
-    "cors": "^2.8.5",
-    "html2canvas": "^1.4.1",
-    "html2pdf.js": "^0.12.1",
-    "jspdf": "^3.0.4",
-    "multer": "^2.0.2",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-icons": "^5.5.0",
-    "react-icons-kit": "^2.0.0",
-    "react-router-dom": "^7.9.4",
-    "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4",
-    "xlsx": "^0.18.5"
-  },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "both": "concurrently \"npm run start\" \"nodemon backend/index.js\""
+    "frontend:install": "cd frontend && npm install",
+    "frontend:start": "cd frontend && npm start",
+    "frontend:build": "cd frontend && npm run build",
+    "backend:install": "cd backend && npm install",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:start": "cd backend && npm start",
+    "install": "npm run frontend:install && npm run backend:install",
+    "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:start\"",
+    "both": "concurrently \"npm run backend:dev\" \"npm run frontend:start\"",
+    "start": "concurrently \"npm run backend:start\" \"npm run frontend:start\""
   },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+  "dependencies": {
+    "concurrently": "^9.2.1"
   },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
-  },
-  "devDependencies": {
-    "baseline-browser-mapping": "^2.9.11"
-  }
+  "devDependencies": {}
 }

@@ -6,7 +6,21 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const router = express.Router();
-const { notifyEmployeesAboutProduct, notifyBusinessOwnerAboutProduct, notifyBusinessOwnerOwnProductChanges } = require('../utils/notificationHelper');
+const {
+  notifyEmployeesAboutProduct,
+  notifyBusinessOwnerAboutProduct,
+  notifyBusinessOwnerOwnProductChanges,
+  notifySubordinatesAboutProduct,
+  notifyReportingManager
+} = require('../utils/notificationHelper');
+const { 
+  hasPermission, 
+  canAccessUserWork,
+  canEditItem,
+  canDeleteItem,
+  getSubordinates,
+  getDataFilter
+} = require('../middleware/roleBasedAccess');
 
 // Configure multer for file uploads
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -94,6 +108,38 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
+                // Notify reporting manager if exists
+                if (req.user.reportingTo) {
+                  await notifyReportingManager(
+                    req.user._id,
+                    'product_created',
+                    name,
+                    'product',
+                    { productId: product._id, category, price }
+                  );
+                }
+            } catch (notifError) {
+            }
+        } else if (['manager', 'supervisor'].includes(req.role)) {
+            // If manager/supervisor creates product, notify:
+            // 1. Business owner
+            // 2. Their subordinates
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    req.user.businessowner,
+                    req.user._id,
+                    'created',
+                    name,
+                    { productId: product._id, category, price, createdBy: req.user.role }
+                );
+                // Notify subordinates
+                await notifySubordinatesAboutProduct(
+                    req.user._id,
+                    req.user.role,
+                    'created',
+                    name,
+                    { productId: product._id, category, price }
+                );
             } catch (notifError) {
             }
         }
@@ -104,32 +150,103 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
     }
 });
 
-// Get Products — accessible by BusinessOwner or Employee
+// Get Products — accessible by BusinessOwner, Manager, Supervisor, or Employee
 router.post('/getproduct', fetchuser, async (req, res) => {
     try {
         let products = [];
 
         if (req.role === 'businessowner') {
+            // Business owner sees all products in their organization
             products = await Product.find({ businessowner: req.user._id });
         }
+        else if (req.role === 'manager') {
+            // Managers see products from their hired warehouse
+            try {
+                const manager = await Employee.findById(req.user._id).populate('warehouse');
+                
+                if (manager && manager.warehouse) {
+                    // Get all products in the warehouse
+                    // warehouse field in products is an array of strings
+                    const warehouseId = manager.warehouse._id.toString();
+                    products = await Product.find({
+                        $or: [
+                            { warehouse: warehouseId },  // Direct match
+                            { warehouse: { $in: [warehouseId] } }  // In array
+                        ]
+                    });
+                } else {
+                    // If no warehouse assigned, show no products
+                    products = [];
+                }
+            } catch (err) {
+                // If employee lookup fails, return empty
+                console.error('Manager warehouse lookup error:', err);
+                products = [];
+            }
+        }
+        else if (req.role === 'supervisor') {
+            // Supervisors see products from their hired warehouse
+            // Also include products created by their direct reports in that warehouse
+            try {
+                const supervisor = await Employee.findById(req.user._id).populate('warehouse');
+                const directReports = await Employee.find({ reportingTo: req.user._id }).select('_id');
+                const directReportIds = directReports.map(d => d._id);
+                
+                if (supervisor && supervisor.warehouse) {
+                    const warehouseId = supervisor.warehouse._id.toString();
+                    products = await Product.find({
+                        $or: [
+                            { 
+                                $or: [
+                                    { warehouse: warehouseId },
+                                    { warehouse: { $in: [warehouseId] } }
+                                ]
+                            }, // Products in warehouse
+                            { employee: { $in: directReportIds } } // Direct reports' products
+                        ]
+                    });
+                } else {
+                    // If no warehouse assigned, show only direct reports' products
+                    products = await Product.find({
+                        employee: { $in: directReportIds }
+                    });
+                }
+            } catch (err) {
+                console.error('Supervisor warehouse lookup error:', err);
+                products = [];
+            }
+        }
         else if (req.role === 'employee') {
-            const businessownerID = req.user.businessowner;
-            const employeeID = req.user._id;
-
-            products = await Product.find({
-                $or: [
-                    { businessowner: businessownerID },
-                    { employee: employeeID }
-                ]
-            });
+            // Employees see products from their hired warehouse
+            try {
+                const employee = await Employee.findById(req.user._id).populate('warehouse');
+                
+                if (employee && employee.warehouse) {
+                    // Get all products in the warehouse
+                    const warehouseId = employee.warehouse._id.toString();
+                    products = await Product.find({
+                        $or: [
+                            { warehouse: warehouseId },  // Direct match
+                            { warehouse: { $in: [warehouseId] } }  // In array
+                        ]
+                    });
+                } else {
+                    // If no warehouse assigned, show no products
+                    products = [];
+                }
+            } catch (err) {
+                console.error('Employee warehouse lookup error:', err);
+                products = [];
+            }
         }
         res.json(products);
     } catch (err) {
+        console.error('Error in getproduct route:', err);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Update Product — only BusinessOwner can update
+// Update Product — role-based access
 router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     body('name', 'Enter Product Name').exists().trim().notEmpty(),
     body('category', 'Enter Category').exists().trim().notEmpty(),
@@ -138,8 +255,9 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     body('mDate', 'Enter Manufacturing Date').exists().trim().notEmpty(),
     body('eDate', 'Enter Expiring Date').exists().trim().notEmpty(),
 ], async (req, res) => {
-    if (!['businessowner', 'employee'].includes(req.role)) {
-        return res.status(403).send("Only BusinessOwner or Employee can update products");
+    // All roles except basic employee can update products
+    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
+        return res.status(403).send("You do not have permission to update products");
     }
 
     const errors = validationResult(req);
@@ -151,6 +269,11 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
         let product = await Product.findById(req.params.id);
         if (!product) return res.status(404).send("Not Found");
 
+        // Check if user can edit this product based on hierarchy
+        const canEdit = await canEditItem(req.user, product.employee);
+        if (!canEdit) {
+            return res.status(403).json({ error: "You do not have permission to edit this product" });
+        }
 
         // Delete removed image files from the uploads directory
         if (removedImages && removedImages.length > 0) {
@@ -207,10 +330,9 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
             images: updatedImages
         };
 
-
         product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true });
 
-        // Send notification to employees if updated by business owner
+        // Send notifications based on who updated it
         if (req.role === 'businessowner') {
             try {
                 await notifyEmployeesAboutProduct(
@@ -219,17 +341,9 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
-                // Also notify the business owner about their own product update
-                await notifyBusinessOwnerOwnProductChanges(
-                    req.user._id,
-                    'updated',
-                    name,
-                    { productId: product._id, category, price }
-                );
-            } catch (notifError) {
-            }
+            } catch (notifError) {}
         } else if (req.role === 'employee') {
-            // Send notification to business owner if updated by employee
+            // Notify business owner and reporting manager
             try {
                 await notifyBusinessOwnerAboutProduct(
                     req.user.businessowner,
@@ -238,8 +352,34 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
-            } catch (notifError) {
-            }
+                if (req.user.reportingTo) {
+                  await notifyReportingManager(
+                    req.user._id,
+                    'product_updated',
+                    name,
+                    'product',
+                    { productId: product._id, category, price }
+                  );
+                }
+            } catch (notifError) {}
+        } else if (['manager', 'supervisor'].includes(req.role)) {
+            // Notify business owner and subordinates
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    req.user.businessowner,
+                    req.user._id,
+                    'updated',
+                    name,
+                    { productId: product._id, category, price, updatedBy: req.user.role }
+                );
+                await notifySubordinatesAboutProduct(
+                    req.user._id,
+                    req.user.role,
+                    'updated',
+                    name,
+                    { productId: product._id, category, price }
+                );
+            } catch (notifError) {}
         }
 
         res.json({ product, success: true });
@@ -248,23 +388,21 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     }
 });
 
-// Delete Product — only BusinessOwner can delete
+// Delete Product — role-based access with hierarchy checking
 router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
-    // if (req.role !== 'businessowner') {
-    //     return res.status(403).send("Only BusinessOwner can delete products");
-    // }
-
-    if (!['businessowner', 'employee'].includes(req.role)) {
-        return res.status(403).send("Only BusinessOwner or Employee can delete category");
+    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
+        return res.status(403).send("You do not have permission to delete products");
     }
 
     try {
         const product = await Product.findById(req.params.id);
-        if (!product) return res.status(404).send("Not Found");
+        if (!product) return res.status(404).send("Product not found");
 
-        // if (product.businessowner.toString() !== req.user._id.toString()) {
-        //     return res.status(401).send("Not Allowed");
-        // }
+        // Check if user can delete this specific product based on hierarchy
+        const canDelete = await canDeleteItem(req.user, product.employee);
+        if (!canDelete) {
+            return res.status(403).json({ error: "You do not have permission to delete this product" });
+        }
 
         const productName = product.name;
         const businessOwnerId = product.businessowner;
@@ -282,7 +420,7 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
                 );
             } catch (notifError) {
             }
-        } else if (req.role === 'employee') {
+        } else if (['employee', 'supervisor', 'manager'].includes(req.role)) {
             // Send notification to business owner if deleted by employee
             try {
                 await notifyBusinessOwnerAboutProduct(

@@ -4,12 +4,18 @@ const Category = require('../models/Category');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { notifyEmployeesAboutCategory, notifyBusinessOwnerAboutCategory } = require('../utils/notificationHelper');
+const { hasPermission } = require('../middleware/roleBasedAccess');
 
-// Create Category — accessible by BusinessOwner or Employee
+// Create Category — only BusinessOwner and Manager
 router.post('/createcategory', fetchuser, [
     body('cName', 'Enter Category Name').exists(),
     body('cDesc', 'Enter Category Description').exists(),
 ], async (req, res) => {
+    // Only BusinessOwner and Manager can create categories
+    if (!['businessowner', 'manager'].includes(req.role)) {
+        return res.status(403).json({ error: "You do not have permission to create categories" });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
@@ -20,11 +26,10 @@ router.post('/createcategory', fetchuser, [
 
         if (req.role === 'businessowner') {
             categoryData.businessowner = req.user._id;
-        } else if (req.role === 'employee') {
+        } else if (req.role === 'manager') {
             categoryData.businessowner = req.user.businessowner;
             categoryData.employee = req.user._id;
         }
-
 
         const category = await Category.create(categoryData);
 
@@ -36,15 +41,14 @@ router.post('/createcategory', fetchuser, [
                 cName,
                 { categoryId: category._id, description: cDesc }
             );
-        } else if (req.role === 'employee') {
-            // Send notification to business owner if created by employee
-            
+        } else if (req.role === 'manager') {
+            // Send notification to business owner if created by manager
             await notifyBusinessOwnerAboutCategory(
                 req.user.businessowner,
                 req.user._id,
                 'created',
                 cName,
-                { categoryId: category._id, description: cDesc }
+                { categoryId: category._id, description: cDesc, createdBy: 'manager' }
             );
         }
 
@@ -54,14 +58,14 @@ router.post('/createcategory', fetchuser, [
     }
 });
 
-// Get Category — accessible by BusinessOwner or Employee
+// Get Category — accessible by all authenticated users
 router.post('/getcategory', fetchuser, async (req, res) => {
     try {
         let category = [];
 
         if (req.role === 'businessowner') {
             category = await Category.find({ businessowner: req.user._id });
-        } else if (req.role === 'employee') {
+        } else if (['employee', 'supervisor', 'manager'].includes(req.role)) {
             const businessownerID = req.user.businessowner;
             const employeeID = req.user._id;
             category = await Category.find({
@@ -78,16 +82,14 @@ router.post('/getcategory', fetchuser, async (req, res) => {
     }
 });
 
-// Update Category — only BusinessOwner can update
+// Update Category — only BusinessOwner and Manager can update
 router.put('/updatecategory/:id', fetchuser, [
     body('cName', 'Enter Category Name').exists(),
     body('cDesc', 'Enter Category Description').exists(),
 ], async (req, res) => {
-    // if (req.role !== 'businessowner' || req.role !== 'employee') {
-    //     return res.status(403).send("Only BusinessOwner or Employee can update category");
-    // }
-    if (!['businessowner', 'employee'].includes(req.role)) {
-        return res.status(403).send("Only BusinessOwner or Employee can update cateogry");
+    // Only BusinessOwner and Manager can update categories
+    if (!['businessowner', 'manager'].includes(req.role)) {
+        return res.status(403).json({ error: "You do not have permission to update categories" });
     }
 
     const errors = validationResult(req);
@@ -101,9 +103,16 @@ router.put('/updatecategory/:id', fetchuser, [
         let category = await Category.findById(req.params.id);
         if (!category) return res.status(404).send("Not Found");
 
-        // if (category.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && category.employee.toString() !== req.user._id.toString())) {
-        //     return res.status(401).send("Not Allowed");
-        // }
+        // Verify ownership
+        if (req.role === 'businessowner') {
+            if (category.businessowner.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+        } else if (req.role === 'manager') {
+            if (category.businessowner.toString() !== req.user.businessowner.toString()) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+        }
 
         category = await Category.findByIdAndUpdate(req.params.id, { $set: newCategory }, { new: true });
 
@@ -115,39 +124,32 @@ router.put('/updatecategory/:id', fetchuser, [
                 cName,
                 { categoryId: category._id, description: cDesc }
             );
-        } else if (req.role === 'employee') {
-            // Send notification to business owner if updated by employee
+        } else if (req.role === 'manager') {
+            // Send notification to business owner if updated by manager
             await notifyBusinessOwnerAboutCategory(
                 req.user.businessowner,
                 req.user._id,
                 'updated',
                 cName,
-                { categoryId: category._id, description: cDesc }
+                { categoryId: category._id, description: cDesc, updatedBy: 'manager' }
             );
         }
 
-        res.json({ category });
+        res.json({ category, success: true });
     } catch (err) {
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Get All Categories — accessible by BusinessOwner or Employee
+// Get All Categories — accessible by all authenticated users (view-only for supervisor/employee)
 router.post('/getcategories', fetchuser, async (req, res) => {
     try {
         let categories = [];
 
         if (req.role === 'businessowner') {
             categories = await Category.find({ businessowner: req.user._id });
-        } else if (req.role === 'employee') {
-            const businessownerID = req.user.businessowner;
-            const employeeID = req.user._id;
-            categories = await Category.find({
-                $or: [
-                    { businessowner: businessownerID },
-                    { employee: employeeID }
-                ]
-            });
+        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+            categories = await Category.find({ businessowner: req.user.businessowner });
         }
 
         res.json(categories);
@@ -156,22 +158,27 @@ router.post('/getcategories', fetchuser, async (req, res) => {
     }
 });
 
-// Delete Category — only BusinessOwner can delete
+// Delete Category — only BusinessOwner and Manager
 router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
-    // if (req.role !== 'businessowner' || req.role !== 'employee') {
-    //     return res.status(403).send("Only BusinessOwner or Employee can delete cateogry");
-    // }
-    if (!['businessowner', 'employee'].includes(req.role)) {
-        return res.status(403).send("Only BusinessOwner or Employee can delete category");
+    // Only BusinessOwner and Manager can delete categories
+    if (!['businessowner', 'manager'].includes(req.role)) {
+        return res.status(403).json({ error: "You do not have permission to delete categories" });
     }
 
     try {
         const category = await Category.findById(req.params.id);
         if (!category) return res.status(404).send("Not Found");
 
-        // if (category.businessowner.toString() !== req.user._id.toString() || (req.role === 'employee' && category.employee.toString() !== req.user._id.toString())) {
-        //     return res.status(401).send("Not Allowed");
-        // }
+        // Verify ownership
+        if (req.role === 'businessowner') {
+            if (category.businessowner.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+        } else if (req.role === 'manager') {
+            if (category.businessowner.toString() !== req.user.businessowner.toString()) {
+                return res.status(403).json({ error: "Access denied" });
+            }
+        }
 
         const categoryName = category.cName;
         const businessOwnerId = category.businessowner;
@@ -186,18 +193,18 @@ router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
                 categoryName,
                 { categoryId: req.params.id }
             );
-        } else if (req.role === 'employee') {
-            // Send notification to business owner if deleted by employee
+        } else if (req.role === 'manager') {
+            // Send notification to business owner if deleted by manager
             await notifyBusinessOwnerAboutCategory(
                 businessOwnerId,
                 req.user._id,
                 'deleted',
                 categoryName,
-                { categoryId: req.params.id }
+                { categoryId: req.params.id, deletedBy: 'manager' }
             );
         }
 
-        res.json({ message: "Category deleted successfully" });
+        res.json({ message: "Category deleted successfully", success: true });
     } catch (err) {
         res.status(500).send("Internal Server error occurred");
     }

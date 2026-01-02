@@ -28,6 +28,10 @@ const NotificationSchema = new Schema({
       'employee_deleted',
       'employee_deactivated',
       'employee_login',
+      'employee_deletion_requested',
+      'employee_deletion_approved',
+      'employee_deletion_rejected',
+      'employee_role_updated',
       'product_created',
       'product_updated',
       'product_deleted',
@@ -54,6 +58,9 @@ const NotificationSchema = new Schema({
       'supplier_order_deleted_by_employee',
       'supplier_order_status_updated',
       'supplier_order_payment_status_updated',
+      'supplier_deletion_requested',
+      'supplier_deletion_approved',
+      'supplier_deletion_rejected',
       'supplier_login'
     ],
     required: true

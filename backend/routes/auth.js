@@ -48,7 +48,7 @@ router.post('/login', [
         const loginTime = new Date();
 
         // Update lastLogin timestamp
-        if (role === 'employee') {
+        if (['employee', 'supervisor', 'manager'].includes(role)) {
             await Employee.findByIdAndUpdate(user._id, { lastLogin: loginTime });
             // Notify business owner about employee login
             await notifyBusinessOwnerAboutEmployeeLogin(

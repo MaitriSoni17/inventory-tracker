@@ -1,11 +1,12 @@
 var jwt = require('jsonwebtoken');
 const Employee = require('../models/Employee');
-const JWT_SECRET = "ThisisaSecretKey";
+const JWT_SECRET = process.env.JWT_SECRET || "ThisisaSecretKey";
+
 const fetchemployee = async (req, res, next) => {
     // Get the user from the jwt token and add id to req object
     const token = req.header('auth-token');
     if (!token) {
-        res.status(401).send({ error: "Please authenticate using a valid token" })
+        return res.status(401).send({ error: "Please authenticate using a valid token" })
     }
     try {
         const data = jwt.verify(token, JWT_SECRET);
@@ -13,7 +14,15 @@ const fetchemployee = async (req, res, next) => {
         if (!employee) {
             return res.status(401).send({ error: "Employee not found" });
         }
-        req.employee = employee; // now req.employee._id is valid
+        req.employee = employee;
+        req.user = employee; // Also set req.user for consistency with other middleware
+        req.role = 'employee'; // Will be overridden if supervisor or manager
+        
+        // Update role based on employee's role field
+        if (employee.role === 'supervisor' || employee.role === 'manager') {
+            req.role = employee.role;
+        }
+        
         next();
 
     }

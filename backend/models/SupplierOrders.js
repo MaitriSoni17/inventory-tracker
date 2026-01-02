@@ -4,6 +4,7 @@ const { Schema } = mongoose;
 const SupplierOrders = new Schema({
     businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner' },
     supplier: { type: mongoose.Schema.Types.ObjectId, ref: 'Supplier' },
+    warehouse: { type: mongoose.Schema.Types.ObjectId, ref: 'Warehouse', default: null },
     pName: { type: String, required: true },
     category: { type: String, required: true },
     amount: { type: Number, required: true },

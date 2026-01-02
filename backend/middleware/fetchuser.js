@@ -20,13 +20,15 @@ const fetchUser = async (req, res, next) => {
             }
             req.user = owner;
             req.role = 'businessowner';
-        } else if (data.role === 'employee') {
+        } else if (data.role === 'employee' || data.role === 'supervisor' || data.role === 'manager') {
             const employee = await Employee.findById(data.id);
             if (!employee) {
                 return res.status(401).send({ error: "Employee not found" });
             }
             req.user = employee;
-            req.role = 'employee';
+            req.employee = employee; // For backward compatibility
+            // Use the employee's role field to determine actual role
+            req.role = employee.role || 'employee';
         } 
         else if(data.role === 'supplier') {
             const supplier = await Supplier.findById(data.id);
