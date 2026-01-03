@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
+import { apiCall, parseResponse } from '../../../utils/apiClient';
 import '../../../styles/dashboard-elegant.css';
 
 const Orders = (props) => {
@@ -25,15 +26,12 @@ const Orders = (props) => {
 
     const fetchWarehouses = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'auth-token': localStorage.getItem('token')
-                }
+            const response = await apiCall('http://localhost:5000/api/warehouse/getwarehouse', {
+                method: 'POST'
             });
+            if (response.isUnauthorized) return;
             if (response.ok) {
-                const warehouses = await response.json();
+                const warehouses = await parseResponse(response);
                 const map = {};
                 warehouses.forEach(warehouse => {
                     map[warehouse._id] = warehouse.wName;
@@ -75,16 +73,17 @@ const Orders = (props) => {
 
     const fetchOrders = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'auth-token': localStorage.getItem('token')
-                }
+            const response = await apiCall('http://localhost:5000/api/customerorders/getcustomerorder', {
+                method: 'POST'
             });
 
+            if (response.isUnauthorized) {
+                setLoading(false);
+                return;
+            }
+
             if (response.ok) {
-                const data = await response.json();
+                const data = await parseResponse(response);
                 setOrders(data);
                 setFilteredOrders(data);
             } else {
@@ -99,15 +98,12 @@ const Orders = (props) => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/category/getcategory', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'auth-token': localStorage.getItem('token')
-                }
+            const response = await apiCall('http://localhost:5000/api/category/getcategory', {
+                method: 'POST'
             });
+            if (response.isUnauthorized) return;
             if (response.ok) {
-                const categories = await response.json();
+                const categories = await parseResponse(response);
                 const map = {};
                 categories.forEach(cat => {
                     map[cat._id] = cat.cName;
@@ -121,13 +117,14 @@ const Orders = (props) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this order?')) {
             try {
-                const response = await fetch(`http://localhost:5000/api/customerorders/deletecustomerorder/${id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
-                    }
+                const response = await apiCall(`http://localhost:5000/api/customerorders/deletecustomerorder/${id}`, {
+                    method: 'DELETE'
                 });
+
+                if (response.isUnauthorized) {
+                    props.showAlert('Your session has expired. Please login again.', 'danger');
+                    return;
+                }
 
                 if (response.ok) {
                     props.showAlert('Order deleted successfully', 'success');
@@ -383,7 +380,7 @@ const Orders = (props) => {
                                                 {order.pAvail}
                                             </span>
                                         </td>
-                                        <td>
+                                        <td className='d-flex'>
                                             <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-info me-2" title="Edit">
                                                 <i className="bi bi-pencil"></i>
                                             </Link>

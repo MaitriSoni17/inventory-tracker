@@ -1,7 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { apiCall, parseResponse } from '../../../utils/apiClient';
 import '../../../styles/validation.css';
 
 const CreateEmployee = (props) => {
+    const navigate = useNavigate();
     const [showPassword, setShowPassword] = useState(false);
     const [showCPassword, setShowCPassword] = useState(false);
     const [errors, setErrors] = useState({});
@@ -44,18 +47,20 @@ const CreateEmployee = (props) => {
     useEffect(() => {
         const fetchWarehouses = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
-                    }
+                const response = await apiCall('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST'
                 });
+                
+                if (response.isUnauthorized) {
+                    setLoadingWarehouses(false);
+                    return;
+                }
+                
                 if (!response.ok) {
                     setLoadingWarehouses(false);
                     return;
                 }
-                const warehouseList = await response.json();
+                const warehouseList = await parseResponse(response);
                 setWarehouses(warehouseList);
             } catch (error) {
             } finally {
@@ -143,8 +148,37 @@ const CreateEmployee = (props) => {
         setTouched({ ...touched, [field]: true });
     };
 
-    const hasErrors = () => {
-        return Object.values(errors).some(error => error && error.trim() !== '');
+    const isFormValid = () => {
+        // Check if all required fields have values
+        const requiredFields = ['fname', 'email', 'phone', 'birthDate', 'gender', 'nationality', 'jDate', 'hireAt', 'role', 'password', 'cpassword'];
+        
+        for (let field of requiredFields) {
+            if (!empDetails[field] || !empDetails[field].toString().trim()) {
+                return false;
+            }
+        }
+
+        // Basic email validation
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(empDetails.email)) {
+            return false;
+        }
+
+        // Phone validation - at least 10 digits
+        if (!/^\d{10}$/.test(empDetails.phone.replace(/\D/g, ''))) {
+            return false;
+        }
+
+        // Password length
+        if (empDetails.password.length < 5) {
+            return false;
+        }
+
+        // Password match
+        if (empDetails.password !== empDetails.cpassword) {
+            return false;
+        }
+
+        return true;
     };
 
     const handleSubmit = async (e) => {
@@ -176,6 +210,7 @@ const CreateEmployee = (props) => {
         formData.append('about', about);
         formData.append('jDate', jDate);
         formData.append('hireAt', hireAt);
+        formData.append('warehouse', hireAt); // Backend expects 'warehouse' field
         formData.append('role', role);
         formData.append('email', email);
         formData.append('password', password);
@@ -186,19 +221,27 @@ const CreateEmployee = (props) => {
         }
 
         try {
-            const response = await fetch("http://localhost:5000/api/employee/createemployee", {
+            const response = await apiCall("http://localhost:5000/api/employee/createemployee", {
                 method: 'POST',
-                headers: {
-                    'auth-token': localStorage.getItem('token')
-                },
                 body: formData // Send the FormData object
             });
 
-            if (!response.ok) {
-                props.showAlert(`Employee creation failed (Status ${response.status}). Check server logs.`, "danger");
+            if (response.isUnauthorized) {
+                props.showAlert('Your session has expired. Please login again.', 'danger');
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
                 return;
             }
-            const json = await response.json();
+
+            if (!response.ok) {
+                const json = await parseResponse(response);
+                const errorMsg = json?.errors?.map(e => e.msg).join(', ') || json?.error || `Employee creation failed (Status ${response.status})`;
+                props.showAlert(errorMsg, "danger");
+                console.error('Server errors:', json);
+                return;
+            }
+            const json = await parseResponse(response);
 
             if (json.success) {
                 // Clear state on success, including image and imagePreview
@@ -227,6 +270,10 @@ const CreateEmployee = (props) => {
                 setErrors({});
                 setTouched({});
                 props.showAlert("Account Created Successfully", "success");
+                // Redirect to employee list after 1.5 seconds
+                setTimeout(() => {
+                    navigate('/dashboard/employee');
+                }, 1500);
             } else {
                 props.showAlert(json.message || "Invalid Credentials or server error.", "danger");
             }
@@ -795,20 +842,20 @@ const CreateEmployee = (props) => {
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid #e0e0e0' }}>
                             <button
                                 type="submit"
-                                disabled={hasErrors() || isSubmitting}
+                                disabled={!isFormValid() || isSubmitting}
                                 style={{
-                                    background: hasErrors() || isSubmitting ? '#ccc' : '#af50ff',
+                                    background: !isFormValid() || isSubmitting ? '#ccc' : '#af50ff',
                                     color: 'white',
                                     padding: '0.75rem 2rem',
                                     border: 'none',
                                     borderRadius: '8px',
                                     fontSize: '1rem',
                                     fontWeight: '600',
-                                    cursor: hasErrors() || isSubmitting ? 'not-allowed' : 'pointer',
+                                    cursor: !isFormValid() || isSubmitting ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.3s ease'
                                 }}
-                                onMouseEnter={(e) => !hasErrors() && !isSubmitting && (e.target.style.background = '#9939d9')}
-                                onMouseLeave={(e) => !hasErrors() && !isSubmitting && (e.target.style.background = '#af50ff')}
+                                onMouseEnter={(e) => isFormValid() && !isSubmitting && (e.target.style.background = '#9939d9')}
+                                onMouseLeave={(e) => isFormValid() && !isSubmitting && (e.target.style.background = '#af50ff')}
                             >
                                 {isSubmitting ? 'Creating...' : 'Add Employee'}
                             </button>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import '../../../styles/dashboard-elegant.css';
+import { CanCreateCategories, CanDeleteCategories } from '../../auth/RoleGuards';
 
 const Category = (props) => {
   const [categoryDetails, setcategoryDetails] = useState({ cName: "", cDesc: "" });
@@ -154,9 +155,11 @@ const Category = (props) => {
           <div className="header-left">
             <h1 className="categories-title mb-3">Categories</h1>
           </div>
-          <button className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
-            <i className="bi bi-plus"></i> Add Category
-          </button>
+          <CanCreateCategories>
+            <button className="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+              <i className="bi bi-plus"></i> Add Category
+            </button>
+          </CanCreateCategories>
         </div>
 
         <div className="modal fade h-auto" id="addCategoryModal" tabIndex="-1" aria-labelledby="exampleModalLabel"
@@ -217,7 +220,9 @@ const Category = (props) => {
                       <div className='d-flex g-2'>
                         <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShowCategory(category); openEditModal(); }}>
                           <i className="bi bi-pencil-square text-secondary fs-4 me-3"></i></a>
-                        <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShowCategory(category); handleDeleteCategory(); }}><i className="bi bi-trash-fill text-danger fs-4 m-1"></i></a>
+                        <CanDeleteCategories>
+                          <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShowCategory(category); handleDeleteCategory(); }}><i className="bi bi-trash-fill text-danger fs-4 m-1"></i></a>
+                        </CanDeleteCategories>
                       </div>
                     </div>
                   </div>
@@ -246,7 +251,9 @@ const Category = (props) => {
               <div className="modal-footer justify-content-start p-3">
                 <button type="button" className="btn btn-primary" onClick={openEditModal}>Edit Category</button>
                 <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" className="btn btn-danger" onClick={handleDeleteCategory} data-bs-dismiss="modal">Delete</button>
+                <CanDeleteCategories>
+                  <button type="button" className="btn btn-danger" onClick={handleDeleteCategory} data-bs-dismiss="modal">Delete</button>
+                </CanDeleteCategories>
               </div>
             </div>
           </div>
@@ -276,7 +283,9 @@ const Category = (props) => {
               <div className="modal-footer justify-content-start p-3">
                 <button type="button" className="btn btn-primary" onClick={handleEditCategory} data-bs-dismiss="modal">Save Changes</button>
                 <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" className="btn btn-danger" onClick={handleDeleteCategory} data-bs-dismiss="modal">Delete</button>
+                <CanDeleteCategories>
+                  <button type="button" className="btn btn-danger" onClick={handleDeleteCategory} data-bs-dismiss="modal">Delete</button>
+                </CanDeleteCategories>
               </div>
             </div>
           </div>

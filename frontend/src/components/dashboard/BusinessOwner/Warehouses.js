@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
 
 const Warehouses = (props) => {
-    const navigate = useNavigate();
     const [warehouses, setWarehouses] = useState([]);
     const [filteredWarehouses, setFilteredWarehouses] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +17,6 @@ const Warehouses = (props) => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [managers, setManagers] = useState([]);
-    const [loadingManagers, setLoadingManagers] = useState(false);
     const [warehouseForm, setWarehouseForm] = useState({
         wName: '',
         wManager: '',
@@ -46,7 +43,6 @@ const Warehouses = (props) => {
 
     const fetchManagers = async () => {
         try {
-            setLoadingManagers(true);
             const response = await fetch('http://localhost:5000/api/warehouse/getmanagers', {
                 method: 'POST',
                 headers: {
@@ -63,8 +59,6 @@ const Warehouses = (props) => {
             }
         } catch (error) {
             props.showAlert('Error fetching managers', 'danger');
-        } finally {
-            setLoadingManagers(false);
         }
     };
 
@@ -151,7 +145,8 @@ const Warehouses = (props) => {
     const handleAddWarehouse = async (e) => {
         e.preventDefault();
 
-        if (!warehouseForm.wName || !warehouseForm.wManager || !warehouseForm.wAddress || 
+        // NOTE: wManager is now optional - can be assigned later via assignwarehouse endpoint
+        if (!warehouseForm.wName || !warehouseForm.wAddress || 
             !warehouseForm.wContact || !warehouseForm.wEmail) {
             props.showAlert('Please fill in all required fields', 'danger');
             return;
@@ -160,7 +155,7 @@ const Warehouses = (props) => {
         try {
             const submitData = {
                 wName: warehouseForm.wName,
-                wManager: warehouseForm.wManager,
+                wManager: warehouseForm.wManager || '', // Allow empty string now
                 wAddress: warehouseForm.wAddress,
                 wContact: warehouseForm.wContact,
                 wEmail: warehouseForm.wEmail,
@@ -195,7 +190,8 @@ const Warehouses = (props) => {
     const handleEditWarehouse = async (e) => {
         e.preventDefault();
 
-        if (!warehouseForm.wName || !warehouseForm.wManager || !warehouseForm.wAddress || 
+        // NOTE: wManager is now optional - can be assigned later
+        if (!warehouseForm.wName || !warehouseForm.wAddress || 
             !warehouseForm.wContact || !warehouseForm.wEmail) {
             props.showAlert('Please fill in all required fields', 'danger');
             return;
@@ -204,7 +200,7 @@ const Warehouses = (props) => {
         try {
             const submitData = {
                 wName: warehouseForm.wName,
-                wManager: warehouseForm.wManager,
+                wManager: warehouseForm.wManager || '', // Allow empty string now
                 wAddress: warehouseForm.wAddress,
                 wContact: warehouseForm.wContact,
                 wEmail: warehouseForm.wEmail,
@@ -423,26 +419,19 @@ const Warehouses = (props) => {
                                                     value={warehouseForm.wName} onChange={handleInputChange} required />
                                             </div>
                                             <div className="col-12">
-                                                <label htmlFor="wManagerId" className="form-label fw-semibold mb-2">Warehouse Manager *</label>
-                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                                                    <select className="form-select" id="wManagerId" name="wManagerId"
-                                                        value={warehouseForm.wManagerId} onChange={handleInputChange} required disabled={loadingManagers}
-                                                        style={{ minHeight: '44px', fontSize: '1rem', flex: 1 }}>
-                                                        <option value="">-- Select Manager --</option>
-                                                        {managers.map(manager => (
-                                                            <option key={manager._id} value={manager._id}>
-                                                                {manager.fname} {manager.lname}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <button className="btn btn-sm w-auto" type="button" onClick={() => {
-                                                        setShowAddModal(false);
-                                                        resetForm();
-                                                        navigate('/dashboard/createemployee');
-                                                    }} title="Add new manager" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: 'none', cursor: 'pointer' }}>
-                                                        +
-                                                    </button>
-                                                </div>
+                                                <label htmlFor="wManager" className="form-label fw-semibold mb-2">Warehouse Manager (Optional)</label>
+                                                <select className="form-control rounded-3 shadow-sm" id="wManagerId" name="wManagerId" 
+                                                    value={warehouseForm.wManagerId} onChange={handleInputChange}>
+                                                    <option value="">-- Select Manager --</option>
+                                                    {managers.map(manager => (
+                                                        <option key={manager._id} value={manager._id}>
+                                                            {manager.fname} {manager.lname}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <small className="text-muted d-block mt-1">
+                                                    💡 Select a manager from the list or leave empty to assign later
+                                                </small>
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
@@ -504,26 +493,19 @@ const Warehouses = (props) => {
                                                     value={warehouseForm.wName} onChange={handleInputChange} required />
                                             </div>
                                             <div className="col-12">
-                                                <label htmlFor="wManagerId" className="form-label fw-semibold mb-2">Warehouse Manager *</label>
-                                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                                                    <select className="form-select" id="wManagerId" name="wManagerId"
-                                                        value={warehouseForm.wManagerId} onChange={handleInputChange} required disabled={loadingManagers}
-                                                        style={{ minHeight: '44px', fontSize: '1rem', flex: 1 }}>
-                                                        <option value="">-- Select Manager --</option>
-                                                        {managers.map(manager => (
-                                                            <option key={manager._id} value={manager._id}>
-                                                                {manager.fname} {manager.lname}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                    <button className="btn btn-sm w-auto" type="button" onClick={() => {
-                                                        setShowEditModal(false);
-                                                        resetForm();
-                                                        navigate('/dashboard/createemployee');
-                                                    }} title="Add new manager" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: 'none', cursor: 'pointer' }}>
-                                                        +
-                                                    </button>
-                                                </div>
+                                                <label htmlFor="wManager" className="form-label fw-semibold mb-2">Warehouse Manager (Optional)</label>
+                                                <select className="form-control rounded-3 shadow-sm" id="wManagerId" name="wManagerId" 
+                                                    value={warehouseForm.wManagerId} onChange={handleInputChange}>
+                                                    <option value="">-- Select Manager --</option>
+                                                    {managers.map(manager => (
+                                                        <option key={manager._id} value={manager._id}>
+                                                            {manager.fname} {manager.lname}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <small className="text-muted d-block mt-1">
+                                                    💡 Select a manager from the list or leave empty to assign later
+                                                </small>
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>

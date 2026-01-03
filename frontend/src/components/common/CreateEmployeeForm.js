@@ -21,8 +21,10 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
         role: 'employee',
         department: '',
         reportingTo: '',
+        warehouse: '',
         image: null
     });
+    const [warehouses, setWarehouses] = useState([]);
 
     const [errors, setErrors] = useState({});
 
@@ -34,6 +36,25 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
             showAlert('Only business owners can create employees', 'danger');
             navigate('/dashboard');
         }
+        // Fetch warehouses
+        const fetchWarehouses = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setWarehouses(data);
+                }
+            } catch (error) {
+                console.error('Error fetching warehouses:', error);
+            }
+        };
+        fetchWarehouses();
     }, [isBusinessOwner, navigate, showAlert]);
 
     const handleChange = (e) => {
@@ -68,6 +89,8 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
         else if (formData.password.length < 5) newErrors.password = 'Password must be at least 5 characters';
         if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
         if (!formData.hireAt) newErrors.hireAt = 'Hire date is required';
+        // Warehouse is required - must select warehouse location when hiring
+        if (!formData.warehouse) newErrors.warehouse = 'Warehouse/Hire Location is required';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -98,6 +121,9 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
             data.append('role', formData.role);
             data.append('department', formData.department);
             data.append('reportingTo', formData.reportingTo);
+            if (formData.warehouse) {
+                data.append('warehouse', formData.warehouse);
+            }
             if (formData.image) {
                 data.append('image', formData.image);
             }
@@ -253,6 +279,30 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
                                                 </option>
                                             ))}
                                         </select>
+                                    </div>
+                                </div>
+
+                                {/* Warehouse Assignment - Required for All Employees */}
+                                <div className="row mb-3">
+                                    <div className="col-md-6">
+                                        <label className="form-label">Hire Location (Warehouse) *</label>
+                                        <select
+                                            className={`form-control ${errors.warehouse ? 'is-invalid' : ''}`}
+                                            name="warehouse"
+                                            value={formData.warehouse}
+                                            onChange={handleChange}
+                                        >
+                                            <option value="">Select Warehouse/Location</option>
+                                            {warehouses.map(warehouse => (
+                                                <option key={warehouse._id} value={warehouse._id}>
+                                                    {warehouse.wName} ({warehouse.wAddress})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {errors.warehouse && <div className="invalid-feedback">{errors.warehouse}</div>}
+                                        <small className="text-muted d-block mt-1">
+                                            Select the warehouse location where this employee will be hired
+                                        </small>
                                     </div>
                                 </div>
 

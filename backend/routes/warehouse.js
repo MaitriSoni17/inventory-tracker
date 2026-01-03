@@ -6,9 +6,11 @@ const router = express.Router();
 const { hasPermission } = require('../middleware/roleBasedAccess');
 
 // Create Warehouse — only BusinessOwner and Manager
+// NOTE: wManager is a string (manager name) and not a required reference to Employee
+// This solves the circular dependency: you can create warehouse without needing pre-existing employee
 router.post('/createwarehouse', fetchuser, [
     body('wName', 'Enter Warehouse Name').exists(),
-    body('wManager', 'Enter Warehouse Manager Name').exists(),
+    body('wManager', 'Warehouse Manager Name').optional(),
     body('wAddress', 'Enter Warehouse Address').exists(),
     body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
@@ -21,16 +23,30 @@ router.post('/createwarehouse', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { wName, wManager, wAddress, wContact, wEmail, city, state, country } = req.body;
+    const { wName, wManager, wAddress, wContact, wEmail, city, state, country, managerId, wManagerId } = req.body;
 
     try {
-        let warehouseData = { wName, wManager, wAddress, wContact, wEmail, city, state, country };
+        let warehouseData = { wName, wAddress, wContact, wEmail, city, state, country };
 
         if (req.role === 'businessowner') {
             warehouseData.businessowner = req.user._id;
         } else if (req.role === 'manager') {
             warehouseData.businessowner = req.user.businessowner;
             warehouseData.employee = req.user._id;
+        }
+
+        // Handle manager selection from dropdown (wManagerId) or managerId parameter
+        const managerId_final = wManagerId || managerId;
+        if (managerId_final) {
+            const Employee = require('../models/Employee');
+            const manager = await Employee.findById(managerId_final);
+            if (manager && manager.role === 'manager') {
+                warehouseData.employee = managerId_final;
+                warehouseData.wManager = `${manager.fname} ${manager.lname}`;
+            }
+        } else if (wManager) {
+            // If only wManager name is provided (text input fallback)
+            warehouseData.wManager = wManager;
         }
 
         const warehouse = await Warehouse.create(warehouseData);
@@ -65,7 +81,7 @@ router.post('/getwarehouse', fetchuser, async (req, res) => {
 // Update Warehouse — only BusinessOwner and Manager
 router.put('/updatewarehouse/:id', fetchuser, [
     body('wName', 'Enter Warehouse Name').exists(),
-    body('wManager', 'Enter Warehouse Manager Name').exists(),
+    body('wManager', 'Warehouse Manager Name').optional(),
     body('wAddress', 'Enter Warehouse Address').exists(),
     body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
@@ -78,13 +94,31 @@ router.put('/updatewarehouse/:id', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { wName, wManager, wAddress, wContact, wEmail, city, state, country } = req.body;
+    const { wName, wManager, wAddress, wContact, wEmail, city, state, country, wManagerId } = req.body;
 
     try {
-        const newWarehouse = { wName, wManager, wAddress, wContact, wEmail, city, state, country };
+        const newWarehouse = { wName, wAddress, wContact, wEmail, city, state, country };
 
         let warehouse = await Warehouse.findById(req.params.id);
         if (!warehouse) return res.status(404).send("Not Found");
+
+        // Handle manager selection from dropdown (wManagerId) or wManager text
+        if (wManagerId) {
+            const Employee = require('../models/Employee');
+            const manager = await Employee.findById(wManagerId);
+            if (manager && manager.role === 'manager') {
+                newWarehouse.employee = wManagerId;
+                newWarehouse.wManager = `${manager.fname} ${manager.lname}`;
+            }
+        } else if (wManager) {
+            // If only wManager name is provided (text input fallback)
+            newWarehouse.wManager = wManager;
+            newWarehouse.employee = undefined;
+        } else {
+            // If nothing provided, keep as is or clear
+            newWarehouse.wManager = undefined;
+            newWarehouse.employee = undefined;
+        }
 
         // Verify ownership
         if (req.role === 'businessowner') {

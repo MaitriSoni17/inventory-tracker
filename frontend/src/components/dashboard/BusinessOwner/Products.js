@@ -4,6 +4,7 @@ import '../../../styles/dashboard-elegant.css';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { CanCreateProducts, CanDeleteProducts } from '../../auth/RoleGuards';
 
 const Products = (props) => {
 
@@ -269,9 +270,11 @@ const Products = (props) => {
                             <i className="bi bi-file-earmark-excel-fill"></i>
                         </button>
 
-                        <a className="btn btn-custom-purple shadow-sm text-decoration-none" href="/dashboard/addproduct">
-                            <i className="bi bi-plus-lg me-1"></i> Add Product
-                        </a>
+                        <CanCreateProducts>
+                            <a className="btn btn-custom-purple shadow-sm text-decoration-none" href="/dashboard/addproduct">
+                                <i className="bi bi-plus-lg me-1"></i> Add Product
+                            </a>
+                        </CanCreateProducts>
                     </div>
                 </div>
 
@@ -363,6 +366,7 @@ const Products = (props) => {
                                             <th scope="col" className="py-2">Status</th>
                                             <th scope="col" className="py-2">Stock Info</th>
                                             <th scope="col" className="py-2">Category</th>
+                                            <th scope="col" className="py-2">Warehouse</th>
                                             <th scope="col" className="py-2">Price</th>
                                             <th scope="col" className="py-2"></th>
                                         </tr>
@@ -387,6 +391,12 @@ const Products = (props) => {
                                                     <td><span className="badge custom-badge-purple rounded-pill px-3 py-2">Active</span></td>
                                                     <td>{product.totalProducts} In Stock</td>
                                                     <td>{categoryMap[product.category] || product.category}</td>
+                                                    <td>
+                                                        {Array.isArray(product.warehouse) 
+                                                            ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ')
+                                                            : warehouseMap[product.warehouse] || product.warehouse || 'Unassigned'
+                                                        }
+                                                    </td>
                                                     <td>₹{product.price}</td>
                                                     <td>
                                                         {/* <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-3"><i
@@ -395,9 +405,11 @@ const Products = (props) => {
                                                         <Link to={`/dashboard/editproduct/${product._id}`} className="btn btn-info me-2" title="Edit">
                                                             <i className="bi bi-pencil"></i>
                                                         </Link>
-                                                        <button className="btn btn-danger" onClick={() => handleDelete(product._id)} title="Delete">
-                                                            <i className="bi bi-trash"></i>
-                                                        </button>
+                                                        <CanDeleteProducts>
+                                                            <button className="btn btn-danger" onClick={() => handleDelete(product._id)} title="Delete">
+                                                                <i className="bi bi-trash"></i>
+                                                            </button>
+                                                        </CanDeleteProducts>
                                                     </td>
                                                 </tr>
                                             );

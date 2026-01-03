@@ -9,6 +9,7 @@ import About from './components/landing/About';
 import Contact from './components/landing/Contact';
 import Login from './components/auth/Login';
 import SignUp from './components/auth/SignUp';
+import ProtectedRoute from './components/auth/ProtectedRoute';
 import SideBar from './components/common/SideBar';
 import BusinessOwner from './components/dashboard/BusinessOwner';
 import Employee from './components/dashboard/Employee';
@@ -62,7 +63,11 @@ function App() {
             <Route path="/login" element={<Login showAlert={showAlert} />} />
             <Route path="/signup" element={<SignUp showAlert={showAlert} />} />
 
-            <Route path="/dashboard" element={<SideBar showAlert={showAlert} />}>
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <SideBar showAlert={showAlert} />
+              </ProtectedRoute>
+            }>
               {/* Default dashboard view based on role */}
               <Route index element={
                 localStorage.getItem('role') === 'businessowner' ? <BusinessOwner showAlert={showAlert} /> :

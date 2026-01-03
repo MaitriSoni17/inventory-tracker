@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { apiCall, parseResponse } from '../utils/apiClient';
 
 const RoleContext = createContext();
 
@@ -23,11 +24,6 @@ export const RoleProvider = ({ children }) => {
                 return;
             }
 
-            const headers = {
-                'Content-Type': 'application/json',
-                'auth-token': token
-            };
-
             // Determine which endpoint to call based on stored role
             let endpoint = '';
             if (storedRole === 'businessowner') {
@@ -39,13 +35,19 @@ export const RoleProvider = ({ children }) => {
                 endpoint = 'http://localhost:5000/api/employee/getemployee';
             }
 
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers
+            const response = await apiCall(endpoint, {
+                method: 'POST'
             });
 
+            // Check if response is unauthorized (401)
+            if (response.isUnauthorized) {
+                setRole(null);
+                setLoading(false);
+                return;
+            }
+
             if (response.ok) {
-                const data = await response.json();
+                const data = await parseResponse(response);
                 setRole(data.role || storedRole || 'employee');
                 setUserDetails(data);
                 setPermissions(data.permissions || {});

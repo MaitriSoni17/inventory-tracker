@@ -59,7 +59,6 @@ const Settings = (props) => {
     try {
       setLoading(true);
       const headers = {
-        'Content-Type': 'application/json',
         'auth-token': localStorage.getItem('token')
       };
 

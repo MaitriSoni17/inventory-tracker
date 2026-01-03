@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRole } from '../../context/RoleContext';
 import {
     Chart as ChartJS,
     LineElement,
@@ -29,6 +30,7 @@ ChartJS.register(
 );
 function Employee(props) {
     const navigate = useNavigate();
+    const { userDetails } = useRole();
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
@@ -41,6 +43,7 @@ function Employee(props) {
     const [ordersView, setOrdersView] = useState('monthly');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [showProductModal, setShowProductModal] = useState(false);
+    const [employeeWarehouse, setEmployeeWarehouse] = useState(null);
     const [stats, setStats] = useState({
         totalProducts: 0,
         totalOrders: 0,
@@ -50,8 +53,16 @@ function Employee(props) {
 
     // Fetch all data on mount
     useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+        // Extract warehouse from user details
+        if (userDetails && userDetails.warehouse) {
+            // warehouse can be an object {_id, wName, wAddress} or string
+            const warehouseName = typeof userDetails.warehouse === 'string' 
+                ? userDetails.warehouse 
+                : userDetails.warehouse.wName || userDetails.warehouse.name;
+            setEmployeeWarehouse(warehouseName);
+        }
         fetchAllData();
-    }, []);
+    }, [userDetails]);
 
     const fetchAllData = async () => {
         try {
@@ -346,6 +357,37 @@ function Employee(props) {
 
     return (
         <div className="container-fluid px-5 mt-4 mb-5">
+            {/* Warehouse Info Header */}
+            {employeeWarehouse && (
+                <div style={{ 
+                    backgroundColor: '#e7f3ff', 
+                    padding: '16px 20px', 
+                    borderRadius: '8px', 
+                    border: '2px solid #0056b3',
+                    marginBottom: '20px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <div>
+                        <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>Assigned Warehouse</p>
+                        <h3 style={{ margin: 0, color: '#0056b3', fontSize: '20px' }}>{employeeWarehouse}</h3>
+                    </div>
+                    <div style={{ fontSize: '32px' }}>📦</div>
+                </div>
+            )}
+            {!employeeWarehouse && (
+                <div style={{ 
+                    backgroundColor: '#fff3cd', 
+                    padding: '16px 20px', 
+                    borderRadius: '8px', 
+                    border: '2px solid #856404',
+                    marginBottom: '20px'
+                }}>
+                    <p style={{ margin: 0, color: '#856404', fontWeight: 'bold' }}>⚠️ No Warehouse Assigned - You do not have access to warehouse data</p>
+                </div>
+            )}
+
             {loading && (
                 <div className="text-center p-5">
                     <div className="spinner-border" role="status">

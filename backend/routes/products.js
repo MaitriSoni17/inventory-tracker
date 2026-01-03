@@ -1,6 +1,7 @@
 const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
 const Product = require('../models/Products');
+const Employee = require('../models/Employee');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
 const path = require('path');

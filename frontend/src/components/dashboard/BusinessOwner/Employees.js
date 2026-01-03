@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
+import { CanManageEmployees, CanEditEmployees } from '../../../components/auth/RoleGuards';
 const Employees = (props) => {
     const [employees, setEmployees] = useState([]);
     const [filteredEmployees, setFilteredEmployees] = useState([]);
@@ -137,7 +138,7 @@ const Employees = (props) => {
         if (diffMins < 60) return `${diffMins} min ago`;
         if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
         if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-        
+
         return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
@@ -291,9 +292,11 @@ const Employees = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link className="btn btn-custom-purple shadow-sm mb-2 text-decoration-none" to="/dashboard/createemployee">
-                            <i className="bi bi-plus-lg me-1"></i> Add Employee
-                        </Link>
+                        <CanManageEmployees>
+                            <Link className="btn btn-custom-purple shadow-sm mb-2 text-decoration-none" to="/dashboard/createemployee">
+                                <i className="bi bi-plus-lg me-1"></i> Add Employee
+                            </Link>
+                        </CanManageEmployees>
                     </div>
                 </div>
 
@@ -343,11 +346,12 @@ const Employees = (props) => {
                                     <th scope="col" className="py-2">Email</th>
                                     <th scope="col" className="py-2">Phone</th>
                                     <th scope="col" className="py-2">Role</th>
+                                    <th scope="col" className="py-2">Warehouse</th>
                                     <th scope="col" className="py-2">Hire Location</th>
                                     <th scope="col" className="py-2">Joining Date</th>
                                     <th scope="col" className="py-2">Last Login</th>
                                     <th scope="col" className="py-2">Location</th>
-                                    <th scope="col" className="py-2">Actions</th>
+                                    <CanEditEmployees><th scope="col" className="py-2">Actions</th></CanEditEmployees>
                                 </tr>
                             </thead>
                             <tbody>
@@ -367,6 +371,18 @@ const Employees = (props) => {
                                         <td>{emp.email}</td>
                                         <td>{emp.phone || 'N/A'}</td>
                                         <td><span className="badge bg-info rounded-pill px-3 py-2">{emp.role}</span></td>
+                                        <td>
+                                            {emp.warehouse ? (
+                                                <span className="badge bg-success rounded-pill px-3 py-2">
+                                                    {typeof emp.warehouse === 'string'
+                                                        ? warehouseMap[emp.warehouse] || emp.warehouse
+                                                        : emp.warehouse.wName || 'N/A'
+                                                    }
+                                                </span>
+                                            ) : (
+                                                <span className="badge bg-warning rounded-pill px-3 py-2">Unassigned</span>
+                                            )}
+                                        </td>
                                         <td>{warehouseMap[emp.hireAt] || emp.hireAt || 'N/A'}</td>
                                         <td>{formatDate(emp.jDate)}</td>
                                         <td>
@@ -375,14 +391,16 @@ const Employees = (props) => {
                                             </small>
                                         </td>
                                         <td>{emp.city || ''}{emp.city && emp.country ? ', ' : ''}{emp.country || ''}</td>
-                                        <td className='d-flex'>
-                                            <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">
-                                                <i className="bi bi-pencil"></i>
-                                            </Link>
-                                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(emp._id)} title="Delete">
-                                                <i className="bi bi-trash"></i>
-                                            </button>
-                                        </td>
+                                        <CanEditEmployees>
+                                            <td className='d-flex'>
+                                                <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">
+                                                    <i className="bi bi-pencil"></i>
+                                                </Link>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(emp._id)} title="Delete">
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </CanEditEmployees>
                                     </tr>
                                 ))}
                             </tbody>

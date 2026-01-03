@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRole } from '../../context/RoleContext';
 import {
     Chart as ChartJS,
     LineElement,
@@ -30,6 +31,7 @@ ChartJS.register(
 
 function Supervisor(props) {
     const navigate = useNavigate();
+    const { userDetails } = useRole();
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
@@ -39,6 +41,7 @@ function Supervisor(props) {
     const [products, setProducts] = useState([]);
     const [subordinates, setSubordinates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [supervisorWarehouse, setSupervisorWarehouse] = useState(null);
     const [stats, setStats] = useState({
         teamSize: 0,
         ordersPlaced: 0,
@@ -48,8 +51,16 @@ function Supervisor(props) {
 
     // Fetch all data on mount
     useEffect(() => {
+        // Extract warehouse from user details
+        if (userDetails && userDetails.warehouse) {
+            // warehouse can be an object {_id, wName, wAddress} or string
+            const warehouseName = typeof userDetails.warehouse === 'string' 
+                ? userDetails.warehouse 
+                : userDetails.warehouse.wName || userDetails.warehouse.name;
+            setSupervisorWarehouse(warehouseName);
+        }
         fetchAllData();
-    }, []);
+    }, [userDetails]);
 
     const fetchAllData = async () => {
         try {
@@ -118,8 +129,35 @@ function Supervisor(props) {
     return (
         <div className="dashboard-container">
             <div className="dashboard-header">
-                <h1>Supervisor Dashboard</h1>
-                <p>Manage your team and operations</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div>
+                        <h1>Supervisor Dashboard</h1>
+                        <p>Manage your team and operations</p>
+                    </div>
+                    {supervisorWarehouse && (
+                        <div style={{ 
+                            backgroundColor: '#e7f3ff', 
+                            padding: '12px 20px', 
+                            borderRadius: '8px', 
+                            border: '2px solid #0056b3',
+                            textAlign: 'right'
+                        }}>
+                            <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#666' }}>Assigned Warehouse</p>
+                            <h3 style={{ margin: 0, color: '#0056b3', fontSize: '18px' }}>{supervisorWarehouse}</h3>
+                        </div>
+                    )}
+                    {!supervisorWarehouse && (
+                        <div style={{ 
+                            backgroundColor: '#fff3cd', 
+                            padding: '12px 20px', 
+                            borderRadius: '8px', 
+                            border: '2px solid #856404',
+                            textAlign: 'right'
+                        }}>
+                            <p style={{ margin: 0, color: '#856404', fontWeight: 'bold' }}>⚠️ No Warehouse Assigned</p>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Key Statistics */}

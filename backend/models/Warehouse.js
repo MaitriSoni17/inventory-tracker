@@ -5,7 +5,7 @@ const Warehouse = new Schema({
     businessowner: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner', required: true },
     employee: { type: mongoose.Schema.Types.ObjectId, ref: 'Employee' },
     wName: { type: String, required: true },
-    wManager: { type: String, required: true },
+    wManager: { type: String },
     wAddress: { type: String, required: true },
     wContact: { type: Number, required: true },
     wEmail: { type: String, required: true, unique: true },

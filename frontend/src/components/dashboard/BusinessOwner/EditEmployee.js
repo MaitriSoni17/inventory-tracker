@@ -20,6 +20,7 @@ const EditEmployee = (props) => {
         state: '',
         city: '',
         hireAt: '',
+        warehouse: '',
         phone: '',
         address: '',
         about: '',
@@ -96,6 +97,7 @@ const EditEmployee = (props) => {
                         state: employee.state || '',
                         city: employee.city || '',
                         hireAt: employee.hireAt || '',
+                        warehouse: employee.warehouse || '',
                         phone: employee.phone || '',
                         address: employee.address || '',
                         about: employee.about || '',
@@ -266,6 +268,7 @@ const EditEmployee = (props) => {
                 multipartFormData.append('state', formData.state);
                 multipartFormData.append('city', formData.city);
                 multipartFormData.append('hireAt', formData.hireAt);
+                multipartFormData.append('warehouse', formData.warehouse);
                 multipartFormData.append('phone', formData.phone);
                 multipartFormData.append('address', formData.address);
                 multipartFormData.append('about', formData.about);
@@ -421,10 +424,10 @@ const EditEmployee = (props) => {
                                     </select>
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="hireAt" className="form-label fw-semibold mb-2">Hire At (Warehouse)</label>
+                                    <label htmlFor="warehouse" className="form-label fw-semibold mb-2">Warehouse/Hire Location *</label>
                                     <div className="d-flex gap-2 align-items-end">
                                         <div style={{ flex: 1 }}>
-                                            <select className="form-select rounded-3 shadow-sm" id="hireAt" value={formData.hireAt} onChange={handleChange}>
+                                            <select className="form-select rounded-3 shadow-sm" id="warehouse" value={formData.warehouse} onChange={handleChange}>
                                                 <option value="">Select Warehouse</option>
                                                 {warehouses.map((warehouse) => (
                                                     <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>

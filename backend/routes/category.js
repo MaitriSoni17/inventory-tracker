@@ -58,22 +58,40 @@ router.post('/createcategory', fetchuser, [
     }
 });
 
-// Get Category — accessible by all authenticated users
+// Get Category — accessible by all authenticated users with warehouse filtering
 router.post('/getcategory', fetchuser, async (req, res) => {
     try {
         let category = [];
 
         if (req.role === 'businessowner') {
             category = await Category.find({ businessowner: req.user._id });
-        } else if (['employee', 'supervisor', 'manager'].includes(req.role)) {
+        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+            // For warehouse staff: get categories for their business and their warehouse
+            const Employee = require('../models/Employee');
+            const employee = await Employee.findById(req.user._id).populate('warehouse');
+            
             const businessownerID = req.user.businessowner;
             const employeeID = req.user._id;
-            category = await Category.find({
-                $or: [
-                    { businessowner: businessownerID },
-                    { employee: employeeID }
-                ]
-            });
+            let warehouseId = employee && employee.warehouse ? employee.warehouse._id : null;
+            
+            if (warehouseId) {
+                // Include business owner categories + employee's own categories + warehouse categories
+                category = await Category.find({
+                    $or: [
+                        { businessowner: businessownerID },
+                        { employee: employeeID },
+                        { warehouse: warehouseId }
+                    ]
+                });
+            } else {
+                // No warehouse assigned, show only business owner and employee's categories
+                category = await Category.find({
+                    $or: [
+                        { businessowner: businessownerID },
+                        { employee: employeeID }
+                    ]
+                });
+            }
         }
 
         res.json(category);

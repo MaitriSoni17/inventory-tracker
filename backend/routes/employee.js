@@ -51,22 +51,23 @@ const upload = multer({ storage: storage });
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
 // Create an Employee using: POST "/api/employee/createemployee". 
-// Only Business Owner can create employees
-router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
+// Business Owner and Manager can create employees
+router.post('/createemployee', fetchuser, upload.single('image'), [
     body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
     body('password', 'Password must be at least 5 characters').isLength({ min: 5 })
 ], async (req, res) => {
-    // Ensure only business owner can create employees
-    if (req.role && req.role !== 'businessowner') {
+    // Ensure only business owner and managers can create employees
+    if (req.role && !['businessowner', 'manager'].includes(req.role)) {
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
-        return res.status(403).json({ error: "Only Business Owner can create employees" });
+        return res.status(403).json({ error: "Only Business Owner and Manager can create employees" });
     }
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+        console.error('Validation errors:', errors.array());
         // You might want to delete the uploaded file if validation fails here
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
@@ -94,6 +95,23 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         const validRoles = ['employee', 'supervisor', 'manager'];
         const role = validRoles.includes(req.body.role) ? req.body.role : 'employee';
 
+        // Determine the businessowner based on the requester's role
+        let businessOwnerId;
+        if (req.role === 'businessowner') {
+            businessOwnerId = req.user._id;
+        } else if (req.role === 'manager') {
+            // Manager's businessowner is stored in their employee record
+            businessOwnerId = req.user.businessowner;
+        }
+
+        // Validate that businessOwnerId was set
+        if (!businessOwnerId) {
+            if (req.file) {
+                deleteUploadedFile(path.join(uploadsDir, req.file.filename));
+            }
+            return res.status(400).json({ error: "Unable to determine business owner for this operation" });
+        }
+
         // Validate reportingTo if provided - must be a manager or supervisor
         let reportingToEmployee = null;
         if (req.body.reportingTo) {
@@ -112,7 +130,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
                 return res.status(400).json({ error: "Employee can only report to a Manager or Supervisor" });
             }
             // Ensure the reporting manager belongs to same business owner
-            if (reportingToEmployee.businessowner.toString() !== req.businessowner._id.toString()) {
+            if (reportingToEmployee.businessowner.toString() !== businessOwnerId.toString()) {
                 if (req.file) {
                     deleteUploadedFile(path.join(uploadsDir, req.file.filename));
                 }
@@ -121,8 +139,16 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
         }
 
         // Build employee data with all new fields
+        // Warehouse is now REQUIRED - employee must be hired at a specific warehouse
+        if (!req.body.warehouse) {
+            if (req.file) {
+                deleteUploadedFile(path.join(uploadsDir, req.file.filename));
+            }
+            return res.status(400).json({ error: "Warehouse/Hire location is required" });
+        }
+
         const employeeData = {
-            businessowner: req.businessowner._id,
+            businessowner: businessOwnerId,
             fname: req.body.fname,
             lname: req.body.lname,
             email: req.body.email,
@@ -135,7 +161,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
             state: req.body.state,
             city: req.body.city,
             hireAt: req.body.hireAt,
-            warehouse: req.body.hireAt, // Map hireAt to warehouse field
+            warehouse: req.body.warehouse, // Required - must specify warehouse location
             phone: req.body.phone,
             address: req.body.address,
             image: imagePath,
@@ -199,6 +225,18 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
 
         employee = await Employee.create(employeeData);
 
+        // If warehouse is provided for manager, automatically update warehouse with employee reference
+        if (employeeData.warehouse && role === 'manager') {
+            const Warehouse = require('../models/Warehouse');
+            await Warehouse.findByIdAndUpdate(
+                employeeData.warehouse,
+                { 
+                    employee: employee._id,
+                    wManager: `${employeeData.fname} ${employeeData.lname}`
+                }
+            );
+        }
+
         // If reportingTo is set, update the supervisor's subordinates list
         if (employeeData.reportingTo) {
             await Employee.findByIdAndUpdate(
@@ -207,6 +245,7 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
             );
             
             // Notify the manager about new subordinate
+            const employeeName = `${req.body.fname} ${req.body.lname || ''}`.trim();
             await notifyManagerAboutNewSubordinate(
                 employeeData.reportingTo,
                 employeeName,
@@ -217,22 +256,32 @@ router.post('/createemployee', fetchbusinessowner, upload.single('image'), [
 
         // Send notification to business owner
         const employeeName = `${req.body.fname} ${req.body.lname || ''}`.trim();
-        await notifyBusinessOwnerAboutEmployee(
-            req.businessowner._id,
-            employee._id,
-            'created',
-            employeeName,
-            { employeeId: employee._id, email: employee.email, role }
-        );
+        try {
+            await notifyBusinessOwnerAboutEmployee(
+                businessOwnerId,
+                employee._id,
+                'created',
+                employeeName,
+                { employeeId: employee._id, email: employee.email, role }
+            );
+        } catch (notifError) {
+            console.error('Error notifying business owner:', notifError);
+            // Continue anyway - don't fail the employee creation
+        }
         
         // If manager role, notify all existing managers
         if (role === 'manager') {
-            await notifyAllManagers(
-                req.businessowner._id,
-                'created',
-                employeeName,
-                { employeeId: employee._id, email: employee.email, role: 'manager' }
-            );
+            try {
+                await notifyAllManagers(
+                    businessOwnerId,
+                    'created',
+                    employeeName,
+                    { employeeId: employee._id, email: employee.email, role: 'manager' }
+                );
+            } catch (notifError) {
+                console.error('Error notifying managers:', notifError);
+                // Continue anyway - don't fail the employee creation
+            }
         }
 
         const authToken = jwt.sign({ id: employee._id, role: employee.role }, JWT_SECRET);
@@ -288,7 +337,8 @@ router.post('/getemployee', fetchuser, async (req, res) => {
         const employee = await Employee.findById(req.user._id)
             .select("-password")
             .populate('reportingTo', 'fname lname email role')
-            .populate('subordinates', 'fname lname email role');
+            .populate('subordinates', 'fname lname email role')
+            .populate('warehouse', 'wName wAddress _id'); // Populate warehouse for dashboard display
 
         if (!employee) {
             return res.status(404).json({ error: "Employee not found" });
@@ -300,7 +350,7 @@ router.post('/getemployee', fetchuser, async (req, res) => {
     }
 });
 
-// Get All Employees using: POST "/api/employee/getallemployees". Role-based filtering
+// Get All Employees using: POST "/api/employee/getallemployees". Role-based filtering + warehouse filtering
 router.post('/getallemployees', fetchuser, async (req, res) => {
     try {
         // Business owner gets all employees in their business
@@ -308,32 +358,72 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             const employees = await Employee.find({ businessowner: req.user._id })
                 .populate('reportingTo', 'fname lname role email')
                 .populate('subordinates', 'fname lname role email')
+                .populate('warehouse', 'wName wAddress')
                 .select("-password");
             return res.json(employees);
         }
         
-        // Manager gets all employees in the business + their team members
+        // Manager gets all employees in their warehouse only
         if (req.role === 'manager') {
-            const employees = await Employee.find({ businessowner: req.user.businessowner })
+            const manager = await Employee.findById(req.user._id).populate('warehouse');
+            
+            if (!manager || !manager.warehouse) {
+                // No warehouse assigned, return empty array
+                return res.json([]);
+            }
+            
+            const warehouseId = manager.warehouse._id;
+            const employees = await Employee.find({
+                businessowner: req.user.businessowner,
+                warehouse: warehouseId
+            })
                 .populate('reportingTo', 'fname lname role email')
                 .populate('subordinates', 'fname lname role email')
+                .populate('warehouse', 'wName wAddress')
                 .select("-password");
             return res.json(employees);
         }
         
-        // Supervisor gets direct reports and their own profile
+        // Supervisor gets employees in their warehouse + their direct reports
         if (req.role === 'supervisor') {
+            const supervisor = await Employee.findById(req.user._id).populate('warehouse');
             const subordinates = await getSubordinates(req.user._id, false); // non-recursive - direct reports only
             const subordinateIds = subordinates.map(sub => sub._id);
             subordinateIds.push(req.user._id); // Include self
             
-            const employees = await Employee.find({ 
-                _id: { $in: subordinateIds },
-                businessowner: req.user.businessowner 
-            })
-                .populate('reportingTo', 'fname lname role email')
-                .populate('subordinates', 'fname lname role email')
-                .select("-password");
+            let warehouseId = supervisor.warehouse ? supervisor.warehouse._id : null;
+            
+            let employees;
+            if (warehouseId) {
+                // Get employees in same warehouse + direct reports (regardless of warehouse)
+                employees = await Employee.find({
+                    $or: [
+                        {
+                            _id: { $in: subordinateIds },
+                            businessowner: req.user.businessowner
+                        },
+                        {
+                            warehouse: warehouseId,
+                            businessowner: req.user.businessowner
+                        }
+                    ]
+                })
+                    .populate('reportingTo', 'fname lname role email')
+                    .populate('subordinates', 'fname lname role email')
+                    .populate('warehouse', 'wName wAddress')
+                    .select("-password");
+            } else {
+                // No warehouse assigned, show only direct reports
+                employees = await Employee.find({
+                    _id: { $in: subordinateIds },
+                    businessowner: req.user.businessowner
+                })
+                    .populate('reportingTo', 'fname lname role email')
+                    .populate('subordinates', 'fname lname role email')
+                    .populate('warehouse', 'wName wAddress')
+                    .select("-password");
+            }
+            
             return res.json(employees);
         }
         
@@ -341,6 +431,7 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
         if (req.role === 'employee') {
             const employee = await Employee.findById(req.user._id)
                 .populate('reportingTo', 'fname lname role email')
+                .populate('warehouse', 'wName wAddress')
                 .select("-password");
             return res.json([employee]);
         }
@@ -401,15 +492,15 @@ router.put('/updateemployee', fetchemployee, upload.single('image'), async (req,
 // Update Employee using: PUT "/api/employee/updateemployee/:id". Role-based access control
 router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req, res) => {
     try {
-        // Only businessowner, manager, and supervisor can update other employees
-        if (!['businessowner', 'manager', 'supervisor'].includes(req.role)) {
+        // Only businessowner and manager can update employees
+        if (!['businessowner', 'manager'].includes(req.role)) {
             if (req.file) {
                 deleteUploadedFile(path.join(uploadsDir, req.file.filename));
             }
             return res.status(403).json({ error: "You do not have permission to update employees" });
         }
 
-        const { fname, lname, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role } = req.body;
+        const { fname, lname, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role, warehouse } = req.body;
 
         const employee = await Employee.findById(req.params.id);
         if (!employee) {
@@ -427,8 +518,8 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req,
             return res.status(403).json({ error: "Access denied" });
         }
 
-        // Additional check for manager and supervisor - can only update direct reports
-        if (['manager', 'supervisor'].includes(req.role)) {
+        // Additional check for manager - can only update direct reports
+        if (req.role === 'manager') {
             // Check if the employee to update is a subordinate or themselves
             const isSubordinate = employee.reportingTo && employee.reportingTo.toString() === req.user._id.toString();
             const isSelf = employee._id.toString() === req.user._id.toString();
@@ -452,6 +543,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req,
         if (state) employee.state = state;
         if (city) employee.city = city;
         if (hireAt) employee.hireAt = hireAt;
+        if (warehouse) employee.warehouse = warehouse; // Update warehouse/hire location
         if (phone) employee.phone = phone;
         if (address) employee.address = address;
         if (about) employee.about = about;
@@ -535,8 +627,8 @@ router.put('/changepassword/:id', fetchbusinessowner, [
 
 // Delete Employee using: DELETE "/api/employee/deleteemployee/:id". Role-based access control
 router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
-    // Only businessowner, manager, and supervisor can delete employees
-    if (!['businessowner', 'manager', 'supervisor'].includes(req.role)) {
+    // Only businessowner and manager can delete employees
+    if (!['businessowner', 'manager'].includes(req.role)) {
         return res.status(403).json({ error: "You do not have permission to delete employees" });
     }
 
@@ -546,13 +638,21 @@ router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
             return res.status(404).json({ error: "Employee not found" });
         }
 
+        // Determine the requester's businessowner ID
+        let requesterBusinessOwnerId;
+        if (req.role === 'businessowner') {
+            requesterBusinessOwnerId = req.user._id;
+        } else {
+            requesterBusinessOwnerId = req.user.businessowner;
+        }
+
         // Check if employee belongs to this business owner
-        if (employee.businessowner.toString() !== req.user.businessowner.toString() && req.role !== 'businessowner') {
+        if (employee.businessowner.toString() !== requesterBusinessOwnerId.toString()) {
             return res.status(403).json({ error: "Access denied" });
         }
 
-        // Additional check for manager and supervisor - can only delete direct reports
-        if (['manager', 'supervisor'].includes(req.role)) {
+        // Additional check for manager - can only delete direct reports
+        if (req.role === 'manager') {
             // Check if the employee to delete is a subordinate
             const isSubordinate = employee.reportingTo && employee.reportingTo.toString() === req.user._id.toString();
             
@@ -578,17 +678,23 @@ router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
 
         await Employee.findByIdAndDelete(req.params.id);
 
-        // Send notification to business owner
-        await notifyBusinessOwnerAboutEmployee(
-            employee.businessowner,
-            req.params.id,
-            'deleted',
-            employeeName,
-            { employeeId: req.params.id, deletedBy: req.role }
-        );
+        // Send notification to business owner (with error handling)
+        try {
+            await notifyBusinessOwnerAboutEmployee(
+                employee.businessowner,
+                req.params.id,
+                'deleted',
+                employeeName,
+                { employeeId: req.params.id, deletedBy: req.role }
+            );
+        } catch (notifError) {
+            console.error('Error sending notification:', notifError);
+            // Don't fail the deletion if notification fails
+        }
 
         res.json({ message: "Employee deleted successfully" });
     } catch (err) {
+        console.error('Delete employee error:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }   
 });
@@ -689,6 +795,119 @@ router.delete('/deleteaccount', fetchuser, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
+    }
+});
+
+// Assign Warehouse to Employee - SOLVES CIRCULAR DEPENDENCY
+// Use this endpoint AFTER both employee and warehouse are created
+router.put('/assignwarehouse/:employeeId', fetchbusinessowner, [
+    body('warehouseId', 'Enter valid Warehouse ID').exists()
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    try {
+        const { employeeId } = req.params;
+        const { warehouseId } = req.body;
+
+        // Verify employee exists and belongs to this business owner
+        const employee = await Employee.findById(employeeId);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "You do not have permission to assign warehouse to this employee" });
+        }
+
+        // Verify warehouse exists and belongs to this business owner
+        const Warehouse = require('../models/Warehouse');
+        const warehouse = await Warehouse.findById(warehouseId);
+        if (!warehouse) {
+            return res.status(404).json({ error: "Warehouse not found" });
+        }
+
+        if (warehouse.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Warehouse does not belong to your business" });
+        }
+
+        // Update employee with warehouse
+        employee.warehouse = warehouseId;
+        await employee.save();
+
+        res.json({
+            success: true,
+            message: 'Warehouse assigned to employee successfully',
+            employee
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal server error occurred" });
+    }
+});
+
+// Get unassigned employees - helpful to see who needs warehouse assignment
+router.get('/unassigned-employees', fetchbusinessowner, async (req, res) => {
+    try {
+        const unassignedEmployees = await Employee.find({
+            businessowner: req.businessowner._id,
+            warehouse: null
+        }).select('fname lname email role');
+
+        res.json({
+            success: true,
+            unassignedEmployees,
+            count: unassignedEmployees.length
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal server error occurred" });
+    }
+});
+
+// Assign first warehouse to all unassigned employees (migration endpoint)
+// This helps fix existing employees that don't have warehouse assigned
+router.post('/assign-missing-warehouses', fetchbusinessowner, async (req, res) => {
+    try {
+        // Get first warehouse of the business owner
+        const Warehouse = require('../models/Warehouse');
+        const warehouse = await Warehouse.findOne({ employee: req.user._id })
+            .sort({ createdAt: 1 });
+        
+        if (!warehouse) {
+            return res.status(400).json({ 
+                error: "No warehouse found to assign. Please create at least one warehouse first.",
+                updated: 0
+            });
+        }
+
+        // Find all employees without warehouse assignment
+        const unassignedEmployees = await Employee.find({
+            businessowner: req.businessowner._id,
+            $or: [
+                { warehouse: null },
+                { warehouse: undefined }
+            ]
+        });
+
+        // Update all unassigned employees to assigned warehouse
+        let updateCount = 0;
+        for (const employee of unassignedEmployees) {
+            employee.warehouse = warehouse._id;
+            await employee.save();
+            updateCount++;
+        }
+
+        res.json({
+            success: true,
+            message: `Successfully assigned warehouse to ${updateCount} employees`,
+            updated: updateCount,
+            warehouseId: warehouse._id,
+            warehouseName: warehouse.wName
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Internal server error occurred" });
     }
 });
 
