@@ -1,18 +1,25 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet } from 'react-router-dom';
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import '../../styles/sidebar.css'
 import Notifications from './Notifications';
 import Chatbot from './Chatbot';
 import { useRole } from '../../context/RoleContext';
 
 const SideBar = () => {
-    const { role } = useRole();
+    const { role, logout } = useRole();
     const storedRole = localStorage.getItem('role');
     const currentRole = role || storedRole;
     let location = useLocation();
+    const navigate = useNavigate();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Handle logout
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     useEffect(() => {
         // Close user menu when clicking outside
@@ -113,6 +120,13 @@ const SideBar = () => {
                             </Link>
                         )}
                         
+                        {/* Permissions - Only BusinessOwner */}
+                        {isBusinessOwner && (
+                            <Link to="/dashboard/permissions" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/permissions" ? "active" : ""}`}>
+                                <i className="fas fa-shield-alt me-2"></i>Permissions
+                            </Link>
+                        )}
+                        
                         {/* Notifications - Available to all authenticated users */}
                         {isEmployee && (
                             <Link to="/dashboard/notifications" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/notifications" ? "active" : ""}`}>
@@ -126,9 +140,9 @@ const SideBar = () => {
                         </Link>
                         
                         {/* Log Out */}
-                        <Link to="/" className="list-group-item list-group-item-action bg-transparent text-danger">
+                        <button onClick={handleLogout} className="list-group-item list-group-item-action bg-transparent text-danger border-0 text-start">
                             <i className="fas fa-sign-out-alt me-2"></i>Log Out
-                        </Link>
+                        </button>
                     </div>
                     
                 </div>
@@ -173,13 +187,15 @@ const SideBar = () => {
                                                     <i className="fas fa-cog me-2"></i>Settings
                                                 </Link>
                                                 <div className="dropdown-divider"></div>
-                                                <Link 
-                                                    to="/" 
-                                                    className="dropdown-item text-danger"
-                                                    onClick={() => setShowUserMenu(false)}
+                                                <button 
+                                                    className="dropdown-item text-danger border-0 bg-transparent w-100 text-start"
+                                                    onClick={() => {
+                                                        setShowUserMenu(false);
+                                                        handleLogout();
+                                                    }}
                                                 >
                                                     <i className="fas fa-sign-out-alt me-2"></i>Logout
-                                                </Link>
+                                                </button>
                                             </div>
                                         )}
                                     </div>

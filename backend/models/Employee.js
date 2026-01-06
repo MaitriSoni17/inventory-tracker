@@ -53,6 +53,7 @@ const Employee = new Schema({
         canSendNotifications: { type: Boolean, default: false },
         canApproveOrders: { type: Boolean, default: false }
     },
+    hasCustomPermissions: { type: Boolean, default: false },
     lastLogin: { type: Date },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

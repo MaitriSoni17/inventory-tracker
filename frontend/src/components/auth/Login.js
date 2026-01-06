@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from "react-router-dom";
 import validationRules from '../../utils/validationHelper';
+import { useRole } from '../../context/RoleContext';
 import '../../styles/login.css';
 import '../../styles/validation.css';
 
@@ -10,6 +11,7 @@ function Login(props) {
     const [touched, setTouched] = useState({})
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { setRole, fetchUserRole } = useRole();
 
     const passVisibility = () => {
         setShowPassword(prev => !prev);
@@ -63,6 +65,9 @@ function Login(props) {
                 localStorage.setItem('token', json.authtoken);
                 localStorage.setItem('role', json.role);
                 localStorage.setItem('userId', json.userId || '');
+                // Update role in context immediately and fetch full user data
+                setRole(json.role);
+                await fetchUserRole();
                 props.showAlert("Logged in Successfully", "success")
                 history("/dashboard");
             }

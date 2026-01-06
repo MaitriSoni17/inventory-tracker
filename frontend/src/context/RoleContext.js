@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { apiCall, parseResponse } from '../utils/apiClient';
 
 const RoleContext = createContext();
@@ -9,12 +9,28 @@ export const RoleProvider = ({ children }) => {
     const [permissions, setPermissions] = useState({});
     const [loading, setLoading] = useState(true);
 
-    // Fetch user details and role on mount
-    useEffect(() => {
-        fetchUserRole();
+    // Fetch permissions from dedicated endpoint
+    const fetchPermissions = useCallback(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const response = await apiCall('http://localhost:5000/api/permissions/my-permissions', {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const data = await parseResponse(response);
+                if (data.permissions) {
+                    setPermissions(data.permissions);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching permissions:', error);
+        }
     }, []);
 
-    const fetchUserRole = async () => {
+    const fetchUserRole = useCallback(async () => {
         try {
             const token = localStorage.getItem('token');
             const storedRole = localStorage.getItem('role');
@@ -50,7 +66,12 @@ export const RoleProvider = ({ children }) => {
                 const data = await parseResponse(response);
                 setRole(data.role || storedRole || 'employee');
                 setUserDetails(data);
-                setPermissions(data.permissions || {});
+                // Set initial permissions from user data
+                if (data.permissions) {
+                    setPermissions(data.permissions);
+                }
+                // Also fetch latest permissions from permissions endpoint
+                await fetchPermissions();
             } else {
                 // Fallback to stored role
                 setRole(storedRole || 'employee');
@@ -63,7 +84,12 @@ export const RoleProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [fetchPermissions]);
+
+    // Fetch user details and role on mount
+    useEffect(() => {
+        fetchUserRole();
+    }, [fetchUserRole]);
 
     const hasPermission = (permissionName) => {
         if (role === 'businessowner') return true;
@@ -75,15 +101,30 @@ export const RoleProvider = ({ children }) => {
     };
 
     const canManageEmployees = () => {
-        return ['manager', 'businessowner'].includes(role);
+        return hasPermission('canManageEmployees') || ['manager', 'businessowner'].includes(role);
     };
 
     const canDeleteItems = () => {
-        return permissions.canDeleteProducts || permissions.canDeleteOrders || role === 'businessowner';
+        return hasPermission('canDeleteProducts') || hasPermission('canDeleteOrders') || role === 'businessowner';
     };
 
     const canCreateWarehouses = () => {
-        return permissions.canCreateWarehouse || role === 'businessowner';
+        return hasPermission('canCreateWarehouse') || role === 'businessowner';
+    };
+
+    // Refresh permissions - useful after permission updates
+    const refreshPermissions = async () => {
+        await fetchPermissions();
+    };
+
+    // Logout - clear all user data
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('userId');
+        setRole(null);
+        setUserDetails(null);
+        setPermissions({});
     };
 
     return (
@@ -96,11 +137,14 @@ export const RoleProvider = ({ children }) => {
             setPermissions,
             loading,
             fetchUserRole,
+            fetchPermissions,
+            refreshPermissions,
             hasPermission,
             isSuperior,
             canManageEmployees,
             canDeleteItems,
-            canCreateWarehouses
+            canCreateWarehouses,
+            logout
         }}>
             {children}
         </RoleContext.Provider>

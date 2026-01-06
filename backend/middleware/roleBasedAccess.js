@@ -4,73 +4,123 @@
  */
 
 const Employee = require('../models/Employee');
+const RolePermissions = require('../models/RolePermissions');
 
-// Default permissions for each role
+// Default permissions for each role (fallback when no custom permissions exist)
 const rolePermissions = {
     businessowner: {
+        canViewProducts: true,
         canCreateProducts: true,
+        canEditProducts: true,
         canDeleteProducts: true,
-        canCreateWarehouse: true,
-        canDeleteWarehouse: true,
+        canViewCategories: true,
         canCreateCategory: true,
+        canEditCategory: true,
         canDeleteCategory: true,
+        canViewWarehouses: true,
+        canCreateWarehouse: true,
+        canEditWarehouse: true,
+        canDeleteWarehouse: true,
+        canViewOrders: true,
+        canCreateOrders: true,
+        canEditOrders: true,
         canDeleteOrders: true,
+        canApproveOrders: true,
+        canViewEmployees: true,
         canManageEmployees: true,
+        canEditOthersWork: true,
         canViewAnalytics: true,
         canExportReports: true,
-        canEditOthersWork: true,
         canSendNotifications: true,
-        canApproveOrders: true
+        canViewNotifications: true,
+        canViewDashboard: true
     },
     manager: {
+        canViewProducts: true,
         canCreateProducts: true,
+        canEditProducts: true,
         canDeleteProducts: true,
-        canCreateWarehouse: true,
-        canDeleteWarehouse: true,
+        canViewCategories: true,
         canCreateCategory: true,
+        canEditCategory: true,
         canDeleteCategory: false,
+        canViewWarehouses: true,
+        canCreateWarehouse: true,
+        canEditWarehouse: true,
+        canDeleteWarehouse: true,
+        canViewOrders: true,
+        canCreateOrders: true,
+        canEditOrders: true,
         canDeleteOrders: true,
-        canManageEmployees: true, // Can manage team members
+        canApproveOrders: true,
+        canViewEmployees: true,
+        canManageEmployees: true,
+        canEditOthersWork: true,
         canViewAnalytics: true,
         canExportReports: true,
-        canEditOthersWork: true, // Can edit team members' work
         canSendNotifications: true,
-        canApproveOrders: true
+        canViewNotifications: true,
+        canViewDashboard: true
     },
     supervisor: {
+        canViewProducts: true,
         canCreateProducts: true,
+        canEditProducts: true,
         canDeleteProducts: true,
-        canCreateWarehouse: false,
-        canDeleteWarehouse: false,
+        canViewCategories: true,
         canCreateCategory: true,
+        canEditCategory: true,
         canDeleteCategory: false,
+        canViewWarehouses: false,
+        canCreateWarehouse: false,
+        canEditWarehouse: false,
+        canDeleteWarehouse: false,
+        canViewOrders: true,
+        canCreateOrders: true,
+        canEditOrders: true,
         canDeleteOrders: true,
+        canApproveOrders: false,
+        canViewEmployees: true,
         canManageEmployees: false,
+        canEditOthersWork: true,
         canViewAnalytics: true,
         canExportReports: false,
-        canEditOthersWork: true, // Can edit direct reports' work
         canSendNotifications: false,
-        canApproveOrders: false
+        canViewNotifications: true,
+        canViewDashboard: true
     },
     employee: {
+        canViewProducts: true,
         canCreateProducts: true,
+        canEditProducts: true,
         canDeleteProducts: false,
-        canCreateWarehouse: false,
-        canDeleteWarehouse: false,
+        canViewCategories: false,
         canCreateCategory: false,
+        canEditCategory: false,
         canDeleteCategory: false,
+        canViewWarehouses: false,
+        canCreateWarehouse: false,
+        canEditWarehouse: false,
+        canDeleteWarehouse: false,
+        canViewOrders: true,
+        canCreateOrders: true,
+        canEditOrders: true,
         canDeleteOrders: false,
+        canApproveOrders: false,
+        canViewEmployees: false,
         canManageEmployees: false,
+        canEditOthersWork: false,
         canViewAnalytics: false,
         canExportReports: false,
-        canEditOthersWork: false,
         canSendNotifications: false,
-        canApproveOrders: false
+        canViewNotifications: true,
+        canViewDashboard: true
     }
 };
 
 /**
  * Check if user has specific permission
+ * First checks user's custom permissions, then falls back to role defaults
  * @param {Object} user - User object from request
  * @param {String} permission - Permission to check
  * @returns {Boolean} - True if user has permission
@@ -78,6 +128,42 @@ const rolePermissions = {
 const hasPermission = (user, permission) => {
     if (user.role === 'businessowner') return true; // Business owner has all permissions
     
+    // Check if user has custom permissions set
+    if (user.permissions && user.permissions[permission] !== undefined) {
+        return user.permissions[permission];
+    }
+    
+    // Fall back to role defaults
+    const perms = rolePermissions[user.role];
+    return perms ? perms[permission] : false;
+};
+
+/**
+ * Async version of hasPermission that checks database for custom permissions
+ * @param {Object} user - User object from request
+ * @param {String} permission - Permission to check
+ * @param {String} businessOwnerId - Business owner ID for fetching custom permissions
+ * @returns {Promise<Boolean>} - True if user has permission
+ */
+const hasPermissionAsync = async (user, permission, businessOwnerId) => {
+    if (user.role === 'businessowner') return true;
+    
+    // Check user's own permissions first
+    if (user.permissions && user.permissions[permission] !== undefined) {
+        return user.permissions[permission];
+    }
+    
+    // Try to get custom permissions from database
+    try {
+        const customPermissions = await RolePermissions.findOne({ businessowner: businessOwnerId });
+        if (customPermissions && customPermissions[user.role] && customPermissions[user.role][permission] !== undefined) {
+            return customPermissions[user.role][permission];
+        }
+    } catch (err) {
+        console.error('Error fetching custom permissions:', err);
+    }
+    
+    // Fall back to role defaults
     const perms = rolePermissions[user.role];
     return perms ? perms[permission] : false;
 };
@@ -355,6 +441,7 @@ const requireNotificationAccess = (req, res, next) => {
 
 module.exports = {
     hasPermission,
+    hasPermissionAsync,
     canAccessUserWork,
     requirePermission,
     requireEmployeeManagement,
