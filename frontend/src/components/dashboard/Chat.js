@@ -2,6 +2,19 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/chat.css';
 
+// Modern color palette
+const COLORS = {
+    background: '#f4f6fb',
+    card: '#fff',
+    border: '#e5e7eb',
+    primary: '#7c3aed',
+    primaryLight: '#ede9fe',
+    sent: '#7c3aed',
+    received: '#f3f4f6',
+    text: '#22223b',
+    muted: '#6b7280',
+};
+
 const Chat = (props) => {
     const navigate = useNavigate();
     const [contacts, setContacts] = useState([]);
@@ -12,7 +25,6 @@ const Chat = (props) => {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [mobileShowChat, setMobileShowChat] = useState(false);
     const messagesEndRef = useRef(null);
     const messageInputRef = useRef(null);
     const selectedContactRef = useRef(null);
@@ -112,7 +124,6 @@ const Chat = (props) => {
     // Handle contact selection
     const handleContactSelect = (contact) => {
         setSelectedContact(contact);
-        setMobileShowChat(true);
     };
 
     // Handle sending message
@@ -166,7 +177,7 @@ const Chat = (props) => {
 
     // Handle back button in mobile view
     const handleBackToContacts = () => {
-        setMobileShowChat(false);
+        setSelectedContact(null);
     };
 
     // Format timestamp
@@ -209,234 +220,139 @@ const Chat = (props) => {
         contact.role.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    // Calculate total unread messages
-    const totalUnread = contacts.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-
     return (
-        <div className="chat-page">
-            {/* Header */}
-            <div className="chat-header-section">
-                <div className="chat-header-top">
-                    <h1 className="chat-title">
-                        <i className="bi bi-chat-dots-fill"></i>
-                        Messages
-                        {totalUnread > 0 && (
-                            <span className="total-unread-badge">{totalUnread}</span>
-                        )}
-                    </h1>
-                    <div className="chat-header-actions">
+        <div className="chat-modern-root" style={{ background: COLORS.background, minHeight: '100vh', padding: 0 }}>
+            <div className="chat-modern-container mt-5">
+                {/* Sidebar */}
+                <aside className="chat-modern-sidebar">
+                    <header className="chat-modern-sidebar-header">
+                        <span className="chat-modern-title">Messages</span>
                         {isBusinessOwner && (
-                            <button 
-                                className="btn-manage-permissions"
-                                onClick={() => navigate('/dashboard/chatpermissions')}
-                            >
-                                <i className="bi bi-shield-lock me-2"></i>
-                                Manage Permissions
+                            <button className="chat-modern-perms-btn" onClick={() => navigate('/dashboard/chatpermissions')}>
+                                <i className="bi bi-shield-lock"></i>
                             </button>
                         )}
-                        <button className="btn-back" onClick={() => navigate('/dashboard')}>
-                            <i className="bi bi-arrow-left me-2"></i>
-                            Back
-                        </button>
+                    </header>
+                    <div className="chat-modern-search">
+                        <i className="bi bi-search"></i>
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                        />
                     </div>
-                </div>
-            </div>
-
-            {/* Main Chat Area */}
-            <div className="chat-main">
-                {loading ? (
-                    <div className="chat-loading">
-                        <div className="spinner-border text-primary" role="status">
-                            <span className="visually-hidden">Loading...</span>
-                        </div>
-                        <p>Loading contacts...</p>
-                    </div>
-                ) : contacts.length === 0 ? (
-                    <div className="chat-empty">
-                        <i className="bi bi-chat-square-text"></i>
-                        <h3>No Contacts Available</h3>
-                        <p>
-                            {isBusinessOwner 
-                                ? "Set up chat permissions to enable messaging between users."
-                                : "You don't have permission to chat with anyone yet. Please contact your business owner."
-                            }
-                        </p>
-                        {isBusinessOwner && (
-                            <button 
-                                className="btn-primary-action"
-                                onClick={() => navigate('/dashboard/chatpermissions')}
-                            >
-                                <i className="bi bi-shield-lock me-2"></i>
-                                Set Up Permissions
-                            </button>
-                        )}
-                    </div>
-                ) : (
-                    <div className={`chat-container ${mobileShowChat ? 'mobile-show-chat' : ''}`}>
-                        {/* Contacts Sidebar */}
-                        <div className="chat-sidebar">
-                            <div className="chat-search">
-                                <i className="bi bi-search"></i>
-                                <input
-                                    type="text"
-                                    placeholder="Search contacts..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <div className="contacts-list">
-                                {filteredContacts.length === 0 ? (
-                                    <div className="no-contacts-found">
-                                        <p>No contacts found</p>
+                    <div className="chat-modern-contacts">
+                        {loading ? (
+                            <div className="chat-modern-loading">Loading...</div>
+                        ) : filteredContacts.length === 0 ? (
+                            <div className="chat-modern-empty">No contacts</div>
+                        ) : (
+                            filteredContacts.map(contact => (
+                                <div
+                                    key={contact._id}
+                                    className={`chat-modern-contact${selectedContact?._id === contact._id ? ' active' : ''}`}
+                                    onClick={() => handleContactSelect(contact)}
+                                >
+                                    <div className="chat-modern-avatar">
+                                        <i className="bi bi-person-circle"></i>
                                     </div>
-                                ) : (
-                                    filteredContacts.map(contact => (
-                                        <div
-                                            key={contact._id}
-                                            className={`contact-item ${selectedContact?._id === contact._id ? 'active' : ''} ${contact.unreadCount > 0 ? 'has-unread' : ''}`}
-                                            onClick={() => handleContactSelect(contact)}
-                                        >
-                                            <div className="contact-avatar">
-                                                <i className="bi bi-person-circle"></i>
-                                            </div>
-                                            <div className="contact-info">
-                                                <div className="contact-header">
-                                                    <span className="contact-name">{contact.name}</span>
-                                                    {contact.lastMessage && (
-                                                        <span className="contact-time">
-                                                            {formatTime(contact.lastMessage.createdAt)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div className="contact-details">
-                                                    <span className={`contact-role-badge ${getRoleBadgeClass(contact.role)}`}>
-                                                        {contact.role}
-                                                    </span>
-                                                    {contact.lastMessage && (
-                                                        <span className="contact-preview">
-                                                            {contact.lastMessage.isFromMe && <i className="bi bi-check2 me-1"></i>}
-                                                            {contact.lastMessage.message.substring(0, 30)}
-                                                            {contact.lastMessage.message.length > 30 && '...'}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            {contact.unreadCount > 0 && (
-                                                <span className="unread-badge">{contact.unreadCount}</span>
+                                    <div className="chat-modern-contact-info">
+                                        <div className="chat-modern-contact-row">
+                                            <span className="chat-modern-contact-name">{contact.name}</span>
+                                            {contact.lastMessage && (
+                                                <span className="chat-modern-contact-time">{formatTime(contact.lastMessage.createdAt)}</span>
                                             )}
                                         </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Chat Window */}
-                        <div className="chat-window">
-                            {selectedContact ? (
-                                <>
-                                    {/* Chat Header */}
-                                    <div className="chat-window-header">
-                                        <button 
-                                            className="btn-back-mobile"
-                                            onClick={handleBackToContacts}
-                                        >
-                                            <i className="bi bi-arrow-left"></i>
-                                        </button>
-                                        <div className="chat-contact-info">
-                                            <div className="chat-contact-avatar">
-                                                <i className="bi bi-person-circle"></i>
-                                            </div>
-                                            <div>
-                                                <h4>{selectedContact.name}</h4>
-                                                <span className={`role-badge ${getRoleBadgeClass(selectedContact.role)}`}>
-                                                    {selectedContact.role}
+                                        <div className="chat-modern-contact-row">
+                                            <span className={`chat-modern-role-badge ${getRoleBadgeClass(contact.role)}`}>{contact.role}</span>
+                                            {contact.lastMessage && (
+                                                <span className="chat-modern-contact-preview">
+                                                    {contact.lastMessage.isFromMe && <i className="bi bi-check2 me-1"></i>}
+                                                    {contact.lastMessage.message.substring(0, 30)}{contact.lastMessage.message.length > 30 && '...'}
                                                 </span>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
-
-                                    {/* Messages Area */}
-                                    <div className="messages-area">
-                                        {loadingMessages ? (
-                                            <div className="messages-loading">
-                                                <div className="spinner-border spinner-border-sm text-primary" role="status">
-                                                    <span className="visually-hidden">Loading...</span>
-                                                </div>
-                                            </div>
-                                        ) : messages.length === 0 ? (
-                                            <div className="no-messages">
-                                                <i className="bi bi-chat-square-text"></i>
-                                                <p>No messages yet. Start the conversation!</p>
-                                            </div>
-                                        ) : (
-                                            messages.map((msg, index) => {
-                                                const isFromMe = msg.sender !== selectedContact._id;
-                                                const showDate = index === 0 || 
-                                                    new Date(msg.createdAt).toDateString() !== 
-                                                    new Date(messages[index - 1].createdAt).toDateString();
-                                                
-                                                return (
-                                                    <React.Fragment key={msg._id}>
-                                                        {showDate && (
-                                                            <div className="message-date-divider">
-                                                                <span>{new Date(msg.createdAt).toLocaleDateString([], { 
-                                                                    weekday: 'long', 
-                                                                    month: 'short', 
-                                                                    day: 'numeric' 
-                                                                })}</span>
-                                                            </div>
-                                                        )}
-                                                        <div className={`message ${isFromMe ? 'sent' : 'received'}`}>
-                                                            <div className="message-bubble">
-                                                                <p>{msg.message}</p>
-                                                                <span className="message-time">
-                                                                    {formatMessageTime(msg.createdAt)}
-                                                                    {isFromMe && (
-                                                                        <i className={`bi ${msg.isRead ? 'bi-check2-all read' : 'bi-check2'} ms-1`}></i>
-                                                                    )}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </React.Fragment>
-                                                );
-                                            })
-                                        )}
-                                        <div ref={messagesEndRef} />
-                                    </div>
-
-                                    {/* Message Input */}
-                                    <form className="message-input-form" onSubmit={handleSendMessage}>
-                                        <input
-                                            ref={messageInputRef}
-                                            type="text"
-                                            placeholder="Type a message..."
-                                            value={newMessage}
-                                            onChange={(e) => setNewMessage(e.target.value)}
-                                            disabled={sending}
-                                        />
-                                        <button 
-                                            type="submit" 
-                                            disabled={!newMessage.trim() || sending}
-                                            className="btn-send"
-                                        >
-                                            {sending ? (
-                                                <span className="spinner-border spinner-border-sm" role="status"></span>
-                                            ) : (
-                                                <i className="bi bi-send-fill"></i>
-                                            )}
-                                        </button>
-                                    </form>
-                                </>
-                            ) : (
-                                <div className="no-chat-selected">
-                                    <i className="bi bi-chat-dots"></i>
-                                    <h3>Select a conversation</h3>
-                                    <p>Choose a contact from the list to start messaging</p>
+                                    {contact.unreadCount > 0 && (
+                                        <span className="chat-modern-unread-badge">{contact.unreadCount}</span>
+                                    )}
                                 </div>
-                            )}
-                        </div>
+                            ))
+                        )}
                     </div>
-                )}
+                </aside>
+                {/* Main Chat Window */}
+                <main className="chat-modern-main">
+                    {selectedContact ? (
+                        <>
+                            <header className="chat-modern-main-header">
+                                <button className="chat-modern-back-btn" onClick={handleBackToContacts}>
+                                    <i className="bi bi-arrow-left"></i>
+                                </button>
+                                <div className="chat-modern-main-avatar">
+                                    <i className="bi bi-person-circle"></i>
+                                </div>
+                                <div className="chat-modern-main-info">
+                                    <span className="chat-modern-main-name">{selectedContact.name}</span>
+                                    <span className={`chat-modern-role-badge ${getRoleBadgeClass(selectedContact.role)}`}>{selectedContact.role}</span>
+                                </div>
+                            </header>
+                            <section className="chat-modern-messages">
+                                {loadingMessages ? (
+                                    <div className="chat-modern-loading">Loading...</div>
+                                ) : messages.length === 0 ? (
+                                    <div className="chat-modern-empty">No messages yet. Start the conversation!</div>
+                                ) : (
+                                    messages.map((msg, idx) => {
+                                        const isFromMe = msg.sender !== selectedContact._id;
+                                        const showDate = idx === 0 ||
+                                            new Date(msg.createdAt).toDateString() !== new Date(messages[idx - 1].createdAt).toDateString();
+                                        return (
+                                            <React.Fragment key={msg._id}>
+                                                {showDate && (
+                                                    <div className="chat-modern-date-divider">
+                                                        <span>{new Date(msg.createdAt).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                                                    </div>
+                                                )}
+                                                <div className={`chat-modern-message-row ${isFromMe ? 'sent' : 'received'}`}> 
+                                                    <div className="chat-modern-message-bubble">
+                                                        <span className="chat-modern-message-text">{msg.message}</span>
+                                                        <span className="chat-modern-message-meta">
+                                                            {formatMessageTime(msg.createdAt)}
+                                                            {isFromMe && (
+                                                                <i className={`bi ${msg.isRead ? 'bi-check2-all read' : 'bi-check2'} ms-1`}></i>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </React.Fragment>
+                                        );
+                                    })
+                                )}
+                                <div ref={messagesEndRef} />
+                            </section>
+                            <form className="chat-modern-input-bar" onSubmit={handleSendMessage}>
+                                <input
+                                    ref={messageInputRef}
+                                    type="text"
+                                    placeholder="Type a message..."
+                                    value={newMessage}
+                                    onChange={e => setNewMessage(e.target.value)}
+                                    disabled={sending}
+                                />
+                                <button type="submit" disabled={!newMessage.trim() || sending} className="chat-modern-send-btn">
+                                    {sending ? <span className="spinner-border spinner-border-sm" role="status"></span> : <i className="bi bi-send-fill"></i>}
+                                </button>
+                            </form>
+                        </>
+                    ) : (
+                        <div className="chat-modern-empty chat-modern-main-empty">
+                            <i className="bi bi-chat-dots"></i>
+                            <div>Select a conversation</div>
+                        </div>
+                    )}
+                </main>
             </div>
         </div>
     );
