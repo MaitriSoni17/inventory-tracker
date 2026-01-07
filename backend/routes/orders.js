@@ -13,9 +13,10 @@ const {
 const {
   canEditItem,
   canDeleteItem,
-  getSubordinates
+  getSubordinates,
+  hasPermission
 } = require('../middleware/roleBasedAccess');
-// Create Order — accessible by BusinessOwner or Employee
+// Create Order — permission-based access
 router.post('/createorder', fetchuser, [
     body('customerName', 'Enter Customer Name').exists(),
     body('productName', 'Enter Product Name').exists(),
@@ -27,6 +28,11 @@ router.post('/createorder', fetchuser, [
     body('deliveryStatus', 'Enter Delivery Status').exists(),
     body('pAvailability', 'Enter Product Availability').exists(),
 ], async (req, res) => {
+    // Check permission to create orders
+    if (!hasPermission(req.user, 'canCreateOrders')) {
+        return res.status(403).json({ error: "You do not have permission to create orders" });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { customerName, productName, productCategory, totalAmt, orderDate, deliveryDeadline, productStatus, deliveryStatus, pAvailability, address, additionalNotes, warehouse } = req.body;
@@ -111,8 +117,13 @@ router.post('/createorder', fetchuser, [
         res.status(500).send("Internal Server error occurred");
     }
 });
-// Get Orders — role-based access with hierarchy awareness and warehouse filtering
+// Get Orders — permission-based access with hierarchy awareness and warehouse filtering
 router.post('/getorders', fetchuser, async (req, res) => {
+    // Check permission to view orders
+    if (!hasPermission(req.user, 'canViewOrders')) {
+        return res.status(403).json({ error: "You do not have permission to view orders" });
+    }
+
     try {
         let orders = [];
         
@@ -167,7 +178,7 @@ router.post('/getorders', fetchuser, async (req, res) => {
     }
 });
 
-// Update Order — role-based access with hierarchy checking and warehouse filtering
+// Update Order — permission-based access with hierarchy checking and warehouse filtering
 router.put('/updateorder/:id', fetchuser, [
     body('customerName', 'Enter Customer Name').optional().exists(),
     body('productName', 'Enter Product Name').optional().exists(),
@@ -179,8 +190,9 @@ router.put('/updateorder/:id', fetchuser, [
     body('deliveryStatus', 'Enter Delivery Status').optional().exists(),
     body('pAvailability', 'Enter Product Availability').optional().exists(),
 ], async (req, res) => {
-    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to update orders");
+    // Check permission to edit orders
+    if (!hasPermission(req.user, 'canEditOrders')) {
+        return res.status(403).json({ error: "You do not have permission to update orders" });
     }
     
     const errors = validationResult(req);
@@ -303,10 +315,11 @@ router.put('/updateorder/:id', fetchuser, [
     }
 });
 
-// Delete Order — role-based access with hierarchy checking
+// Delete Order — permission-based access with hierarchy checking
 router.delete('/deleteorder/:id', fetchuser, async (req, res) => {
-    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to delete orders");
+    // Check permission to delete orders
+    if (!hasPermission(req.user, 'canDeleteOrders')) {
+        return res.status(403).json({ error: "You do not have permission to delete orders" });
     }
     
     try {

@@ -5,7 +5,7 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { hasPermission } = require('../middleware/roleBasedAccess');
 
-// Create Warehouse — only BusinessOwner and Manager
+// Create Warehouse — permission-based access
 // NOTE: wManager is a string (manager name) and not a required reference to Employee
 // This solves the circular dependency: you can create warehouse without needing pre-existing employee
 router.post('/createwarehouse', fetchuser, [
@@ -15,9 +15,9 @@ router.post('/createwarehouse', fetchuser, [
     body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
 ], async (req, res) => {
-    // Only BusinessOwner and Manager can create warehouses
-    if (!['businessowner', 'manager'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to create warehouses");
+    // Check permission to create warehouses
+    if (!hasPermission(req.user, 'canCreateWarehouse')) {
+        return res.status(403).json({ error: "You do not have permission to create warehouses" });
     }
 
     const errors = validationResult(req);
@@ -56,8 +56,13 @@ router.post('/createwarehouse', fetchuser, [
     }
 });
 
-// Get Warehouse — accessible by all authenticated users in their business (view-only)
+// Get Warehouse — permission-based access (view-only)
 router.post('/getwarehouse', fetchuser, async (req, res) => {
+    // Check permission to view warehouses
+    if (!hasPermission(req.user, 'canViewWarehouses')) {
+        return res.status(403).json({ error: "You do not have permission to view warehouses" });
+    }
+
     try {
         let warehouse = [];
 
@@ -78,7 +83,7 @@ router.post('/getwarehouse', fetchuser, async (req, res) => {
     }
 });
 
-// Update Warehouse — only BusinessOwner and Manager
+// Update Warehouse — permission-based access
 router.put('/updatewarehouse/:id', fetchuser, [
     body('wName', 'Enter Warehouse Name').exists(),
     body('wManager', 'Warehouse Manager Name').optional(),
@@ -86,9 +91,9 @@ router.put('/updatewarehouse/:id', fetchuser, [
     body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
 ], async (req, res) => {
-    // Only BusinessOwner and Manager can update warehouses
-    if (!['businessowner', 'manager'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to update warehouses");
+    // Check permission to edit warehouses
+    if (!hasPermission(req.user, 'canEditWarehouse')) {
+        return res.status(403).json({ error: "You do not have permission to update warehouses" });
     }
 
     const errors = validationResult(req);
@@ -164,11 +169,11 @@ router.post('/getmanagers', fetchuser, async (req, res) => {
     }
 });
 
-// Delete Warehouse — only BusinessOwner and Manager
+// Delete Warehouse — permission-based access
 router.delete('/deletewarehouse/:id', fetchuser, async (req, res) => {
-    // Only BusinessOwner and Manager can delete warehouses
-    if (!['businessowner', 'manager'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to delete warehouses");
+    // Check permission to delete warehouses
+    if (!hasPermission(req.user, 'canDeleteWarehouse')) {
+        return res.status(403).json({ error: "You do not have permission to delete warehouses" });
     }
 
     try {

@@ -111,8 +111,16 @@ router.put('/update', fetchuser, async (req, res) => {
         rolePermissions[role] = { ...rolePermissions[role].toObject(), ...permissions };
         await rolePermissions.save();
 
-        // Convert to plain object for MongoDB update
-        const permissionsToUpdate = rolePermissions[role].toObject ? rolePermissions[role].toObject() : rolePermissions[role];
+        // Convert to plain object for MongoDB update and remove mongoose internal fields
+        const rawPerms = rolePermissions[role].toObject ? rolePermissions[role].toObject() : rolePermissions[role];
+        const permissionsToUpdate = {};
+        
+        // Only copy actual permission fields (those starting with 'can')
+        for (const key of Object.keys(rawPerms)) {
+            if (key.startsWith('can')) {
+                permissionsToUpdate[key] = rawPerms[key];
+            }
+        }
 
         // Only update employees who don't have custom permissions set
         // $or handles both: hasCustomPermissions is false, or field doesn't exist
@@ -128,7 +136,7 @@ router.put('/update', fetchuser, async (req, res) => {
             { $set: { permissions: permissionsToUpdate } }
         );
         
-        // console.log(`Updated ${updateResult.modifiedCount} employees with new ${role} permissions`);
+        console.log(`Updated ${updateResult.modifiedCount} employees with new ${role} permissions`);
 
         res.json({
             success: true,
@@ -321,36 +329,58 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
         }
 
         // For employees, get their specific permissions from their profile
-        const employee = await Employee.findById(req.user._id).select('permissions role');
+        const employee = await Employee.findById(req.user._id).select('permissions role businessowner hasCustomPermissions');
         
         if (!employee) {
             return res.status(404).json({ error: "Employee not found" });
         }
 
-        // If employee doesn't have permissions set, get from role permissions
-        if (!employee.permissions || Object.keys(employee.permissions).length === 0) {
-            const rolePermissions = await RolePermissions.findOne({ businessowner: req.user.businessowner });
+        // Convert Mongoose subdocument to plain object and extract only permission keys
+        const extractPermissions = (permsObj) => {
+            const rawPerms = permsObj && permsObj.toObject ? permsObj.toObject() : permsObj;
+            if (!rawPerms) return null;
             
-            if (rolePermissions && rolePermissions[employee.role]) {
-                return res.json({
-                    success: true,
-                    role: employee.role,
-                    permissions: rolePermissions[employee.role]
-                });
+            const cleanPerms = {};
+            for (const key of Object.keys(rawPerms)) {
+                if (key.startsWith('can')) {
+                    cleanPerms[key] = rawPerms[key];
+                }
             }
-            
-            // Return defaults if nothing found
+            return cleanPerms;
+        };
+
+        // Check if employee has permissions embedded
+        const employeePerms = extractPermissions(employee.permissions);
+        
+        // If employee has permissions set (and they are not all undefined/null), use them
+        if (employeePerms && Object.keys(employeePerms).length > 0) {
             return res.json({
                 success: true,
                 role: employee.role,
-                permissions: RolePermissions.getDefaultPermissions(employee.role)
+                permissions: employeePerms,
+                hasCustomPermissions: employee.hasCustomPermissions || false
             });
         }
 
-        res.json({
+        // Fallback: get from role permissions for this business owner
+        const rolePermissions = await RolePermissions.findOne({ businessowner: employee.businessowner });
+        
+        if (rolePermissions && rolePermissions[employee.role]) {
+            const rolePerms = extractPermissions(rolePermissions[employee.role]);
+            return res.json({
+                success: true,
+                role: employee.role,
+                permissions: rolePerms,
+                hasCustomPermissions: false
+            });
+        }
+        
+        // Return defaults if nothing found
+        return res.json({
             success: true,
             role: employee.role,
-            permissions: employee.permissions
+            permissions: RolePermissions.getDefaultPermissions(employee.role),
+            hasCustomPermissions: false
         });
     } catch (err) {
         console.error('Error getting my permissions:', err);
@@ -685,6 +715,86 @@ router.get('/groups', fetchuser, async (req, res) => {
     } catch (err) {
         console.error('Error getting permission groups:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+/**
+ * Sync all employees' permissions with current role permissions
+ * This is useful for ensuring all employees have the latest permission structure
+ * PUT /api/permissions/sync-all
+ */
+router.put('/sync-all', fetchuser, async (req, res) => {
+    try {
+        // Only business owner can sync permissions
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: "Only Business Owner can sync permissions" });
+        }
+
+        // Get or create role permissions for this business owner
+        let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: req.user._id });
+        
+        if (!rolePermissionsDoc) {
+            rolePermissionsDoc = await RolePermissions.create({
+                businessowner: req.user._id,
+                manager: RolePermissions.getDefaultPermissions('manager'),
+                supervisor: RolePermissions.getDefaultPermissions('supervisor'),
+                employee: RolePermissions.getDefaultPermissions('employee')
+            });
+        }
+
+        const results = {
+            manager: { synced: 0, skipped: 0 },
+            supervisor: { synced: 0, skipped: 0 },
+            employee: { synced: 0, skipped: 0 }
+        };
+
+        // Sync each role
+        for (const role of ['manager', 'supervisor', 'employee']) {
+            // Get clean permissions for this role
+            const rawPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+            const permissionsToSync = {};
+            
+            for (const key of Object.keys(rawPerms)) {
+                if (key.startsWith('can')) {
+                    permissionsToSync[key] = rawPerms[key];
+                }
+            }
+
+            // Update employees who don't have custom permissions
+            const syncResult = await Employee.updateMany(
+                { 
+                    businessowner: req.user._id, 
+                    role: role,
+                    $or: [
+                        { hasCustomPermissions: false },
+                        { hasCustomPermissions: { $exists: false } }
+                    ]
+                },
+                { $set: { permissions: permissionsToSync } }
+            );
+
+            results[role].synced = syncResult.modifiedCount;
+
+            // Count skipped (those with custom permissions)
+            const customCount = await Employee.countDocuments({
+                businessowner: req.user._id,
+                role: role,
+                hasCustomPermissions: true
+            });
+            results[role].skipped = customCount;
+        }
+
+        const totalSynced = results.manager.synced + results.supervisor.synced + results.employee.synced;
+        const totalSkipped = results.manager.skipped + results.supervisor.skipped + results.employee.skipped;
+
+        res.json({
+            success: true,
+            message: `Synced ${totalSynced} employees, skipped ${totalSkipped} with custom permissions`,
+            results
+        });
+    } catch (err) {
+        console.error('Error syncing permissions:', err);
+        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
 

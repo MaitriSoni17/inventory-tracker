@@ -9,6 +9,18 @@ export const RoleProvider = ({ children }) => {
     const [permissions, setPermissions] = useState({});
     const [loading, setLoading] = useState(true);
 
+    // Helper to extract only permission keys from an object
+    const extractPermissions = (permsObj) => {
+        if (!permsObj) return {};
+        const cleanPerms = {};
+        for (const key of Object.keys(permsObj)) {
+            if (key.startsWith('can')) {
+                cleanPerms[key] = permsObj[key];
+            }
+        }
+        return cleanPerms;
+    };
+
     // Fetch permissions from dedicated endpoint
     const fetchPermissions = useCallback(async () => {
         try {
@@ -22,7 +34,8 @@ export const RoleProvider = ({ children }) => {
             if (response.ok) {
                 const data = await parseResponse(response);
                 if (data.permissions) {
-                    setPermissions(data.permissions);
+                    // Extract only permission keys to ensure clean object
+                    setPermissions(extractPermissions(data.permissions));
                 }
             }
         } catch (error) {
@@ -64,14 +77,20 @@ export const RoleProvider = ({ children }) => {
 
             if (response.ok) {
                 const data = await parseResponse(response);
-                setRole(data.role || storedRole || 'employee');
+                const currentRole = data.role || storedRole || 'employee';
+                setRole(currentRole);
                 setUserDetails(data);
-                // Set initial permissions from user data
+                
+                // Set initial permissions from user data (with extraction)
                 if (data.permissions) {
-                    setPermissions(data.permissions);
+                    setPermissions(extractPermissions(data.permissions));
                 }
-                // Also fetch latest permissions from permissions endpoint
-                await fetchPermissions();
+                
+                // For employees, also fetch latest permissions from permissions endpoint
+                // This ensures permissions are up-to-date with any changes made by business owner
+                if (['employee', 'supervisor', 'manager'].includes(currentRole)) {
+                    await fetchPermissions();
+                }
             } else {
                 // Fallback to stored role
                 setRole(storedRole || 'employee');

@@ -4,7 +4,7 @@ import '../../../styles/dashboard-elegant.css';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { CanCreateProducts, CanDeleteProducts } from '../../auth/RoleGuards';
+import { CanCreateProducts, CanDeleteProducts, CanEditProducts } from '../../auth/RoleGuards';
 
 const Products = (props) => {
 
@@ -402,9 +402,11 @@ const Products = (props) => {
                                                         {/* <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-3"><i
                                                             className="bi bi-pencil-square fs-5"></i></a>
                                                         <button className="text-decoration-none text-danger fs-5 border-0 bg-transparent p-0" onClick={() => handleDelete(product._id)} style={{'cursor': 'pointer'}}><i className="bi bi-trash"></i></button> */}
-                                                        <Link to={`/dashboard/editproduct/${product._id}`} className="btn btn-info me-2" title="Edit">
-                                                            <i className="bi bi-pencil"></i>
-                                                        </Link>
+                                                        <CanEditProducts>
+                                                            <Link to={`/dashboard/editproduct/${product._id}`} className="btn btn-info me-2" title="Edit">
+                                                                <i className="bi bi-pencil"></i>
+                                                            </Link>
+                                                        </CanEditProducts>
                                                         <CanDeleteProducts>
                                                             <button className="btn btn-danger" onClick={() => handleDelete(product._id)} title="Delete">
                                                                 <i className="bi bi-trash"></i>

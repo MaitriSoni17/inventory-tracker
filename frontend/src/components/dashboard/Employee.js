@@ -30,7 +30,7 @@ ChartJS.register(
 );
 function Employee(props) {
     const navigate = useNavigate();
-    const { userDetails } = useRole();
+    const { userDetails, hasPermission } = useRole();
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
@@ -71,28 +71,38 @@ function Employee(props) {
                 'auth-token': localStorage.getItem('token')
             };
 
-            // Fetch orders
-            const ordersRes = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
-                method: 'POST',
-                headers
-            });
-            const ordersData = ordersRes.ok ? await ordersRes.json() : [];
+            let ordersData = [];
+            let productsData = [];
+            let categoriesData = [];
+
+            // Only fetch orders if user has permission
+            if (hasPermission('canViewOrders')) {
+                const ordersRes = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+                    method: 'POST',
+                    headers
+                });
+                ordersData = ordersRes.ok ? await ordersRes.json() : [];
+            }
             setOrders(ordersData);
 
-            // Fetch products
-            const productsRes = await fetch('http://localhost:5000/api/products/getproduct', {
-                method: 'POST',
-                headers
-            });
-            const productsData = productsRes.ok ? await productsRes.json() : [];
+            // Only fetch products if user has permission
+            if (hasPermission('canViewProducts')) {
+                const productsRes = await fetch('http://localhost:5000/api/products/getproduct', {
+                    method: 'POST',
+                    headers
+                });
+                productsData = productsRes.ok ? await productsRes.json() : [];
+            }
             setProducts(productsData);
 
-            // Fetch categories
-            const categoriesRes = await fetch('http://localhost:5000/api/category/getcategories', {
-                method: 'POST',
-                headers
-            });
-            const categoriesData = categoriesRes.ok ? await categoriesRes.json() : [];
+            // Only fetch categories if user has permission
+            if (hasPermission('canViewCategories')) {
+                const categoriesRes = await fetch('http://localhost:5000/api/category/getcategories', {
+                    method: 'POST',
+                    headers
+                });
+                categoriesData = categoriesRes.ok ? await categoriesRes.json() : [];
+            }
             setCategories(categoriesData);
 
             // Calculate statistics

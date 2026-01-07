@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Link, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
+import { BusinessOwnerOnly } from '../../auth/RoleGuards';
 
 const SupplierOrder = (props) => {
     const { id } = useParams();
@@ -366,12 +367,14 @@ const SupplierOrder = (props) => {
                                             </span>
                                         </td>
                                         <td className='d-flex'>
-                                            <Link to={`/dashboard/editsupplierorder/${order._id}`} className="btn btn-sm btn-info me-2" title="Edit">
-                                                <i className="bi bi-pencil"></i>
-                                            </Link>
-                                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(order._id)} title="Delete">
-                                                <i className="bi bi-trash"></i>
-                                            </button>
+                                            <BusinessOwnerOnly>
+                                                <Link to={`/dashboard/editsupplierorder/${order._id}`} className="btn btn-sm btn-info me-2" title="Edit">
+                                                    <i className="bi bi-pencil"></i>
+                                                </Link>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(order._id)} title="Delete">
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </BusinessOwnerOnly>
                                         </td>
                                     </tr>
                                 ))}

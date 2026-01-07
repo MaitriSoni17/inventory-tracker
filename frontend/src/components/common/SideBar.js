@@ -7,7 +7,7 @@ import Chatbot from './Chatbot';
 import { useRole } from '../../context/RoleContext';
 
 const SideBar = () => {
-    const { role, logout } = useRole();
+    const { role, logout, hasPermission } = useRole();
     const storedRole = localStorage.getItem('role');
     const currentRole = role || storedRole;
     let location = useLocation();
@@ -48,12 +48,18 @@ const SideBar = () => {
         return () => document.removeEventListener('keydown', handleEscape);
     }, []);
 
-    // Check if user can access certain features
+    // Check if user can access certain features based on role
     const isEmployee = ['employee', 'supervisor', 'manager'].includes(currentRole);
-    const isSupervisor = ['supervisor', 'manager'].includes(currentRole);
-    const isManager = ['manager', 'businessowner'].includes(currentRole);
     const isBusinessOwner = currentRole === 'businessowner';
     const isSupplier = currentRole === 'supplier';
+
+    // Permission-based access checks (using actual permissions from RoleContext)
+    const canViewCategories = hasPermission('canViewCategories');
+    const canViewProducts = hasPermission('canViewProducts');
+    const canViewOrders = hasPermission('canViewOrders');
+    const canViewEmployees = hasPermission('canViewEmployees');
+    const canViewWarehouses = hasPermission('canViewWarehouses');
+    const canViewNotifications = hasPermission('canViewNotifications');
 
     return (
         <>
@@ -80,27 +86,29 @@ const SideBar = () => {
                             <i className="fas fa-th-large me-2"></i>Dashboard
                         </Link>
                         
-                        {/* Categories - Available for BusinessOwner, Manager */}
-                        {(isManager || isBusinessOwner) && (
+                        {/* Categories - Based on canViewCategories permission */}
+                        {canViewCategories && (
                             <Link to="/dashboard/category" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/category" ? "active" : ""}`}>
                                 <i className="fas fa-cube me-2"></i>Categories
                             </Link>
                         )}
                         
-                        {/* Products - Available for all employees */}
-                        {(isEmployee || isBusinessOwner) && (
+                        {/* Products - Based on canViewProducts permission */}
+                        {canViewProducts && (
                             <Link to="/dashboard/products" className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/products" || location.pathname === "/dashboard/addproduct" || location.pathname.startsWith("/dashboard/editproduct/")) ? "active" : ""}`}>
                                 <i className="fas fa-box me-2"></i>Products
                             </Link>
                         )}
                         
-                        {/* Orders */}
-                        <Link to={(isEmployee || isBusinessOwner)  ? "/dashboard/orders" : (isSupplier ? "/dashboard/suppliersorders" : "/")} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/") || location.pathname === "/dashboard/suppliersorders") ? "active" : ""}`}>
-                            <i className="bi bi-cart me-2"></i>Orders
-                        </Link>
+                        {/* Orders - Based on canViewOrders permission or supplier role */}
+                        {(canViewOrders || isSupplier) && (
+                            <Link to={(isEmployee || isBusinessOwner)  ? "/dashboard/orders" : (isSupplier ? "/dashboard/suppliersorders" : "/")} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/") || location.pathname === "/dashboard/suppliersorders") ? "active" : ""}`}>
+                                <i className="bi bi-cart me-2"></i>Orders
+                            </Link>
+                        )}
                         
-                        {/* Employees - BusinessOwner and Managers can manage, Supervisors can view only */}
-                        {(isManager || isSupervisor || isBusinessOwner) && (
+                        {/* Employees - Based on canViewEmployees permission */}
+                        {canViewEmployees && (
                             <Link to="/dashboard/employee" className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/createemployee" || location.pathname === "/dashboard/employee" || location.pathname.startsWith("/dashboard/editemployee/")) ? "active" : ""}`}>
                                 <i className="bi bi-people me-2"></i>Employees
                             </Link>
@@ -113,8 +121,8 @@ const SideBar = () => {
                             </Link>
                         )}
                         
-                        {/* Warehouses - Only BusinessOwner and Managers (full access) */}
-                        {isManager && (
+                        {/* Warehouses - Based on canViewWarehouses permission */}
+                        {canViewWarehouses && (
                             <Link to="/dashboard/warehouses" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/warehouses" ? "active" : ""}`}>
                                 <i className="fas fa-warehouse me-2"></i>Warehouses
                             </Link>
@@ -127,8 +135,8 @@ const SideBar = () => {
                             </Link>
                         )}
                         
-                        {/* Notifications - Available to all authenticated users */}
-                        {isEmployee && (
+                        {/* Notifications - Based on canViewNotifications permission */}
+                        {canViewNotifications && (
                             <Link to="/dashboard/notifications" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/notifications" ? "active" : ""}`}>
                                 <i className="fas fa-bell me-2"></i>Notifications
                             </Link>

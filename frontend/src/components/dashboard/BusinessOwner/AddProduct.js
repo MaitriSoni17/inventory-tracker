@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom';
+import { useRole } from '../../../context/RoleContext';
 import validationRules from '../../../utils/validationHelper';
 import '../../../styles/validation.css';
 
 const AddProduct = (props) => {
+    const navigate = useNavigate();
+    const { hasPermission } = useRole();
     const [productDetails, setProductDetails] = useState({
         name: '',
         category: '',
@@ -22,6 +26,15 @@ const AddProduct = (props) => {
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Check permission on mount
+    useEffect(() => {
+        if (!hasPermission('canCreateProducts')) {
+            props.showAlert('You do not have permission to add products', 'danger');
+            navigate('/dashboard/products');
+            return;
+        }
+    }, [hasPermission, navigate, props]);
 
     useEffect(() => {
         const fetchWarehouses = async () => {

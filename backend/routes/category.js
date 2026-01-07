@@ -6,13 +6,13 @@ const router = express.Router();
 const { notifyEmployeesAboutCategory, notifyBusinessOwnerAboutCategory } = require('../utils/notificationHelper');
 const { hasPermission } = require('../middleware/roleBasedAccess');
 
-// Create Category — only BusinessOwner and Manager
+// Create Category — permission-based access
 router.post('/createcategory', fetchuser, [
     body('cName', 'Enter Category Name').exists(),
     body('cDesc', 'Enter Category Description').exists(),
 ], async (req, res) => {
-    // Only BusinessOwner and Manager can create categories
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Check permission to create categories
+    if (!hasPermission(req.user, 'canCreateCategory')) {
         return res.status(403).json({ error: "You do not have permission to create categories" });
     }
 
@@ -58,8 +58,13 @@ router.post('/createcategory', fetchuser, [
     }
 });
 
-// Get Category — accessible by all authenticated users with warehouse filtering
+// Get Category — permission-based access with warehouse filtering
 router.post('/getcategory', fetchuser, async (req, res) => {
+    // Check permission to view categories
+    if (!hasPermission(req.user, 'canViewCategories')) {
+        return res.status(403).json({ error: "You do not have permission to view categories" });
+    }
+
     try {
         let category = [];
 
@@ -100,13 +105,13 @@ router.post('/getcategory', fetchuser, async (req, res) => {
     }
 });
 
-// Update Category — only BusinessOwner and Manager can update
+// Update Category — permission-based access
 router.put('/updatecategory/:id', fetchuser, [
     body('cName', 'Enter Category Name').exists(),
     body('cDesc', 'Enter Category Description').exists(),
 ], async (req, res) => {
-    // Only BusinessOwner and Manager can update categories
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Check permission to edit categories
+    if (!hasPermission(req.user, 'canEditCategory')) {
         return res.status(403).json({ error: "You do not have permission to update categories" });
     }
 
@@ -159,8 +164,13 @@ router.put('/updatecategory/:id', fetchuser, [
     }
 });
 
-// Get All Categories — accessible by all authenticated users (view-only for supervisor/employee)
+// Get All Categories — permission-based access
 router.post('/getcategories', fetchuser, async (req, res) => {
+    // Check permission to view categories
+    if (!hasPermission(req.user, 'canViewCategories')) {
+        return res.status(403).json({ error: "You do not have permission to view categories" });
+    }
+
     try {
         let categories = [];
 
@@ -176,10 +186,10 @@ router.post('/getcategories', fetchuser, async (req, res) => {
     }
 });
 
-// Delete Category — only BusinessOwner and Manager
+// Delete Category — permission-based access
 router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
-    // Only BusinessOwner and Manager can delete categories
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Check permission to delete categories
+    if (!hasPermission(req.user, 'canDeleteCategory')) {
         return res.status(403).json({ error: "You do not have permission to delete categories" });
     }
 

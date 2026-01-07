@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom';
+import { useRole } from '../../../context/RoleContext';
 import '../../../styles/validation.css';
 
 const AddOrder = (props) => {
     const navigate = useNavigate();
+    const { hasPermission } = useRole();
     const [formData, setFormData] = useState({
         cName: '',
         cEmail: '',
@@ -28,6 +30,15 @@ const AddOrder = (props) => {
     const [errors, setErrors] = useState({});
     // eslint-disable-next-line no-unused-vars
     const [touched, setTouched] = useState({});
+
+    // Check permission on mount
+    useEffect(() => {
+        if (!hasPermission('canCreateOrders')) {
+            props.showAlert('You do not have permission to add orders', 'danger');
+            navigate('/dashboard/orders');
+            return;
+        }
+    }, [hasPermission, navigate, props]);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {

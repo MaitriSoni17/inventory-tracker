@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import '../../../styles/dashboard-elegant.css';
-import { CanCreateCategories, CanDeleteCategories } from '../../auth/RoleGuards';
+import { CanCreateCategories, CanDeleteCategories, CanEditCategories } from '../../auth/RoleGuards';
 
 const Category = (props) => {
   const [categoryDetails, setcategoryDetails] = useState({ cName: "", cDesc: "" });
@@ -218,8 +218,10 @@ const Category = (props) => {
                       <h5 className="card-title mb-1">{category.cName}</h5>
                       <p className="card-text text-muted">{category.cDesc}</p>
                       <div className='d-flex g-2'>
-                        <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShowCategory(category); openEditModal(); }}>
-                          <i className="bi bi-pencil-square text-secondary fs-4 me-3"></i></a>
+                        <CanEditCategories>
+                          <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShowCategory(category); openEditModal(); }}>
+                            <i className="bi bi-pencil-square text-secondary fs-4 me-3"></i></a>
+                        </CanEditCategories>
                         <CanDeleteCategories>
                           <a href="/" className="icon-link" onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleShowCategory(category); handleDeleteCategory(); }}><i className="bi bi-trash-fill text-danger fs-4 m-1"></i></a>
                         </CanDeleteCategories>

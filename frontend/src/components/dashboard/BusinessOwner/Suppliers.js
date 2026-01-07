@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css';
+import { BusinessOwnerOnly } from '../../auth/RoleGuards';
 
 const Suppliers = (props) => {
     const [suppliers, setSuppliers] = useState([]);
@@ -323,12 +324,14 @@ const Suppliers = (props) => {
                                             <Link to={`/dashboard/supplierordes/${sup._id}`} className="btn btn-sm btn-success me-2" title="View Orders">
                                                 <i className="bi bi-box-seam"></i>
                                             </Link>
-                                            <Link to={`/dashboard/editsupplier/${sup._id}`} className="btn btn-sm btn-info me-2" title="Edit">
-                                                <i className="bi bi-pencil"></i>
-                                            </Link>
-                                            <button className="btn btn-sm btn-danger" onClick={() => handleDelete(sup._id)} title="Delete">
-                                                <i className="bi bi-trash"></i>
-                                            </button>
+                                            <BusinessOwnerOnly>
+                                                <Link to={`/dashboard/editsupplier/${sup._id}`} className="btn btn-sm btn-info me-2" title="Edit">
+                                                    <i className="bi bi-pencil"></i>
+                                                </Link>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleDelete(sup._id)} title="Delete">
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </BusinessOwnerOnly>
                                         </td>
                                     </tr>
                                 ))}

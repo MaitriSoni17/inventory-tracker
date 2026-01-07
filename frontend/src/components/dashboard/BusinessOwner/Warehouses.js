@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
+import { CanEditWarehouses, CanDeleteWarehouses, CanCreateWarehouses } from '../../auth/RoleGuards';
 
 const Warehouses = (props) => {
     const [warehouses, setWarehouses] = useState([]);
@@ -395,9 +396,11 @@ const Warehouses = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <button className="btn btn-custom-purple shadow-sm mb-2" onClick={() => { resetForm(); setShowAddModal(true); }}>
-                            <i className="bi bi-plus-lg me-1"></i> Add Warehouse
-                        </button>
+                        <CanCreateWarehouses>
+                            <button className="btn btn-custom-purple shadow-sm mb-2" onClick={() => { resetForm(); setShowAddModal(true); }}>
+                                <i className="bi bi-plus-lg me-1"></i> Add Warehouse
+                            </button>
+                        </CanCreateWarehouses>
                     </div>
                 </div>
 
@@ -608,12 +611,16 @@ const Warehouses = (props) => {
                                         <div className="d-flex justify-content-between align-items-center mb-2">
                                             <h5 className="card-title">{warehouse.wName}</h5>
                                             <div className='d-flex'>
-                                                <button className="btn btn-sm btn-link text-primary" onClick={() => handleEdit(warehouse)} title="Edit">
-                                                    <i className="bi bi-pencil-square fs-5"></i>
-                                                </button>
-                                                <button className="btn btn-sm btn-link text-danger" onClick={() => handleDelete(warehouse._id)} title="Delete">
-                                                    <i className="bi bi-trash3-fill fs-5"></i>
-                                                </button>
+                                                <CanEditWarehouses>
+                                                    <button className="btn btn-sm btn-link text-primary" onClick={() => handleEdit(warehouse)} title="Edit">
+                                                        <i className="bi bi-pencil-square fs-5"></i>
+                                                    </button>
+                                                </CanEditWarehouses>
+                                                <CanDeleteWarehouses>
+                                                    <button className="btn btn-sm btn-link text-danger" onClick={() => handleDelete(warehouse._id)} title="Delete">
+                                                        <i className="bi bi-trash3-fill fs-5"></i>
+                                                    </button>
+                                                </CanDeleteWarehouses>
                                             </div>
                                         </div>
                                         <ul className="list-unstyled contact-list">

@@ -39,19 +39,46 @@ const Employee = new Schema({
         ref: 'Employee' 
     }],
     permissions: {
+        // Products
+        canViewProducts: { type: Boolean, default: true },
         canCreateProducts: { type: Boolean, default: true },
-        canDeleteProducts: { type: Boolean, default: true },
-        canCreateWarehouse: { type: Boolean, default: false },
-        canDeleteWarehouse: { type: Boolean, default: false },
-        canCreateCategory: { type: Boolean, default: true },
+        canEditProducts: { type: Boolean, default: true },
+        canDeleteProducts: { type: Boolean, default: false },
+        
+        // Categories
+        canViewCategories: { type: Boolean, default: false },
+        canCreateCategory: { type: Boolean, default: false },
+        canEditCategory: { type: Boolean, default: false },
         canDeleteCategory: { type: Boolean, default: false },
-        canDeleteOrders: { type: Boolean, default: true },
+        
+        // Warehouses
+        canViewWarehouses: { type: Boolean, default: false },
+        canCreateWarehouse: { type: Boolean, default: false },
+        canEditWarehouse: { type: Boolean, default: false },
+        canDeleteWarehouse: { type: Boolean, default: false },
+        
+        // Orders
+        canViewOrders: { type: Boolean, default: true },
+        canCreateOrders: { type: Boolean, default: true },
+        canEditOrders: { type: Boolean, default: true },
+        canDeleteOrders: { type: Boolean, default: false },
+        canApproveOrders: { type: Boolean, default: false },
+        
+        // Employees
+        canViewEmployees: { type: Boolean, default: false },
         canManageEmployees: { type: Boolean, default: false },
-        canViewAnalytics: { type: Boolean, default: true },
-        canExportReports: { type: Boolean, default: false },
         canEditOthersWork: { type: Boolean, default: false },
+        
+        // Analytics & Reports
+        canViewAnalytics: { type: Boolean, default: false },
+        canExportReports: { type: Boolean, default: false },
+        
+        // Notifications
         canSendNotifications: { type: Boolean, default: false },
-        canApproveOrders: { type: Boolean, default: false }
+        canViewNotifications: { type: Boolean, default: true },
+
+        // Dashboard
+        canViewDashboard: { type: Boolean, default: true }
     },
     hasCustomPermissions: { type: Boolean, default: false },
     lastLogin: { type: Date },

@@ -150,6 +150,34 @@ export const CanApproveOrders = ({ children, fallback = null }) => {
 };
 
 /**
+ * Only renders if user can edit products
+ */
+export const CanEditProducts = ({ children, fallback = null }) => {
+    return <PermissionGuard permission="canEditProducts" fallback={fallback}>{children}</PermissionGuard>;
+};
+
+/**
+ * Only renders if user can edit categories
+ */
+export const CanEditCategories = ({ children, fallback = null }) => {
+    return <PermissionGuard permission="canEditCategory" fallback={fallback}>{children}</PermissionGuard>;
+};
+
+/**
+ * Only renders if user can edit warehouses
+ */
+export const CanEditWarehouses = ({ children, fallback = null }) => {
+    return <PermissionGuard permission="canEditWarehouse" fallback={fallback}>{children}</PermissionGuard>;
+};
+
+/**
+ * Only renders if user can edit orders
+ */
+export const CanEditOrders = ({ children, fallback = null }) => {
+    return <PermissionGuard permission="canEditOrders" fallback={fallback}>{children}</PermissionGuard>;
+};
+
+/**
  * Only renders if user can edit employees (Business Owner or Manager only)
  */
 export const CanEditEmployees = ({ children, fallback = null }) => {

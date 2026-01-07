@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useRole } from '../../../context/RoleContext';
 import '../../../styles/validation.css';
 
 const EditProduct = (props) => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { hasPermission } = useRole();
     const [productDetails, setProductDetails] = useState({
         name: '',
         category: '',
@@ -26,6 +28,15 @@ const EditProduct = (props) => {
     const [loadingWarehouses, setLoadingWarehouses] = useState(true);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+
+    // Check permission on mount
+    useEffect(() => {
+        if (!hasPermission('canEditProducts')) {
+            props.showAlert('You do not have permission to edit products', 'danger');
+            navigate('/dashboard/products');
+            return;
+        }
+    }, [hasPermission, navigate, props]);
 
     useEffect(() => {
         // Fetch the product details

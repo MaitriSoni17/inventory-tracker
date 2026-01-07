@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import { apiCall, parseResponse } from '../../../utils/apiClient';
 import '../../../styles/dashboard-elegant.css';
+import { CanEditOrders, CanDeleteOrders, CanCreateOrders } from '../../auth/RoleGuards';
 
 const Orders = (props) => {
     // const navigate = useNavigate();
@@ -288,9 +289,11 @@ const Orders = (props) => {
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
 
-                        <Link to="/dashboard/addorder" className="btn btn-custom-purple shadow-sm text-decoration-none mb-2">
-                            <i className="bi bi-plus-lg me-1"></i> Add Order
-                        </Link>
+                        <CanCreateOrders>
+                            <Link to="/dashboard/addorder" className="btn btn-custom-purple shadow-sm text-decoration-none mb-2">
+                                <i className="bi bi-plus-lg me-1"></i> Add Order
+                            </Link>
+                        </CanCreateOrders>
                     </div>
                 </div>
 
@@ -381,12 +384,16 @@ const Orders = (props) => {
                                             </span>
                                         </td>
                                         <td className='d-flex'>
-                                            <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-info me-2" title="Edit">
-                                                <i className="bi bi-pencil"></i>
-                                            </Link>
-                                            <button className="btn btn-danger" onClick={() => handleDelete(order._id)} title="Delete">
-                                                <i className="bi bi-trash"></i>
-                                            </button>
+                                            <CanEditOrders>
+                                                <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-info me-2" title="Edit">
+                                                    <i className="bi bi-pencil"></i>
+                                                </Link>
+                                            </CanEditOrders>
+                                            <CanDeleteOrders>
+                                                <button className="btn btn-danger" onClick={() => handleDelete(order._id)} title="Delete">
+                                                    <i className="bi bi-trash"></i>
+                                                </button>
+                                            </CanDeleteOrders>
                                         </td>
                                     </tr>
                                 ))}

@@ -1,5 +1,6 @@
 const express = require('express');
 const Employee = require('../models/Employee');
+const RolePermissions = require('../models/RolePermissions');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -172,56 +173,24 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
             permissions: req.body.permissions || {}
         };
 
-        // Set default permissions based on role
-        const defaultPermissions = {
-            employee: {
-                canCreateProducts: true,
-                canDeleteProducts: false,
-                canCreateWarehouse: false,
-                canDeleteWarehouse: false,
-                canCreateCategory: false,
-                canDeleteCategory: false,
-                canDeleteOrders: false,
-                canManageEmployees: false,
-                canViewAnalytics: false,
-                canExportReports: false,
-                canEditOthersWork: false,
-                canSendNotifications: false,
-                canApproveOrders: false
-            },
-            supervisor: {
-                canCreateProducts: true,
-                canDeleteProducts: true,
-                canCreateWarehouse: false,
-                canDeleteWarehouse: false,
-                canCreateCategory: true,
-                canDeleteCategory: false,
-                canDeleteOrders: true,
-                canManageEmployees: false,
-                canViewAnalytics: true,
-                canExportReports: false,
-                canEditOthersWork: true,
-                canSendNotifications: false,
-                canApproveOrders: false
-            },
-            manager: {
-                canCreateProducts: true,
-                canDeleteProducts: true,
-                canCreateWarehouse: true,
-                canDeleteWarehouse: true,
-                canCreateCategory: true,
-                canDeleteCategory: false,
-                canDeleteOrders: true,
-                canManageEmployees: true,
-                canViewAnalytics: true,
-                canExportReports: true,
-                canEditOthersWork: true,
-                canSendNotifications: true,
-                canApproveOrders: true
-            }
-        };
+        // Get permissions from business owner's custom role permissions or use defaults
+        let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: businessOwnerId });
+        let employeePermissions;
+        
+        if (rolePermissionsDoc && rolePermissionsDoc[role]) {
+            // Use business owner's custom permissions for this role
+            const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+            // Remove mongoose internal fields
+            delete customPerms._id;
+            delete customPerms.$__;
+            delete customPerms.$isNew;
+            employeePermissions = customPerms;
+        } else {
+            // Fall back to default permissions from RolePermissions model
+            employeePermissions = RolePermissions.getDefaultPermissions(role);
+        }
 
-        employeeData.permissions = defaultPermissions[role];
+        employeeData.permissions = employeePermissions;
 
         employee = await Employee.create(employeeData);
 
@@ -350,9 +319,14 @@ router.post('/getemployee', fetchuser, async (req, res) => {
     }
 });
 
-// Get All Employees using: POST "/api/employee/getallemployees". Role-based filtering + warehouse filtering
+// Get All Employees using: POST "/api/employee/getallemployees". Permission-based filtering + warehouse filtering
 router.post('/getallemployees', fetchuser, async (req, res) => {
     try {
+        // Check permission to view employees (employees can always view themselves)
+        if (req.role !== 'employee' && !hasPermission(req.user, 'canViewEmployees')) {
+            return res.status(403).json({ error: "You do not have permission to view employees" });
+        }
+
         // Business owner gets all employees in their business
         if (req.role === 'businessowner') {
             const employees = await Employee.find({ businessowner: req.user._id })
@@ -549,8 +523,31 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req,
         if (about) employee.about = about;
         
         // Only businessowner can change role
-        if (role && req.role === 'businessowner') {
+        if (role && req.role === 'businessowner' && role !== employee.role) {
+            const oldRole = employee.role;
             employee.role = role;
+            
+            // If employee doesn't have custom permissions, update to new role's permissions
+            if (!employee.hasCustomPermissions) {
+                // Get business owner's custom permissions for the new role
+                let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: employee.businessowner });
+                let newPermissions;
+                
+                if (rolePermissionsDoc && rolePermissionsDoc[role]) {
+                    const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+                    newPermissions = {};
+                    // Only copy actual permission fields
+                    for (const key of Object.keys(customPerms)) {
+                        if (key.startsWith('can')) {
+                            newPermissions[key] = customPerms[key];
+                        }
+                    }
+                } else {
+                    newPermissions = RolePermissions.getDefaultPermissions(role);
+                }
+                
+                employee.permissions = newPermissions;
+            }
         }
 
         // Handle image upload

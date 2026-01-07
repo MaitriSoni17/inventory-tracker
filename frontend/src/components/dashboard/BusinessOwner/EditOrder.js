@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
+import { useRole } from '../../../context/RoleContext';
 import '../../../styles/validation.css';
 
 const EditOrder = (props) => {
     const navigate = useNavigate();
     const { id } = useParams();
+    const { hasPermission } = useRole();
     const [formData, setFormData] = useState({
         cName: '',
         cEmail: '',
@@ -24,6 +26,15 @@ const EditOrder = (props) => {
     const [loading, setLoading] = useState(true);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+
+    // Check permission on mount
+    useEffect(() => {
+        if (!hasPermission('canEditOrders')) {
+            props.showAlert('You do not have permission to edit orders', 'danger');
+            navigate('/dashboard/orders');
+            return;
+        }
+    }, [hasPermission, navigate, props]);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {

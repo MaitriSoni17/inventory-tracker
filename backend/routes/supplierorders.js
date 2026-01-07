@@ -3,9 +3,10 @@ const fetchuser = require('../middleware/fetchuser');
 const { body, validationResult } = require('express-validator');
 const SupplierOrders = require('../models/SupplierOrders');
 const { createNotification } = require('../utils/notificationHelper');
+const { hasPermission } = require('../middleware/roleBasedAccess');
 const router = express.Router();
 
-// Create Supplier Order — only BusinessOwner and Manager
+// Create Supplier Order — permission-based access
 router.post('/createsupplierorder/:id', fetchuser, [
     body('pName', 'Enter Product Name').exists(),
     body('category', 'Enter Product Category').exists(),
@@ -14,8 +15,8 @@ router.post('/createsupplierorder/:id', fetchuser, [
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
-    // Only BusinessOwner and Manager can create supplier orders
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Check permission to create orders
+    if (!hasPermission(req.user, 'canCreateOrders')) {
         return res.status(403).json({ error: "You do not have permission to create supplier orders" });
     }
 
@@ -68,8 +69,13 @@ router.post('/createsupplierorder/:id', fetchuser, [
     }
 });
 
-// Get Supplier Orders — accessible by authenticated users
+// Get Supplier Orders — permission-based access
 router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
+    // Check permission to view orders (suppliers always have access to their own orders)
+    if (req.role !== 'supplier' && !hasPermission(req.user, 'canViewOrders')) {
+        return res.status(403).json({ error: "You do not have permission to view supplier orders" });
+    }
+
     try {
         let supplierorder = [];
 
@@ -143,7 +149,7 @@ router.post('/getorders', fetchuser, async (req, res) => {
     }
 });
 
-// Update Supplier Order — only BusinessOwner and Manager
+// Update Supplier Order — permission-based access
 router.put('/updatesupplierorder/:id', fetchuser, [
     body('pName', 'Enter Product Name').exists(),
     body('category', 'Enter Product Category').exists(),
@@ -152,8 +158,8 @@ router.put('/updatesupplierorder/:id', fetchuser, [
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
-    // Only BusinessOwner and Manager can update supplier orders
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Check permission to edit orders
+    if (!hasPermission(req.user, 'canEditOrders')) {
         return res.status(403).json({ error: "You do not have permission to update supplier orders" });
     }
 
@@ -296,8 +302,8 @@ router.put('/updatepaymentstatus/:id', fetchuser, [
 });
 
 router.delete('/deletesupplierorder/:id', fetchuser, async (req, res) => {
-    // Only BusinessOwner and Manager can delete supplier orders
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Check permission to delete orders
+    if (!hasPermission(req.user, 'canDeleteOrders')) {
         return res.status(403).json({ error: "You do not have permission to delete supplier orders" });
     }
 

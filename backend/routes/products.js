@@ -46,7 +46,7 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Create Product — accessible by BusinessOwner or Employee
+// Create Product — accessible by users with canCreateProducts permission
 router.post('/createproduct', fetchuser, upload.array('images', 10), [
     body('name').exists().trim().notEmpty().withMessage('Enter Product Name'),
     body('category').exists().trim().notEmpty().withMessage('Enter Category'),
@@ -55,6 +55,11 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
     body('mDate').exists().trim().notEmpty().withMessage('Enter Manufacturing Date'),
     body('eDate').exists().trim().notEmpty().withMessage('Enter Expiring Date'),
 ], async (req, res) => {
+    // Check permission to create products
+    if (!hasPermission(req.user, 'canCreateProducts')) {
+        return res.status(403).json({ error: "You do not have permission to create products" });
+    }
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
@@ -151,8 +156,13 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
     }
 });
 
-// Get Products — accessible by BusinessOwner, Manager, Supervisor, or Employee
+// Get Products — accessible by users with canViewProducts permission
 router.post('/getproduct', fetchuser, async (req, res) => {
+    // Check permission to view products
+    if (!hasPermission(req.user, 'canViewProducts')) {
+        return res.status(403).json({ error: "You do not have permission to view products" });
+    }
+
     try {
         let products = [];
 
@@ -247,7 +257,7 @@ router.post('/getproduct', fetchuser, async (req, res) => {
     }
 });
 
-// Update Product — role-based access
+// Update Product — permission-based access
 router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     body('name', 'Enter Product Name').exists().trim().notEmpty(),
     body('category', 'Enter Category').exists().trim().notEmpty(),
@@ -256,9 +266,9 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     body('mDate', 'Enter Manufacturing Date').exists().trim().notEmpty(),
     body('eDate', 'Enter Expiring Date').exists().trim().notEmpty(),
 ], async (req, res) => {
-    // All roles except basic employee can update products
-    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to update products");
+    // Check permission to edit products
+    if (!hasPermission(req.user, 'canEditProducts')) {
+        return res.status(403).json({ error: "You do not have permission to edit products" });
     }
 
     const errors = validationResult(req);
@@ -389,10 +399,11 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     }
 });
 
-// Delete Product — role-based access with hierarchy checking
+// Delete Product — permission-based access with hierarchy checking
 router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
-    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
-        return res.status(403).send("You do not have permission to delete products");
+    // Check permission to delete products
+    if (!hasPermission(req.user, 'canDeleteProducts')) {
+        return res.status(403).json({ error: "You do not have permission to delete products" });
     }
 
     try {

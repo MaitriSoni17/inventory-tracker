@@ -14,6 +14,7 @@ const PermissionManager = (props) => {
     const [permissionGroups, setPermissionGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [syncing, setSyncing] = useState(false);
     const [activeRole, setActiveRole] = useState('manager');
     const [searchTerm, setSearchTerm] = useState('');
     const [lastUpdated, setLastUpdated] = useState(null);
@@ -414,6 +415,41 @@ const PermissionManager = (props) => {
         }
     };
 
+    // Sync all employees' permissions with current role settings
+    const handleSyncAllPermissions = async () => {
+        if (!window.confirm('This will update all employees (without custom permissions) to use the current role permission settings. Continue?')) {
+            return;
+        }
+
+        setSyncing(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/sync-all', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                props.showAlert(data.message, 'success');
+                // Refresh employee list if on individual tab
+                if (mainTab === 'individual') {
+                    fetchEmployees();
+                }
+            } else {
+                const errorData = await response.json();
+                props.showAlert(errorData.error || 'Error syncing permissions', 'danger');
+            }
+        } catch (error) {
+            console.error('Error syncing permissions:', error);
+            props.showAlert('Error syncing permissions', 'danger');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     // Reset employee permissions to role defaults
     const handleResetEmployee = async () => {
         if (!selectedEmployee) return;
@@ -588,6 +624,15 @@ const PermissionManager = (props) => {
                             >
                                 <i className="fas fa-undo me-2"></i>
                                 Reset {roleInfo[activeRole].title} Defaults
+                            </button>
+                            <button 
+                                className="btn-sync"
+                                onClick={handleSyncAllPermissions}
+                                disabled={syncing}
+                                title="Apply current role permissions to all employees without custom settings"
+                            >
+                                <i className={`fas ${syncing ? 'fa-spinner fa-spin' : 'fa-sync'} me-2`}></i>
+                                {syncing ? 'Syncing...' : 'Sync All Employees'}
                             </button>
                         </div>
                     </div>

@@ -26,7 +26,7 @@ function CreateSupplier(props) {
         const hasUpperCase = /[A-Z]/.test(password);
         const hasLowerCase = /[a-z]/.test(password);
         const hasNumber = /[0-9]/.test(password);
-        const hasSpecialChar = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(password);
+        const hasSpecialChar = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
         return {
             isValid: password.length >= 5,
             strength: [hasUpperCase, hasLowerCase, hasNumber, hasSpecialChar].filter(Boolean).length

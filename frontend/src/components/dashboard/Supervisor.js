@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRole } from '../../context/RoleContext';
 import {
@@ -31,10 +31,12 @@ ChartJS.register(
 
 function Supervisor(props) {
     const navigate = useNavigate();
-    const { userDetails } = useRole();
-    const salesRef = useRef(null);
-    const stockRef = useRef(null);
-    const salesChartInstance = useRef(null);
+    const { userDetails, hasPermission } = useRole();
+    
+    // Chart refs
+    const ordersChartRef = useRef(null);
+    const stockChartRef = useRef(null);
+    const ordersChartInstance = useRef(null);
     const stockChartInstance = useRef(null);
 
     const [orders, setOrders] = useState([]);
@@ -42,12 +44,169 @@ function Supervisor(props) {
     const [subordinates, setSubordinates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [supervisorWarehouse, setSupervisorWarehouse] = useState(null);
+    const [ordersView, setOrdersView] = useState('monthly');
     const [stats, setStats] = useState({
         teamSize: 0,
         ordersPlaced: 0,
         productsManaged: 0,
         lowStockItems: 0
     });
+
+    // Chart data aggregation functions
+    const aggregateMonthlyOrders = useCallback((ordersData) => {
+        const monthlyData = {};
+        const currentYear = new Date().getFullYear();
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        monthNames.forEach(month => { monthlyData[month] = 0; });
+
+        ordersData.forEach(order => {
+            if (order.oDate) {
+                const orderDate = new Date(order.oDate);
+                if (orderDate.getFullYear() === currentYear) {
+                    const monthName = monthNames[orderDate.getMonth()];
+                    monthlyData[monthName] += 1;
+                }
+            }
+        });
+
+        return { labels: monthNames, data: monthNames.map(month => monthlyData[month]) };
+    }, []);
+
+    const aggregateQuarterlyOrders = useCallback((ordersData) => {
+        const quarterlyData = { 'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0 };
+        const currentYear = new Date().getFullYear();
+
+        ordersData.forEach(order => {
+            if (order.oDate) {
+                const orderDate = new Date(order.oDate);
+                if (orderDate.getFullYear() === currentYear) {
+                    const quarter = Math.floor(orderDate.getMonth() / 3) + 1;
+                    quarterlyData[`Q${quarter}`] += 1;
+                }
+            }
+        });
+
+        return { labels: ['Q1', 'Q2', 'Q3', 'Q4'], data: ['Q1', 'Q2', 'Q3', 'Q4'].map(q => quarterlyData[q]) };
+    }, []);
+
+    const aggregateAnnuallyOrders = useCallback((ordersData) => {
+        const annualData = {};
+        const currentYear = new Date().getFullYear();
+        for (let i = currentYear - 4; i <= currentYear; i++) { annualData[i] = 0; }
+
+        ordersData.forEach(order => {
+            if (order.oDate) {
+                const year = new Date(order.oDate).getFullYear();
+                if (annualData.hasOwnProperty(year)) { annualData[year] += 1; }
+            }
+        });
+
+        const years = Object.keys(annualData).map(Number).sort((a, b) => a - b);
+        return { labels: years.map(y => y.toString()), data: years.map(y => annualData[y]) };
+    }, []);
+
+    const getOrdersData = useCallback((ordersData) => {
+        switch (ordersView) {
+            case 'quarterly': return aggregateQuarterlyOrders(ordersData);
+            case 'annually': return aggregateAnnuallyOrders(ordersData);
+            default: return aggregateMonthlyOrders(ordersData);
+        }
+    }, [ordersView, aggregateMonthlyOrders, aggregateQuarterlyOrders, aggregateAnnuallyOrders]);
+
+    const getTopProductsByStock = useCallback((productsData) => {
+        return [...productsData]
+            .sort((a, b) => b.totalProducts - a.totalProducts)
+            .slice(0, 8)
+            .map(p => ({
+                name: p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name,
+                quantity: p.totalProducts
+            }));
+    }, []);
+
+    // Initialize charts
+    const initCharts = useCallback(() => {
+        if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); }
+        if (stockChartInstance.current) { stockChartInstance.current.destroy(); }
+
+        const ordersChartData = getOrdersData(orders);
+        const topProducts = getTopProductsByStock(products);
+
+        setTimeout(() => {
+            if (ordersChartRef.current && orders.length > 0) {
+                try {
+                    const ctx = ordersChartRef.current.getContext('2d');
+                    if (ctx) {
+                        ordersChartInstance.current = new ChartJS(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: ordersChartData.labels,
+                                datasets: [{
+                                    label: 'Orders',
+                                    data: ordersChartData.data,
+                                    backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                                    borderColor: '#007bff',
+                                    borderWidth: 3,
+                                    tension: 0.4,
+                                    fill: true,
+                                    pointBackgroundColor: '#007bff',
+                                    pointBorderColor: '#fff'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+                                    x: { grid: { display: false } }
+                                }
+                            }
+                        });
+                    }
+                } catch (error) { console.error('Error creating orders chart:', error); }
+            }
+
+            if (stockChartRef.current && products.length > 0) {
+                try {
+                    const ctx = stockChartRef.current.getContext('2d');
+                    if (ctx) {
+                        stockChartInstance.current = new ChartJS(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: topProducts.map(p => p.name),
+                                datasets: [{
+                                    label: 'Stock Quantity',
+                                    data: topProducts.map(p => p.quantity),
+                                    backgroundColor: '#007bff',
+                                    borderRadius: 5
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } },
+                                    x: { grid: { display: false } }
+                                }
+                            }
+                        });
+                    }
+                } catch (error) { console.error('Error creating stock chart:', error); }
+            }
+        }, 100);
+    }, [orders, products, getOrdersData, getTopProductsByStock]);
+
+    // Initialize charts when data changes
+    useEffect(() => {
+        if (!loading && (orders.length > 0 || products.length > 0)) {
+            initCharts();
+        }
+        return () => {
+            if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); }
+            if (stockChartInstance.current) { stockChartInstance.current.destroy(); }
+        };
+    }, [loading, orders, products, ordersView, initCharts]);
 
     // Fetch all data on mount
     useEffect(() => {
@@ -69,28 +228,38 @@ function Supervisor(props) {
                 'auth-token': localStorage.getItem('token')
             };
 
-            // Fetch orders (supervisor's team orders)
-            const ordersRes = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
-                method: 'POST',
-                headers
-            });
-            const ordersData = ordersRes.ok ? await ordersRes.json() : [];
+            let ordersData = [];
+            let productsData = [];
+            let subordinatesData = [];
+
+            // Only fetch orders if user has permission
+            if (hasPermission('canViewOrders')) {
+                const ordersRes = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+                    method: 'POST',
+                    headers
+                });
+                ordersData = ordersRes.ok ? await ordersRes.json() : [];
+            }
             setOrders(ordersData);
 
-            // Fetch products (supervisor's team products)
-            const productsRes = await fetch('http://localhost:5000/api/products/getproduct', {
-                method: 'POST',
-                headers
-            });
-            const productsData = productsRes.ok ? await productsRes.json() : [];
+            // Only fetch products if user has permission
+            if (hasPermission('canViewProducts')) {
+                const productsRes = await fetch('http://localhost:5000/api/products/getproduct', {
+                    method: 'POST',
+                    headers
+                });
+                productsData = productsRes.ok ? await productsRes.json() : [];
+            }
             setProducts(productsData);
 
-            // Fetch subordinates (direct reports)
-            const subordinatesRes = await fetch('http://localhost:5000/api/employee/getallemployees', {
-                method: 'POST',
-                headers
-            });
-            const subordinatesData = subordinatesRes.ok ? await subordinatesRes.json() : [];
+            // Only fetch subordinates if user has permission
+            if (hasPermission('canViewEmployees')) {
+                const subordinatesRes = await fetch('http://localhost:5000/api/employee/getallemployees', {
+                    method: 'POST',
+                    headers
+                });
+                subordinatesData = subordinatesRes.ok ? await subordinatesRes.json() : [];
+            }
             setSubordinates(subordinatesData);
 
             // Calculate statistics
@@ -195,6 +364,54 @@ function Supervisor(props) {
                         <h3>Low Stock</h3>
                         <p className="stat-number">{stats.lowStockItems}</p>
                         <span className="stat-label">Items</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Charts Section */}
+            <div className="row my-4">
+                <div className="col-12">
+                    <div className="p-4 bg-white shadow rounded-4 border">
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                            <h2 className="mb-0">Orders Overview</h2>
+                            <select 
+                                className="form-select w-auto" 
+                                value={ordersView} 
+                                onChange={(e) => setOrdersView(e.target.value)}
+                            >
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="annually">Annually</option>
+                            </select>
+                        </div>
+                        <div style={{ height: '300px' }}>
+                            {orders.length === 0 ? (
+                                <div className="alert alert-info" role="alert">
+                                    <i className="bi bi-info-circle me-2"></i>
+                                    No order data available to display chart.
+                                </div>
+                            ) : (
+                                <canvas ref={ordersChartRef} />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="row my-4">
+                <div className="col-12">
+                    <div className="p-4 bg-white shadow rounded-4 border">
+                        <h2 className="mb-4">Stock Overview - Top Products</h2>
+                        <div style={{ height: '300px' }}>
+                            {products.length === 0 ? (
+                                <div className="alert alert-info" role="alert">
+                                    <i className="bi bi-info-circle me-2"></i>
+                                    No product data available to display chart.
+                                </div>
+                            ) : (
+                                <canvas ref={stockChartRef} />
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
