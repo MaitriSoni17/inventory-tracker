@@ -277,6 +277,11 @@
   color: #e65100;
 }
 
+.notification-icon.badge-message {
+  background: #f0f4ff;
+  color: #667eea;
+}
+
 .notification-icon.badge-default {
   background: #f5f5f5;
   color: #616161;

@@ -27,7 +27,7 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role for notification query
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            req.role === 'employee' ? 'Employee' : 
+                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
                             req.role === 'supplier' ? 'Supplier' : req.role;
 
     let notifications = await Notification.find({
@@ -55,7 +55,7 @@ router.get('/unreadcount', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            req.role === 'employee' ? 'Employee' : 
+                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
                             req.role === 'supplier' ? 'Supplier' : req.role;
 
     const count = await Notification.countDocuments({
@@ -105,7 +105,7 @@ router.put('/markallasread', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            req.role === 'employee' ? 'Employee' : 
+                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
                             req.role === 'supplier' ? 'Supplier' : req.role;
 
     await Notification.updateMany(
@@ -157,7 +157,7 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            req.role === 'employee' ? 'Employee' : 
+                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
                             req.role === 'supplier' ? 'Supplier' : req.role;
 
     await Notification.deleteMany({

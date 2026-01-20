@@ -111,7 +111,22 @@ export const RoleProvider = ({ children }) => {
     }, [fetchUserRole]);
 
     const hasPermission = (permissionName) => {
+        // Business owners have all permissions
         if (role === 'businessowner') return true;
+        
+        // Suppliers have specific permissions for messaging, notifications, and settings
+        if (role === 'supplier') {
+            const supplierPermissions = {
+                'canViewMessages': true,
+                'canSendMessages': true,
+                'canDeleteMessages': true,
+                'canViewNotifications': true,
+                'canViewSettings': true
+            };
+            return supplierPermissions[permissionName] || false;
+        }
+        
+        // Employees use role-based permissions system
         return permissions[permissionName] || false;
     };
 

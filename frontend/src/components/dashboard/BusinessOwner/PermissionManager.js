@@ -36,7 +36,8 @@ const PermissionManager = (props) => {
         canViewOrders: ['canCreateOrders', 'canEditOrders', 'canDeleteOrders', 'canApproveOrders'],
         canViewEmployees: ['canManageEmployees', 'canEditOthersWork'],
         canViewAnalytics: ['canExportReports'],
-        canViewNotifications: ['canSendNotifications']
+        canViewNotifications: ['canSendNotifications'],
+        canViewMessages: ['canSendMessages', 'canDeleteMessages']
     };
 
     // Check if a permission is disabled due to its parent view permission being off

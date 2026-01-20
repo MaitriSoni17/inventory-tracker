@@ -77,6 +77,11 @@ const Employee = new Schema({
         canSendNotifications: { type: Boolean, default: false },
         canViewNotifications: { type: Boolean, default: true },
 
+        // Messaging
+        canViewMessages: { type: Boolean, default: true },
+        canSendMessages: { type: Boolean, default: true },
+        canDeleteMessages: { type: Boolean, default: true },
+
         // Dashboard
         canViewDashboard: { type: Boolean, default: true }
     },

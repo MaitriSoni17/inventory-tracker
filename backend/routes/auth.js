@@ -3,7 +3,7 @@ const BusinessOwner = require('../models/BusinessOwner');
 const Employee = require('../models/Employee');
 const Supplier = require('../models/Supplier');
 const LoginInfo = require('../models/LoginInfo')
-// const fetchuser = require('../middleware/fetchuser');
+const fetchuser = require('../middleware/fetchuser');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -83,6 +83,23 @@ router.post('/login', [
     }
 });
 
+// Get current user info using JWT token: GET "/api/auth/getuser"
+router.get('/getuser', fetchuser, async (req, res) => {
+    try {
+        if (!req.user) {
+            return res.status(401).json({ error: "User not found" });
+        }
+        res.json({
+            _id: req.user._id,
+            email: req.user.email,
+            fname: req.user.fname,
+            lname: req.user.lname,
+            role: req.role
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
 
 module.exports = router;
 

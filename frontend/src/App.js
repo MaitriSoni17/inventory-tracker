@@ -38,9 +38,8 @@ import Warehouses from './components/dashboard/BusinessOwner/Warehouses';
 import Settings from './components/dashboard/BusinessOwner/Settings';
 import EmpSettings from './components/dashboard/Employee/Settings';
 import NotificationsPage from './components/common/NotificationsPage';
+import Messaging from './components/common/Messaging';
 import PermissionManager from './components/dashboard/BusinessOwner/PermissionManager';
-import Chat from './components/dashboard/Chat';
-import ChatPermissions from './components/dashboard/BusinessOwner/ChatPermissions';
 import { RoleProvider } from './context/RoleContext';
 
 function App() {
@@ -70,7 +69,7 @@ function App() {
               <ProtectedRoute>
                 <SideBar showAlert={showAlert} />
               </ProtectedRoute>
-            }>
+              }>
               {/* Default dashboard view based on role */}
               <Route index element={
                 localStorage.getItem('role') === 'businessowner' ? <BusinessOwner showAlert={showAlert} /> :
@@ -102,9 +101,8 @@ function App() {
               <Route path="warehouses" element={<Warehouses showAlert={showAlert} />} />
               <Route path="settings" element={<Settings showAlert={showAlert} />} />
               <Route path="notifications" element={<NotificationsPage showAlert={showAlert} />} />
+              <Route path="messages" element={<Messaging />} />
               <Route path="permissions" element={<PermissionManager showAlert={showAlert} />} />
-              <Route path="chat" element={<Chat showAlert={showAlert} />} />
-              <Route path="chatpermissions" element={<ChatPermissions showAlert={showAlert} />} />
               
               <Route path="empsettings" element={<EmpSettings showAlert={showAlert} />} />
               <Route path="suppliersettings" element={<SupplierSettings showAlert={showAlert} />} />

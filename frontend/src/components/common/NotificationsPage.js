@@ -177,7 +177,8 @@ const NotificationsPage = (props) => {
       order_deleted: 'bi-clipboard-x',
       category_created: 'bi-tag-fill',
       category_updated: 'bi-tag',
-      category_deleted: 'bi-tag-slash'
+      category_deleted: 'bi-tag-slash',
+      message: 'bi-chat-left-text-fill'
     };
     return icons[type] || 'bi-bell-fill';
   };
@@ -188,6 +189,7 @@ const NotificationsPage = (props) => {
     if (type.includes('product')) return 'badge-product';
     if (type.includes('order')) return 'badge-order';
     if (type.includes('category')) return 'badge-category';
+    if (type === 'message') return 'badge-message';
     return 'badge-default';
   };
 

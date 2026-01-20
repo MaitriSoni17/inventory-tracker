@@ -698,6 +698,17 @@ router.get('/groups', fetchuser, async (req, res) => {
                 ]
             },
             {
+                id: 'messaging',
+                name: 'Messaging',
+                icon: 'bi bi-chat-dots',
+                description: 'Control access to messaging features',
+                permissions: [
+                    { key: 'canViewMessages', label: 'View Messages', description: 'Can view and read messages' },
+                    { key: 'canSendMessages', label: 'Send Messages', description: 'Can send messages to other users' },
+                    { key: 'canDeleteMessages', label: 'Delete Messages', description: 'Can delete sent or received messages' }
+                ]
+            },
+            {
                 id: 'dashboard',
                 name: 'Dashboard',
                 icon: 'fas fa-th-large',

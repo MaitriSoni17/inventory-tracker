@@ -1046,7 +1046,53 @@ module.exports = {
   notifyReportingManager,
   notifyAllManagers,
   notifyManagerAboutNewSubordinate,
-  notifyEmployeeAboutRoleChange
+  notifyEmployeeAboutRoleChange,
+  notifyAboutNewMessage
 };
+
+/**
+ * Notify user about new message
+ * @param {String} recipientId - ID of recipient
+ * @param {String} recipientRole - Role of recipient
+ * @param {String} senderId - ID of sender
+ * @param {String} senderRole - Role of sender
+ * @param {String} senderName - Name of sender
+ * @param {String} messagePreview - Message preview text
+ * @param {Object} businessOwnerId - Business owner ID
+ */
+async function notifyAboutNewMessage(
+  recipientId,
+  recipientRole,
+  senderId,
+  senderRole,
+  senderName,
+  messagePreview,
+  businessOwnerId
+) {
+  try {
+    const notification = new Notification({
+      recipient: recipientId,
+      recipientRole,
+      sender: senderId,
+      senderRole,
+      type: 'message',
+      title: `New message from ${senderName}`,
+      message: messagePreview.substring(0, 100),
+      data: {
+        senderId,
+        messagePreview,
+        businessOwnerId
+      }
+    });
+
+    await notification.save();
+    return notification;
+  } catch (error) {
+    console.error('Error creating message notification:', error);
+    // Don't throw - notifications shouldn't block message sending
+    return null;
+  }
+}
+
 
 

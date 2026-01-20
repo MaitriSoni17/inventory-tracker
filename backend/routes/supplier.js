@@ -116,16 +116,23 @@ router.post('/getsupplier/:id', fetchuser, async (req, res) => {
     }
 });
 
-// Get All Suppliers using: POST "/api/supplier/getallsuppliers". Business Owner, Manager, or Supervisor login required
+// Get All Suppliers using: POST "/api/supplier/getallsuppliers". Business Owner, Manager, Supervisor, Employee or Supplier login required
 router.post('/getallsuppliers', require('../middleware/fetchuser'), async (req, res) => {
     try {
-        // Business owner, managers, and supervisors can view suppliers
+        // Business owner can view their suppliers
         if (req.role === 'businessowner') {
             const suppliers = await Supplier.find({ businessowner: req.user._id }).select('-password');
             return res.json(suppliers);
         }
         
-        if (['manager', 'supervisor'].includes(req.role)) {
+        // Managers, supervisors, and employees can view suppliers of their business owner
+        if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+            const suppliers = await Supplier.find({ businessowner: req.user.businessowner }).select('-password');
+            return res.json(suppliers);
+        }
+
+        // Suppliers can view other suppliers of the same business owner
+        if (req.role === 'supplier') {
             const suppliers = await Supplier.find({ businessowner: req.user.businessowner }).select('-password');
             return res.json(suppliers);
         }

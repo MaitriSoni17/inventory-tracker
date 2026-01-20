@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import '../../styles/sidebar.css'
 import Notifications from './Notifications';
-import ChatNotifications from './ChatNotifications';
 import Chatbot from './Chatbot';
 import { useRole } from '../../context/RoleContext';
 
@@ -61,6 +60,7 @@ const SideBar = () => {
     const canViewEmployees = hasPermission('canViewEmployees');
     const canViewWarehouses = hasPermission('canViewWarehouses');
     const canViewNotifications = hasPermission('canViewNotifications');
+    const canViewMessages = hasPermission('canViewMessages');
 
     return (
         <>
@@ -143,10 +143,12 @@ const SideBar = () => {
                             </Link>
                         )}
                         
-                        {/* Chat - Available to all users */}
-                        <Link to="/dashboard/chat" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/chat" || location.pathname === "/dashboard/chatpermissions" ? "active" : ""}`}>
-                            <i className="bi bi-chat-dots me-2"></i>Messages
-                        </Link>
+                        {/* Messages - Based on canViewMessages permission */}
+                        {canViewMessages && (
+                            <Link to="/dashboard/messages" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/messages" ? "active" : ""}`}>
+                                <i className="bi bi-chat-dots me-2"></i>Messages
+                            </Link>
+                        )}
                         
                         {/* Settings */}
                         <Link to={isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" || location.pathname === "/dashboard/suppliersettings" ? "active" : ""}`}>
@@ -177,9 +179,6 @@ const SideBar = () => {
                             </button>
                             <h2 className="fs-2 m-0 d-none d-md-block flex-grow-1">Dashboard</h2>
                             <div className="d-flex align-items-center gap-3 ms-auto">
-                                <li className="nav-item d-flex align-items-center">
-                                    <ChatNotifications />
-                                </li>
                                 <li className="nav-item d-flex align-items-center">
                                     <Notifications />
                                 </li>
