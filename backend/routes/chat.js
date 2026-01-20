@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const fetchuser = require('../middleware/fetchuser');
 const ChatMessage = require('../models/ChatMessage');
 const ChatPermission = require('../models/ChatPermission');
@@ -259,51 +260,111 @@ router.post('/permissions/group', fetchuser, async (req, res) => {
 // POST /api/chat/permissions/group/batch
 router.post('/permissions/group/batch', fetchuser, async (req, res) => {
     try {
+        console.log('=== Group batch permission endpoint called ===');
+        console.log('User role:', req.role);
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+
         if (req.role !== 'businessowner') {
             return res.status(403).json({ error: 'Only business owners can manage permissions' });
         }
 
         const { permissions } = req.body;
 
+        if (!permissions) {
+            console.error('No permissions in request body');
+            return res.status(400).json({ error: 'Permissions field is required' });
+        }
+
         if (!Array.isArray(permissions)) {
+            console.error('Permissions is not an array:', typeof permissions);
             return res.status(400).json({ error: 'Permissions must be an array' });
         }
 
+        console.log(`Processing ${permissions.length} group permissions`);
+
         const results = [];
+        let processed = 0;
+        let skipped = 0;
+
         for (const perm of permissions) {
-            const { groupRole, allowedGroupRole, isActive } = perm;
+            try {
+                const { groupRole, allowedGroupRole, isActive } = perm;
+                console.log(`Processing group permission: groupRole=${groupRole}, allowedGroupRole=${allowedGroupRole}, active=${isActive}`);
 
-            // Validate roles
-            const validRoles = ['manager', 'supervisor', 'employee', 'supplier'];
-            if (!validRoles.includes(groupRole) || !validRoles.includes(allowedGroupRole)) {
-                continue;
+                // Validate roles
+                const validRoles = ['manager', 'supervisor', 'employee', 'supplier'];
+                if (!validRoles.includes(groupRole)) {
+                    console.warn('Invalid groupRole:', groupRole);
+                    skipped++;
+                    continue;
+                }
+                if (!validRoles.includes(allowedGroupRole)) {
+                    console.warn('Invalid allowedGroupRole:', allowedGroupRole);
+                    skipped++;
+                    continue;
+                }
+
+                // If isActive is false, delete the permission instead
+                if (isActive === false) {
+                    console.log('Deleting group permission...');
+                    const deleteResult = await ChatPermission.findOneAndDelete({
+                        businessOwner: req.user._id,
+                        permissionType: 'group',
+                        groupRole,
+                        allowedGroupRole
+                    });
+                    if (deleteResult) {
+                        console.log('Successfully deleted group permission');
+                        results.push({ action: 'deleted', permission: deleteResult });
+                        processed++;
+                    } else {
+                        console.log('No group permission found to delete');
+                        skipped++;
+                    }
+                    continue;
+                }
+
+                // Update or create permission for active permissions
+                console.log('Upserting group permission...');
+                const result = await ChatPermission.findOneAndUpdate(
+                    { 
+                        businessOwner: req.user._id,
+                        permissionType: 'group',
+                        groupRole,
+                        allowedGroupRole
+                    },
+                    {
+                        permissionType: 'group',
+                        groupRole,
+                        allowedGroupRole,
+                        businessOwner: req.user._id,
+                        isActive: true,
+                        updatedAt: Date.now()
+                    },
+                    { upsert: true, new: true }
+                );
+                console.log('Successfully upserted group permission:', result._id);
+                results.push(result);
+                processed++;
+            } catch (permError) {
+                console.error('Error processing group permission:', {
+                    message: permError.message,
+                    code: permError.code,
+                    perm: perm
+                });
+                skipped++;
+                // Continue processing other permissions instead of failing entire batch
             }
-
-            // Update or create permission
-            const result = await ChatPermission.findOneAndUpdate(
-                { 
-                    businessOwner: req.user._id,
-                    permissionType: 'group',
-                    groupRole,
-                    allowedGroupRole
-                },
-                {
-                    permissionType: 'group',
-                    groupRole,
-                    allowedGroupRole,
-                    businessOwner: req.user._id,
-                    isActive: isActive !== undefined ? isActive : true,
-                    updatedAt: Date.now()
-                },
-                { upsert: true, new: true }
-            );
-            results.push(result);
         }
 
-        res.json({ success: true, count: results.length });
+        console.log(`Successfully processed ${processed} group permissions, skipped ${skipped}`);
+        res.json({ success: true, count: results.length, processed, skipped });
     } catch (error) {
-        console.error('Error batch updating group permissions:', error);
-        res.status(500).json({ error: 'Error updating group permissions' });
+        console.error('=== CRITICAL ERROR in group batch endpoint ===');
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Stack:', error.stack);
+        res.status(500).json({ error: 'Error updating group permissions', details: error.message });
     }
 });
 
@@ -386,49 +447,127 @@ router.post('/permissions/individual', fetchuser, async (req, res) => {
 // POST /api/chat/permissions/individual/batch
 router.post('/permissions/individual/batch', fetchuser, async (req, res) => {
     try {
+        console.log('=== Batch permission endpoint called ===');
+        console.log('User:', req.user ? { _id: req.user._id, email: req.user.email } : 'NO USER');
+        console.log('User role:', req.role);
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+        
+        if (!req.user) {
+            console.error('No user found in request');
+            return res.status(401).json({ error: 'Unauthorized: No user found' });
+        }
+        
         if (req.role !== 'businessowner') {
             return res.status(403).json({ error: 'Only business owners can manage permissions' });
         }
 
         const { permissions } = req.body;
 
+        if (!permissions) {
+            console.error('No permissions in request body');
+            return res.status(400).json({ error: 'Permissions field is required' });
+        }
+
         if (!Array.isArray(permissions)) {
+            console.error('Permissions is not an array:', typeof permissions);
             return res.status(400).json({ error: 'Permissions must be an array' });
         }
 
-        const results = [];
-        for (const perm of permissions) {
-            const { userId, userRole, userName, allowedUserId, allowedUserRole, allowedUserName, isActive } = perm;
+        console.log(`Processing ${permissions.length} permissions`);
 
-            // Update or create permission
-            const result = await ChatPermission.findOneAndUpdate(
-                { 
-                    permissionType: 'individual',
-                    user: userId, 
-                    allowedUser: allowedUserId, 
-                    businessOwner: req.user._id 
-                },
-                {
-                    permissionType: 'individual',
-                    user: userId,
-                    userRole,
-                    userName,
-                    allowedUser: allowedUserId,
-                    allowedUserRole,
-                    allowedUserName,
-                    businessOwner: req.user._id,
-                    isActive: isActive !== undefined ? isActive : true,
-                    updatedAt: Date.now()
-                },
-                { upsert: true, new: true }
-            );
-            results.push(result);
+        const results = [];
+        let processed = 0;
+        let skipped = 0;
+
+        for (const perm of permissions) {
+            try {
+                const { userId, userRole, userName, allowedUserId, allowedUserRole, allowedUserName, isActive } = perm;
+                console.log(`Processing permission: user=${userId}, allowed=${allowedUserId}, active=${isActive}`);
+
+                // Validate required fields
+                if (!userId || !allowedUserId) {
+                    console.warn('Skipping permission with missing userId or allowedUserId:', perm);
+                    skipped++;
+                    continue;
+                }
+
+                // Validate ObjectIds
+                if (!mongoose.Types.ObjectId.isValid(userId)) {
+                    console.warn('userId is not a valid ObjectId:', userId);
+                    skipped++;
+                    continue;
+                }
+                if (!mongoose.Types.ObjectId.isValid(allowedUserId)) {
+                    console.warn('allowedUserId is not a valid ObjectId:', allowedUserId);
+                    skipped++;
+                    continue;
+                }
+
+                // If isActive is false, delete the permission instead
+                if (isActive === false) {
+                    console.log('Deleting permission...');
+                    const deleteResult = await ChatPermission.findOneAndDelete({
+                        permissionType: 'individual',
+                        user: userId,
+                        allowedUser: allowedUserId,
+                        businessOwner: req.user._id
+                    });
+                    if (deleteResult) {
+                        console.log('Successfully deleted permission');
+                        results.push({ action: 'deleted', permission: deleteResult });
+                        processed++;
+                    } else {
+                        console.log('No permission found to delete');
+                        skipped++;
+                    }
+                    continue;
+                }
+
+                // Update or create permission for active permissions
+                console.log('Upserting permission...');
+                const result = await ChatPermission.findOneAndUpdate(
+                    { 
+                        permissionType: 'individual',
+                        user: userId, 
+                        allowedUser: allowedUserId, 
+                        businessOwner: req.user._id 
+                    },
+                    {
+                        permissionType: 'individual',
+                        user: userId,
+                        userRole,
+                        userName,
+                        allowedUser: allowedUserId,
+                        allowedUserRole,
+                        allowedUserName,
+                        businessOwner: req.user._id,
+                        isActive: true,
+                        updatedAt: Date.now()
+                    },
+                    { upsert: true, new: true }
+                );
+                console.log('Successfully upserted permission:', result._id);
+                results.push(result);
+                processed++;
+            } catch (permError) {
+                console.error('Error processing individual permission:', {
+                    message: permError.message,
+                    code: permError.code,
+                    perm: perm
+                });
+                // Continue processing other permissions instead of failing entire batch
+                skipped++;
+            }
         }
 
-        res.json({ success: true, count: results.length });
+        console.log(`Successfully processed ${processed} permissions, skipped ${skipped}`);
+        res.json({ success: true, count: results.length, processed, skipped });
     } catch (error) {
-        console.error('Error batch updating permissions:', error);
-        res.status(500).json({ error: 'Error updating permissions' });
+        console.error('=== CRITICAL ERROR in batch endpoint ===');
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Stack:', error.stack);
+        res.status(500).json({ error: 'Error updating permissions', details: error.message });
     }
 });
 
@@ -483,6 +622,9 @@ router.get('/contacts', fetchuser, async (req, res) => {
             senderGroupRole = 'supplier';
         }
 
+        // Build set of contacts from individual and group permissions
+        const contactMap = new Map();
+
         // Find all individual permissions where this user is allowed to chat
         const individualPermissions = await ChatPermission.find({
             permissionType: 'individual',
@@ -491,17 +633,7 @@ router.get('/contacts', fetchuser, async (req, res) => {
             isActive: true
         });
 
-        // Get all group-based permissions that apply to this user's role
-        const groupPermissions = await ChatPermission.find({
-            permissionType: 'group',
-            allowedGroupRole: senderGroupRole,
-            businessOwner: businessOwnerId,
-            isActive: true
-        });
-
-        // Build set of contacts from individual permissions
-        const contactMap = new Map();
-        
+        // Build contacts from individual permissions
         individualPermissions.forEach(perm => {
             if (!contactMap.has(perm.user.toString())) {
                 contactMap.set(perm.user.toString(), {
@@ -510,6 +642,14 @@ router.get('/contacts', fetchuser, async (req, res) => {
                     role: perm.userRole
                 });
             }
+        });
+
+        // Get all group-based permissions that apply to this user's role
+        const groupPermissions = await ChatPermission.find({
+            permissionType: 'group',
+            allowedGroupRole: senderGroupRole,
+            businessOwner: businessOwnerId,
+            isActive: true
         });
 
         // Add contacts from group permissions
@@ -549,6 +689,38 @@ router.get('/contacts', fetchuser, async (req, res) => {
             usersToAdd.forEach(user => {
                 if (user._id.toString() !== userId.toString()) {
                     contactMap.set(user._id.toString(), user);
+                }
+            });
+        }
+
+        // SPECIAL CASE: If the user is a business owner and has no permissions set,
+        // show all employees and suppliers under their business
+        if (req.role === 'businessowner' && contactMap.size === 0) {
+            console.log('Business owner has no permissions set. Adding all employees and suppliers as default contacts.');
+            
+            // Add all employees
+            const employees = await Employee.find({ businessowner: businessOwnerId })
+                .select('_id fname lname');
+            employees.forEach(emp => {
+                if (emp._id.toString() !== userId.toString()) {
+                    contactMap.set(emp._id.toString(), {
+                        _id: emp._id,
+                        name: getUserName(emp),
+                        role: 'Employee'
+                    });
+                }
+            });
+
+            // Add all active suppliers
+            const suppliers = await Supplier.find({ businessowner: businessOwnerId, isActive: true })
+                .select('_id fname lname');
+            suppliers.forEach(sup => {
+                if (sup._id.toString() !== userId.toString()) {
+                    contactMap.set(sup._id.toString(), {
+                        _id: sup._id,
+                        name: getUserName(sup),
+                        role: 'Supplier'
+                    });
                 }
             });
         }

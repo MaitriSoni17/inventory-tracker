@@ -6,11 +6,15 @@ const ChatPermissionSchema = new Schema({
   // The user who can be chatted with (individual permission)
   user: {
     type: mongoose.Schema.Types.ObjectId,
-    default: null
+    default: null,
+    sparse: true
   },
   userRole: {
     type: String,
-    enum: ['BusinessOwner', 'Employee', 'Supplier'],
+    enum: {
+      values: ['BusinessOwner', 'Employee', 'Supplier'],
+      message: 'Invalid user role'
+    },
     default: null
   },
   userName: {
@@ -20,11 +24,15 @@ const ChatPermissionSchema = new Schema({
   // The user who is allowed to chat with the above user (individual permission)
   allowedUser: {
     type: mongoose.Schema.Types.ObjectId,
-    default: null
+    default: null,
+    sparse: true
   },
   allowedUserRole: {
     type: String,
-    enum: ['BusinessOwner', 'Employee', 'Supplier'],
+    enum: {
+      values: ['BusinessOwner', 'Employee', 'Supplier'],
+      message: 'Invalid allowed user role'
+    },
     default: null
   },
   allowedUserName: {
@@ -36,20 +44,31 @@ const ChatPermissionSchema = new Schema({
   // The role/group who can be chatted with (e.g., 'manager', 'supervisor', 'employee', 'supplier')
   groupRole: {
     type: String,
-    enum: ['manager', 'supervisor', 'employee', 'supplier', null],
-    default: null
+    enum: {
+      values: ['manager', 'supervisor', 'employee', 'supplier'],
+      message: 'Invalid group role'
+    },
+    default: null,
+    sparse: true
   },
   // The role/group who is allowed to chat with the above group
   allowedGroupRole: {
     type: String,
-    enum: ['manager', 'supervisor', 'employee', 'supplier', null],
-    default: null
+    enum: {
+      values: ['manager', 'supervisor', 'employee', 'supplier'],
+      message: 'Invalid allowed group role'
+    },
+    default: null,
+    sparse: true
   },
 
   // PERMISSION TYPE: 'individual' or 'group'
   permissionType: {
     type: String,
-    enum: ['individual', 'group'],
+    enum: {
+      values: ['individual', 'group'],
+      message: 'Permission type must be individual or group'
+    },
     required: true
   },
 
