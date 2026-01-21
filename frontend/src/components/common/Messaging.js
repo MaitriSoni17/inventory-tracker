@@ -3,7 +3,7 @@ import { useRole } from '../../context/RoleContext';
 import '../../styles/messaging.css';
 
 const Messaging = () => {
-    const { permissions, hasPermission, role } = useRole();
+    const { hasPermission, role } = useRole();
     const [conversations, setConversations] = useState([]);
     const [selectedConversation, setSelectedConversation] = useState(null);
     const [messages, setMessages] = useState([]);
@@ -17,7 +17,6 @@ const Messaging = () => {
     const [employees, setEmployees] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [showEmployeeSelector, setShowEmployeeSelector] = useState(false);
-    const [showSupplierSelector, setShowSupplierSelector] = useState(false);
     const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
     const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
     const [userTypeTab, setUserTypeTab] = useState('employees');
@@ -345,7 +344,6 @@ const Messaging = () => {
             userRole: 'Supplier',
             userDetails: supplier
         });
-        setShowSupplierSelector(false);
         setSupplierSearchTerm('');
     };
 
