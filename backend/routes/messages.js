@@ -422,6 +422,15 @@ router.put('/:messageId', fetchuser, async (req, res) => {
             return res.status(403).json({ error: 'Cannot edit a deleted message' });
         }
 
+        // Check if message was sent within 10 minutes
+        const currentTime = new Date();
+        const messageCreatedTime = new Date(message.createdAt);
+        const timeDifferenceMinutes = (currentTime - messageCreatedTime) / (1000 * 60);
+        
+        if (timeDifferenceMinutes > 10) {
+            return res.status(403).json({ error: 'Messages can only be edited within 10 minutes of sending' });
+        }
+
         // Update the message
         message.content = content.trim();
         message.updatedAt = new Date();

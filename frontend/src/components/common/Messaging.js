@@ -24,6 +24,7 @@ const Messaging = () => {
     const [editingMessageId, setEditingMessageId] = useState(null);
     const [editingContent, setEditingContent] = useState('');
     const [showMessageMenu, setShowMessageMenu] = useState(null);
+    const [currentTime, setCurrentTime] = useState(new Date());
     const messagesEndRef = useRef(null);
     const messageMenuRef = useRef(null);
     const token = localStorage.getItem('token');
@@ -89,6 +90,14 @@ const Messaging = () => {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    // Update current time every second for edit time window
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -369,6 +378,23 @@ const Messaging = () => {
             return formatTime(date);
         }
         return d.toLocaleDateString();
+    };
+
+    // Check if message can still be edited (within 10 minutes)
+    const canEditMessage = (createdAt) => {
+        if (!createdAt) return false;
+        const messageTime = new Date(createdAt);
+        const differenceMinutes = (currentTime - messageTime) / (1000 * 60);
+        return differenceMinutes <= 10;
+    };
+
+    // Get remaining time in minutes for edit window
+    const getEditTimeRemaining = (createdAt) => {
+        if (!createdAt) return 0;
+        const messageTime = new Date(createdAt);
+        const differenceMinutes = (currentTime - messageTime) / (1000 * 60);
+        const remainingMinutes = Math.max(0, 10 - differenceMinutes);
+        return Math.ceil(remainingMinutes);
     };
 
     const getUserDisplayName = (user, userRole) => {
@@ -735,6 +761,11 @@ const Messaging = () => {
                                                     {msg.updatedAt && msg.updatedAt !== msg.createdAt && (
                                                         <span className="ms-2">(edited)</span>
                                                     )}
+                                                    {isSentByMe && canEditMessage(msg.createdAt) && (
+                                                        <span className="ms-2 text-warning" title="Time remaining to edit">
+                                                            (edit in {getEditTimeRemaining(msg.createdAt)} min)
+                                                        </span>
+                                                    )}
                                                     {isSentByMe && msg.isRead && (
                                                         <i className="bi bi-check-all ms-1 text-info"></i>
                                                     )}
@@ -751,16 +782,22 @@ const Messaging = () => {
                                                     </button>
                                                     {showMessageMenu === msg._id && (
                                                         <div className="message-dropdown-menu">
-                                                            <button
-                                                                className="dropdown-item"
-                                                                onClick={() => {
-                                                                    setEditingMessageId(msg._id);
-                                                                    setEditingContent(msg.content);
-                                                                    setShowMessageMenu(null);
-                                                                }}
-                                                            >
-                                                                <i className="bi bi-pencil me-2"></i>Edit
-                                                            </button>
+                                                            {canEditMessage(msg.createdAt) ? (
+                                                                <button
+                                                                    className="dropdown-item"
+                                                                    onClick={() => {
+                                                                        setEditingMessageId(msg._id);
+                                                                        setEditingContent(msg.content);
+                                                                        setShowMessageMenu(null);
+                                                                    }}
+                                                                >
+                                                                    <i className="bi bi-pencil me-2"></i>Edit
+                                                                </button>
+                                                            ) : (
+                                                                <div className="dropdown-item disabled text-muted">
+                                                                    <i className="bi bi-pencil me-2"></i>Edit (expired)
+                                                                </div>
+                                                            )}
                                                             <button
                                                                 className="dropdown-item text-danger"
                                                                 onClick={() => {
