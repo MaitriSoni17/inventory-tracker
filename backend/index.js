@@ -61,6 +61,7 @@ app.use('/api/chatbot', require('./routes/chatbot'));
 app.use('/api/deletion', require('./routes/deletion'));
 app.use('/api/permissions', require('./routes/permissions'));
 app.use('/api/messages', require('./routes/messages'));
+app.use('/api/reports', require('./routes/reports'));
 
 // Global error handler middleware
 app.use((err, req, res, next) => {
