@@ -5,10 +5,14 @@ const PDFDocument = require('pdfkit');
 const stream = require('stream');
 const fetchuser = require('../middleware/fetchuser');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
+const { requireExportReports } = require('../middleware/roleBasedAccess');
 const Employee = require('../models/Employee');
 const Products = require('../models/Products');
 const Orders = require('../models/CustomerOrders');
 const SupplierOrders = require('../models/SupplierOrders');
+const Category = require('../models/Category');
+const Warehouse = require('../models/Warehouse');
+const Supplier = require('../models/Supplier');
 
 // Helper function to filter data by month and year
 const filterByMonthYear = (data, month, year, dateField = 'createdAt') => {
@@ -24,7 +28,7 @@ const filterByMonthYear = (data, month, year, dateField = 'createdAt') => {
 // ==================== EMPLOYEE REPORTS ====================
 
 // GET: Generate Employee Report (Excel)
-router.get('/employees/excel', fetchuser, async (req, res) => {
+router.get('/employees/excel', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, employeeId } = req.query;
         
@@ -42,8 +46,8 @@ router.get('/employees/excel', fetchuser, async (req, res) => {
         console.log('Query:', JSON.stringify(query));
 
         let employees = await Employee.find(query)
-            .populate('businessOwner', 'name')
-            .populate('warehouse', 'name location');
+            .populate('businessowner', 'name')
+            .populate('warehouse', 'wName wAddress');
 
         console.log('Employees found:', employees.length);
         if (employees.length > 0) {
@@ -79,33 +83,48 @@ router.get('/employees/excel', fetchuser, async (req, res) => {
 
         // Add headers
         const headerRow = worksheet.addRow(['Name', 'Email', 'Phone', 'Role', 'Warehouse', 'Joining Date', 'Status']);
-        headerRow.font = { bold: true };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         headerRow.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFD9E1F2' }
+            fgColor: { argb: 'FF4472C4' }
         };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
         // Add data
         console.log('Adding data rows:', employees.length);
         employees.forEach((emp, idx) => {
-            console.log(`Row ${idx + 1}:`, emp.name, emp.email);
+            const fullName = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'N/A';
+            console.log(`Row ${idx + 1}:`, fullName, emp.email);
             worksheet.addRow([
-                emp.name,
-                emp.email,
+                fullName,
+                emp.email || 'N/A',
                 emp.phone || 'N/A',
-                emp.role,
-                emp.warehouse ? emp.warehouse.name : 'Unassigned',
-                new Date(emp.createdAt).toLocaleDateString(),
+                emp.role || 'N/A',
+                emp.warehouse ? emp.warehouse.wName : 'Unassigned',
+                emp.createdAt ? new Date(emp.createdAt).toLocaleDateString() : 'N/A',
                 emp.isActive ? 'Active' : 'Inactive'
             ]);
         });
 
         console.log('Data added to worksheet');
 
-        // Auto-fit columns
-        worksheet.columns.forEach(column => {
-            column.width = 20;
+        // Set column widths with proper sizing
+        worksheet.columns = [
+            { width: 18 }, // Name
+            { width: 25 }, // Email
+            { width: 16 }, // Phone
+            { width: 14 }, // Role
+            { width: 18 }, // Warehouse
+            { width: 14 }, // Joining Date
+            { width: 12 }  // Status
+        ];
+        
+        // Enable text wrapping for all cells
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+            });
         });
 
         // Set response headers
@@ -126,7 +145,7 @@ router.get('/employees/excel', fetchuser, async (req, res) => {
 });
 
 // GET: Generate Employee Report (PDF)
-router.get('/employees/pdf', fetchuser, async (req, res) => {
+router.get('/employees/pdf', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, employeeId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -138,7 +157,7 @@ router.get('/employees/pdf', fetchuser, async (req, res) => {
 
         let employees = await Employee.find(query)
             .populate('businessowner', 'name')
-            .populate('warehouse', 'name location');
+            .populate('warehouse', 'wName wAddress');
 
         // Filter by month/year if provided
         if (month && year) {
@@ -167,13 +186,14 @@ router.get('/employees/pdf', fetchuser, async (req, res) => {
 
         // Add employee data
         employees.forEach((emp, index) => {
-            doc.fontSize(14).text(`${index + 1}. ${emp.name}`, { underline: true });
+            const fullName = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'N/A';
+            doc.fontSize(14).text(`${index + 1}. ${fullName}`, { underline: true });
             doc.fontSize(10);
-            doc.text(`Email: ${emp.email}`);
+            doc.text(`Email: ${emp.email || 'N/A'}`);
             doc.text(`Phone: ${emp.phone || 'N/A'}`);
-            doc.text(`Role: ${emp.role}`);
-            doc.text(`Warehouse: ${emp.warehouse ? emp.warehouse.name : 'Unassigned'}`);
-            doc.text(`Joining Date: ${new Date(emp.createdAt).toLocaleDateString()}`);
+            doc.text(`Role: ${emp.role || 'N/A'}`);
+            doc.text(`Warehouse: ${emp.warehouse ? emp.warehouse.wName : 'Unassigned'}`);
+            doc.text(`Joining Date: ${emp.createdAt ? new Date(emp.createdAt).toLocaleDateString() : 'N/A'}`);
             doc.text(`Status: ${emp.isActive ? 'Active' : 'Inactive'}`);
             doc.moveDown();
         });
@@ -193,7 +213,7 @@ router.get('/employees/pdf', fetchuser, async (req, res) => {
 // ==================== PRODUCT REPORTS ====================
 
 // GET: Generate Product Report (Excel)
-router.get('/products/excel', fetchuser, async (req, res) => {
+router.get('/products/excel', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, productId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -203,9 +223,23 @@ router.get('/products/excel', fetchuser, async (req, res) => {
             query._id = productId;
         }
 
-        let products = await Products.find(query)
-            .populate('category', 'name')
-            .populate('warehouse', 'name');
+        let products = await Products.find(query);
+
+        // Fetch all categories and warehouses for mapping
+        const categories = await Category.find({ businessowner: businessOwnerId });
+        const warehouses = await Warehouse.find({ businessowner: businessOwnerId });
+
+        // Create lookup maps
+        const categoryMap = {};
+        const warehouseMap = {};
+        
+        categories.forEach(cat => {
+            categoryMap[cat._id.toString()] = cat.cName;
+        });
+        
+        warehouses.forEach(wh => {
+            warehouseMap[wh._id.toString()] = wh.wName;
+        });
 
         // Filter by month/year if provided
         if (month && year) {
@@ -238,31 +272,50 @@ router.get('/products/excel', fetchuser, async (req, res) => {
             'Product Name', 'Category', 'SKU', 'Quantity', 'Unit Price', 
             'Selling Price', 'Warehouse', 'Status', 'Added Date'
         ]);
-        headerRow.font = { bold: true };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         headerRow.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFD9E1F2' }
+            fgColor: { argb: 'FF4472C4' }
         };
-
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         // Add data
         products.forEach((product) => {
+            const categoryName = categoryMap[product.category] || product.category || 'N/A';
+            const warehouseNames = Array.isArray(product.warehouse) 
+                ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ') 
+                : 'N/A';
             worksheet.addRow([
-                product.productname,
-                product.category ? product.category.name : 'N/A',
-                product.sku,
-                product.quantity,
-                `$${product.unitprice}`,
-                `$${product.sellingprice}`,
-                product.warehouse ? product.warehouse.name : 'N/A',
-                product.quantity > 10 ? 'In Stock' : 'Low Stock',
-                new Date(product.createdAt).toLocaleDateString()
+                product.name || 'N/A',
+                categoryName,
+                product.sku || 'N/A',
+                product.totalProducts || 0,
+                `$${product.price || 0}`,
+                `$${product.price || 0}`,
+                warehouseNames,
+                product.totalProducts > 10 ? 'In Stock' : 'Low Stock',
+                product.mDate ? new Date(product.mDate).toLocaleDateString() : 'N/A'
             ]);
         });
 
-        // Auto-fit columns
-        worksheet.columns.forEach(column => {
-            column.width = 18;
+        // Set column widths with proper sizing
+        worksheet.columns = [
+            { width: 20 }, // Product Name
+            { width: 15 }, // Category
+            { width: 12 }, // SKU
+            { width: 12 }, // Quantity
+            { width: 14 }, // Unit Price
+            { width: 14 }, // Selling Price
+            { width: 15 }, // Warehouse
+            { width: 12 }, // Status
+            { width: 14 }  // Added Date
+        ];
+        
+        // Enable text wrapping for all cells
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+            });
         });
 
         // Set response headers
@@ -281,7 +334,7 @@ router.get('/products/excel', fetchuser, async (req, res) => {
 });
 
 // GET: Generate Product Report (PDF)
-router.get('/products/pdf', fetchuser, async (req, res) => {
+router.get('/products/pdf', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, productId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -291,9 +344,23 @@ router.get('/products/pdf', fetchuser, async (req, res) => {
             query._id = productId;
         }
 
-        let products = await Products.find(query)
-            .populate('category', 'name')
-            .populate('warehouse', 'name');
+        let products = await Products.find(query);
+
+        // Fetch all categories and warehouses for mapping
+        const categories = await Category.find({ businessowner: businessOwnerId });
+        const warehouses = await Warehouse.find({ businessowner: businessOwnerId });
+
+        // Create lookup maps
+        const categoryMap = {};
+        const warehouseMap = {};
+        
+        categories.forEach(cat => {
+            categoryMap[cat._id.toString()] = cat.cName;
+        });
+        
+        warehouses.forEach(wh => {
+            warehouseMap[wh._id.toString()] = wh.wName;
+        });
 
         // Filter by month/year if provided
         if (month && year) {
@@ -325,16 +392,19 @@ router.get('/products/pdf', fetchuser, async (req, res) => {
             doc.fontSize(11).text('No products found for the selected criteria.', { align: 'center' });
         } else {
             products.forEach((product, index) => {
-                doc.fontSize(14).text(`${index + 1}. ${product.productname}`, { underline: true });
+                const categoryName = categoryMap[product.category] || product.category || 'N/A';
+                const warehouseNames = Array.isArray(product.warehouse) 
+                    ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ') 
+                    : 'N/A';
+                doc.fontSize(14).text(`${index + 1}. ${product.name || 'N/A'}`, { underline: true });
                 doc.fontSize(10);
-                doc.text(`Category: ${product.category ? product.category.name : 'N/A'}`);
-                doc.text(`SKU: ${product.sku}`);
-                doc.text(`Quantity: ${product.quantity}`);
-                doc.text(`Unit Price: $${product.unitprice}`);
-                doc.text(`Selling Price: $${product.sellingprice}`);
-                doc.text(`Warehouse: ${product.warehouse ? product.warehouse.name : 'N/A'}`);
-                doc.text(`Status: ${product.quantity > 10 ? 'In Stock' : 'Low Stock'}`);
-                doc.text(`Added Date: ${new Date(product.createdAt).toLocaleDateString()}`);
+                doc.text(`Category: ${categoryName}`);
+                doc.text(`SKU: ${product.sku || 'N/A'}`);
+                doc.text(`Quantity: ${product.totalProducts || 0}`);
+                doc.text(`Price: $${product.price || 0}`);
+                doc.text(`Warehouse: ${warehouseNames}`);
+                doc.text(`Status: ${product.totalProducts > 10 ? 'In Stock' : 'Low Stock'}`);
+                doc.text(`Added Date: ${product.mDate ? new Date(product.mDate).toLocaleDateString() : 'N/A'}`);
                 doc.moveDown();
             });
         }
@@ -356,7 +426,7 @@ router.get('/products/pdf', fetchuser, async (req, res) => {
 // ==================== CUSTOMER ORDER REPORTS ====================
 
 // GET: Generate Customer Order Report (Excel)
-router.get('/orders/excel', fetchuser, async (req, res) => {
+router.get('/orders/excel', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -367,12 +437,11 @@ router.get('/orders/excel', fetchuser, async (req, res) => {
         }
 
         let orders = await Orders.find(query)
-            .populate('products.product', 'productname sku')
-            .populate('warehouse', 'name');
+            .populate('warehouse', 'wName');
 
         // Filter by month/year if provided
         if (month && year) {
-            orders = filterByMonthYear(orders, month, year, 'orderdate');
+            orders = filterByMonthYear(orders, month, year, 'oDate');
         }
 
         // Create Excel workbook
@@ -399,32 +468,53 @@ router.get('/orders/excel', fetchuser, async (req, res) => {
         // Add headers
         const headerRow = worksheet.addRow([
             'Customer Name', 'Email', 'Phone', 'Order Date', 
-            'Total Amount', 'Status', 'Payment Method', 'Warehouse'
+            'Total Amount', 'Status', 'Availability', 'Warehouse'
         ]);
-        headerRow.font = { bold: true };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         headerRow.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFD9E1F2' }
+            fgColor: { argb: 'FF4472C4' }
         };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
         // Add data
         orders.forEach((order) => {
-            worksheet.addRow([
-                order.customername,
-                order.customeremail,
-                order.customerphone,
-                new Date(order.orderdate).toLocaleDateString(),
-                `$${order.totalamount}`,
-                order.status,
-                order.paymentmethod,
-                order.warehouse ? order.warehouse.name : 'N/A'
-            ]);
+            try {
+                const warehouseName = order.warehouse && typeof order.warehouse === 'object' && order.warehouse.wName ? order.warehouse.wName : 'N/A';
+                worksheet.addRow([
+                    order.cName || 'N/A',
+                    order.cEmail || 'N/A',
+                    order.cPhone || 'N/A',
+                    order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A',
+                    `$${order.amount || 0}`,
+                    order.status || 'N/A',
+                    order.pAvail || 'N/A',
+                    warehouseName
+                ]);
+            } catch (rowError) {
+                console.error('Error processing order row:', rowError);
+                // Continue with next row even if current one fails
+            }
         });
 
-        // Auto-fit columns
-        worksheet.columns.forEach(column => {
-            column.width = 20;
+        // Set column widths with proper sizing
+        worksheet.columns = [
+            { width: 18 }, // Customer Name
+            { width: 25 }, // Email
+            { width: 16 }, // Phone
+            { width: 14 }, // Order Date
+            { width: 14 }, // Total Amount
+            { width: 12 }, // Status
+            { width: 16 }, // Payment Method
+            { width: 15 }  // Warehouse
+        ];
+        
+        // Enable text wrapping for all cells
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+            });
         });
 
         // Set response headers
@@ -443,7 +533,7 @@ router.get('/orders/excel', fetchuser, async (req, res) => {
 });
 
 // GET: Generate Customer Order Report (PDF)
-router.get('/orders/pdf', fetchuser, async (req, res) => {
+router.get('/orders/pdf', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -454,12 +544,11 @@ router.get('/orders/pdf', fetchuser, async (req, res) => {
         }
 
         let orders = await Orders.find(query)
-            .populate('products.product', 'productname sku')
-            .populate('warehouse', 'name');
+            .populate('warehouse', 'wName');
 
         // Filter by month/year if provided
         if (month && year) {
-            orders = filterByMonthYear(orders, month, year, 'orderdate');
+            orders = filterByMonthYear(orders, month, year, 'oDate');
         }
 
         // Create PDF document
@@ -487,25 +576,29 @@ router.get('/orders/pdf', fetchuser, async (req, res) => {
             doc.fontSize(11).text('No orders found for the selected criteria.', { align: 'center' });
         } else {
             orders.forEach((order, index) => {
-                doc.fontSize(14).text(`${index + 1}. Order for ${order.customername}`, { underline: true });
-                doc.fontSize(10);
-                doc.text(`Customer Email: ${order.customeremail}`);
-                doc.text(`Customer Phone: ${order.customerphone}`);
-                doc.text(`Order Date: ${new Date(order.orderdate).toLocaleDateString()}`);
-                doc.text(`Total Amount: $${order.totalamount}`);
-                doc.text(`Status: ${order.status}`);
-                doc.text(`Payment Method: ${order.paymentmethod}`);
-                doc.text(`Warehouse: ${order.warehouse ? order.warehouse.name : 'N/A'}`);
-                
-                // Add products
-                if (order.products && order.products.length > 0) {
-                    doc.text('Products:');
-                    order.products.forEach(item => {
-                        doc.text(`  - ${item.product ? item.product.productname : 'N/A'} (Qty: ${item.quantity}, Price: $${item.price})`);
-                    });
+                try {
+                    const warehouseName = order.warehouse && typeof order.warehouse === 'object' && order.warehouse.wName ? order.warehouse.wName : 'N/A';
+                    doc.fontSize(14).text(`${index + 1}. Order from ${order.cName || 'N/A'}`, { underline: true });
+                    doc.fontSize(10);
+                    doc.text(`Customer Email: ${order.cEmail || 'N/A'}`);
+                    doc.text(`Customer Phone: ${order.cPhone || 'N/A'}`);
+                    doc.text(`Customer Address: ${order.cAddress || 'N/A'}`);
+                    doc.text(`Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}`);
+                    doc.text(`Delivery Date: ${order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A'}`);
+                    doc.text(`Total Amount: $${order.amount || 0}`);
+                    doc.text(`Status: ${order.status || 'N/A'}`);
+                    doc.text(`Delivery Status: ${order.dStatus || 'N/A'}`);
+                    doc.text(`Warehouse: ${warehouseName}`);
+                    
+                    // Add product info
+                    doc.text(`Product: ${order.pName || 'N/A'}`);
+                    doc.text(`Quantity: ${order.ounits || 0}`);
+                    
+                    doc.moveDown();
+                } catch (rowError) {
+                    console.error('Error processing order row in PDF:', rowError);
+                    // Continue with next row even if current one fails
                 }
-                
-                doc.moveDown();
             });
         }
 
@@ -526,7 +619,7 @@ router.get('/orders/pdf', fetchuser, async (req, res) => {
 // ==================== SUPPLIER ORDER REPORTS ====================
 
 // GET: Generate Supplier Order Report (Excel)
-router.get('/supplier-orders/excel', fetchuser, async (req, res) => {
+router.get('/supplier-orders/excel', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -537,12 +630,11 @@ router.get('/supplier-orders/excel', fetchuser, async (req, res) => {
         }
 
         let supplierOrders = await SupplierOrders.find(query)
-            .populate('supplier', 'name email phone')
-            .populate('products.product', 'productname sku');
+            .populate('supplier', 'name email phone');
 
         // Filter by month/year if provided
         if (month && year) {
-            supplierOrders = filterByMonthYear(supplierOrders, month, year, 'orderdate');
+            supplierOrders = filterByMonthYear(supplierOrders, month, year, 'oDate');
         }
 
         // Create Excel workbook
@@ -571,30 +663,50 @@ router.get('/supplier-orders/excel', fetchuser, async (req, res) => {
             'Supplier Name', 'Email', 'Phone', 'Order Date', 
             'Expected Delivery', 'Total Amount', 'Status', 'Payment Status'
         ]);
-        headerRow.font = { bold: true };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         headerRow.fill = {
             type: 'pattern',
             pattern: 'solid',
-            fgColor: { argb: 'FFD9E1F2' }
+            fgColor: { argb: 'FF4472C4' }
         };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
         // Add data
         supplierOrders.forEach((order) => {
-            worksheet.addRow([
-                order.supplier ? order.supplier.name : 'N/A',
-                order.supplier ? order.supplier.email : 'N/A',
-                order.supplier ? order.supplier.phone : 'N/A',
-                new Date(order.orderdate).toLocaleDateString(),
-                order.expecteddeliverydate ? new Date(order.expecteddeliverydate).toLocaleDateString() : 'N/A',
-                `$${order.totalamount}`,
-                order.status,
-                order.paymentstatus
-            ]);
+            try {
+                worksheet.addRow([
+                    order.supplier ? order.supplier.name : 'N/A',
+                    order.supplier ? order.supplier.email : 'N/A',
+                    order.supplier ? order.supplier.phone : 'N/A',
+                    order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A',
+                    order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A',
+                    `$${order.amount || 0}`,
+                    order.status || 'N/A',
+                    order.paymentStatus || 'N/A'
+                ]);
+            } catch (rowError) {
+                console.error('Error processing supplier order row:', rowError);
+                // Continue with next row even if current one fails
+            }
         });
 
-        // Auto-fit columns
-        worksheet.columns.forEach(column => {
-            column.width = 20;
+        // Set column widths with proper sizing
+        worksheet.columns = [
+            { width: 18 }, // Supplier Name
+            { width: 25 }, // Email
+            { width: 16 }, // Phone
+            { width: 14 }, // Order Date
+            { width: 18 }, // Expected Delivery
+            { width: 14 }, // Total Amount
+            { width: 12 }, // Status
+            { width: 16 }  // Payment Status
+        ];
+        
+        // Enable text wrapping for all cells
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+            });
         });
 
         // Set response headers
@@ -613,7 +725,7 @@ router.get('/supplier-orders/excel', fetchuser, async (req, res) => {
 });
 
 // GET: Generate Supplier Order Report (PDF)
-router.get('/supplier-orders/pdf', fetchuser, async (req, res) => {
+router.get('/supplier-orders/pdf', fetchuser, requireExportReports, async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -624,12 +736,11 @@ router.get('/supplier-orders/pdf', fetchuser, async (req, res) => {
         }
 
         let supplierOrders = await SupplierOrders.find(query)
-            .populate('supplier', 'name email phone')
-            .populate('products.product', 'productname sku');
+            .populate('supplier', 'name email phone');
 
         // Filter by month/year if provided
         if (month && year) {
-            supplierOrders = filterByMonthYear(supplierOrders, month, year, 'orderdate');
+            supplierOrders = filterByMonthYear(supplierOrders, month, year, 'oDate');
         }
 
         // Create PDF document
@@ -657,25 +768,25 @@ router.get('/supplier-orders/pdf', fetchuser, async (req, res) => {
             doc.fontSize(11).text('No supplier orders found for the selected criteria.', { align: 'center' });
         } else {
             supplierOrders.forEach((order, index) => {
-                doc.fontSize(14).text(`${index + 1}. Order from ${order.supplier ? order.supplier.name : 'N/A'}`, { underline: true });
-                doc.fontSize(10);
-                doc.text(`Supplier Email: ${order.supplier ? order.supplier.email : 'N/A'}`);
-                doc.text(`Supplier Phone: ${order.supplier ? order.supplier.phone : 'N/A'}`);
-                doc.text(`Order Date: ${new Date(order.orderdate).toLocaleDateString()}`);
-                doc.text(`Expected Delivery: ${order.expecteddeliverydate ? new Date(order.expecteddeliverydate).toLocaleDateString() : 'N/A'}`);
-                doc.text(`Total Amount: $${order.totalamount}`);
-                doc.text(`Status: ${order.status}`);
-                doc.text(`Payment Status: ${order.paymentstatus}`);
-                
-                // Add products
-                if (order.products && order.products.length > 0) {
-                    doc.text('Products:');
-                    order.products.forEach(item => {
-                        doc.text(`  - ${item.product ? item.product.productname : 'N/A'} (Qty: ${item.quantity}, Price: $${item.price})`);
-                    });
+                try {
+                    doc.fontSize(14).text(`${index + 1}. Order from ${order.supplier ? order.supplier.name : 'N/A'}`, { underline: true });
+                    doc.fontSize(10);
+                    doc.text(`Supplier Email: ${order.supplier ? order.supplier.email : 'N/A'}`);
+                    doc.text(`Supplier Phone: ${order.supplier ? order.supplier.phone : 'N/A'}`);
+                    doc.text(`Product: ${order.pName || 'N/A'}`);
+                    doc.text(`Category: ${order.category || 'N/A'}`);
+                    doc.text(`Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}`);
+                    doc.text(`Expected Delivery: ${order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A'}`);
+                    doc.text(`Total Amount: $${order.amount || 0}`);
+                    doc.text(`Quantity: ${order.ounits || 0}`);
+                    doc.text(`Status: ${order.status || 'N/A'}`);
+                    doc.text(`Payment Status: ${order.paymentStatus || 'N/A'}`);
+                    
+                    doc.moveDown();
+                } catch (rowError) {
+                    console.error('Error processing supplier order row in PDF:', rowError);
+                    // Continue with next row even if current one fails
                 }
-                
-                doc.moveDown();
             });
         }
 
@@ -755,6 +866,175 @@ router.get('/supplier-orders/list', fetchuser, async (req, res) => {
     } catch (error) {
         console.error('Error fetching supplier orders list:', error);
         res.status(500).json({ error: 'Error fetching supplier orders' });
+    }
+});
+
+// ==================== SUPPLIER REPORTS ====================
+
+// GET: Get Suppliers List
+router.get('/suppliers/list', fetchuser, async (req, res) => {
+    try {
+        let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const suppliers = await Supplier.find({ businessowner: businessOwnerId })
+            .select('_id fname lname email companyName');
+        res.json(suppliers);
+    } catch (error) {
+        console.error('Error fetching suppliers list:', error);
+        res.status(500).json({ error: 'Error fetching suppliers' });
+    }
+});
+
+// GET: Generate Supplier Report (Excel)
+router.get('/suppliers/excel', fetchuser, requireExportReports, async (req, res) => {
+    try {
+        const { supplierId } = req.query;
+        let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+
+        let query = { businessowner: businessOwnerId };
+        if (supplierId && supplierId !== 'all') {
+            query._id = supplierId;
+        }
+
+        let suppliers = await Supplier.find(query);
+
+        // Create Excel workbook
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Suppliers Report');
+
+        // Add title
+        worksheet.mergeCells('A1:G1');
+        worksheet.getCell('A1').value = 'Suppliers Report';
+        worksheet.getCell('A1').font = { size: 16, bold: true };
+        worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+        // Add blank row
+        worksheet.addRow([]);
+
+        // Add headers
+        const headerRow = worksheet.addRow([
+            'First Name', 'Last Name', 'Email', 'Phone', 'Company Name', 'Company Email', 'Joining Date'
+        ]);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4472C4' }
+        };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+        // Add data
+        suppliers.forEach((supplier) => {
+            try {
+                worksheet.addRow([
+                    supplier.fname || 'N/A',
+                    supplier.lname || 'N/A',
+                    supplier.email || 'N/A',
+                    supplier.phone || 'N/A',
+                    supplier.companyName || 'N/A',
+                    supplier.companyEmail || 'N/A',
+                    supplier.jDate ? new Date(supplier.jDate).toLocaleDateString() : 'N/A'
+                ]);
+            } catch (rowError) {
+                console.error('Error processing supplier row:', rowError);
+            }
+        });
+
+        // Set column widths
+        worksheet.columns = [
+            { width: 15 }, // First Name
+            { width: 15 }, // Last Name
+            { width: 25 }, // Email
+            { width: 16 }, // Phone
+            { width: 20 }, // Company Name
+            { width: 25 }, // Company Email
+            { width: 16 }  // Joining Date
+        ];
+
+        // Enable text wrapping
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+            });
+        });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=suppliers-report-${Date.now()}.xlsx`);
+
+        // Write to response
+        res.statusCode = 200;
+        await workbook.xlsx.write(res);
+    } catch (error) {
+        console.error('Error generating supplier Excel report:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error generating report' });
+        }
+    }
+});
+
+// GET: Generate Supplier Report (PDF)
+router.get('/suppliers/pdf', fetchuser, requireExportReports, async (req, res) => {
+    try {
+        const { supplierId } = req.query;
+        let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+
+        let query = { businessowner: businessOwnerId };
+        if (supplierId && supplierId !== 'all') {
+            query._id = supplierId;
+        }
+
+        let suppliers = await Supplier.find(query);
+
+        // Create PDF document
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=suppliers-report-${Date.now()}.pdf`);
+
+        doc.pipe(res);
+
+        // Add title
+        doc.fontSize(20).text('Suppliers Report', { align: 'center' });
+        doc.moveDown(2);
+
+        // Add supplier data
+        if (suppliers.length === 0) {
+            doc.fontSize(11).text('No suppliers found.', { align: 'center' });
+        } else {
+            suppliers.forEach((supplier, index) => {
+                try {
+                    doc.fontSize(14).text(`${index + 1}. ${supplier.fname} ${supplier.lname}`, { underline: true });
+                    doc.fontSize(10);
+                    doc.text(`Email: ${supplier.email || 'N/A'}`);
+                    doc.text(`Phone: ${supplier.phone || 'N/A'}`);
+                    doc.text(`Company Name: ${supplier.companyName || 'N/A'}`);
+                    doc.text(`Company Email: ${supplier.companyEmail || 'N/A'}`);
+                    doc.text(`Company Phone: ${supplier.companyPhone || 'N/A'}`);
+                    doc.text(`Company Address: ${supplier.companyAddress || 'N/A'}`);
+                    doc.text(`City: ${supplier.companyCity || 'N/A'}`);
+                    doc.text(`State: ${supplier.companyState || 'N/A'}`);
+                    doc.text(`Country: ${supplier.companyCountry || 'N/A'}`);
+                    doc.text(`Joining Date: ${supplier.jDate ? new Date(supplier.jDate).toLocaleDateString() : 'N/A'}`);
+                    
+                    doc.moveDown();
+                } catch (rowError) {
+                    console.error('Error processing supplier row in PDF:', rowError);
+                }
+            });
+        }
+
+        // Add footer
+        doc.fontSize(8).text(`Generated on: ${new Date().toLocaleString()}`, 50, doc.page.height - 50, {
+            align: 'center'
+        });
+
+        doc.end();
+    } catch (error) {
+        console.error('Error generating supplier PDF report:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error generating report' });
+        }
     }
 });
 

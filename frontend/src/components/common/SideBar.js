@@ -61,6 +61,7 @@ const SideBar = () => {
     const canViewWarehouses = hasPermission('canViewWarehouses');
     const canViewNotifications = hasPermission('canViewNotifications');
     const canViewMessages = hasPermission('canViewMessages');
+    const canExportReports = hasPermission('canExportReports');
 
     return (
         <>
@@ -150,10 +151,12 @@ const SideBar = () => {
                             </Link>
                         )}
                         
-                        {/* Reports - Available for all users */}
-                        <Link to="/dashboard/reports" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/reports" ? "active" : ""}`}>
-                            <i className="fas fa-chart-bar me-2"></i>Reports
-                        </Link>
+                        {/* Reports - Based on canExportReports permission */}
+                        {canExportReports && (
+                            <Link to="/dashboard/reports" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/reports" ? "active" : ""}`}>
+                                <i className="fas fa-chart-bar me-2"></i>Reports
+                            </Link>
+                        )}
                         
                         {/* Settings */}
                         <Link to={isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" || location.pathname === "/dashboard/suppliersettings" ? "active" : ""}`}>

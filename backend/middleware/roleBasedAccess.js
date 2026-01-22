@@ -439,6 +439,22 @@ const requireNotificationAccess = (req, res, next) => {
     next();
 };
 
+/**
+ * Middleware to verify user can export reports
+ */
+const requireExportReports = (req, res, next) => {
+    if (!req.user) {
+        return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    // Check if user has the canExportReports permission
+    if (!hasPermissionAsync || !hasPermission(req.user, 'canExportReports')) {
+        return res.status(403).json({ error: "You do not have permission to export reports" });
+    }
+
+    next();
+};
+
 module.exports = {
     hasPermission,
     hasPermissionAsync,
@@ -450,6 +466,7 @@ module.exports = {
     requireDeletePermission,
     requireAnalyticsAccess,
     requireNotificationAccess,
+    requireExportReports,
     getDataFilter,
     canEditItem,
     canDeleteItem,

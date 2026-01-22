@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRole } from '../../context/RoleContext';
 import '../../styles/reports.css';
 
 const Reports = ({ showAlert }) => {
     const navigate = useNavigate();
+    const { permissions } = useRole();
     const [loading, setLoading] = useState(false);
     const [reportConfig, setReportConfig] = useState({
         reportType: 'employees',
@@ -13,11 +15,20 @@ const Reports = ({ showAlert }) => {
         specificId: 'all'
     });
 
+    // Check permission on component mount
+    useEffect(() => {
+        if (!permissions.canExportReports) {
+            showAlert('You do not have permission to access reports', 'danger');
+            navigate('/dashboard');
+        }
+    }, [permissions, navigate, showAlert]);
+
     const [availableItems, setAvailableItems] = useState({
         employees: [],
         products: [],
         orders: [],
-        supplierOrders: []
+        supplierOrders: [],
+        suppliers: []
     });
 
     const currentYear = new Date().getFullYear();
@@ -58,6 +69,9 @@ const Reports = ({ showAlert }) => {
                     break;
                 case 'supplierOrders':
                     endpoint = '/api/reports/supplier-orders/list';
+                    break;
+                case 'suppliers':
+                    endpoint = '/api/reports/suppliers/list';
                     break;
                 default:
                     return;
@@ -121,6 +135,10 @@ const Reports = ({ showAlert }) => {
                     endpoint = `/api/reports/supplier-orders/${reportConfig.format}`;
                     idParam = 'orderId';
                     break;
+                case 'suppliers':
+                    endpoint = `/api/reports/suppliers/${reportConfig.format}`;
+                    idParam = 'supplierId';
+                    break;
                 default:
                     return;
             }
@@ -183,6 +201,8 @@ const Reports = ({ showAlert }) => {
                 return `${item.customername} - ${new Date(item.orderdate).toLocaleDateString()}`;
             case 'supplierOrders':
                 return `${item.supplier?.name || 'N/A'} - ${new Date(item.orderdate).toLocaleDateString()}`;
+            case 'suppliers':
+                return `${item.fname} ${item.lname} (${item.companyName || 'N/A'})`;
             default:
                 return '';
         }
@@ -192,7 +212,8 @@ const Reports = ({ showAlert }) => {
         { value: 'employees', label: 'Employees', icon: '👥' },
         { value: 'products', label: 'Products', icon: '📦' },
         { value: 'orders', label: 'Customer Orders', icon: '🛒' },
-        { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚' }
+        { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚' },
+        { value: 'suppliers', label: 'Suppliers', icon: '🏢' }
     ];
 
     return (
