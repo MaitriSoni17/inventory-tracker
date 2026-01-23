@@ -34,30 +34,30 @@ router.get('/employees/excel', fetchuser, requireExportReports, async (req, res)
         
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         
-        console.log('Report Request - User ID:', req.user._id);
-        console.log('Report Request - BusinessOwnerId:', businessOwnerId);
-        console.log('Report Request - Role:', req.role);
+        // console.log('Report Request - User ID:', req.user._id);
+        // console.log('Report Request - BusinessOwnerId:', businessOwnerId);
+        // console.log('Report Request - Role:', req.role);
 
         let query = { businessowner: businessOwnerId };
         if (employeeId && employeeId !== 'all') {
             query._id = employeeId;
         }
 
-        console.log('Query:', JSON.stringify(query));
+        // console.log('Query:', JSON.stringify(query));
 
         let employees = await Employee.find(query)
             .populate('businessowner', 'name')
             .populate('warehouse', 'wName wAddress');
 
-        console.log('Employees found:', employees.length);
+        // console.log('Employees found:', employees.length);
         if (employees.length > 0) {
-            console.log('First employee:', employees[0].name);
+            // console.log('First employee:', employees[0].name);
         }
 
         // Filter by month/year if provided
         if (month && year) {
             employees = filterByMonthYear(employees, month, year);
-            console.log('After date filter:', employees.length);
+            // console.log('After date filter:', employees.length);
         }
 
         // Create Excel workbook
@@ -92,10 +92,10 @@ router.get('/employees/excel', fetchuser, requireExportReports, async (req, res)
         headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
         // Add data
-        console.log('Adding data rows:', employees.length);
+        // console.log('Adding data rows:', employees.length);
         employees.forEach((emp, idx) => {
             const fullName = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'N/A';
-            console.log(`Row ${idx + 1}:`, fullName, emp.email);
+            // console.log(`Row ${idx + 1}:`, fullName, emp.email);
             worksheet.addRow([
                 fullName,
                 emp.email || 'N/A',
@@ -107,7 +107,7 @@ router.get('/employees/excel', fetchuser, requireExportReports, async (req, res)
             ]);
         });
 
-        console.log('Data added to worksheet');
+        // console.log('Data added to worksheet');
 
         // Set column widths with proper sizing
         worksheet.columns = [
@@ -132,10 +132,10 @@ router.get('/employees/excel', fetchuser, requireExportReports, async (req, res)
         res.setHeader('Content-Disposition', `attachment; filename=employees-report-${Date.now()}.xlsx`);
 
         // Write to response
-        console.log('Writing workbook to response');
+        // console.log('Writing workbook to response');
         res.statusCode = 200;
         await workbook.xlsx.write(res);
-        console.log('Report generation completed successfully');
+        // console.log('Report generation completed successfully');
     } catch (error) {
         console.error('Error generating employee Excel report:', error);
         if (!res.headersSent) {
@@ -809,19 +809,19 @@ router.get('/supplier-orders/pdf', fetchuser, requireExportReports, async (req, 
 // GET: Get all employees for dropdown
 router.get('/employees/list', fetchuser, async (req, res) => {
     try {
-        console.log('\n=== EMPLOYEES LIST ENDPOINT ===');
-        console.log('req.user:', req.user ? { _id: req.user._id, name: req.user.name || req.user.username } : 'null');
-        console.log('req.user.businessowner:', req.user.businessowner);
-        console.log('req.user.businessOwner:', req.user.businessOwner);
-        console.log('req.businessowner:', req.businessowner);
+        // console.log('\n=== EMPLOYEES LIST ENDPOINT ===');
+        // console.log('req.user:', req.user ? { _id: req.user._id, name: req.user.name || req.user.username } : 'null');
+        // console.log('req.user.businessowner:', req.user.businessowner);
+        // console.log('req.user.businessOwner:', req.user.businessOwner);
+        // console.log('req.businessowner:', req.businessowner);
         
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
-        console.log('DROPDOWN: Using businessOwnerId:', businessOwnerId);
-        console.log('DROPDOWN: Fetching employees for businessOwnerId:', businessOwnerId);
+        // console.log('DROPDOWN: Using businessOwnerId:', businessOwnerId);
+        // console.log('DROPDOWN: Fetching employees for businessOwnerId:', businessOwnerId);
         const employees = await Employee.find({ businessowner: businessOwnerId })
             .select('_id name email role');
-        console.log('DROPDOWN: Found employees:', employees.length);
-        console.log('DROPDOWN: Employee data:', employees);
+        // console.log('DROPDOWN: Found employees:', employees.length);
+        // console.log('DROPDOWN: Employee data:', employees);
         res.json(employees);
     } catch (error) {
         console.error('Error fetching employees list:', error);

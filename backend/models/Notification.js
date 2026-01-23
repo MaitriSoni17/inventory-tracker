@@ -65,7 +65,12 @@ const NotificationSchema = new Schema({
       'chat_message',
       'chat_permission_granted',
       'chat_permission_revoked',
-      'message'
+      'message',
+      'salary_due_alert',
+      'supplier_order_delivery_alert',
+      'product_low_stock_alert',
+      'customer_order_delivery_alert',
+      'supplier_order_supply_alert'
     ],
     required: true
   },

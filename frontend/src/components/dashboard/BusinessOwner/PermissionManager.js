@@ -28,6 +28,21 @@ const PermissionManager = (props) => {
     const [loadingEmployees, setLoadingEmployees] = useState(false);
     const [savingEmployee, setSavingEmployee] = useState(false);
 
+    // Notification preferences state
+    const [notificationPreferences, setNotificationPreferences] = useState({
+        salarydueAlert: true,
+        salaryDueDaysThreshold: 3,
+        supplierOrderDeliveryAlert: true,
+        supplierOrderDeliveryDaysThreshold: 2,
+        productLowStockAlert: true,
+        productLowStockThreshold: 10,
+        customerOrderDeliveryAlert: true,
+        customerOrderDeliveryDaysThreshold: 1,
+        supplierOrderSupplyAlert: true,
+        supplierOrderSupplyDaysThreshold: 2
+    });
+    const [savingNotificationPreferences, setSavingNotificationPreferences] = useState(false);
+
     // Permission dependencies - if view is disabled, these should be disabled too
     const permissionDependencies = {
         canViewProducts: ['canCreateProducts', 'canEditProducts', 'canDeleteProducts'],
@@ -137,6 +152,39 @@ const PermissionManager = (props) => {
         }
     }, [props]);
 
+    // Fetch notification preferences
+    const fetchNotificationPreferences = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/notificationpreferences', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setNotificationPreferences({
+                    salarydueAlert: data.salarydueAlert !== undefined ? data.salarydueAlert : true,
+                    salaryDueDaysThreshold: data.salaryDueDaysThreshold || 3,
+                    supplierOrderDeliveryAlert: data.supplierOrderDeliveryAlert !== undefined ? data.supplierOrderDeliveryAlert : true,
+                    supplierOrderDeliveryDaysThreshold: data.supplierOrderDeliveryDaysThreshold || 2,
+                    productLowStockAlert: data.productLowStockAlert !== undefined ? data.productLowStockAlert : true,
+                    productLowStockThreshold: data.productLowStockThreshold || 10,
+                    customerOrderDeliveryAlert: data.customerOrderDeliveryAlert !== undefined ? data.customerOrderDeliveryAlert : true,
+                    customerOrderDeliveryDaysThreshold: data.customerOrderDeliveryDaysThreshold || 1,
+                    supplierOrderSupplyAlert: data.supplierOrderSupplyAlert !== undefined ? data.supplierOrderSupplyAlert : true,
+                    supplierOrderSupplyDaysThreshold: data.supplierOrderSupplyDaysThreshold || 2
+                });
+            } else {
+                const errorData = await response.json();
+                console.error('Error fetching notification preferences:', errorData);
+            }
+        } catch (error) {
+            console.error('Error fetching notification preferences:', error);
+        }
+    }, []);
+
     useEffect(() => {
         fetchPermissionGroups();
         fetchPermissions();
@@ -145,8 +193,38 @@ const PermissionManager = (props) => {
     useEffect(() => {
         if (mainTab === 'individual') {
             fetchEmployees();
+        } else if (mainTab === 'notifications') {
+            fetchNotificationPreferences();
         }
-    }, [mainTab, fetchEmployees]);
+    }, [mainTab, fetchEmployees, fetchNotificationPreferences]);
+
+    // Save notification preferences
+    const saveNotificationPreferences = async () => {
+        setSavingNotificationPreferences(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/notificationpreferences', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify(notificationPreferences)
+            });
+            if (response.ok) {
+                const data = await response.json();
+                props.showAlert('Notification preferences saved successfully!', 'success');
+                setNotificationPreferences(data.preferences);
+            } else {
+                const errorData = await response.json();
+                props.showAlert(errorData.message || 'Error saving notification preferences', 'danger');
+            }
+        } catch (error) {
+            console.error('Error saving notification preferences:', error);
+            props.showAlert('Error saving notification preferences', 'danger');
+        } finally {
+            setSavingNotificationPreferences(false);
+        }
+    };
 
     // Handle employee selection
     const handleEmployeeSelect = async (employee) => {
@@ -594,6 +672,13 @@ const PermissionManager = (props) => {
                 >
                     <i className="fas fa-file-download me-2"></i>
                     Report Downloads
+                </button>
+                <button 
+                    className={`permission-tab ${mainTab === 'notifications' ? 'active' : ''}`}
+                    onClick={() => setMainTab('notifications')}
+                >
+                    <i className="fas fa-bell me-2"></i>
+                    Notification Settings
                 </button>
             </div>
 
@@ -1122,6 +1207,240 @@ const PermissionManager = (props) => {
                             <li>These permissions only affect individual item downloads, not bulk exports</li>
                             <li>Permissions are enforced both in the UI and on the backend</li>
                         </ul>
+                    </div>
+                </div>
+            )}
+
+            {/* Notification Settings Tab */}
+            {mainTab === 'notifications' && (
+                <div className="permission-panel" style={{ padding: '30px' }}>
+                    <div className="panel-header">
+                        <h2><i className="fas fa-bell me-2"></i>Notification Settings</h2>
+                        <p>Configure when and how you receive notifications for business events</p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                        {/* Salary Due Alert */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-money-bill me-2" style={{ color: '#28a745' }}></i>
+                                Salary Due Alert
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Get notified when employee salary is due to be paid
+                            </p>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={notificationPreferences.salarydueAlert} 
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        salarydueAlert: e.target.checked
+                                    })}
+                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#333' }}>Enable salary due notifications</span>
+                            </label>
+                            <div>
+                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                                    Alert <strong>X days</strong> before salary due date:
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max="30" 
+                                    value={notificationPreferences.salaryDueDaysThreshold}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        salaryDueDaysThreshold: parseInt(e.target.value) || 3
+                                    })}
+                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
+                                /> days
+                            </div>
+                        </div>
+
+                        {/* Supplier Order Delivery Alert */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-truck me-2" style={{ color: '#fd7e14' }}></i>
+                                Supplier Order Delivery Alert
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Get notified when supplier orders are near delivery
+                            </p>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={notificationPreferences.supplierOrderDeliveryAlert}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        supplierOrderDeliveryAlert: e.target.checked
+                                    })}
+                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#333' }}>Enable delivery notifications</span>
+                            </label>
+                            <div>
+                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                                    Alert <strong>X days</strong> before delivery date:
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max="30" 
+                                    value={notificationPreferences.supplierOrderDeliveryDaysThreshold}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        supplierOrderDeliveryDaysThreshold: parseInt(e.target.value) || 2
+                                    })}
+                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
+                                /> days
+                            </div>
+                        </div>
+
+                        {/* Low Stock Alert */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-warehouse me-2" style={{ color: '#ffc107' }}></i>
+                                Low Stock Alert
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Get notified when product stock falls below a threshold
+                            </p>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={notificationPreferences.productLowStockAlert}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        productLowStockAlert: e.target.checked
+                                    })}
+                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#333' }}>Enable low stock notifications</span>
+                            </label>
+                            <div>
+                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                                    Alert when stock is below:
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max="100" 
+                                    value={notificationPreferences.productLowStockThreshold}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        productLowStockThreshold: parseInt(e.target.value) || 10
+                                    })}
+                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
+                                /> units
+                            </div>
+                        </div>
+
+                        {/* Customer Order Delivery Alert */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-shopping-cart me-2" style={{ color: '#17a2b8' }}></i>
+                                Customer Order Delivery Alert
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Get notified when customer orders are near delivery
+                            </p>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={notificationPreferences.customerOrderDeliveryAlert}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        customerOrderDeliveryAlert: e.target.checked
+                                    })}
+                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#333' }}>Enable order delivery notifications</span>
+                            </label>
+                            <div>
+                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                                    Alert <strong>X days</strong> before delivery date:
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max="30" 
+                                    value={notificationPreferences.customerOrderDeliveryDaysThreshold}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        customerOrderDeliveryDaysThreshold: parseInt(e.target.value) || 1
+                                    })}
+                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
+                                /> days
+                            </div>
+                        </div>
+
+                        {/* Supplier Order Supply Alert */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-industry me-2" style={{ color: '#6f42c1' }}></i>
+                                Supplier Order Supply Alert
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Suppliers get notified when they need to supply orders (Supplier View)
+                            </p>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={notificationPreferences.supplierOrderSupplyAlert}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        supplierOrderSupplyAlert: e.target.checked
+                                    })}
+                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                />
+                                <span style={{ color: '#333' }}>Enable supply notifications</span>
+                            </label>
+                            <div>
+                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                                    Alert <strong>X days</strong> before order due date:
+                                </label>
+                                <input 
+                                    type="number" 
+                                    min="1" 
+                                    max="30" 
+                                    value={notificationPreferences.supplierOrderSupplyDaysThreshold}
+                                    onChange={(e) => setNotificationPreferences({
+                                        ...notificationPreferences,
+                                        supplierOrderSupplyDaysThreshold: parseInt(e.target.value) || 2
+                                    })}
+                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
+                                /> days
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: '30px', padding: '20px', background: '#f0f8ff', borderRadius: '8px', borderLeft: '4px solid #667eea' }}>
+                        <h5 style={{ marginBottom: '10px', color: '#333' }}>
+                            <i className="fas fa-info-circle me-2"></i>
+                            About Notifications
+                        </h5>
+                        <ul style={{ marginBottom: 0, color: '#666', fontSize: '14px' }}>
+                            <li><strong>Salary Due Alerts:</strong> Notified when employee salaries are due within the configured number of days</li>
+                            <li><strong>Supplier Order Delivery:</strong> Notified when supplier orders are approaching their expected delivery date</li>
+                            <li><strong>Low Stock Alerts:</strong> Notified when product inventory drops below the threshold</li>
+                            <li><strong>Customer Order Delivery:</strong> Notified when customer orders need to be sent/delivered soon</li>
+                            <li><strong>Supplier Order Supply:</strong> Suppliers notified when they need to supply orders to your business</li>
+                            <li>All settings are customizable with thresholds and can be enabled/disabled independently</li>
+                        </ul>
+                    </div>
+
+                    <div style={{ marginTop: '20px', textAlign: 'right' }}>
+                        <button 
+                            className="btn btn-primary" 
+                            style={{ padding: '10px 30px', fontSize: '16px' }}
+                            onClick={saveNotificationPreferences}
+                            disabled={savingNotificationPreferences}
+                        >
+                            <i className="fas fa-save me-2"></i>
+                            {savingNotificationPreferences ? 'Saving...' : 'Save Notification Settings'}
+                        </button>
                     </div>
                 </div>
             )}

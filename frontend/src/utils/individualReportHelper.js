@@ -1,6 +1,5 @@
 // Individual Report Export Helpers
 import html2pdf from 'html2pdf.js';
-import * as XLSX from 'xlsx';
 
 // Generate Individual Employee Report
 export const generateIndividualEmployeeReportPDF = async (employee, formatDate, formatPhoneNumber) => {
@@ -186,15 +185,15 @@ export const generateIndividualSupplierOrderReportPDF = async (order, supplierNa
                             <td style="padding: 8px; color: #666;"><strong>Amount:</strong> ₹${order.amount?.toLocaleString('en-IN') || '0'}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; color: #666;\"><strong>Order Date:</strong> ${order.oDate ? new Date(order.oDate).toLocaleDateString('en-IN') : 'N/A'}</td>
-                            <td style="padding: 8px; color: #666;\"><strong>Delivery Date:</strong> ${order.dDate ? new Date(order.dDate).toLocaleDateString('en-IN') : 'N/A'}</td>
+                            <td style="padding: 8px; color: #666;"><strong>Order Date:</strong> ${order.oDate ? new Date(order.oDate).toLocaleDateString('en-IN') : 'N/A'}</td>
+                            <td style="padding: 8px; color: #666;"><strong>Delivery Date:</strong> ${order.dDate ? new Date(order.dDate).toLocaleDateString('en-IN') : 'N/A'}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 8px; color: #666;\"><strong>Status:</strong> ${order.status || 'Pending'}</td>
-                            <td style="padding: 8px; color: #666;\"><strong>Delivery Status:</strong> ${order.dStatus || 'Not Received'}</td>
+                            <td style="padding: 8px; color: #666;"><strong>Status:</strong> ${order.status || 'Pending'}</td>
+                            <td style="padding: 8px; color: #666;"><strong>Delivery Status:</strong> ${order.dStatus || 'Not Received'}</td>
                         </tr>
                         <tr>
-                            <td colspan="2" style="padding: 8px; color: #666;\"><strong>Availability:</strong> ${order.pAvail || 'N/A'}</td>
+                            <td colspan="2" style="padding: 8px; color: #666;"><strong>Availability:</strong> ${order.pAvail || 'N/A'}</td>
                         </tr>
                     </table>
                 </div>

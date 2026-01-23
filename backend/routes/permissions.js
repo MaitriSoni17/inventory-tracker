@@ -136,7 +136,7 @@ router.put('/update', fetchuser, async (req, res) => {
             { $set: { permissions: permissionsToUpdate } }
         );
         
-        console.log(`Updated ${updateResult.modifiedCount} employees with new ${role} permissions`);
+        // console.log(`Updated ${updateResult.modifiedCount} employees with new ${role} permissions`);
 
         res.json({
             success: true,
@@ -199,7 +199,7 @@ router.put('/update-single', fetchuser, async (req, res) => {
             { $set: updateQuery }
         );
         
-        console.log(`Updated ${updateResult.modifiedCount} employees with permission ${permissionKey}=${value}`);
+        // console.log(`Updated ${updateResult.modifiedCount} employees with permission ${permissionKey}=${value}`);
 
         res.json({
             success: true,
