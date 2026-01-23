@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRole } from '../../context/RoleContext';
+import { generateSalaryReportPDF, generateSalaryReportExcel } from '../../utils/salaryReportHelper';
 import '../../styles/reports.css';
 
 const Reports = ({ showAlert }) => {
     const navigate = useNavigate();
-    const { permissions } = useRole();
+    const { hasPermission } = useRole();
     const [loading, setLoading] = useState(false);
     const [reportConfig, setReportConfig] = useState({
         reportType: 'employees',
@@ -17,11 +18,11 @@ const Reports = ({ showAlert }) => {
 
     // Check permission on component mount
     useEffect(() => {
-        if (!permissions.canExportReports) {
+        if (!hasPermission('canExportReports')) {
             showAlert('You do not have permission to access reports', 'danger');
             navigate('/dashboard');
         }
-    }, [permissions, navigate, showAlert]);
+    }, [navigate]);
 
     const [availableItems, setAvailableItems] = useState({
         employees: [],
@@ -109,6 +110,57 @@ const Reports = ({ showAlert }) => {
         try {
             setLoading(true);
             const token = localStorage.getItem('token');
+            
+            // Handle salary report separately
+            if (reportConfig.reportType === 'salary') {
+                const response = await fetch('http://localhost:5000/api/salary/getallsalaries', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': token
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch salary data');
+                }
+
+                const salaryData = await response.json();
+
+                // Fetch paid salaries for all employees
+                const paidSalaries = {};
+                for (const emp of salaryData) {
+                    const paidResponse = await fetch(`http://localhost:5000/api/salarypayment/totalpaid/${emp._id}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'auth-token': token
+                        }
+                    });
+
+                    if (paidResponse.ok) {
+                        const data = await paidResponse.json();
+                        paidSalaries[emp._id] = data.totalPaid;
+                    }
+                }
+
+                if (reportConfig.format === 'excel') {
+                    generateSalaryReportExcel(salaryData, paidSalaries);
+                } else {
+                    const formatCurrency = (amount, currency) => {
+                        return new Intl.NumberFormat('en-IN', {
+                            style: 'currency',
+                            currency: currency,
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0
+                        }).format(amount);
+                    };
+                    await generateSalaryReportPDF(salaryData, paidSalaries, formatCurrency);
+                }
+
+                showAlert('Salary report downloaded successfully!', 'success');
+                return;
+            }
             
             // Build query parameters
             const params = new URLSearchParams();
@@ -213,7 +265,8 @@ const Reports = ({ showAlert }) => {
         { value: 'products', label: 'Products', icon: '📦' },
         { value: 'orders', label: 'Customer Orders', icon: '🛒' },
         { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚' },
-        { value: 'suppliers', label: 'Suppliers', icon: '🏢' }
+        { value: 'suppliers', label: 'Suppliers', icon: '🏢' },
+        { value: 'salary', label: 'Salary Management', icon: '💼' }
     ];
 
     return (

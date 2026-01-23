@@ -137,6 +137,13 @@ const SideBar = () => {
                             </Link>
                         )}
                         
+                        {/* Salary Management - Only BusinessOwner */}
+                        {isBusinessOwner && (
+                            <Link to="/dashboard/salary" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/salary" ? "active" : ""}`}>
+                                <i className="fas fa-money-bill-wave me-2"></i>Salary Management
+                            </Link>
+                        )}
+                        
                         {/* Notifications - Based on canViewNotifications permission */}
                         {canViewNotifications && (
                             <Link to="/dashboard/notifications" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/notifications" ? "active" : ""}`}>

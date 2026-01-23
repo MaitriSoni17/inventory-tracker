@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { CanCreateProducts, CanDeleteProducts, CanEditProducts } from '../../auth/RoleGuards';
+import { generateIndividualProductReportPDF } from '../../../utils/individualReportHelper';
 
 const Products = (props) => {
 
@@ -132,6 +133,19 @@ const Products = (props) => {
             } catch (error) {
                 props.showAlert("Failed to delete product", "danger");
             }
+        }
+    };
+
+    const downloadIndividualProductReport = async (product) => {
+        try {
+            const success = await generateIndividualProductReportPDF(product, categoryMap, warehouseMap);
+            if (success) {
+                props.showAlert(`Report downloaded for ${product.name}`, 'success');
+            } else {
+                props.showAlert('Failed to generate report', 'danger');
+            }
+        } catch (error) {
+            props.showAlert('Error downloading report: ' + error.message, 'danger');
         }
     };
 
@@ -399,9 +413,9 @@ const Products = (props) => {
                                                     </td>
                                                     <td>₹{product.price}</td>
                                                     <td>
-                                                        {/* <a href={`/dashboard/editproduct/${product._id}`} className="text-decoration-none text-info me-3"><i
-                                                            className="bi bi-pencil-square fs-5"></i></a>
-                                                        <button className="text-decoration-none text-danger fs-5 border-0 bg-transparent p-0" onClick={() => handleDelete(product._id)} style={{'cursor': 'pointer'}}><i className="bi bi-trash"></i></button> */}
+                                                        <button className="btn btn-success me-2" onClick={() => downloadIndividualProductReport(product)} title="Download Report">
+                                                            <i className="bi bi-download"></i>
+                                                        </button>
                                                         <CanEditProducts>
                                                             <Link to={`/dashboard/editproduct/${product._id}`} className="btn btn-info me-2" title="Edit">
                                                                 <i className="bi bi-pencil"></i>

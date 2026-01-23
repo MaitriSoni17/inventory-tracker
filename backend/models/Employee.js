@@ -20,6 +20,13 @@ const Employee = new Schema({
     address: { type: String },
     image: { type: String },
     about: { type: String },
+    salary: {
+        baseSalary: { type: Number, default: 0 },
+        currency: { type: String, default: 'INR' },
+        paymentFrequency: { type: String, enum: ['monthly', 'weekly', 'daily'], default: 'monthly' },
+        lastUpdated: { type: Date, default: Date.now },
+        updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'BusinessOwner' }
+    },
     role: { 
         type: String, 
         enum: ['employee', 'supervisor', 'manager'],

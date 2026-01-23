@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import { BusinessOwnerOnly } from '../../auth/RoleGuards';
+import { generateIndividualSupplierOrderReportPDF } from '../../../utils/individualReportHelper';
 
 const SupplierOrder = (props) => {
     const { id } = useParams();
@@ -124,6 +125,19 @@ const SupplierOrder = (props) => {
             } catch (error) {
                 props.showAlert('Error deleting order', 'danger');
             }
+        }
+    };
+
+    const downloadIndividualSupplierOrderReport = async (order) => {
+        try {
+            const success = await generateIndividualSupplierOrderReportPDF(order, supplierName);
+            if (success) {
+                props.showAlert(`Report downloaded for Order ${order._id.slice(-6)}`, 'success');
+            } else {
+                props.showAlert('Failed to generate report', 'danger');
+            }
+        } catch (error) {
+            props.showAlert('Error downloading report: ' + error.message, 'danger');
         }
     };
 
@@ -368,6 +382,9 @@ const SupplierOrder = (props) => {
                                         </td>
                                         <td className='d-flex'>
                                             <BusinessOwnerOnly>
+                                                <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualSupplierOrderReport(order)} title="Download Report">
+                                                    <i className="bi bi-download"></i>
+                                                </button>
                                                 <Link to={`/dashboard/editsupplierorder/${order._id}`} className="btn btn-sm btn-info me-2" title="Edit">
                                                     <i className="bi bi-pencil"></i>
                                                 </Link>

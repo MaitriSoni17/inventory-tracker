@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
 import { CanManageEmployees, CanEditEmployees } from '../../../components/auth/RoleGuards';
+import { generateIndividualEmployeeReportPDF } from '../../../utils/individualReportHelper';
 const Employees = (props) => {
     const [employees, setEmployees] = useState([]);
     const [filteredEmployees, setFilteredEmployees] = useState([]);
@@ -276,6 +277,23 @@ const Employees = (props) => {
             props.showAlert('Error exporting to PDF', 'danger');
         }
     };
+
+    const downloadIndividualEmployeeReport = async (employee) => {
+        try {
+            const success = await generateIndividualEmployeeReportPDF(employee, formatDate, (phone) => {
+                if (!phone) return 'N/A';
+                return phone.length === 10 ? `+91 ${phone.slice(0, 5)} ${phone.slice(5)}` : phone;
+            });
+            if (success) {
+                props.showAlert(`Report downloaded for ${employee.fname} ${employee.lname || ''}`, 'success');
+            } else {
+                props.showAlert('Failed to generate report', 'danger');
+            }
+        } catch (error) {
+            props.showAlert('Error downloading report: ' + error.message, 'danger');
+        }
+    };
+
     return (
         <>
             <div className="container-fluid p-4">
@@ -350,7 +368,7 @@ const Employees = (props) => {
                                     <th scope="col" className="py-2">Hire Location</th>
                                     <th scope="col" className="py-2">Joining Date</th>
                                     <th scope="col" className="py-2">Last Login</th>
-                                    <th scope="col" className="py-2">Location</th>
+                                    {/* <th scope="col" className="py-2">Location</th> */}
                                     <CanEditEmployees><th scope="col" className="py-2">Actions</th></CanEditEmployees>
                                 </tr>
                             </thead>
@@ -390,9 +408,12 @@ const Employees = (props) => {
                                                 {formatLastLogin(emp.lastLogin)}
                                             </small>
                                         </td>
-                                        <td>{emp.city || ''}{emp.city && emp.country ? ', ' : ''}{emp.country || ''}</td>
+                                        {/* <td>{emp.city || ''}{emp.city && emp.country ? ', ' : ''}{emp.country || ''}</td> */}
                                         <CanEditEmployees>
                                             <td className='d-flex'>
+                                                <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualEmployeeReport(emp)} title="Download Report">
+                                                    <i className="bi bi-download"></i>
+                                                </button>
                                                 <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">
                                                     <i className="bi bi-pencil"></i>
                                                 </Link>

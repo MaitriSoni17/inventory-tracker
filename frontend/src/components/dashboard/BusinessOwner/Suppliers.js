@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css';
 import { BusinessOwnerOnly } from '../../auth/RoleGuards';
+import { generateIndividualSupplierReportPDF } from '../../../utils/individualReportHelper';
 
 const Suppliers = (props) => {
     const [suppliers, setSuppliers] = useState([]);
@@ -98,6 +99,19 @@ const Suppliers = (props) => {
             } catch (error) {
                 props.showAlert('Error deleting supplier', 'danger');
             }
+        }
+    };
+
+    const downloadIndividualSupplierReport = async (supplier) => {
+        try {
+            const success = await generateIndividualSupplierReportPDF(supplier);
+            if (success) {
+                props.showAlert(`Report downloaded for ${supplier.fname} ${supplier.lname || ''}`, 'success');
+            } else {
+                props.showAlert('Failed to generate report', 'danger');
+            }
+        } catch (error) {
+            props.showAlert('Error downloading report: ' + error.message, 'danger');
         }
     };
 
@@ -321,6 +335,9 @@ const Suppliers = (props) => {
                                             </small>
                                         </td>
                                         <td className='d-flex'>
+                                            <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualSupplierReport(sup)} title="Download Report">
+                                                <i className="bi bi-download"></i>
+                                            </button>
                                             <Link to={`/dashboard/supplierordes/${sup._id}`} className="btn btn-sm btn-success me-2" title="View Orders">
                                                 <i className="bi bi-box-seam"></i>
                                             </Link>

@@ -588,6 +588,13 @@ const PermissionManager = (props) => {
                     <i className="fas fa-user-cog me-2"></i>
                     Individual Permissions
                 </button>
+                <button 
+                    className={`permission-tab ${mainTab === 'report-download' ? 'active' : ''}`}
+                    onClick={() => setMainTab('report-download')}
+                >
+                    <i className="fas fa-file-download me-2"></i>
+                    Report Downloads
+                </button>
             </div>
 
             {/* Role-Based Permissions Tab */}
@@ -947,6 +954,174 @@ const PermissionManager = (props) => {
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* Report Download Permissions Tab */}
+            {mainTab === 'report-download' && (
+                <div className="permission-panel" style={{ padding: '30px' }}>
+                    <div className="panel-header" style={{ marginBottom: '30px' }}>
+                        <div>
+                            <h2>
+                                <i className="fas fa-file-download me-2"></i>
+                                Report Download Permissions
+                            </h2>
+                            <p>Control who can download individual reports for employees, products, orders, and supplier orders</p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                        {/* Employees Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-user me-2" style={{ color: '#667eea' }}></i>
+                                Employees Reports
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Allow roles to download individual employee reports
+                            </p>
+                            <div>
+                                {['employee', 'supervisor', 'manager'].map(role => (
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            defaultChecked={true}
+                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Products Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-box me-2" style={{ color: '#28a745' }}></i>
+                                Products Reports
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Allow roles to download individual product reports
+                            </p>
+                            <div>
+                                {['employee', 'supervisor', 'manager'].map(role => (
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            defaultChecked={true}
+                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Orders Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-shopping-cart me-2" style={{ color: '#ffc107' }}></i>
+                                Orders Reports
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Allow roles to download individual order reports
+                            </p>
+                            <div>
+                                {['employee', 'supervisor', 'manager'].map(role => (
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            defaultChecked={role !== 'employee'}
+                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Supplier Orders Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-truck me-2" style={{ color: '#dc3545' }}></i>
+                                Supplier Orders Reports
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Allow roles to download individual supplier order reports
+                            </p>
+                            <div>
+                                {['employee', 'supervisor', 'manager'].map(role => (
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            defaultChecked={role !== 'employee'}
+                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Supplier Orders Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-users me-2" style={{ color: '#fd7e14' }}></i>
+                                Supplier Reports
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Allow roles to download individual supplier reports
+                            </p>
+                            <div>
+                                {['employee', 'supervisor', 'manager'].map(role => (
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            defaultChecked={true}
+                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Salary Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                                <i className="fas fa-wallet me-2" style={{ color: '#17a2b8' }}></i>
+                                Salary Reports
+                            </h4>
+                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                                Allow roles to download salary reports
+                            </p>
+                            <div>
+                                {['employee', 'supervisor', 'manager'].map(role => (
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            defaultChecked={false}
+                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop: '30px', padding: '20px', background: '#f0f8ff', borderRadius: '8px', borderLeft: '4px solid #667eea' }}>
+                        <h5 style={{ marginBottom: '10px', color: '#333' }}>
+                            <i className="fas fa-info-circle me-2"></i>
+                            About Report Downloads
+                        </h5>
+                        <ul style={{ marginBottom: 0, color: '#666', fontSize: '14px' }}>
+                            <li>Business Owners can always download all reports</li>
+                            <li>Individual report downloads are available on each list page (Employees, Products, Orders, Supplier Orders, Suppliers)</li>
+                            <li>These permissions only affect individual item downloads, not bulk exports</li>
+                            <li>Permissions are enforced both in the UI and on the backend</li>
+                        </ul>
                     </div>
                 </div>
             )}

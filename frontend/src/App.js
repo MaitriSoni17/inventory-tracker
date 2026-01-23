@@ -41,6 +41,7 @@ import NotificationsPage from './components/common/NotificationsPage';
 import Messaging from './components/common/Messaging';
 import PermissionManager from './components/dashboard/BusinessOwner/PermissionManager';
 import Reports from './components/common/Reports';
+import SalaryManagement from './components/dashboard/BusinessOwner/SalaryManagement';
 import { RoleProvider } from './context/RoleContext';
 
 function App() {
@@ -105,6 +106,7 @@ function App() {
               <Route path="messages" element={<Messaging />} />
               <Route path="permissions" element={<PermissionManager showAlert={showAlert} />} />
               <Route path="reports" element={<Reports showAlert={showAlert} />} />
+              <Route path="salary" element={<SalaryManagement showAlert={showAlert} />} />
               
               <Route path="empsettings" element={<EmpSettings showAlert={showAlert} />} />
               <Route path="suppliersettings" element={<SupplierSettings showAlert={showAlert} />} />
