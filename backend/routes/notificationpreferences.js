@@ -12,8 +12,8 @@ const fetchEmployee = require('../middleware/fetchemployee');
  */
 router.get('/', fetchUser, async (req, res) => {
   try {
-    const userId = req.userId;
-    const userRole = req.userRole;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     let preferences = await NotificationPreference.findOne({
       user: userId,
@@ -91,8 +91,8 @@ router.get('/:userId', fetchBusinessOwner, async (req, res) => {
  */
 router.post('/', fetchUser, async (req, res) => {
   try {
-    const userId = req.userId;
-    const userRole = req.userRole;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     const {
       salarydueAlert,
@@ -209,8 +209,8 @@ router.post('/', fetchUser, async (req, res) => {
  */
 router.put('/', fetchUser, async (req, res) => {
   try {
-    const userId = req.userId;
-    const userRole = req.userRole;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     const {
       salarydueAlert,
@@ -314,8 +314,8 @@ router.put('/', fetchUser, async (req, res) => {
  */
 router.delete('/', fetchUser, async (req, res) => {
   try {
-    const userId = req.userId;
-    const userRole = req.userRole;
+    const userId = req.user._id;
+    const userRole = req.role;
 
     const preferences = await NotificationPreference.findOne({
       user: userId,
