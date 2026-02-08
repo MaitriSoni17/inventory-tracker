@@ -90,8 +90,7 @@
 }
 
 .permission-panel {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 1.5rem;
     background: var(--pm-card-bg);
     border-radius: var(--pm-radius-lg);

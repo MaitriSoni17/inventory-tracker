@@ -246,15 +246,17 @@ const Reports = ({ showAlert }) => {
     const getItemLabel = (item) => {
         switch (reportConfig.reportType) {
             case 'employees':
-                return `${item.name} (${item.email})`;
+                return `${item.fname} ${item.lname || ''} (${item.email})`;
             case 'products':
-                return `${item.productname} (${item.sku})`;
+                return `${item.name} (${item.category})`;
             case 'orders':
-                return `${item.customername} - ${new Date(item.orderdate).toLocaleDateString()}`;
+                return `${item.cName} - ${new Date(item.oDate).toLocaleDateString()}`;
             case 'supplierOrders':
-                return `${item.supplier?.name || 'N/A'} - ${new Date(item.orderdate).toLocaleDateString()}`;
+                const supplierName = item.supplier?.companyName || 
+                                     (item.supplier?.fname ? `${item.supplier.fname} ${item.supplier.lname || ''}` : 'N/A');
+                return `${supplierName} - ${new Date(item.oDate).toLocaleDateString()}`;
             case 'suppliers':
-                return `${item.fname} ${item.lname} (${item.companyName || 'N/A'})`;
+                return `${item.fname} ${item.lname || ''} (${item.companyName || item.email || 'N/A'})`.trim();
             default:
                 return '';
         }

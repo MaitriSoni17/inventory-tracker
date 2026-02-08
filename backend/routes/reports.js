@@ -819,7 +819,7 @@ router.get('/employees/list', fetchuser, async (req, res) => {
         // console.log('DROPDOWN: Using businessOwnerId:', businessOwnerId);
         // console.log('DROPDOWN: Fetching employees for businessOwnerId:', businessOwnerId);
         const employees = await Employee.find({ businessowner: businessOwnerId })
-            .select('_id name email role');
+            .select('_id fname lname email role');
         // console.log('DROPDOWN: Found employees:', employees.length);
         // console.log('DROPDOWN: Employee data:', employees);
         res.json(employees);
@@ -834,7 +834,7 @@ router.get('/products/list', fetchuser, async (req, res) => {
     try {
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         const products = await Products.find({ businessowner: businessOwnerId })
-            .select('_id productname sku');
+            .select('_id name category price');
         res.json(products);
     } catch (error) {
         console.error('Error fetching products list:', error);
@@ -847,7 +847,7 @@ router.get('/orders/list', fetchuser, async (req, res) => {
     try {
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         const orders = await Orders.find({ businessowner: businessOwnerId })
-            .select('_id customername orderdate');
+            .select('_id cName oDate');
         res.json(orders);
     } catch (error) {
         console.error('Error fetching orders list:', error);
@@ -860,8 +860,8 @@ router.get('/supplier-orders/list', fetchuser, async (req, res) => {
     try {
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         const supplierOrders = await SupplierOrders.find({ businessowner: businessOwnerId })
-            .populate('supplier', 'name')
-            .select('_id orderdate');
+            .populate('supplier', 'fname lname companyName')
+            .select('_id pName oDate supplier');
         res.json(supplierOrders);
     } catch (error) {
         console.error('Error fetching supplier orders list:', error);

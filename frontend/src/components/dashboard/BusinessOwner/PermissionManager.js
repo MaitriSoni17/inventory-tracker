@@ -684,7 +684,7 @@ const PermissionManager = (props) => {
 
             {/* Role-Based Permissions Tab */}
             {mainTab === 'role-based' && (
-                <div className="permission-panel">
+                <div className="permission-panel" style={{ padding: 0, maxWidth: '100%', display: 'flex' }}>
                     {/* Sidebar - Role Selection */}
                     <div className="panel-sidebar">
                         <h3 className="sidebar-title">
@@ -864,7 +864,7 @@ const PermissionManager = (props) => {
 
             {/* Individual Permissions Tab */}
             {mainTab === 'individual' && (
-                <div className="permission-panel">
+                <div className="permission-panel" style={{ padding: 0, maxWidth: '100%', display: 'flex' }}>
                     {/* Sidebar - Employee List */}
                     <div className="panel-sidebar">
                         <h3 className="sidebar-title">
@@ -1045,163 +1045,163 @@ const PermissionManager = (props) => {
 
             {/* Report Download Permissions Tab */}
             {mainTab === 'report-download' && (
-                <div className="permission-panel" style={{ padding: '30px' }}>
-                    <div className="panel-header" style={{ marginBottom: '30px' }}>
-                        <div>
-                            <h2>
+                <div className="permission-panel" style={{ padding: '30px', maxWidth: '100%' }}>
+                    <div className="panel-header" style={{ marginBottom: '30px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ flex: 1 }}>
+                            <h2 style={{ display: 'flex', alignItems: 'center', marginBottom: '10px' }}>
                                 <i className="fas fa-file-download me-2"></i>
                                 Report Download Permissions
                             </h2>
-                            <p>Control who can download individual reports for employees, products, orders, and supplier orders</p>
+                            <p style={{ margin: 0 }}>Control who can download individual reports for employees, products, orders, and supplier orders</p>
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '30px' }}>
                         {/* Employees Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-user me-2" style={{ color: '#667eea' }}></i>
                                 Employees Reports
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Allow roles to download individual employee reports
                             </p>
-                            <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px', transition: 'background 0.2s', ':hover': { background: '#f5f5f5' } }}>
                                         <input 
                                             type="checkbox" 
                                             defaultChecked={true}
-                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                         />
-                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
                         {/* Products Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-box me-2" style={{ color: '#28a745' }}></i>
                                 Products Reports
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Allow roles to download individual product reports
                             </p>
-                            <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
                                         <input 
                                             type="checkbox" 
                                             defaultChecked={true}
-                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                         />
-                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
                         {/* Orders Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-shopping-cart me-2" style={{ color: '#ffc107' }}></i>
                                 Orders Reports
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Allow roles to download individual order reports
                             </p>
-                            <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
                                         <input 
                                             type="checkbox" 
                                             defaultChecked={role !== 'employee'}
-                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                         />
-                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
                         {/* Supplier Orders Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-truck me-2" style={{ color: '#dc3545' }}></i>
                                 Supplier Orders Reports
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Allow roles to download individual supplier order reports
                             </p>
-                            <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
                                         <input 
                                             type="checkbox" 
                                             defaultChecked={role !== 'employee'}
-                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                         />
-                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
-                        {/* Supplier Orders Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        {/* Supplier Reports */}
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-users me-2" style={{ color: '#fd7e14' }}></i>
                                 Supplier Reports
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Allow roles to download individual supplier reports
                             </p>
-                            <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
                                         <input 
                                             type="checkbox" 
                                             defaultChecked={true}
-                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                         />
-                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
 
                         {/* Salary Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-wallet me-2" style={{ color: '#17a2b8' }}></i>
                                 Salary Reports
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Allow roles to download salary reports
                             </p>
-                            <div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                 {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', marginBottom: '10px', cursor: 'pointer' }}>
+                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
                                         <input 
                                             type="checkbox" 
                                             defaultChecked={false}
-                                            style={{ marginRight: '10px', cursor: 'pointer' }}
+                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                         />
-                                        <span style={{ textTransform: 'capitalize', color: '#333' }}>{role}s</span>
+                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
                                     </label>
                                 ))}
                             </div>
                         </div>
                     </div>
 
-                    <div style={{ marginTop: '30px', padding: '20px', background: '#f0f8ff', borderRadius: '8px', borderLeft: '4px solid #667eea' }}>
-                        <h5 style={{ marginBottom: '10px', color: '#333' }}>
+                    <div style={{ marginTop: '30px', padding: '20px', background: '#f0f8ff', borderRadius: '10px', borderLeft: '5px solid #667eea' }}>
+                        <h5 style={{ marginBottom: '12px', color: '#333', fontSize: '14px', fontWeight: '600' }}>
                             <i className="fas fa-info-circle me-2"></i>
                             About Report Downloads
                         </h5>
-                        <ul style={{ marginBottom: 0, color: '#666', fontSize: '14px' }}>
+                        <ul style={{ marginBottom: 0, color: '#666', fontSize: '13px', lineHeight: '1.8', paddingLeft: '20px' }}>
                             <li>Business Owners can always download all reports</li>
                             <li>Individual report downloads are available on each list page (Employees, Products, Orders, Supplier Orders, Suppliers)</li>
                             <li>These permissions only affect individual item downloads, not bulk exports</li>
@@ -1219,17 +1219,17 @@ const PermissionManager = (props) => {
                         <p>Configure when and how you receive notifications for business events</p>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px', marginTop: '20px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '25px', marginBottom: '30px' }}>
                         {/* Salary Due Alert */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-money-bill me-2" style={{ color: '#28a745' }}></i>
                                 Salary Due Alert
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Get notified when employee salary is due to be paid
                             </p>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '18px', cursor: 'pointer' }}>
                                 <input 
                                     type="checkbox" 
                                     checked={notificationPreferences.salarydueAlert} 
@@ -1237,38 +1237,41 @@ const PermissionManager = (props) => {
                                         ...notificationPreferences,
                                         salarydueAlert: e.target.checked
                                     })}
-                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                    style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }} 
                                 />
-                                <span style={{ color: '#333' }}>Enable salary due notifications</span>
+                                <span style={{ color: '#333', fontSize: '14px', fontWeight: '500' }}>Enable salary due notifications</span>
                             </label>
-                            <div>
-                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+                                <label style={{ color: '#333', fontSize: '13px', marginBottom: '10px', display: 'block', fontWeight: '500' }}>
                                     Alert <strong>X days</strong> before salary due date:
                                 </label>
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    max="30" 
-                                    value={notificationPreferences.salaryDueDaysThreshold}
-                                    onChange={(e) => setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        salaryDueDaysThreshold: parseInt(e.target.value) || 3
-                                    })}
-                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
-                                /> days
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="30" 
+                                        value={notificationPreferences.salaryDueDaysThreshold}
+                                        onChange={(e) => setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            salaryDueDaysThreshold: parseInt(e.target.value) || 3
+                                        })}
+                                        style={{ width: '70px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }} 
+                                    />
+                                    <span style={{ color: '#666', fontSize: '14px' }}>days</span>
+                                </div>
                             </div>
                         </div>
 
                         {/* Supplier Order Delivery Alert */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-truck me-2" style={{ color: '#fd7e14' }}></i>
                                 Supplier Order Delivery Alert
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Get notified when supplier orders are near delivery
                             </p>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '18px', cursor: 'pointer' }}>
                                 <input 
                                     type="checkbox" 
                                     checked={notificationPreferences.supplierOrderDeliveryAlert}
@@ -1276,38 +1279,41 @@ const PermissionManager = (props) => {
                                         ...notificationPreferences,
                                         supplierOrderDeliveryAlert: e.target.checked
                                     })}
-                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                    style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }} 
                                 />
-                                <span style={{ color: '#333' }}>Enable delivery notifications</span>
+                                <span style={{ color: '#333', fontSize: '14px', fontWeight: '500' }}>Enable delivery notifications</span>
                             </label>
-                            <div>
-                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+                                <label style={{ color: '#333', fontSize: '13px', marginBottom: '10px', display: 'block', fontWeight: '500' }}>
                                     Alert <strong>X days</strong> before delivery date:
                                 </label>
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    max="30" 
-                                    value={notificationPreferences.supplierOrderDeliveryDaysThreshold}
-                                    onChange={(e) => setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        supplierOrderDeliveryDaysThreshold: parseInt(e.target.value) || 2
-                                    })}
-                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
-                                /> days
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="30" 
+                                        value={notificationPreferences.supplierOrderDeliveryDaysThreshold}
+                                        onChange={(e) => setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            supplierOrderDeliveryDaysThreshold: parseInt(e.target.value) || 2
+                                        })}
+                                        style={{ width: '70px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }} 
+                                    />
+                                    <span style={{ color: '#666', fontSize: '14px' }}>days</span>
+                                </div>
                             </div>
                         </div>
 
                         {/* Low Stock Alert */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-warehouse me-2" style={{ color: '#ffc107' }}></i>
                                 Low Stock Alert
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Get notified when product stock falls below a threshold
                             </p>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '18px', cursor: 'pointer' }}>
                                 <input 
                                     type="checkbox" 
                                     checked={notificationPreferences.productLowStockAlert}
@@ -1315,38 +1321,41 @@ const PermissionManager = (props) => {
                                         ...notificationPreferences,
                                         productLowStockAlert: e.target.checked
                                     })}
-                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                    style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }} 
                                 />
-                                <span style={{ color: '#333' }}>Enable low stock notifications</span>
+                                <span style={{ color: '#333', fontSize: '14px', fontWeight: '500' }}>Enable low stock notifications</span>
                             </label>
-                            <div>
-                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+                                <label style={{ color: '#333', fontSize: '13px', marginBottom: '10px', display: 'block', fontWeight: '500' }}>
                                     Alert when stock is below:
                                 </label>
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    max="100" 
-                                    value={notificationPreferences.productLowStockThreshold}
-                                    onChange={(e) => setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        productLowStockThreshold: parseInt(e.target.value) || 10
-                                    })}
-                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
-                                /> units
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="100" 
+                                        value={notificationPreferences.productLowStockThreshold}
+                                        onChange={(e) => setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            productLowStockThreshold: parseInt(e.target.value) || 10
+                                        })}
+                                        style={{ width: '70px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }} 
+                                    />
+                                    <span style={{ color: '#666', fontSize: '14px' }}>units</span>
+                                </div>
                             </div>
                         </div>
 
                         {/* Customer Order Delivery Alert */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-shopping-cart me-2" style={{ color: '#17a2b8' }}></i>
                                 Customer Order Delivery Alert
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Get notified when customer orders are near delivery
                             </p>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '18px', cursor: 'pointer' }}>
                                 <input 
                                     type="checkbox" 
                                     checked={notificationPreferences.customerOrderDeliveryAlert}
@@ -1354,38 +1363,41 @@ const PermissionManager = (props) => {
                                         ...notificationPreferences,
                                         customerOrderDeliveryAlert: e.target.checked
                                     })}
-                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                    style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }} 
                                 />
-                                <span style={{ color: '#333' }}>Enable order delivery notifications</span>
+                                <span style={{ color: '#333', fontSize: '14px', fontWeight: '500' }}>Enable order delivery notifications</span>
                             </label>
-                            <div>
-                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+                                <label style={{ color: '#333', fontSize: '13px', marginBottom: '10px', display: 'block', fontWeight: '500' }}>
                                     Alert <strong>X days</strong> before delivery date:
                                 </label>
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    max="30" 
-                                    value={notificationPreferences.customerOrderDeliveryDaysThreshold}
-                                    onChange={(e) => setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        customerOrderDeliveryDaysThreshold: parseInt(e.target.value) || 1
-                                    })}
-                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
-                                /> days
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="30" 
+                                        value={notificationPreferences.customerOrderDeliveryDaysThreshold}
+                                        onChange={(e) => setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            customerOrderDeliveryDaysThreshold: parseInt(e.target.value) || 1
+                                        })}
+                                        style={{ width: '70px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }} 
+                                    />
+                                    <span style={{ color: '#666', fontSize: '14px' }}>days</span>
+                                </div>
                             </div>
                         </div>
 
                         {/* Supplier Order Supply Alert */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '8px', padding: '20px', background: '#fff' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333' }}>
+                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
                                 <i className="fas fa-industry me-2" style={{ color: '#6f42c1' }}></i>
                                 Supplier Order Supply Alert
                             </h4>
-                            <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
+                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
                                 Suppliers get notified when they need to supply orders (Supplier View)
                             </p>
-                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', marginBottom: '18px', cursor: 'pointer' }}>
                                 <input 
                                     type="checkbox" 
                                     checked={notificationPreferences.supplierOrderSupplyAlert}
@@ -1393,25 +1405,28 @@ const PermissionManager = (props) => {
                                         ...notificationPreferences,
                                         supplierOrderSupplyAlert: e.target.checked
                                     })}
-                                    style={{ marginRight: '10px', cursor: 'pointer' }} 
+                                    style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }} 
                                 />
-                                <span style={{ color: '#333' }}>Enable supply notifications</span>
+                                <span style={{ color: '#333', fontSize: '14px', fontWeight: '500' }}>Enable supply notifications</span>
                             </label>
-                            <div>
-                                <label style={{ color: '#666', fontSize: '13px', marginBottom: '5px', display: 'block' }}>
+                            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px' }}>
+                                <label style={{ color: '#333', fontSize: '13px', marginBottom: '10px', display: 'block', fontWeight: '500' }}>
                                     Alert <strong>X days</strong> before order due date:
                                 </label>
-                                <input 
-                                    type="number" 
-                                    min="1" 
-                                    max="30" 
-                                    value={notificationPreferences.supplierOrderSupplyDaysThreshold}
-                                    onChange={(e) => setNotificationPreferences({
-                                        ...notificationPreferences,
-                                        supplierOrderSupplyDaysThreshold: parseInt(e.target.value) || 2
-                                    })}
-                                    style={{ width: '60px', padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }} 
-                                /> days
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="30" 
+                                        value={notificationPreferences.supplierOrderSupplyDaysThreshold}
+                                        onChange={(e) => setNotificationPreferences({
+                                            ...notificationPreferences,
+                                            supplierOrderSupplyDaysThreshold: parseInt(e.target.value) || 2
+                                        })}
+                                        style={{ width: '70px', padding: '8px 12px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' }} 
+                                    />
+                                    <span style={{ color: '#666', fontSize: '14px' }}>days</span>
+                                </div>
                             </div>
                         </div>
                     </div>
