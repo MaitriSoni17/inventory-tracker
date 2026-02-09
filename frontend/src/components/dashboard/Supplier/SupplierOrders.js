@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as XLSX from 'xlsx';
-import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css';
 
 const SupplierOrders = (props) => {
@@ -12,6 +10,28 @@ const SupplierOrders = (props) => {
     const [filterStatus, setFilterStatus] = useState('');
     const [filterPaymentStatus, setFilterPaymentStatus] = useState('');
     const [loading, setLoading] = useState(true);
+    const [canExportReports, setCanExportReports] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
+
+    // Check export permission
+    const checkExportPermission = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/reports/supplier/check-permission', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setCanExportReports(data.canExportReports || false);
+            }
+        } catch (error) {
+            console.error('Error checking export permission:', error);
+        }
+    }, []);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const fetchSupplierOrders = useCallback(async () => {
@@ -48,6 +68,7 @@ const SupplierOrders = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchSupplierOrders();
+        checkExportPermission();
     }, []);
 
     const formatDate = (dateString) => {
@@ -107,116 +128,96 @@ const SupplierOrders = (props) => {
             const fname = businessowner.fname || '';
             const lname = businessowner.lname || '';
             const fullName = `${fname} ${lname}`.trim();
+            // console.log('Business Owner:', fullName);
             return fullName || 'N/A';
+
         }
         return 'N/A';
     };
 
-    const exportToExcel = () => {
+    const exportToExcel = async () => {
+        if (!canExportReports) {
+            props.showAlert?.('You do not have permission to export reports. Please contact your Business Owner to enable this feature.', 'warning');
+            return;
+        }
+
         if (filteredOrders.length === 0) {
             props.showAlert?.('No orders to export', 'warning');
             return;
         }
 
+        setExportLoading(true);
         try {
-            const exportData = filteredOrders.map(order => ({
-                'Order ID': order._id.slice(-6),
-                'Product Name': order.pName,
-                'Category': order.category,
-                'Units': order.ounits,
-                'Amount': `₹${order.amount}`,
-                'Order Date': formatDate(order.oDate),
-                'Delivery Date': formatDate(order.dDate),
-                'Order Status': order.status,
-                'Payment Status': order.paymentStatus || 'Pending',
-                'Business Owner': getBusinessOwnerName(order.businessowner),
-                'Description': order.desc || ''
-            }));
+            // Use server-side generation
+            const response = await fetch('http://localhost:5000/api/reports/supplier/my-orders/excel', {
+                method: 'GET',
+                headers: {
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
 
-            const worksheet = XLSX.utils.json_to_sheet(exportData);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, 'Supplier Orders');
-
-            // Auto-size columns
-            const colWidths = [
-                { wch: 12 },
-                { wch: 18 },
-                { wch: 15 },
-                { wch: 10 },
-                { wch: 12 },
-                { wch: 12 },
-                { wch: 12 },
-                { wch: 12 },
-                { wch: 15 },
-                { wch: 18 },
-                { wch: 20 }
-            ];
-            worksheet['!cols'] = colWidths;
-
-            const fileName = `Supplier_Orders_${new Date().toISOString().split('T')[0]}.xlsx`;
-            XLSX.writeFile(workbook, fileName);
-            props.showAlert?.('Orders exported to Excel successfully', 'success');
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Supplier_Orders_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                props.showAlert?.('Orders exported to Excel successfully', 'success');
+            } else {
+                const errorData = await response.json();
+                props.showAlert?.(errorData.error || 'Error exporting to Excel', 'danger');
+            }
         } catch (error) {
             props.showAlert?.('Error exporting to Excel', 'danger');
+        } finally {
+            setExportLoading(false);
         }
     };
 
-    const exportToPDF = () => {
+    const exportToPDF = async () => {
+        if (!canExportReports) {
+            props.showAlert?.('You do not have permission to export reports. Please contact your Business Owner to enable this feature.', 'warning');
+            return;
+        }
+
         if (filteredOrders.length === 0) {
             props.showAlert?.('No orders to export', 'warning');
             return;
         }
 
+        setExportLoading(true);
         try {
-            const element = document.createElement('div');
-            element.innerHTML = `
-                <div style="padding: 20px; font-family: Arial, sans-serif;">
-                    <h1 style="text-align: center; margin-bottom: 30px;">Supplier Orders Report</h1>
-                    <p style="text-align: center; margin-bottom: 20px; color: #666;">Generated on: ${new Date().toLocaleString('en-IN')}</p>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-                        <thead>
-                            <tr style="background-color: #f8f9fa; border-bottom: 2px solid #dee2e6;">
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Order ID</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Product</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Amount</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Order Date</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Delivery Date</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Status</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Payment Status</th>
-                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Business Owner</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${filteredOrders.map(order => `
-                                <tr style="border-bottom: 1px solid #dee2e6;">
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order._id.slice(-6)}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.pName}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">₹${order.amount}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${formatDate(order.oDate)}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${formatDate(order.dDate)}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.status}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.paymentStatus || 'Pending'}</td>
-                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${getBusinessOwnerName(order.businessowner)}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    <p style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">Total Orders: ${filteredOrders.length}</p>
-                </div>
-            `;
+            // Use server-side generation
+            const response = await fetch('http://localhost:5000/api/reports/supplier/my-orders/pdf', {
+                method: 'GET',
+                headers: {
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
 
-            const opt = {
-                margin: 10,
-                filename: `Supplier_Orders_${new Date().toISOString().split('T')[0]}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2 },
-                jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
-            };
-
-            html2pdf().set(opt).from(element).save();
-            props.showAlert?.('Orders exported to PDF successfully', 'success');
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `Supplier_Orders_${new Date().toISOString().split('T')[0]}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                props.showAlert?.('Orders exported to PDF successfully', 'success');
+            } else {
+                const errorData = await response.json();
+                props.showAlert?.(errorData.error || 'Error exporting to PDF', 'danger');
+            }
         } catch (error) {
             props.showAlert?.('Error exporting to PDF', 'danger');
+        } finally {
+            setExportLoading(false);
         }
     };
 
@@ -229,12 +230,42 @@ const SupplierOrders = (props) => {
                         <p className="text-muted">Total Orders: {filteredOrders.length}</p>
                     </div>
                     <div className="col-3 d-flex justify-content-end align-items-end ms-5 pb-3">
-                        <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
-                            <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
-                        </button>
-                        <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
-                            <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
-                        </button>
+                        {canExportReports ? (
+                            <>
+                                <button 
+                                    className="btn btn-link text-decoration-none" 
+                                    onClick={exportToPDF} 
+                                    title="Export to PDF"
+                                    disabled={exportLoading}
+                                >
+                                    {exportLoading ? (
+                                        <div className="spinner-border spinner-border-sm text-danger" role="status">
+                                            <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                    ) : (
+                                        <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
+                                    )}
+                                </button>
+                                <button 
+                                    className="btn btn-link text-decoration-none" 
+                                    onClick={exportToExcel} 
+                                    title="Export to Excel"
+                                    disabled={exportLoading}
+                                >
+                                    {exportLoading ? (
+                                        <div className="spinner-border spinner-border-sm text-success" role="status">
+                                            <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                    ) : (
+                                        <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
+                                    )}
+                                </button>
+                            </>
+                        ) : (
+                            <small className="text-muted" title="Contact your Business Owner to enable report exports">
+                                <i className="bi bi-lock-fill me-1"></i>Report export disabled
+                            </small>
+                        )}
                     </div>
                 </div>
 

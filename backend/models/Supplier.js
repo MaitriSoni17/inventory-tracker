@@ -28,7 +28,9 @@ const Supplier = new Schema({
     image: { type: String },
     isActive: { type: Boolean, default: true },
     role: { type: String, default: 'supplier' },
-    lastLogin: { type: Date }
+    lastLogin: { type: Date },
+    // Supplier permissions (controlled by Business Owner)
+    canExportReports: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('Supplier', Supplier);

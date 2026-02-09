@@ -43,6 +43,11 @@ const PermissionManager = (props) => {
     });
     const [savingNotificationPreferences, setSavingNotificationPreferences] = useState(false);
 
+    // Supplier permissions state
+    const [suppliers, setSuppliers] = useState([]);
+    const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+    const [savingSupplierPermission, setSavingSupplierPermission] = useState(null);
+
     // Permission dependencies - if view is disabled, these should be disabled too
     const permissionDependencies = {
         canViewProducts: ['canCreateProducts', 'canEditProducts', 'canDeleteProducts'],
@@ -87,18 +92,19 @@ const PermissionManager = (props) => {
             });
             if (response.ok) {
                 const data = await response.json();
-                setPermissionGroups(data.groups);
+                setPermissionGroups(data.groups || []);
                 const expanded = {};
-                data.groups.forEach(group => {
+                (data.groups || []).forEach(group => {
                     expanded[group.id] = true;
                 });
                 setExpandedGroups(expanded);
+            } else {
+                console.error('Failed to fetch permission groups');
             }
         } catch (error) {
             console.error('Error fetching permission groups:', error);
-            props.showAlert('Error fetching permission settings', 'danger');
         }
-    }, [props]);
+    }, []);
 
     // Fetch role-based permissions
     const fetchPermissions = useCallback(async () => {
@@ -112,19 +118,18 @@ const PermissionManager = (props) => {
             });
             if (response.ok) {
                 const data = await response.json();
-                setPermissions(data.permissions);
+                setPermissions(data.permissions || {});
                 setLastUpdated(data.updatedAt);
             } else {
                 const errorData = await response.json();
-                props.showAlert(errorData.error || 'Error fetching permissions', 'danger');
+                console.error('Error fetching permissions:', errorData);
             }
         } catch (error) {
             console.error('Error fetching permissions:', error);
-            props.showAlert('Error fetching permissions', 'danger');
         } finally {
             setLoading(false);
         }
-    }, [props]);
+    }, []);
 
     // Fetch employees for individual permissions
     const fetchEmployees = useCallback(async () => {
@@ -185,6 +190,106 @@ const PermissionManager = (props) => {
         }
     }, []);
 
+    // Fetch suppliers with their permissions
+    const fetchSuppliers = useCallback(async () => {
+        setLoadingSuppliers(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/supplier/permissions/list', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setSuppliers(data.suppliers || []);
+            } else {
+                console.error('Error fetching suppliers: Non-OK response');
+            }
+        } catch (error) {
+            console.error('Error fetching suppliers:', error);
+        } finally {
+            setLoadingSuppliers(false);
+        }
+    }, []);
+
+    // Toggle supplier export permission
+    const handleSupplierPermissionToggle = async (supplierId, currentValue) => {
+        setSavingSupplierPermission(supplierId);
+        const newValue = !currentValue;
+
+        // Optimistically update UI
+        setSuppliers(prev => prev.map(s => 
+            s._id === supplierId ? { ...s, canExportReports: newValue } : s
+        ));
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/supplier/permissions/update/${supplierId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ canExportReports: newValue })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                props?.showAlert?.(data.message || 'Supplier permission updated successfully', 'success');
+            } else {
+                // Revert on error
+                setSuppliers(prev => prev.map(s => 
+                    s._id === supplierId ? { ...s, canExportReports: currentValue } : s
+                ));
+                const errorData = await response.json();
+                props?.showAlert?.(errorData.error || 'Error updating supplier permission', 'danger');
+            }
+        } catch (error) {
+            // Revert on error
+            setSuppliers(prev => prev.map(s => 
+                s._id === supplierId ? { ...s, canExportReports: currentValue } : s
+            ));
+            console.error('Error updating supplier permission:', error);
+            props?.showAlert?.('Error updating supplier permission', 'danger');
+        } finally {
+            setSavingSupplierPermission(null);
+        }
+    };
+
+    // Bulk update all suppliers' export permission
+    const handleBulkSupplierPermission = async (enable) => {
+        const supplierIds = suppliers.map(s => s._id);
+        if (supplierIds.length === 0) return;
+
+        setSavingSupplierPermission('bulk');
+
+        try {
+            const response = await fetch('http://localhost:5000/api/supplier/permissions/bulk-update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ supplierIds, canExportReports: enable })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setSuppliers(prev => prev.map(s => ({ ...s, canExportReports: enable })));
+                props?.showAlert?.(data.message || `Export reports ${enable ? 'enabled' : 'disabled'} for all suppliers`, 'success');
+            } else {
+                const errorData = await response.json();
+                props?.showAlert?.(errorData.error || 'Error updating supplier permissions', 'danger');
+            }
+        } catch (error) {
+            console.error('Error updating supplier permissions:', error);
+            props?.showAlert?.('Error updating supplier permissions', 'danger');
+        } finally {
+            setSavingSupplierPermission(null);
+        }
+    };
+
     useEffect(() => {
         fetchPermissionGroups();
         fetchPermissions();
@@ -195,8 +300,10 @@ const PermissionManager = (props) => {
             fetchEmployees();
         } else if (mainTab === 'notifications') {
             fetchNotificationPreferences();
+        } else if (mainTab === 'supplier-permissions') {
+            fetchSuppliers();
         }
-    }, [mainTab, fetchEmployees, fetchNotificationPreferences]);
+    }, [mainTab, fetchEmployees, fetchNotificationPreferences, fetchSuppliers]);
 
     // Save notification preferences
     const saveNotificationPreferences = async () => {
@@ -628,10 +735,11 @@ const PermissionManager = (props) => {
     if (loading) {
         return (
             <div className="permission-manager-container">
-                <div className="loading-state" style={{ minHeight: '400px' }}>
-                    <div className="spinner-border text-primary" role="status">
+                <div className="loading-state" style={{ minHeight: '400px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
                         <span className="visually-hidden">Loading...</span>
                     </div>
+                    <p style={{ marginLeft: '15px', color: '#666' }}>Loading permissions...</p>
                 </div>
             </div>
         );
@@ -672,6 +780,13 @@ const PermissionManager = (props) => {
                 >
                     <i className="fas fa-file-download me-2"></i>
                     Report Downloads
+                </button>
+                <button 
+                    className={`permission-tab ${mainTab === 'supplier-permissions' ? 'active' : ''}`}
+                    onClick={() => setMainTab('supplier-permissions')}
+                >
+                    <i className="fas fa-truck me-2"></i>
+                    Supplier Permissions
                 </button>
                 <button 
                     className={`permission-tab ${mainTab === 'notifications' ? 'active' : ''}`}
@@ -1206,6 +1321,145 @@ const PermissionManager = (props) => {
                             <li>Individual report downloads are available on each list page (Employees, Products, Orders, Supplier Orders, Suppliers)</li>
                             <li>These permissions only affect individual item downloads, not bulk exports</li>
                             <li>Permissions are enforced both in the UI and on the backend</li>
+                        </ul>
+                    </div>
+                </div>
+            )}
+
+            {/* Supplier Permissions Tab */}
+            {mainTab === 'supplier-permissions' && (
+                <div className="permission-panel" style={{ padding: '30px' }}>
+                    <div className="panel-header" style={{ marginBottom: '25px' }}>
+                        <h2><i className="fas fa-truck me-2"></i>Supplier Report Permissions</h2>
+                        <p>Control which suppliers can download reports of their orders</p>
+                    </div>
+
+                    {/* Bulk Actions */}
+                    <div style={{ 
+                        display: 'flex', 
+                        gap: '15px', 
+                        marginBottom: '25px', 
+                        padding: '20px', 
+                        background: '#f8f9fa', 
+                        borderRadius: '10px',
+                        alignItems: 'center',
+                        flexWrap: 'wrap'
+                    }}>
+                        <span style={{ fontWeight: '500', color: '#333' }}>Bulk Actions:</span>
+                        <button 
+                            className="btn btn-success btn-sm"
+                            onClick={() => handleBulkSupplierPermission(true)}
+                            disabled={savingSupplierPermission === 'bulk' || suppliers.length === 0}
+                            style={{ padding: '8px 20px' }}
+                        >
+                            {savingSupplierPermission === 'bulk' ? (
+                                <>
+                                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fas fa-check-circle me-2"></i>
+                                    Enable All
+                                </>
+                            )}
+                        </button>
+                        <button 
+                            className="btn btn-outline-danger btn-sm"
+                            onClick={() => handleBulkSupplierPermission(false)}
+                            disabled={savingSupplierPermission === 'bulk' || suppliers.length === 0}
+                            style={{ padding: '8px 20px' }}
+                        >
+                            <i className="fas fa-times-circle me-2"></i>
+                            Disable All
+                        </button>
+                        <span style={{ color: '#666', fontSize: '13px', marginLeft: 'auto' }}>
+                            {suppliers.filter(s => s.canExportReports).length} of {suppliers.length} suppliers can export reports
+                        </span>
+                    </div>
+
+                    {/* Suppliers List */}
+                    {loadingSuppliers ? (
+                        <div style={{ textAlign: 'center', padding: '50px' }}>
+                            <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p style={{ marginTop: '15px', color: '#666' }}>Loading suppliers...</p>
+                        </div>
+                    ) : suppliers.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
+                            <i className="fas fa-truck" style={{ fontSize: '48px', marginBottom: '15px', opacity: 0.3 }}></i>
+                            <p>No suppliers found. Add suppliers to manage their permissions.</p>
+                        </div>
+                    ) : (
+                        <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
+                            gap: '20px' 
+                        }}>
+                            {suppliers.map(supplier => (
+                                <div 
+                                    key={supplier._id} 
+                                    style={{ 
+                                        border: '1px solid #e0e0e0', 
+                                        borderRadius: '10px', 
+                                        padding: '20px', 
+                                        background: '#fff',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <div>
+                                        <h5 style={{ margin: 0, color: '#333', fontSize: '15px', fontWeight: '600' }}>
+                                            {supplier.fname} {supplier.lname || ''}
+                                        </h5>
+                                        <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '13px' }}>
+                                            {supplier.email}
+                                        </p>
+                                        {supplier.companyName && (
+                                            <p style={{ margin: '3px 0 0 0', color: '#888', fontSize: '12px' }}>
+                                                <i className="fas fa-building me-1"></i>{supplier.companyName}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                        <span style={{ 
+                                            fontSize: '12px', 
+                                            color: supplier.canExportReports ? '#28a745' : '#dc3545',
+                                            fontWeight: '500'
+                                        }}>
+                                            {supplier.canExportReports ? 'Enabled' : 'Disabled'}
+                                        </span>
+                                        <label className="permission-toggle" style={{ margin: 0 }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={supplier.canExportReports || false}
+                                                onChange={() => handleSupplierPermissionToggle(supplier._id, supplier.canExportReports)}
+                                                disabled={savingSupplierPermission === supplier._id}
+                                            />
+                                            <span className="toggle-slider"></span>
+                                        </label>
+                                        {savingSupplierPermission === supplier._id && (
+                                            <span className="spinner-border spinner-border-sm text-primary" role="status"></span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Info Note */}
+                    <div style={{ marginTop: '30px', padding: '20px', background: '#e8f4fd', borderRadius: '10px', borderLeft: '4px solid #0d6efd' }}>
+                        <h5 style={{ marginBottom: '10px', color: '#0d6efd', fontSize: '14px' }}>
+                            <i className="fas fa-info-circle me-2"></i>About Supplier Report Permissions
+                        </h5>
+                        <ul style={{ marginBottom: 0, color: '#333', fontSize: '13px', lineHeight: '1.8', paddingLeft: '20px' }}>
+                            <li>Suppliers with this permission can download PDF and Excel reports of their orders</li>
+                            <li>They can download both individual order reports and all orders report</li>
+                            <li>Suppliers without this permission will see a locked indicator on their orders page</li>
+                            <li>You can enable/disable this permission anytime</li>
                         </ul>
                     </div>
                 </div>

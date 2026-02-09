@@ -1047,4 +1047,526 @@ function getMonthName(month) {
     return months[parseInt(month) - 1];
 }
 
+// ==================== SUPPLIER SELF-SERVICE REPORTS ====================
+
+// Middleware to check if supplier has export permission
+const requireSupplierExportPermission = async (req, res, next) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "This route is only accessible to suppliers" });
+        }
+        
+        const supplier = await Supplier.findById(req.user._id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+        
+        if (!supplier.canExportReports) {
+            return res.status(403).json({ error: "You do not have permission to export reports. Please contact your Business Owner to enable this feature." });
+        }
+        
+        next();
+    } catch (error) {
+        console.error('Error checking supplier export permission:', error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// GET: Check supplier's export permission
+router.get('/supplier/check-permission', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "This route is only accessible to suppliers" });
+        }
+        
+        const supplier = await Supplier.findById(req.user._id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+        
+        res.json({ canExportReports: supplier.canExportReports || false });
+    } catch (error) {
+        console.error('Error checking supplier permission:', error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// GET: Supplier's Own Orders Report (Excel)
+router.get('/supplier/my-orders/excel', fetchuser, requireSupplierExportPermission, async (req, res) => {
+    try {
+        const { month, year, orderId } = req.query;
+        
+        let query = { supplier: req.user._id };
+        if (orderId && orderId !== 'all') {
+            query._id = orderId;
+        }
+
+        let orders = await SupplierOrders.find(query)
+            .populate('businessowner', 'fname lname email phone');
+
+        // Filter by month/year if provided
+        if (month && year) {
+            orders = filterByMonthYear(orders, month, year, 'oDate');
+        }
+
+        // Create Excel workbook
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('My Orders Report');
+
+        // Add title
+        worksheet.mergeCells('A1:I1');
+        worksheet.getCell('A1').value = 'Supplier Orders Report';
+        worksheet.getCell('A1').font = { size: 16, bold: true };
+        worksheet.getCell('A1').alignment = { horizontal: 'center' };
+
+        // Add supplier info
+        const supplier = await Supplier.findById(req.user._id);
+        worksheet.mergeCells('A2:I2');
+        worksheet.getCell('A2').value = `Supplier: ${supplier.fname} ${supplier.lname || ''} | Company: ${supplier.companyName || 'N/A'}`;
+        worksheet.getCell('A2').alignment = { horizontal: 'center' };
+
+        // Add report info
+        worksheet.mergeCells('A3:I3');
+        const reportInfo = month && year 
+            ? `Report for ${getMonthName(month)} ${year}` 
+            : 'All Time Report';
+        worksheet.getCell('A3').value = reportInfo;
+        worksheet.getCell('A3').alignment = { horizontal: 'center' };
+
+        // Add blank row
+        worksheet.addRow([]);
+
+        // Add headers
+        const headerRow = worksheet.addRow([
+            'Order ID', 'Product Name', 'Category', 'Units', 'Amount', 
+            'Order Date', 'Delivery Date', 'Status', 'Payment Status'
+        ]);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4472C4' }
+        };
+        headerRow.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+
+        // Add data
+        orders.forEach((order) => {
+            try {
+                worksheet.addRow([
+                    order._id.toString().slice(-6),
+                    order.pName || 'N/A',
+                    order.category || 'N/A',
+                    order.ounits || 0,
+                    `₹${order.amount || 0}`,
+                    order.oDate ? new Date(order.oDate).toLocaleDateString('en-IN') : 'N/A',
+                    order.dDate ? new Date(order.dDate).toLocaleDateString('en-IN') : 'N/A',
+                    order.status || 'Pending',
+                    order.paymentStatus || 'Pending'
+                ]);
+            } catch (rowError) {
+                console.error('Error processing supplier order row:', rowError);
+            }
+        });
+
+        // Add summary row
+        worksheet.addRow([]);
+        const totalAmount = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
+        worksheet.addRow(['', '', '', '', `Total: ₹${totalAmount}`, '', '', '', '']);
+
+        // Set column widths
+        worksheet.columns = [
+            { width: 12 }, // Order ID
+            { width: 20 }, // Product Name
+            { width: 15 }, // Category
+            { width: 10 }, // Units
+            { width: 15 }, // Amount
+            { width: 14 }, // Order Date
+            { width: 14 }, // Delivery Date
+            { width: 12 }, // Status
+            { width: 15 }  // Payment Status
+        ];
+
+        // Enable text wrapping
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.alignment = { wrapText: true, vertical: 'middle' };
+            });
+        });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=my-orders-report-${Date.now()}.xlsx`);
+
+        // Write to response
+        res.statusCode = 200;
+        await workbook.xlsx.write(res);
+    } catch (error) {
+        console.error('Error generating supplier orders Excel report:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error generating report' });
+        }
+    }
+});
+
+// GET: Supplier's Own Orders Report (PDF)
+router.get('/supplier/my-orders/pdf', fetchuser, requireSupplierExportPermission, async (req, res) => {
+    try {
+        const { month, year, orderId } = req.query;
+        
+        let query = { supplier: req.user._id };
+        if (orderId && orderId !== 'all') {
+            query._id = orderId;
+        }
+
+        let orders = await SupplierOrders.find(query)
+            .populate('businessowner', 'fname lname email phone');
+
+        // Filter by month/year if provided
+        if (month && year) {
+            orders = filterByMonthYear(orders, month, year, 'oDate');
+        }
+
+        // Get supplier info
+        const supplier = await Supplier.findById(req.user._id);
+
+        // Create PDF document
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=my-orders-report-${Date.now()}.pdf`);
+
+        doc.pipe(res);
+
+        // Add title
+        doc.fontSize(20).text('Supplier Orders Report', { align: 'center' });
+        doc.moveDown(0.5);
+
+        // Add supplier info
+        doc.fontSize(12).text(`Supplier: ${supplier.fname} ${supplier.lname || ''}`, { align: 'center' });
+        if (supplier.companyName) {
+            doc.fontSize(10).text(`Company: ${supplier.companyName}`, { align: 'center' });
+        }
+        doc.moveDown();
+
+        // Add report info
+        const reportInfo = month && year 
+            ? `Report for ${getMonthName(month)} ${year}` 
+            : 'All Time Report';
+        doc.fontSize(12).text(reportInfo, { align: 'center' });
+        doc.moveDown(2);
+
+        // Add orders data
+        if (orders.length === 0) {
+            doc.fontSize(11).text('No orders found for the selected criteria.', { align: 'center' });
+        } else {
+            orders.forEach((order, index) => {
+                try {
+                    const businessOwnerName = order.businessowner 
+                        ? `${order.businessowner.fname || ''} ${order.businessowner.lname || ''}`.trim() 
+                        : 'N/A';
+                    
+                    doc.fontSize(14).text(`${index + 1}. Order #${order._id.toString().slice(-6)}`, { underline: true });
+                    doc.fontSize(10);
+                    doc.text(`Product: ${order.pName || 'N/A'}`);
+                    doc.text(`Category: ${order.category || 'N/A'}`);
+                    doc.text(`Units: ${order.ounits || 0}`);
+                    doc.text(`Amount: ₹${order.amount || 0}`);
+                    doc.text(`Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString('en-IN') : 'N/A'}`);
+                    doc.text(`Delivery Date: ${order.dDate ? new Date(order.dDate).toLocaleDateString('en-IN') : 'N/A'}`);
+                    doc.text(`Status: ${order.status || 'Pending'}`);
+                    doc.text(`Payment Status: ${order.paymentStatus || 'Pending'}`);
+                    doc.text(`Business Owner: ${businessOwnerName}`);
+                    if (order.desc) {
+                        doc.text(`Description: ${order.desc}`);
+                    }
+                    
+                    doc.moveDown();
+                } catch (rowError) {
+                    console.error('Error processing order row in PDF:', rowError);
+                }
+            });
+
+            // Add summary
+            doc.moveDown();
+            const totalAmount = orders.reduce((sum, order) => sum + (order.amount || 0), 0);
+            doc.fontSize(12).text(`Total Orders: ${orders.length}`, { align: 'right' });
+            doc.text(`Total Amount: ₹${totalAmount.toLocaleString('en-IN')}`, { align: 'right' });
+        }
+
+        // Add footer
+        doc.fontSize(8).text(`Generated on: ${new Date().toLocaleString('en-IN')}`, 50, doc.page.height - 50, {
+            align: 'center'
+        });
+
+        doc.end();
+    } catch (error) {
+        console.error('Error generating supplier orders PDF report:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error generating report' });
+        }
+    }
+});
+
+// GET: Supplier's Individual Order Report (PDF)
+router.get('/supplier/my-orders/individual/:orderId/pdf', fetchuser, requireSupplierExportPermission, async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        
+        const order = await SupplierOrders.findOne({ 
+            _id: orderId, 
+            supplier: req.user._id 
+        }).populate('businessowner', 'fname lname email phone');
+
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        // Get supplier info
+        const supplier = await Supplier.findById(req.user._id);
+
+        // Create PDF document
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=order-${orderId.slice(-6)}-report-${Date.now()}.pdf`);
+
+        doc.pipe(res);
+
+        // Add header with styling
+        doc.rect(0, 0, doc.page.width, 100).fill('#7b2cbf');
+        doc.fontSize(24).fillColor('#ffffff').text('Order Report', 50, 35, { align: 'center' });
+        doc.fontSize(10).text(`Generated on ${new Date().toLocaleDateString('en-IN')}`, 50, 65, { align: 'center' });
+        
+        doc.fillColor('#000000');
+        doc.moveDown(4);
+
+        // Order Details Section
+        doc.rect(50, 120, doc.page.width - 100, 4).fill('#7b2cbf');
+        doc.moveDown();
+        
+        doc.fontSize(16).text(`Order #${order._id.toString().slice(-6)}`, 50, 140);
+        doc.moveDown();
+
+        // Order Information
+        doc.fontSize(12).text('Order Information', { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10);
+        doc.text(`Product Name: ${order.pName || 'N/A'}`);
+        doc.text(`Category: ${order.category || 'N/A'}`);
+        doc.text(`Units: ${order.ounits || 0}`);
+        doc.text(`Amount: ₹${(order.amount || 0).toLocaleString('en-IN')}`);
+        doc.moveDown();
+
+        // Dates
+        doc.fontSize(12).text('Dates', { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10);
+        doc.text(`Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString('en-IN') : 'N/A'}`);
+        doc.text(`Expected Delivery: ${order.dDate ? new Date(order.dDate).toLocaleDateString('en-IN') : 'N/A'}`);
+        doc.moveDown();
+
+        // Status Information
+        doc.fontSize(12).text('Status', { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(10);
+        doc.text(`Order Status: ${order.status || 'Pending'}`);
+        doc.text(`Payment Status: ${order.paymentStatus || 'Pending'}`);
+        doc.text(`Delivery Status: ${order.dStatus || 'N/A'}`);
+        doc.text(`Availability: ${order.pAvail || 'N/A'}`);
+        doc.moveDown();
+
+        // Business Owner Information
+        if (order.businessowner) {
+            doc.fontSize(12).text('Business Owner', { underline: true });
+            doc.moveDown(0.5);
+            doc.fontSize(10);
+            doc.text(`Name: ${order.businessowner.fname || ''} ${order.businessowner.lname || ''}`);
+            doc.text(`Email: ${order.businessowner.email || 'N/A'}`);
+            doc.text(`Phone: ${order.businessowner.phone || 'N/A'}`);
+            doc.moveDown();
+        }
+
+        // Description
+        if (order.desc) {
+            doc.fontSize(12).text('Description', { underline: true });
+            doc.moveDown(0.5);
+            doc.fontSize(10);
+            doc.text(order.desc);
+        }
+
+        // Add footer
+        doc.fontSize(8).text(`Supplier: ${supplier.fname} ${supplier.lname || ''} | ${supplier.companyName || ''}`, 50, doc.page.height - 50, {
+            align: 'center'
+        });
+
+        doc.end();
+    } catch (error) {
+        console.error('Error generating individual order PDF report:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error generating report' });
+        }
+    }
+});
+
+// GET: Supplier's Individual Order Report (Excel)
+router.get('/supplier/my-orders/individual/:orderId/excel', fetchuser, requireSupplierExportPermission, async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        
+        const order = await SupplierOrders.findOne({ 
+            _id: orderId, 
+            supplier: req.user._id 
+        }).populate('businessowner', 'fname lname email phone');
+
+        if (!order) {
+            return res.status(404).json({ error: "Order not found" });
+        }
+
+        // Get supplier info
+        const supplier = await Supplier.findById(req.user._id);
+
+        // Create workbook and worksheet
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = `${supplier.fname} ${supplier.lname || ''}`;
+        workbook.created = new Date();
+
+        const worksheet = workbook.addWorksheet('Order Details');
+
+        // Set column widths
+        worksheet.columns = [
+            { width: 25 },
+            { width: 40 }
+        ];
+
+        // Add header
+        worksheet.mergeCells('A1:B1');
+        const headerCell = worksheet.getCell('A1');
+        headerCell.value = 'ORDER REPORT';
+        headerCell.font = { size: 18, bold: true, color: { argb: 'FFFFFFFF' } };
+        headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7B2CBF' } };
+        headerCell.alignment = { horizontal: 'center', vertical: 'middle' };
+        worksheet.getRow(1).height = 35;
+
+        // Order ID
+        worksheet.mergeCells('A2:B2');
+        const orderIdCell = worksheet.getCell('A2');
+        orderIdCell.value = `Order #${order._id.toString().slice(-6)}`;
+        orderIdCell.font = { size: 14, bold: true };
+        orderIdCell.alignment = { horizontal: 'center' };
+        worksheet.getRow(2).height = 25;
+
+        // Generated date
+        worksheet.mergeCells('A3:B3');
+        const dateCell = worksheet.getCell('A3');
+        dateCell.value = `Generated on ${new Date().toLocaleDateString('en-IN')}`;
+        dateCell.font = { size: 10, italic: true };
+        dateCell.alignment = { horizontal: 'center' };
+
+        // Empty row
+        worksheet.addRow([]);
+
+        // Section: Order Information
+        const orderInfoHeader = worksheet.addRow(['ORDER INFORMATION', '']);
+        worksheet.mergeCells(`A${orderInfoHeader.number}:B${orderInfoHeader.number}`);
+        orderInfoHeader.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF7B2CBF' } };
+        orderInfoHeader.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+
+        const addDataRow = (label, value) => {
+            const row = worksheet.addRow([label, value]);
+            row.getCell(1).font = { bold: true };
+            row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF9FAFB' } };
+            row.getCell(2).alignment = { wrapText: true };
+            return row;
+        };
+
+        addDataRow('Product Name', order.pName || 'N/A');
+        addDataRow('Category', order.category || 'N/A');
+        addDataRow('Units', order.ounits || 0);
+        addDataRow('Amount', `₹${(order.amount || 0).toLocaleString('en-IN')}`);
+
+        // Empty row
+        worksheet.addRow([]);
+
+        // Section: Dates
+        const datesHeader = worksheet.addRow(['DATES', '']);
+        worksheet.mergeCells(`A${datesHeader.number}:B${datesHeader.number}`);
+        datesHeader.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF7B2CBF' } };
+        datesHeader.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+
+        addDataRow('Order Date', order.oDate ? new Date(order.oDate).toLocaleDateString('en-IN') : 'N/A');
+        addDataRow('Expected Delivery', order.dDate ? new Date(order.dDate).toLocaleDateString('en-IN') : 'N/A');
+
+        // Empty row
+        worksheet.addRow([]);
+
+        // Section: Status
+        const statusHeader = worksheet.addRow(['STATUS', '']);
+        worksheet.mergeCells(`A${statusHeader.number}:B${statusHeader.number}`);
+        statusHeader.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF7B2CBF' } };
+        statusHeader.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+
+        addDataRow('Order Status', order.status || 'Pending');
+        addDataRow('Payment Status', order.paymentStatus || 'Pending');
+        addDataRow('Delivery Status', order.dStatus || 'N/A');
+        addDataRow('Availability', order.pAvail || 'N/A');
+
+        // Empty row
+        worksheet.addRow([]);
+
+        // Section: Business Owner
+        if (order.businessowner) {
+            const boHeader = worksheet.addRow(['BUSINESS OWNER', '']);
+            worksheet.mergeCells(`A${boHeader.number}:B${boHeader.number}`);
+            boHeader.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF7B2CBF' } };
+            boHeader.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+
+            addDataRow('Name', `${order.businessowner.fname || ''} ${order.businessowner.lname || ''}`);
+            addDataRow('Email', order.businessowner.email || 'N/A');
+            addDataRow('Phone', order.businessowner.phone || 'N/A');
+
+            worksheet.addRow([]);
+        }
+
+        // Section: Description
+        if (order.desc) {
+            const descHeader = worksheet.addRow(['DESCRIPTION', '']);
+            worksheet.mergeCells(`A${descHeader.number}:B${descHeader.number}`);
+            descHeader.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF7B2CBF' } };
+            descHeader.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3E8FF' } };
+
+            const descRow = worksheet.addRow([order.desc, '']);
+            worksheet.mergeCells(`A${descRow.number}:B${descRow.number}`);
+            descRow.getCell(1).alignment = { wrapText: true };
+        }
+
+        // Add borders to all cells with data
+        worksheet.eachRow((row, rowNumber) => {
+            if (rowNumber > 3) {
+                row.eachCell((cell) => {
+                    cell.border = {
+                        top: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        left: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } },
+                        right: { style: 'thin', color: { argb: 'FFE5E7EB' } }
+                    };
+                });
+            }
+        });
+
+        // Set response headers
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename=order-${orderId.slice(-6)}-report-${Date.now()}.xlsx`);
+
+        await workbook.xlsx.write(res);
+        res.end();
+    } catch (error) {
+        console.error('Error generating individual order Excel report:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error generating report' });
+        }
+    }
+});
+
 module.exports = router;

@@ -28,7 +28,7 @@ router.post('/createsupplierorder/:id', fetchuser, [
     try {
         let supplierorderdata = { pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc, supplier: req.params.id };
 
-        // Set businessowner based on role
+        // Set businessowner based on role - ensure it's always set
         if (req.role === 'businessowner') {
             supplierorderdata.businessowner = req.user._id;
             // Business owner can assign to specific warehouse
@@ -42,6 +42,16 @@ router.post('/createsupplierorder/:id', fetchuser, [
             const manager = await require('../models/Employee').findById(req.user._id);
             if (manager && manager.warehouse) {
                 supplierorderdata.warehouse = manager.warehouse;
+            }
+        } else if (['supervisor', 'employee'].includes(req.role)) {
+            // Supervisor and employee orders: find their business owner
+            const staffMember = await require('../models/Employee').findById(req.user._id);
+            if (staffMember && staffMember.businessowner) {
+                supplierorderdata.businessowner = staffMember.businessowner;
+            }
+            // Assign to their warehouse
+            if (staffMember && staffMember.warehouse) {
+                supplierorderdata.warehouse = staffMember.warehouse;
             }
         }
 
@@ -81,7 +91,9 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
 
         if (req.role === 'businessowner') {
             // Business owner sees all orders
-            supplierorder = await SupplierOrders.find({ businessowner: req.user._id }).populate('warehouse');
+            supplierorder = await SupplierOrders.find({ businessowner: req.user._id })
+                .populate('businessowner', 'fname lname email phone address')
+                .populate('warehouse');
         } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
             // Warehouse staff sees orders from their warehouse
             const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
@@ -89,14 +101,17 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
             if (staffMember && staffMember.warehouse) {
                 supplierorder = await SupplierOrders.find({
                     warehouse: staffMember.warehouse._id
-                }).populate('warehouse');
+                }).populate('businessowner', 'fname lname email phone address')
+                 .populate('warehouse');
             } else {
                 // If no warehouse assigned, show no orders
                 supplierorder = [];
             }
         } else if (req.role === 'supplier') {
             // Suppliers see orders placed with them
-            supplierorder = await SupplierOrders.find({ supplier: req.user._id }).populate('businessowner', 'fname lname email phone address').populate('warehouse');
+            supplierorder = await SupplierOrders.find({ supplier: req.user._id })
+                .populate('businessowner', 'fname lname email phone address')
+                .populate('warehouse');
         }
         
         res.json(supplierorder);
@@ -116,27 +131,60 @@ router.post('/getorders', fetchuser, async (req, res) => {
             return res.status(401).send("User not authenticated properly");
         }
 
+        // Fetch supplier orders with proper population
         let supplierorders = await SupplierOrders.find({ supplier: req.user._id })
-            .populate('businessowner', 'fname lname email phone address')
+            .populate({
+                path: 'businessowner',
+                select: 'fname lname email phone address',
+                strictPopulate: false
+            })
+            .populate({
+                path: 'employee',
+                select: '_id businessowner',
+                strictPopulate: false
+            })
+            .populate({
+                path: 'warehouse',
+                select: '_id businessowner',
+                strictPopulate: false
+            })
             .lean()
             .exec();
         
-        // Additional fallback: ensure businessowner is properly populated
+        // Handle cases where businessowner might still be missing/null
         if (supplierorders && supplierorders.length > 0) {
+            const Employee = require('../models/Employee');
+            const Warehouse = require('../models/Warehouse');
             const BusinessOwner = require('../models/BusinessOwner');
             
             supplierorders = await Promise.all(supplierorders.map(async (order) => {
-                if (!order.businessowner || (typeof order.businessowner === 'string')) {
-                    if (order.businessowner) {
+                // If businessowner is missing or null, try to resolve it
+                if (!order.businessowner || typeof order.businessowner !== 'object') {
+                    let resolvedOwner = null;
+                    
+                    // Try to get from employee
+                    if (order.employee && order.employee.businessowner) {
                         try {
-                            const owner = await BusinessOwner.findById(order.businessowner)
+                            resolvedOwner = await BusinessOwner.findById(order.employee.businessowner)
                                 .select('fname lname email phone address')
                                 .lean();
-                            order.businessowner = owner;
                         } catch (e) {
-                            order.businessowner = null;
+                            // ignore
                         }
                     }
+                    
+                    // Try to get from warehouse
+                    if (!resolvedOwner && order.warehouse && order.warehouse.businessowner) {
+                        try {
+                            resolvedOwner = await BusinessOwner.findById(order.warehouse.businessowner)
+                                .select('fname lname email phone address')
+                                .lean();
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+                    
+                    order.businessowner = resolvedOwner || null;
                 }
                 
                 return order;
@@ -145,6 +193,7 @@ router.post('/getorders', fetchuser, async (req, res) => {
         
         res.json(supplierorders || []);
     } catch (err) {
+        console.error('Error in /getorders:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -345,5 +394,116 @@ router.delete('/deletesupplierorder/:id', fetchuser, async (req, res) => {
     }
 });
 
-module.exports = router;
+// Debug endpoint - Check supplier orders data
+router.post('/debug/check-orders', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.status(403).json({ error: "Only suppliers can access this debug endpoint" });
+        }
 
+        // Get raw data without populate
+        const rawOrders = await SupplierOrders.find({ supplier: req.user._id }).exec();
+        
+        // Get populated data
+        const populatedOrders = await SupplierOrders.find({ supplier: req.user._id })
+            .populate('businessowner', 'fname lname email')
+            .exec();
+
+        if (rawOrders.length === 0) {
+            return res.json({
+                status: "NO_ORDERS",
+                message: "No supplier orders found for this supplier",
+                supplierId: req.user._id
+            });
+        }
+
+        // Detailed analysis
+        const analysis = rawOrders.map((order, idx) => ({
+            orderId: order._id,
+            businessownerId: order.businessowner,
+            employeeId: order.employee,
+            warehouseId: order.warehouse,
+            hasBusinessowner: !!order.businessowner,
+            populatedData: populatedOrders[idx] ? {
+                businessowner: populatedOrders[idx].businessowner,
+                isPopulated: populatedOrders[idx].businessowner !== null && typeof populatedOrders[idx].businessowner === 'object'
+            } : null
+        }));
+
+        res.json({
+            status: "SUCCESS",
+            totalOrders: rawOrders.length,
+            analysis,
+            rawData: rawOrders.map(o => ({ _id: o._id, businessowner: o.businessowner, employee: o.employee }))
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Debug check failed", details: err.message });
+    }
+});
+
+// Migration endpoint - Fix missing businessowner in existing supplier orders
+router.post('/migrate/fix-businessowner', fetchuser, async (req, res) => {
+    try {
+        // Only allow admin/businessowner to run this
+        if (!req.user || !['businessowner', 'admin'].includes(req.role)) {
+            return res.status(403).json({ error: "Unauthorized access" });
+        }
+
+        const Employee = require('../models/Employee');
+        const BusinessOwner = require('../models/BusinessOwner');
+
+        // Find all orders with null businessowner
+        let ordersToFix = await SupplierOrders.find({ businessowner: null });
+
+        if (ordersToFix.length === 0) {
+            return res.json({ message: "No orders to fix", count: 0 });
+        }
+
+        let fixedCount = 0;
+        let errors = [];
+
+        for (let order of ordersToFix) {
+            try {
+                let businessownerToSet = null;
+
+                // Try to find businessowner from employee
+                if (order.employee) {
+                    const employee = await Employee.findById(order.employee).select('businessowner');
+                    if (employee && employee.businessowner) {
+                        businessownerToSet = employee.businessowner;
+                    }
+                }
+
+                // If still no businessowner, try to find from warehouse
+                if (!businessownerToSet && order.warehouse) {
+                    const Warehouse = require('../models/Warehouse');
+                    const warehouse = await Warehouse.findById(order.warehouse).select('businessowner');
+                    if (warehouse && warehouse.businessowner) {
+                        businessownerToSet = warehouse.businessowner;
+                    }
+                }
+
+                // If we found a businessowner, update the order
+                if (businessownerToSet) {
+                    await SupplierOrders.findByIdAndUpdate(order._id, { businessowner: businessownerToSet });
+                    fixedCount++;
+                } else {
+                    errors.push({ orderId: order._id, reason: "Could not determine businessowner" });
+                }
+            } catch (err) {
+                errors.push({ orderId: order._id, reason: err.message });
+            }
+        }
+
+        res.json({
+            message: "Migration completed",
+            fixedCount,
+            totalToFix: ordersToFix.length,
+            errors: errors.length > 0 ? errors : undefined
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Migration failed", details: err.message });
+    }
+});
+
+module.exports = router;

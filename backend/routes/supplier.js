@@ -332,5 +332,95 @@ router.delete('/deleteaccount', fetchuser, async (req, res) => {
     }
 });
 
+// ==================== SUPPLIER PERMISSIONS MANAGEMENT ====================
+
+// Get all suppliers with their permissions (Business Owner only)
+router.get('/permissions/list', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const suppliers = await Supplier.find({ businessowner: req.businessowner._id })
+            .select('_id fname lname email companyName canExportReports isActive');
+        
+        res.json({
+            success: true,
+            suppliers: suppliers.map(s => ({
+                _id: s._id,
+                fname: s.fname,
+                lname: s.lname,
+                email: s.email,
+                companyName: s.companyName,
+                canExportReports: s.canExportReports || false,
+                isActive: s.isActive
+            }))
+        });
+    } catch (err) {
+        console.error('Error fetching supplier permissions:', err);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Update supplier's export permission (Business Owner only)
+router.put('/permissions/update/:supplierId', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const { supplierId } = req.params;
+        const { canExportReports } = req.body;
+
+        const supplier = await Supplier.findById(supplierId);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Check if supplier belongs to this business owner
+        if (supplier.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        supplier.canExportReports = canExportReports;
+        await supplier.save();
+
+        res.json({
+            success: true,
+            message: `Export reports permission ${canExportReports ? 'enabled' : 'disabled'} for ${supplier.fname} ${supplier.lname || ''}`,
+            supplier: {
+                _id: supplier._id,
+                fname: supplier.fname,
+                lname: supplier.lname,
+                canExportReports: supplier.canExportReports
+            }
+        });
+    } catch (err) {
+        console.error('Error updating supplier permission:', err);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Bulk update supplier permissions (Business Owner only)
+router.put('/permissions/bulk-update', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const { supplierIds, canExportReports } = req.body;
+
+        if (!Array.isArray(supplierIds) || supplierIds.length === 0) {
+            return res.status(400).json({ error: "Please provide an array of supplier IDs" });
+        }
+
+        // Update all suppliers that belong to this business owner
+        const result = await Supplier.updateMany(
+            {
+                _id: { $in: supplierIds },
+                businessowner: req.businessowner._id
+            },
+            { $set: { canExportReports: canExportReports } }
+        );
+
+        res.json({
+            success: true,
+            message: `Export reports permission ${canExportReports ? 'enabled' : 'disabled'} for ${result.modifiedCount} supplier(s)`,
+            modifiedCount: result.modifiedCount
+        });
+    } catch (err) {
+        console.error('Error bulk updating supplier permissions:', err);
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 module.exports = router;
 

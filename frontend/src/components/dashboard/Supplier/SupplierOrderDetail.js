@@ -6,6 +6,8 @@ const SupplierOrderDetail = (props) => {
     const navigate = useNavigate();
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [canExportReports, setCanExportReports] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
     const [formData, setFormData] = useState({
         pName: '',
         category: '',
@@ -17,6 +19,26 @@ const SupplierOrderDetail = (props) => {
         paymentStatus: '',
         desc: ''
     });
+
+    // Check export permission
+    const checkExportPermission = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/reports/supplier/check-permission', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setCanExportReports(data.canExportReports || false);
+            }
+        } catch (error) {
+            console.error('Error checking export permission:', error);
+        }
+    }, []);
 
     const fetchOrderDetail = useCallback(async () => {
         try {
@@ -67,7 +89,47 @@ const SupplierOrderDetail = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchOrderDetail();
+        checkExportPermission();
     }, [id]);
+
+    // Download individual order report
+    const downloadOrderReport = async (format = 'pdf') => {
+        if (!canExportReports) {
+            props.showAlert?.('You do not have permission to export reports. Please contact your Business Owner to enable this feature.', 'warning');
+            return;
+        }
+
+        setExportLoading(true);
+        try {
+            const response = await fetch(`http://localhost:5000/api/reports/supplier/my-orders/individual/${id}/${format}`, {
+                method: 'GET',
+                headers: {
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const ext = format === 'excel' ? 'xlsx' : 'pdf';
+                a.download = `Order_${id.slice(-6)}_Report_${new Date().toISOString().split('T')[0]}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+                props.showAlert?.(`Order ${format.toUpperCase()} report downloaded successfully`, 'success');
+            } else {
+                const errorData = await response.json();
+                props.showAlert?.(errorData.error || 'Error downloading report', 'danger');
+            }
+        } catch (error) {
+            props.showAlert?.('Error downloading report', 'danger');
+        } finally {
+            setExportLoading(false);
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -163,12 +225,66 @@ const SupplierOrderDetail = (props) => {
     return (
         <div className="container-fluid">
             <div className="row mb-4 mx-3 mt-4">
-                <div className="col-12">
-                    <button className="btn btn-secondary mb-3" onClick={handleGoBack}>
-                        <i className="bi bi-arrow-left"></i> Back to Orders
-                    </button>
-                    <h1 className="display-5 fw-normal">Order Details</h1>
-                    <p className="text-muted">Order ID: {order._id.slice(-6)}</p>
+                <div className="col-12 d-flex justify-content-between align-items-start">
+                    <div>
+                        <button className="btn btn-secondary mb-3" onClick={handleGoBack}>
+                            <i className="bi bi-arrow-left"></i> Back to Orders
+                        </button>
+                        <h1 className="display-5 fw-normal">Order Details</h1>
+                        <p className="text-muted">Order ID: {order._id.slice(-6)}</p>
+                    </div>
+                    <div>
+                        {canExportReports ? (
+                            <div className="dropdown">
+                                <button 
+                                    className="btn btn-success dropdown-toggle" 
+                                    type="button"
+                                    data-bs-toggle="dropdown"
+                                    aria-expanded="false"
+                                    disabled={exportLoading}
+                                    title="Download Order Report"
+                                >
+                                    {exportLoading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Downloading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="bi bi-download me-2"></i>
+                                            Download Report
+                                        </>
+                                    )}
+                                </button>
+                                <ul className="dropdown-menu">
+                                    <li>
+                                        <button 
+                                            className="dropdown-item" 
+                                            onClick={() => downloadOrderReport('pdf')}
+                                            disabled={exportLoading}
+                                        >
+                                            <i className="bi bi-file-earmark-pdf me-2 text-danger"></i>
+                                            Download as PDF
+                                        </button>
+                                    </li>
+                                    <li>
+                                        <button 
+                                            className="dropdown-item" 
+                                            onClick={() => downloadOrderReport('excel')}
+                                            disabled={exportLoading}
+                                        >
+                                            <i className="bi bi-file-earmark-excel me-2 text-success"></i>
+                                            Download as Excel
+                                        </button>
+                                    </li>
+                                </ul>
+                            </div>
+                        ) : (
+                            <span className="text-muted" title="Contact your Business Owner to enable report exports">
+                                <i className="bi bi-lock-fill me-1"></i> Report download disabled
+                            </span>
+                        )}
+                    </div>
                 </div>
             </div>
 
