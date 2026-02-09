@@ -238,6 +238,41 @@
   border-left-color: #0d6efd;
 }
 
+/* Clickable Notification Card */
+.notification-card.clickable {
+  cursor: pointer;
+}
+
+.notification-card.clickable:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.notification-card.clickable .notification-clickable-area {
+  cursor: pointer;
+}
+
+.notification-clickable-area {
+  display: flex;
+  gap: 1rem;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Navigate Icon */
+.navigate-icon {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  color: #0d6efd;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.notification-card.clickable:hover .navigate-icon {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
 /* Icon Wrapper */
 .notification-icon-wrapper {
   flex-shrink: 0;
@@ -306,6 +341,9 @@
   font-size: 1rem;
   font-weight: 600;
   color: #2c3e50;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .notification-time {

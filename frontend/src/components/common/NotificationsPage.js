@@ -10,6 +10,146 @@ const NotificationsPage = (props) => {
   const [filter, setFilter] = useState('all'); // 'all', 'unread', 'read'
 
   const token = localStorage.getItem('token');
+  const userRole = localStorage.getItem('role');
+
+  // Get navigation path based on notification type and data
+  const getNavigationPath = (notification) => {
+    const { type, data } = notification;
+    
+    // Employee related notifications
+    if (type.includes('employee')) {
+      if (data?.employeeId) {
+        // Navigate to edit employee page for specific employee
+        return `/dashboard/editemployee/${data.employeeId}`;
+      }
+      // Default to employees list
+      return '/dashboard/employee';
+    }
+    
+    // Product related notifications
+    if (type.includes('product')) {
+      if (data?.productId) {
+        // Navigate to edit product page for specific product
+        return `/dashboard/editproduct/${data.productId}`;
+      }
+      // Default to products list
+      return '/dashboard/products';
+    }
+    
+    // Order related notifications (customer orders)
+    if (type.includes('order') && !type.includes('supplier')) {
+      if (data?.orderId) {
+        // Navigate to edit order page for specific order
+        return `/dashboard/editorder/${data.orderId}`;
+      }
+      // Default to orders list
+      return '/dashboard/orders';
+    }
+    
+    // Supplier order related notifications
+    if (type.includes('supplier_order')) {
+      if (data?.orderId) {
+        // For suppliers, navigate to order detail
+        if (userRole === 'supplier') {
+          return `/dashboard/supplierorderdetail/${data.orderId}`;
+        }
+        // For business owners/employees, navigate to edit supplier order
+        return `/dashboard/editsupplierorder/${data.orderId}`;
+      }
+      // Default to supplier orders list
+      return userRole === 'supplier' ? '/dashboard/suppliersorders' : '/dashboard/suppliers';
+    }
+    
+    // Category related notifications
+    if (type.includes('category')) {
+      // Navigate to categories page
+      return '/dashboard/category';
+    }
+    
+    // Supplier related notifications (not orders)
+    if (type.includes('supplier') && !type.includes('order')) {
+      if (data?.supplierId) {
+        return `/dashboard/editsupplier/${data.supplierId}`;
+      }
+      return '/dashboard/suppliers';
+    }
+    
+    // Chat/Message related notifications
+    if (type === 'chat_message' || type === 'message' || type.includes('chat_permission')) {
+      return '/dashboard/messages';
+    }
+    
+    // Salary related notifications
+    if (type.includes('salary')) {
+      return '/dashboard/salary';
+    }
+    
+    // Low stock alert
+    if (type === 'product_low_stock_alert') {
+      if (data?.productId) {
+        return `/dashboard/editproduct/${data.productId}`;
+      }
+      return '/dashboard/products';
+    }
+    
+    // Delivery alerts
+    if (type === 'customer_order_delivery_alert') {
+      if (data?.orderId) {
+        return `/dashboard/editorder/${data.orderId}`;
+      }
+      return '/dashboard/orders';
+    }
+    
+    if (type === 'supplier_order_delivery_alert' || type === 'supplier_order_supply_alert') {
+      if (data?.orderId) {
+        return userRole === 'supplier' 
+          ? `/dashboard/supplierorderdetail/${data.orderId}`
+          : `/dashboard/editsupplierorder/${data.orderId}`;
+      }
+      return userRole === 'supplier' ? '/dashboard/suppliersorders' : '/dashboard/suppliers';
+    }
+    
+    // Default - go to dashboard
+    return '/dashboard';
+  };
+
+  // Handle notification click - navigate to relevant content
+  const handleNotificationClick = async (notification) => {
+    // Mark as read if unread
+    if (!notification.isRead) {
+      await markAsRead(notification._id);
+    }
+    
+    // Get navigation path and navigate
+    const path = getNavigationPath(notification);
+    navigate(path);
+  };
+
+  // Check if notification has a navigable link
+  const isNavigable = (notification) => {
+    const { type } = notification;
+    // List of notification types that have navigation
+    const navigableTypes = [
+      'employee_created', 'employee_updated', 'employee_deleted', 'employee_deactivated',
+      'employee_login', 'employee_deletion_requested', 'employee_deletion_approved',
+      'employee_deletion_rejected', 'employee_role_updated',
+      'product_created', 'product_updated', 'product_deleted',
+      'product_created_by_employee', 'product_updated_by_employee', 'product_deleted_by_employee',
+      'order_created', 'order_updated', 'order_deleted',
+      'order_created_by_employee', 'order_updated_by_employee', 'order_deleted_by_employee',
+      'category_created', 'category_updated', 'category_deleted',
+      'category_created_by_employee', 'category_updated_by_employee', 'category_deleted_by_employee',
+      'supplier_order_created', 'supplier_order_updated', 'supplier_order_deleted',
+      'supplier_order_created_by_employee', 'supplier_order_updated_by_employee', 
+      'supplier_order_deleted_by_employee', 'supplier_order_status_updated',
+      'supplier_order_payment_status_updated', 'supplier_deletion_requested',
+      'supplier_deletion_approved', 'supplier_deletion_rejected', 'supplier_login',
+      'chat_message', 'chat_permission_granted', 'chat_permission_revoked', 'message',
+      'salary_due_alert', 'supplier_order_delivery_alert', 'product_low_stock_alert',
+      'customer_order_delivery_alert', 'supplier_order_supply_alert'
+    ];
+    return navigableTypes.includes(type);
+  };
 
   // Fetch notifications
   const fetchNotifications = async () => {
@@ -303,40 +443,56 @@ const NotificationsPage = (props) => {
             {filteredNotifications.map((notification) => (
               <div
                 key={notification._id}
-                className={`notification-card ${!notification.isRead ? 'unread' : ''}`}
+                className={`notification-card ${!notification.isRead ? 'unread' : ''} ${isNavigable(notification) ? 'clickable' : ''}`}
               >
-                <div className="notification-icon-wrapper">
-                  <div className={`notification-icon ${getNotificationBadge(notification.type)}`}>
-                    <i className={`bi ${getNotificationIcon(notification.type)}`}></i>
-                  </div>
-                </div>
-
-                <div className="notification-body">
-                  <div className="notification-header">
-                    <h5 className="notification-title">{notification.title}</h5>
-                    <span className="notification-time">
-                      {formatTime(notification.createdAt)}
-                    </span>
-                  </div>
-                  
-                  <p className="notification-message">{notification.message}</p>
-                  
-                  {notification.data && Object.keys(notification.data).length > 0 && (
-                    <div className="notification-data">
-                      {Object.entries(notification.data).map(([key, value]) => (
-                        <span key={key} className="data-item">
-                          <strong>{key}:</strong> {String(value)}
-                        </span>
-                      ))}
+                <div 
+                  className="notification-clickable-area"
+                  onClick={() => isNavigable(notification) && handleNotificationClick(notification)}
+                  title={isNavigable(notification) ? "Click to view details" : ""}
+                >
+                  <div className="notification-icon-wrapper">
+                    <div className={`notification-icon ${getNotificationBadge(notification.type)}`}>
+                      <i className={`bi ${getNotificationIcon(notification.type)}`}></i>
                     </div>
-                  )}
+                  </div>
+
+                  <div className="notification-body">
+                    <div className="notification-header">
+                      <h5 className="notification-title">
+                        {notification.title}
+                        {isNavigable(notification) && (
+                          <i className="bi bi-box-arrow-up-right navigate-icon" title="Click to view"></i>
+                        )}
+                      </h5>
+                      <span className="notification-time">
+                        {formatTime(notification.createdAt)}
+                      </span>
+                    </div>
+                    
+                    <p className="notification-message">{notification.message}</p>
+                    
+                    {notification.data && Object.keys(notification.data).length > 0 && (
+                      <div className="notification-data">
+                        {Object.entries(notification.data)
+                          .filter(([key]) => !key.toLowerCase().includes('id')) // Hide ID fields
+                          .map(([key, value]) => (
+                            <span key={key} className="data-item">
+                              <strong>{key}:</strong> {String(value)}
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="notification-actions">
                   {!notification.isRead && (
                     <button
                       className="action-icon mark"
-                      onClick={() => markAsRead(notification._id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        markAsRead(notification._id);
+                      }}
                       title="Mark as read"
                     >
                       <i className="bi bi-check-circle"></i>
@@ -344,7 +500,10 @@ const NotificationsPage = (props) => {
                   )}
                   <button
                     className="action-icon delete"
-                    onClick={() => deleteNotification(notification._id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteNotification(notification._id);
+                    }}
                     title="Delete"
                   >
                     <i className="bi bi-trash"></i>
