@@ -12,10 +12,6 @@ const EditOrder = (props) => {
         cEmail: '',
         cPhone: '',
         cAddress: '',
-        pName: '',
-        category: '',
-        amount: '',
-        ounits: '',
         oDate: '',
         dDate: '',
         status: '',
@@ -24,8 +20,13 @@ const EditOrder = (props) => {
         desc: ''
     });
     const [loading, setLoading] = useState(true);
-    const [categories, setCategories] = useState([]);
-    const [loadingCategories, setLoadingCategories] = useState(true);
+    
+    // Products state
+    const [products, setProducts] = useState([]);
+    const [loadingProducts, setLoadingProducts] = useState(true);
+    const [selectedProducts, setSelectedProducts] = useState([]);
+    const [showProductDropdown, setShowProductDropdown] = useState(false);
+    const [productSearchTerm, setProductSearchTerm] = useState('');
 
     // Check permission on mount
     useEffect(() => {
@@ -36,34 +37,34 @@ const EditOrder = (props) => {
         }
     }, [hasPermission, navigate, props]);
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Fetch products
     useEffect(() => {
-        fetchOrder();
-    }, [id]);
-
-    useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchProducts = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                const response = await fetch('http://localhost:5000/api/products/getproduct', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'auth-token': localStorage.getItem('token')
                     }
                 });
-                if (!response.ok) {
-                    setLoadingCategories(false);
-                    return;
+                if (response.ok) {
+                    const productList = await response.json();
+                    setProducts(productList);
                 }
-                const categoryList = await response.json();
-                setCategories(categoryList);
             } catch (error) {
+                console.error('Error fetching products:', error);
             } finally {
-                setLoadingCategories(false);
+                setLoadingProducts(false);
             }
         };
-        fetchCategories();
+        fetchProducts();
     }, []);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        fetchOrder();
+    }, [id]);
 
     const fetchOrder = async () => {
         try {
@@ -84,10 +85,6 @@ const EditOrder = (props) => {
                     cEmail: order.cEmail || '',
                     cPhone: order.cPhone || '',
                     cAddress: order.cAddress || '',
-                    pName: order.pName || '',
-                    category: order.category || '',
-                    amount: order.amount || '',
-                    ounits: order.ounits || '',
                     oDate: order.oDate ? order.oDate.split('T')[0] : '',
                     dDate: order.dDate ? order.dDate.split('T')[0] : '',
                     status: order.status || '',
@@ -95,6 +92,17 @@ const EditOrder = (props) => {
                     dStatus: order.dStatus || '',
                     desc: order.desc || ''
                 });
+
+                // Load existing products
+                if (order.products && order.products.length > 0) {
+                    const existingProducts = order.products.map(p => ({
+                        product: p.product?._id || p.product,
+                        productName: p.productName || p.product?.name || '',
+                        price: p.unitPrice || p.product?.price || 0,
+                        quantity: p.quantity || 1
+                    }));
+                    setSelectedProducts(existingProducts);
+                }
             } else {
                 props.showAlert('Order not found', 'danger');
                 navigate('/dashboard/orders');
@@ -114,25 +122,89 @@ const EditOrder = (props) => {
         }));
     };
 
+    // Calculate total amount
+    const calculateTotalAmount = () => {
+        return selectedProducts.reduce((total, item) => {
+            return total + (item.price * item.quantity);
+        }, 0);
+    };
+
+    // Handle product selection
+    const handleProductSelect = (productId) => {
+        const product = products.find(p => p._id === productId);
+        if (!product) return;
+
+        const existingIndex = selectedProducts.findIndex(p => p.product === productId);
+        if (existingIndex === -1) {
+            setSelectedProducts([...selectedProducts, {
+                product: productId,
+                productName: product.name,
+                price: product.price,
+                quantity: 1
+            }]);
+        }
+        setProductSearchTerm('');
+        setShowProductDropdown(false);
+    };
+
+    // Handle product removal
+    const handleProductRemove = (productId) => {
+        setSelectedProducts(selectedProducts.filter(p => p.product !== productId));
+    };
+
+    // Handle quantity change
+    const handleQuantityChange = (productId, quantity) => {
+        const qty = parseInt(quantity) || 1;
+        setSelectedProducts(selectedProducts.map(p =>
+            p.product === productId ? { ...p, quantity: Math.max(1, qty) } : p
+        ));
+    };
+
+    // Filter products for dropdown
+    const filteredProducts = products.filter(product => {
+        const isNotSelected = !selectedProducts.some(sp => sp.product === product._id);
+        const matchesSearch = product.name.toLowerCase().includes(productSearchTerm.toLowerCase());
+        return isNotSelected && matchesSearch;
+    });
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.product-dropdown-container')) {
+                setShowProductDropdown(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         
         // Validation
         if (!formData.cName || !formData.cEmail || !formData.cPhone || !formData.cAddress || 
-            !formData.pName || !formData.category || !formData.amount || !formData.ounits ||
+            selectedProducts.length === 0 ||
             !formData.oDate || !formData.dDate || !formData.status || !formData.pAvail || !formData.dStatus) {
-            props.showAlert('Please fill all required fields', 'danger');
+            props.showAlert('Please fill all required fields and select at least one product', 'danger');
             return;
         }
 
         try {
+            const orderData = {
+                ...formData,
+                products: selectedProducts.map(p => ({
+                    product: p.product,
+                    quantity: p.quantity
+                }))
+            };
+
             const response = await fetch(`http://localhost:5000/api/customerorders/updatecustomerorder/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'auth-token': localStorage.getItem('token')
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(orderData)
             });
 
             const data = await response.json();
@@ -141,7 +213,7 @@ const EditOrder = (props) => {
                 props.showAlert('Order updated successfully', 'success');
                 navigate('/dashboard/orders');
             } else {
-                props.showAlert(data.errors?.[0]?.msg || 'Failed to update order', 'danger');
+                props.showAlert(data.errors?.[0]?.msg || data.error || 'Failed to update order', 'danger');
             }
         } catch (error) {
             props.showAlert('Error updating order', 'danger');
@@ -197,37 +269,120 @@ const EditOrder = (props) => {
                         </div>
                     </div>
 
-                    {/* Product Information Card */}
+                    {/* Product Selection Card */}
                     <div className="card border-0 shadow-sm mb-4 rounded-4">
                         <div className="card-body p-5">
-                            <h5 className="card-title display-6 mb-4">Product Information</h5>
-                            <div className="d-flex gap-4">
-                                <div style={{ flex: 1 }}>
-                                    <label htmlFor="pName" className="form-label fw-semibold mb-2">Product Name</label>
-                                    <input type="text" className="form-control rounded-3 shadow-sm" id="pName" placeholder="Enter product name" value={formData.pName} onChange={handleChange} required />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label htmlFor="category" className="form-label fw-semibold mb-2">Product Category</label>
-                                    <div className="d-flex gap-2 align-items-end">
-                                        <div style={{ flex: 1 }}>
-                                            <select className="form-select rounded-3 shadow-sm" id="category" value={formData.category} onChange={handleChange} disabled={loadingCategories} required>
-                                               <option value="">{loadingCategories ? 'Loading categories...' : 'Select Category'}</option>
-                                               {categories.map((category) => (
-                                                   <option key={category._id} value={category._id}>{category.cName}</option>
-                                               ))}
-                                            </select>
-                                        </div>
-                                        <a href="/dashboard/category" className="btn btn-sm btn-custom-purple w-auto text-decoration-none" title="Add new category">+</a>
+                            <h5 className="card-title display-6 mb-4">Product Selection</h5>
+                            
+                            {/* Product Dropdown */}
+                            <div className="mb-4 product-dropdown-container" style={{ position: 'relative' }}>
+                                <label className="form-label fw-semibold mb-2">Select Products</label>
+                                <div className="d-flex gap-2 align-items-end">
+                                    <div style={{ flex: 1, position: 'relative' }}>
+                                        <input
+                                            type="text"
+                                            className="form-control rounded-3 shadow-sm"
+                                            placeholder={loadingProducts ? "Loading products..." : "Search and select products..."}
+                                            value={productSearchTerm}
+                                            onChange={(e) => {
+                                                setProductSearchTerm(e.target.value);
+                                                setShowProductDropdown(true);
+                                            }}
+                                            onFocus={() => setShowProductDropdown(true)}
+                                            disabled={loadingProducts}
+                                        />
+                                        {showProductDropdown && filteredProducts.length > 0 && (
+                                            <div 
+                                                className="dropdown-menu show w-100 shadow-sm" 
+                                                style={{ 
+                                                    position: 'absolute', 
+                                                    top: '100%', 
+                                                    left: 0, 
+                                                    maxHeight: '250px', 
+                                                    overflowY: 'auto',
+                                                    zIndex: 1000
+                                                }}
+                                            >
+                                                {filteredProducts.map((product) => (
+                                                    <button
+                                                        key={product._id}
+                                                        type="button"
+                                                        className="dropdown-item d-flex justify-content-between align-items-center"
+                                                        onClick={() => handleProductSelect(product._id)}
+                                                    >
+                                                        <span>{product.name}</span>
+                                                        <span className="badge bg-secondary">₹{product.price}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                        {showProductDropdown && filteredProducts.length === 0 && productSearchTerm && !loadingProducts && (
+                                            <div className="dropdown-menu show w-100" style={{ position: 'absolute', top: '100%', left: 0 }}>
+                                                <span className="dropdown-item text-muted">No products found</span>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <label htmlFor="amount" className="form-label fw-semibold mb-2">Total Amount</label>
-                                    <div className="input-group gap-0">
-                                        <span className="input-group-text rounded-start-3 ms-1">₹</span>
-                                        <input type="number" className="form-control" id="amount" placeholder="0.00" value={formData.amount} onChange={handleChange} required />
-                                    </div>
+                                    <a href="/dashboard/products" className="btn btn-sm w-auto btn-custom-purple text-decoration-none" title="Add new product">+</a>
                                 </div>
                             </div>
+
+                            {/* Selected Products Table */}
+                            {selectedProducts.length > 0 && (
+                                <div className="table-responsive">
+                                    <table className="table table-hover align-middle">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th>Product</th>
+                                                <th style={{ width: '150px' }}>Unit Price</th>
+                                                <th style={{ width: '150px' }}>Quantity</th>
+                                                <th style={{ width: '150px' }}>Subtotal</th>
+                                                <th style={{ width: '80px' }}>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {selectedProducts.map((item) => (
+                                                <tr key={item.product}>
+                                                    <td>{item.productName}</td>
+                                                    <td>₹{item.price.toFixed(2)}</td>
+                                                    <td>
+                                                        <input
+                                                            type="number"
+                                                            className="form-control form-control-sm rounded-3"
+                                                            value={item.quantity}
+                                                            min="1"
+                                                            onChange={(e) => handleQuantityChange(item.product, e.target.value)}
+                                                            style={{ width: '100px' }}
+                                                        />
+                                                    </td>
+                                                    <td>₹{(item.price * item.quantity).toFixed(2)}</td>
+                                                    <td>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-outline-danger rounded-3"
+                                                            onClick={() => handleProductRemove(item.product)}
+                                                            title="Remove product"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="table-light fw-bold">
+                                                <td colSpan="3" className="text-end">Total Amount:</td>
+                                                <td colSpan="2">₹{calculateTotalAmount().toFixed(2)}</td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            )}
+
+                            {selectedProducts.length === 0 && (
+                                <div className="text-center text-muted py-4 border rounded-3 bg-light">
+                                    <p className="mb-0">No products selected. Search and select products from the dropdown above.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -237,16 +392,25 @@ const EditOrder = (props) => {
                             <h5 className="card-title display-6 mb-4">Order Details</h5>
                             <div className="d-flex gap-4">
                                 <div style={{ flex: 1 }}>
-                                    <label htmlFor="ounits" className="form-label fw-semibold mb-2">Units</label>
-                                    <input type="number" className="form-control rounded-3 shadow-sm" id="ounits" placeholder="Enter number of units" value={formData.ounits} onChange={handleChange} required />
-                                </div>
-                                <div style={{ flex: 1 }}>
                                     <label htmlFor="oDate" className="form-label fw-semibold mb-2">Order Date</label>
                                     <input type="date" className="form-control rounded-3 shadow-sm" id="oDate" value={formData.oDate} onChange={handleChange} required />
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="dDate" className="form-label fw-semibold mb-2">Delivery Deadline</label>
                                     <input type="date" className="form-control rounded-3 shadow-sm" id="dDate" value={formData.dDate} onChange={handleChange} required />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <label className="form-label fw-semibold mb-2">Total Amount</label>
+                                    <div className="input-group">
+                                        <span className="input-group-text rounded-start-3">₹</span>
+                                        <input 
+                                            type="text" 
+                                            className="form-control rounded-end-3 shadow-sm" 
+                                            value={calculateTotalAmount().toFixed(2)} 
+                                            readOnly 
+                                            style={{ backgroundColor: '#f8f9fa' }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

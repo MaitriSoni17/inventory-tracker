@@ -1,51 +1,78 @@
 const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
 const CustomerOrders = require('../models/CustomerOrders');
+const Product = require('../models/Products');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { notifyEmployeesAboutOrder, notifyBusinessOwnerAboutOrderByEmployee } = require('../utils/notificationHelper');
 
 // Create Customer Order — accessible by BusinessOwner or Employee
 router.post('/createcustomerorder', fetchuser, [
-    body('cName', 'Enter Product Name').exists(),
+    body('cName', 'Enter Customer Name').exists(),
     body('cEmail', 'Enter valid Email').isEmail(),
-    body('cPhone', 'Enter Price').exists().isNumeric(),
+    body('cPhone', 'Enter Phone Number').exists().isNumeric(),
     body('cAddress', 'Enter Address').exists(),
-    body('pName', 'Enter Product Name').exists(),
-    body('category', 'Enter Product Category').exists(),
-    body('amount', 'Enter Price').exists().isNumeric(),
-    body('ounits', 'Enter Price').exists().isNumeric(),
+    body('products', 'At least one product is required').isArray({ min: 1 }),
+    body('products.*.product', 'Product ID is required').exists(),
+    body('products.*.quantity', 'Quantity must be a positive number').isInt({ min: 1 }),
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc, warehouse } = req.body;
+    const { cName, cEmail, cPhone, cAddress, products, oDate, dDate, status, pAvail, dStatus, desc, warehouse } = req.body;
 
     try {
-        let customerorderData = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
+        // Calculate total amount and populate product details
+        let totalAmount = 0;
+        const processedProducts = [];
+        const productNames = [];
+
+        for (const item of products) {
+            const productDoc = await Product.findById(item.product);
+            if (!productDoc) {
+                return res.status(400).json({ error: `Product not found: ${item.product}` });
+            }
+            
+            const totalPrice = productDoc.price * item.quantity;
+            totalAmount += totalPrice;
+            productNames.push(productDoc.name);
+            
+            processedProducts.push({
+                product: item.product,
+                productName: productDoc.name,
+                category: productDoc.category,
+                quantity: item.quantity,
+                unitPrice: productDoc.price,
+                totalPrice: totalPrice
+            });
+        }
+
+        let customerorderData = {
+            cName, cEmail, cPhone, cAddress,
+            products: processedProducts,
+            // For backward compatibility and quick display
+            pName: productNames.join(', '),
+            category: processedProducts.length > 0 ? processedProducts[0].category : '',
+            ounits: products.reduce((sum, p) => sum + p.quantity, 0),
+            amount: totalAmount,
+            oDate, dDate, status, pAvail, dStatus, desc
+        };
 
         if (req.role === 'businessowner') {
             customerorderData.businessowner = req.user._id;
-            // Business owner can assign to specific warehouse
             if (warehouse) {
                 customerorderData.warehouse = warehouse;
             }
         } else if (req.role === 'employee') {
             customerorderData.businessowner = req.user.businessowner;
             customerorderData.employee = req.user._id;
-            // Employee's order goes to their warehouse
             const employee = await require('../models/Employee').findById(req.user._id);
             if (employee && employee.warehouse) {
                 customerorderData.warehouse = employee.warehouse;
             }
         }
-
-
-
-
-
 
         const customerorder = await CustomerOrders.create(customerorderData);
 
@@ -55,38 +82,35 @@ router.post('/createcustomerorder', fetchuser, [
                 req.user._id,
                 'created',
                 customerorder._id,
-                { orderId: customerorder._id, customer: cName, product: pName, amount }
+                { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
         } else if (req.role === 'employee') {
-            // Send notification to business owner if created by employee
-
-
-
-            
             await notifyBusinessOwnerAboutOrderByEmployee(
                 req.user.businessowner,
                 req.user._id,
                 'created',
                 customerorder._id,
-                { orderId: customerorder._id, customer: cName, product: pName, amount }
+                { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
         }
 
         res.json(customerorder);
     } catch (err) {
-
+        console.error(err);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Get Cstomer Orders — accessible by BusinessOwner or Employee
+// Get Customer Orders — accessible by BusinessOwner or Employee
 router.post('/getcustomerorder', fetchuser, async (req, res) => {
     try {
         let customerorder = [];
 
         if (req.role === 'businessowner') {
             // Business owner sees all orders in their organization
-            customerorder = await CustomerOrders.find({ businessowner: req.user._id }).populate('warehouse');
+            customerorder = await CustomerOrders.find({ businessowner: req.user._id })
+                .populate('warehouse')
+                .populate('products.product');
         } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
             // Warehouse staff sees only orders assigned to their warehouse
             const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
@@ -95,7 +119,9 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
                 // Get orders assigned to their warehouse
                 customerorder = await CustomerOrders.find({
                     warehouse: staffMember.warehouse._id
-                }).populate('warehouse');
+                })
+                    .populate('warehouse')
+                    .populate('products.product');
             } else {
                 // If no warehouse assigned, show no orders
                 customerorder = [];
@@ -113,14 +139,13 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
 
 // Update Customer Order — BusinessOwner can update all, warehouse staff can update status
 router.put('/updatecustomerorder/:id', fetchuser, [
-    body('cName', 'Enter Product Name').exists(),
+    body('cName', 'Enter Customer Name').exists(),
     body('cEmail', 'Enter valid Email').isEmail(),
-    body('cPhone', 'Enter Price').exists().isNumeric(),
+    body('cPhone', 'Enter Phone Number').exists().isNumeric(),
     body('cAddress', 'Enter Address').exists(),
-    body('pName', 'Enter Product Name').exists(),
-    body('category', 'Enter Product Category').exists(),
-    body('amount', 'Enter Price').exists().isNumeric(),
-    body('ounits', 'Enter Price').exists().isNumeric(),
+    body('products', 'At least one product is required').isArray({ min: 1 }),
+    body('products.*.product', 'Product ID is required').exists(),
+    body('products.*.quantity', 'Quantity must be a positive number').isInt({ min: 1 }),
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
@@ -132,7 +157,7 @@ router.put('/updatecustomerorder/:id', fetchuser, [
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc, warehouse } = req.body;
+    const { cName, cEmail, cPhone, cAddress, products, oDate, dDate, status, pAvail, dStatus, desc, warehouse } = req.body;
 
     try {
         let customerorder = await CustomerOrders.findById(req.params.id).populate('warehouse');
@@ -157,8 +182,41 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             }
         }
 
+        // Calculate total amount and populate product details
+        let totalAmount = 0;
+        const processedProducts = [];
+        const productNames = [];
+
+        for (const item of products) {
+            const productDoc = await Product.findById(item.product);
+            if (!productDoc) {
+                return res.status(400).json({ error: `Product not found: ${item.product}` });
+            }
+            
+            const totalPrice = productDoc.price * item.quantity;
+            totalAmount += totalPrice;
+            productNames.push(productDoc.name);
+            
+            processedProducts.push({
+                product: item.product,
+                productName: productDoc.name,
+                category: productDoc.category,
+                quantity: item.quantity,
+                unitPrice: productDoc.price,
+                totalPrice: totalPrice
+            });
+        }
+
         // Prepare update data
-        let newCustomerOrder = { cName, cEmail, cPhone, cAddress, pName, category, amount, ounits, oDate, dDate, status, pAvail, dStatus, desc };
+        let newCustomerOrder = {
+            cName, cEmail, cPhone, cAddress,
+            products: processedProducts,
+            pName: productNames.join(', '),
+            category: processedProducts.length > 0 ? processedProducts[0].category : '',
+            ounits: products.reduce((sum, p) => sum + p.quantity, 0),
+            amount: totalAmount,
+            oDate, dDate, status, pAvail, dStatus, desc
+        };
         
         // Only business owner can change warehouse
         if (req.role === 'businessowner' && warehouse) {
@@ -173,7 +231,7 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 req.user._id,
                 'updated',
                 customerorder._id,
-                { orderId: customerorder._id, customer: cName, product: pName, amount }
+                { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
         } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
             // Send notification to business owner if updated by warehouse staff
@@ -182,7 +240,7 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 req.user._id,
                 'updated',
                 customerorder._id,
-                { orderId: customerorder._id, customer: cName, product: pName, amount }
+                { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
         }
 

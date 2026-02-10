@@ -5,9 +5,15 @@ function EditSupplierOrder(props) {
     const { id } = useParams();
     const navigate = useNavigate();
     const [categories, setCategories] = useState([]);
+    const [products, setProducts] = useState([]);
     const [supplierName, setSupplierName] = useState('');
     const [supplierId, setSupplierId] = useState('');
     const [loading, setLoading] = useState(true);
+    const [showProductDropdown, setShowProductDropdown] = useState(false);
+    const [productSearchTerm, setProductSearchTerm] = useState('');
+    const [isOtherProduct, setIsOtherProduct] = useState(false);
+    const [isCustomProduct, setIsCustomProduct] = useState(false);
+    const [errors, setErrors] = useState({});
     const [orderDetails, setOrderDetails] = useState({
         pName: '',
         category: '',
@@ -21,10 +27,22 @@ function EditSupplierOrder(props) {
         desc: ''
     });
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.product-dropdown-container')) {
+                setShowProductDropdown(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
+    useEffect(() => {
         fetchOrderDetails();
         fetchCategories();
+        fetchProducts();
     }, [id]);
 
     const fetchOrderDetails = async () => {
@@ -102,26 +120,126 @@ function EditSupplierOrder(props) {
         }
     };
 
+    const fetchProducts = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/products/getproduct', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setProducts(data);
+            }
+        } catch (error) {
+        }
+    };
+
+    // Helper function to get category name by ID
+    const getCategoryName = (categoryIdOrName) => {
+        if (!categoryIdOrName) return '';
+        const categoryById = categories.find(cat => cat._id === categoryIdOrName);
+        if (categoryById) return categoryById.cName;
+        const categoryByName = categories.find(cat => cat.cName === categoryIdOrName);
+        if (categoryByName) return categoryByName.cName;
+        return categoryIdOrName;
+    };
+
+    // Filter products for dropdown
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(productSearchTerm.toLowerCase());
+        return matchesSearch;
+    });
+
+    // Handle product selection from dropdown
+    const handleProductSelect = (product) => {
+        setOrderDetails(prev => ({
+            ...prev,
+            pName: product.name,
+            category: getCategoryName(product.category)
+        }));
+        setProductSearchTerm('');
+        setShowProductDropdown(false);
+        setIsCustomProduct(false);
+        
+        if (errors.pName) {
+            setErrors(prev => ({ ...prev, pName: "" }));
+        }
+    };
+
+    // Handle custom product addition
+    const handleAddCustomProduct = () => {
+        if (!orderDetails.pName.trim() || !orderDetails.category) {
+            props.showAlert('Please enter product name and category', 'warning');
+            return;
+        }
+        setIsCustomProduct(true);
+        setIsOtherProduct(false);
+        props.showAlert('Custom product set', 'success');
+    };
+
     const handleInputChange = (e) => {
         const { name, value } = e.target;
         setOrderDetails(prev => ({
             ...prev,
             [name]: value
         }));
+        if (errors[name]) {
+            setErrors(prev => ({
+                ...prev,
+                [name]: ""
+            }));
+        }
+    };
+
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!orderDetails.pName) {
+            newErrors.pName = "Product name is required";
+        }
+
+        if (!orderDetails.category) {
+            newErrors.category = "Category is required";
+        }
+
+        if (!orderDetails.amount || parseFloat(orderDetails.amount) <= 0) {
+            newErrors.amount = "Valid amount is required";
+        }
+
+        if (!orderDetails.ounits || parseInt(orderDetails.ounits) <= 0) {
+            newErrors.ounits = "Valid units is required";
+        }
+
+        if (!orderDetails.oDate) {
+            newErrors.oDate = "Order date is required";
+        }
+
+        if (!orderDetails.dDate) {
+            newErrors.dDate = "Delivery date is required";
+        }
+
+        if (orderDetails.oDate && orderDetails.dDate) {
+            const orderDate = new Date(orderDetails.oDate);
+            const deliveryDate = new Date(orderDetails.dDate);
+            
+            if (deliveryDate < orderDate) {
+                newErrors.dDate = "Delivery date must be after order date";
+            }
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Validation
-        if (!orderDetails.pName || !orderDetails.category || !orderDetails.amount || 
-            !orderDetails.ounits || !orderDetails.oDate || !orderDetails.dDate) {
-            props.showAlert('Please fill in all required fields', 'danger');
-            return;
-        }
-
-        if (new Date(orderDetails.dDate) < new Date(orderDetails.oDate)) {
-            props.showAlert('Delivery date must be after order date', 'danger');
+        if (!validateForm()) {
+            props.showAlert('Please fix the errors in the form', 'danger');
             return;
         }
 
@@ -168,56 +286,155 @@ function EditSupplierOrder(props) {
                 <div className="row g-4">
                     <div className="col-lg-7">
                         <form onSubmit={handleSubmit}>
-                            {/* Product Information Card */}
+                            {/* Product Selection Card */}
                             <div className="card border-0 shadow-sm mb-4 rounded-4">
                                 <div className="card-body p-5">
-                                    <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Product Information</h6>
-                                    <div className="d-flex gap-4">
-                                        <div style={{ flex: 1 }}>
-                                            <label htmlFor="pName" className="form-label fw-semibold mb-2">Product Name *</label>
-                                            <input 
-                                                type="text" 
-                                                className="form-control rounded-3 shadow-sm" 
-                                                id="pName"
-                                                name="pName"
-                                                value={orderDetails.pName}
-                                                onChange={handleInputChange}
-                                                placeholder="Enter product name"
-                                                required
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label htmlFor="category" className="form-label fw-semibold mb-2">Category *</label>
-                                            <select 
-                                                className="form-select rounded-3 shadow-sm" 
-                                                id="category"
-                                                name="category"
-                                                value={orderDetails.category}
-                                                onChange={handleInputChange}
-                                                required
+                                    <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Product Selection</h6>
+                                    
+                                    {/* Product Search Dropdown */}
+                                    <div className="mb-4">
+                                        <label className="form-label fw-semibold mb-2">Select Product</label>
+                                        <div className="d-flex gap-2 product-dropdown-container">
+                                            <div className="position-relative flex-grow-1">
+                                                <input
+                                                    type="text"
+                                                    className="form-control rounded-3 shadow-sm"
+                                                    placeholder="Search and select products..."
+                                                    value={productSearchTerm}
+                                                    onChange={(e) => {
+                                                        setProductSearchTerm(e.target.value);
+                                                        setShowProductDropdown(true);
+                                                    }}
+                                                    onFocus={() => setShowProductDropdown(true)}
+                                                />
+                                                {showProductDropdown && filteredProducts.length > 0 && (
+                                                    <div className="dropdown-menu show w-100 shadow" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                                                        {filteredProducts.map(product => (
+                                                            <button
+                                                                key={product._id}
+                                                                type="button"
+                                                                className="dropdown-item py-2"
+                                                                onClick={() => handleProductSelect(product)}
+                                                            >
+                                                                <div className="d-flex justify-content-between align-items-center">
+                                                                    <span>{product.name}</span>
+                                                                    <small className="text-muted">{getCategoryName(product.category)}</small>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                className="btn-custom-purple" 
+                                                title="Add custom product"
+                                                onClick={() => setIsOtherProduct(!isOtherProduct)}
                                             >
-                                                <option value="">Select Category</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat._id} value={cat.cName}>{cat.cName}</option>
-                                                ))}
-                                            </select>
+                                                <i className="bi bi-plus-lg"></i>
+                                            </button>
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <label htmlFor="amount" className="form-label fw-semibold mb-2">Amount (₹) *</label>
-                                            <input 
-                                                type="number" 
-                                                className="form-control rounded-3 shadow-sm" 
-                                                id="amount"
-                                                name="amount"
-                                                value={orderDetails.amount}
-                                                onChange={handleInputChange}
-                                                placeholder="Enter amount"
-                                                min="0"
-                                                step="0.01"
-                                                required
-                                            />
-                                        </div>
+                                        {errors.pName && <div className="text-danger small mt-1">{errors.pName}</div>}
                                     </div>
+
+                                    {/* Add Custom Product Form */}
+                                    {isOtherProduct && (
+                                        <div className="p-3 bg-light rounded-3 mb-4">
+                                            <h6 className="fw-semibold mb-3"><i className="bi bi-plus-circle me-2"></i>Add Custom Product</h6>
+                                            <div className="row g-3">
+                                                <div className="col-md-6">
+                                                    <label htmlFor="customPName" className="form-label fw-semibold mb-2">Product Name *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="form-control rounded-3 shadow-sm"
+                                                        id="customPName"
+                                                        value={orderDetails.pName}
+                                                        onChange={(e) => setOrderDetails(prev => ({ ...prev, pName: e.target.value }))}
+                                                        placeholder="Enter product name"
+                                                    />
+                                                </div>
+                                                <div className="col-md-6">
+                                                    <label htmlFor="customCategory" className="form-label fw-semibold mb-2">Category *</label>
+                                                    <select 
+                                                        className="form-select rounded-3 shadow-sm"
+                                                        id="customCategory"
+                                                        value={orderDetails.category}
+                                                        onChange={(e) => setOrderDetails(prev => ({ ...prev, category: e.target.value }))}
+                                                    >
+                                                        <option value="">Select Category</option>
+                                                        {categories.map(cat => (
+                                                            <option key={cat._id} value={cat.cName}>{cat.cName}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="col-12 d-flex justify-content-start gap-2">
+                                                    <button type="button" className="btn btn-custom-purple" onClick={handleAddCustomProduct}>
+                                                        <i className="bi bi-check-lg me-1"></i> Set Product
+                                                    </button>
+                                                    <button type="button" className="btn btn-outline-secondary" onClick={() => setIsOtherProduct(false)}>
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Current Product Display */}
+                                    {orderDetails.pName && !isOtherProduct && (
+                                        <div className="table-responsive">
+                                            <table className="table table-hover align-middle">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th>Product</th>
+                                                        <th>Category</th>
+                                                        <th style={{ width: '120px' }}>Units *</th>
+                                                        <th style={{ width: '150px' }}>Amount (₹) *</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <tr>
+                                                        <td>
+                                                            {orderDetails.pName}
+                                                            {isCustomProduct && <span className="badge bg-secondary ms-2">Custom</span>}
+                                                        </td>
+                                                        <td><span className="text-muted">{orderDetails.category}</span></td>
+                                                        <td>
+                                                            <input
+                                                                type="number"
+                                                                className={`form-control form-control-sm rounded-3 ${errors.ounits ? 'is-invalid' : ''}`}
+                                                                name="ounits"
+                                                                value={orderDetails.ounits}
+                                                                min="1"
+                                                                onChange={handleInputChange}
+                                                                placeholder="Units"
+                                                            />
+                                                        </td>
+                                                        <td>
+                                                            <input
+                                                                type="number"
+                                                                className={`form-control form-control-sm rounded-3 ${errors.amount ? 'is-invalid' : ''}`}
+                                                                name="amount"
+                                                                value={orderDetails.amount}
+                                                                min="0"
+                                                                step="0.01"
+                                                                onChange={handleInputChange}
+                                                                placeholder="Amount"
+                                                            />
+                                                        </td>
+                                                    </tr>
+                                                </tbody>
+                                            </table>
+                                            {(errors.ounits || errors.amount) && (
+                                                <div className="text-danger small">{errors.ounits || errors.amount}</div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {!orderDetails.pName && !isOtherProduct && (
+                                        <div className="text-center text-muted py-4">
+                                            No product selected. Search and select a product from the dropdown above.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -227,42 +444,30 @@ function EditSupplierOrder(props) {
                                     <h6 className="fw-bold text-uppercase text-muted mb-4" style={{ letterSpacing: '0.5px', fontSize: '12px' }}>Order Details</h6>
                                     <div className="d-flex gap-4 mb-4">
                                         <div style={{ flex: 1 }}>
-                                            <label htmlFor="ounits" className="form-label fw-semibold mb-2">Units *</label>
-                                            <input 
-                                                type="number" 
-                                                className="form-control rounded-3 shadow-sm" 
-                                                id="ounits"
-                                                name="ounits"
-                                                value={orderDetails.ounits}
-                                                onChange={handleInputChange}
-                                                placeholder="Enter units"
-                                                min="0"
-                                                required
-                                            />
-                                        </div>
-                                        <div style={{ flex: 1 }}>
                                             <label htmlFor="oDate" className="form-label fw-semibold mb-2">Order Date *</label>
                                             <input 
                                                 type="date" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.oDate ? 'is-invalid' : ''}`}
                                                 id="oDate"
                                                 name="oDate"
                                                 value={orderDetails.oDate}
                                                 onChange={handleInputChange}
                                                 required
                                             />
+                                            {errors.oDate && <div className="invalid-feedback">{errors.oDate}</div>}
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <label htmlFor="dDate" className="form-label fw-semibold mb-2">Delivery Date *</label>
                                             <input 
                                                 type="date" 
-                                                className="form-control rounded-3 shadow-sm" 
+                                                className={`form-control rounded-3 shadow-sm ${errors.dDate ? 'is-invalid' : ''}`}
                                                 id="dDate"
                                                 name="dDate"
                                                 value={orderDetails.dDate}
                                                 onChange={handleInputChange}
                                                 required
                                             />
+                                            {errors.dDate && <div className="invalid-feedback">{errors.dDate}</div>}
                                         </div>
                                     </div>
                                     <div className="d-flex gap-4">
