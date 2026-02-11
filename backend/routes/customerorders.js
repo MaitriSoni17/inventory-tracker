@@ -34,6 +34,11 @@ router.post('/createcustomerorder', fetchuser, [
             if (!productDoc) {
                 return res.status(400).json({ error: `Product not found: ${item.product}` });
             }
+
+            // Check if sufficient stock is available
+            if (productDoc.totalProducts < item.quantity) {
+                return res.status(400).json({ error: `Insufficient stock for "${productDoc.name}". Available: ${productDoc.totalProducts}, Requested: ${item.quantity}` });
+            }
             
             const totalPrice = productDoc.price * item.quantity;
             totalAmount += totalPrice;
@@ -46,6 +51,13 @@ router.post('/createcustomerorder', fetchuser, [
                 quantity: item.quantity,
                 unitPrice: productDoc.price,
                 totalPrice: totalPrice
+            });
+        }
+
+        // Deduct stock for each product
+        for (const item of products) {
+            await Product.findByIdAndUpdate(item.product, {
+                $inc: { totalProducts: -item.quantity }
             });
         }
 
@@ -182,6 +194,13 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             }
         }
 
+        // Build a map of old quantities from the existing order
+        const oldQuantityMap = {};
+        for (const oldItem of customerorder.products) {
+            const pid = oldItem.product.toString();
+            oldQuantityMap[pid] = (oldQuantityMap[pid] || 0) + oldItem.quantity;
+        }
+
         // Calculate total amount and populate product details
         let totalAmount = 0;
         const processedProducts = [];
@@ -191,6 +210,15 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             const productDoc = await Product.findById(item.product);
             if (!productDoc) {
                 return res.status(400).json({ error: `Product not found: ${item.product}` });
+            }
+
+            // Calculate the difference: new quantity minus what was already ordered
+            const previousQty = oldQuantityMap[item.product.toString()] || 0;
+            const diff = item.quantity - previousQty;
+
+            // If requesting more than before, check if additional stock is available
+            if (diff > 0 && productDoc.totalProducts < diff) {
+                return res.status(400).json({ error: `Insufficient stock for "${productDoc.name}". Available: ${productDoc.totalProducts}, Additional needed: ${diff}` });
             }
             
             const totalPrice = productDoc.price * item.quantity;
@@ -204,6 +232,20 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 quantity: item.quantity,
                 unitPrice: productDoc.price,
                 totalPrice: totalPrice
+            });
+        }
+
+        // Adjust stock: restore old quantities then deduct new quantities
+        // Restore stock for all old products
+        for (const oldItem of customerorder.products) {
+            await Product.findByIdAndUpdate(oldItem.product, {
+                $inc: { totalProducts: oldItem.quantity }
+            });
+        }
+        // Deduct stock for all new products
+        for (const item of products) {
+            await Product.findByIdAndUpdate(item.product, {
+                $inc: { totalProducts: -item.quantity }
             });
         }
 
@@ -270,6 +312,13 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
         // }
 
         const businessOwnerId = customerorder.businessowner;
+
+        // Restore stock for each product in the deleted order
+        for (const item of customerorder.products) {
+            await Product.findByIdAndUpdate(item.product, {
+                $inc: { totalProducts: item.quantity }
+            });
+        }
 
         await CustomerOrders.findByIdAndDelete(req.params.id);
 
