@@ -16,6 +16,7 @@ function Contact() {
         subject: '',
         message: ''
     });
+    const [chatOpen, setChatOpen] = useState(false);
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
     const [submitStatus, setSubmitStatus] = useState(null);
@@ -181,7 +182,7 @@ function Contact() {
                             <h3>Live Chat</h3>
                             <p className="contact-value">Start a conversation</p>
                             <p className="contact-desc">Instant support from our team</p>
-                            <button className="contact-link">Open Chat</button>
+                            <button className="contact-link" onClick={() => setChatOpen(true)}>Open Chat</button>
                         </div>
                     </div>
                 </div>
@@ -393,7 +394,7 @@ function Contact() {
             </section>
 
             <Footer />
-            <HomepageChatbot />
+            <HomepageChatbot externalOpen={chatOpen} onExternalOpenHandled={() => setChatOpen(false)} />
         </div>
     );
 }

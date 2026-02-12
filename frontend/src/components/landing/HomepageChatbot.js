@@ -2,9 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { chatbotKnowledge, keywordMappings } from './utils/chatbotKnowledge';
 import '../../styles/homepagechatbot.css';
 
-const HomepageChatbot = () => {
+const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+
+  useEffect(() => {
+    if (externalOpen) {
+      setIsOpen(true);
+      setIsMinimized(false);
+      if (onExternalOpenHandled) onExternalOpenHandled();
+    }
+  }, [externalOpen, onExternalOpenHandled]);
   const [messages, setMessages] = useState([
     {
       id: 1,
