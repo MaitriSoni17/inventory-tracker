@@ -337,7 +337,7 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             return res.json(employees);
         }
         
-        // Manager gets all employees in their warehouse only
+        // Manager gets only lower-hierarchy employees in their warehouse (excludes self and other managers)
         if (req.role === 'manager') {
             const manager = await Employee.findById(req.user._id).populate('warehouse');
             
@@ -349,7 +349,9 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             const warehouseId = manager.warehouse._id;
             const employees = await Employee.find({
                 businessowner: req.user.businessowner,
-                warehouse: warehouseId
+                warehouse: warehouseId,
+                _id: { $ne: req.user._id }, // Exclude self
+                role: { $in: ['supervisor', 'employee'] } // Only lower hierarchy roles
             })
                 .populate('reportingTo', 'fname lname role email')
                 .populate('subordinates', 'fname lname role email')
@@ -358,39 +360,33 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             return res.json(employees);
         }
         
-        // Supervisor gets employees in their warehouse + their direct reports
+        // Supervisor gets only lower-hierarchy employees in their warehouse (excludes self, managers, and other supervisors)
         if (req.role === 'supervisor') {
             const supervisor = await Employee.findById(req.user._id).populate('warehouse');
-            const subordinates = await getSubordinates(req.user._id, false); // non-recursive - direct reports only
-            const subordinateIds = subordinates.map(sub => sub._id);
-            subordinateIds.push(req.user._id); // Include self
             
-            let warehouseId = supervisor.warehouse ? supervisor.warehouse._id : null;
+            let warehouseId = supervisor && supervisor.warehouse ? supervisor.warehouse._id : null;
             
             let employees;
             if (warehouseId) {
-                // Get employees in same warehouse + direct reports (regardless of warehouse)
+                // Get only regular employees in same warehouse (lower hierarchy only)
                 employees = await Employee.find({
-                    $or: [
-                        {
-                            _id: { $in: subordinateIds },
-                            businessowner: req.user.businessowner
-                        },
-                        {
-                            warehouse: warehouseId,
-                            businessowner: req.user.businessowner
-                        }
-                    ]
+                    businessowner: req.user.businessowner,
+                    warehouse: warehouseId,
+                    _id: { $ne: req.user._id }, // Exclude self
+                    role: 'employee' // Only lower hierarchy role
                 })
                     .populate('reportingTo', 'fname lname role email')
                     .populate('subordinates', 'fname lname role email')
                     .populate('warehouse', 'wName wAddress')
                     .select("-password");
             } else {
-                // No warehouse assigned, show only direct reports
+                // No warehouse assigned, show only direct reports (lower hierarchy)
+                const subordinates = await getSubordinates(req.user._id);
+                const subordinateIds = subordinates.map(sub => sub._id);
                 employees = await Employee.find({
                     _id: { $in: subordinateIds },
-                    businessowner: req.user.businessowner
+                    businessowner: req.user.businessowner,
+                    role: 'employee' // Only lower hierarchy role
                 })
                     .populate('reportingTo', 'fname lname role email')
                     .populate('subordinates', 'fname lname role email')

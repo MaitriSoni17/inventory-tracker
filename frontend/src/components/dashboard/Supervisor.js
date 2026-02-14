@@ -31,17 +31,20 @@ ChartJS.register(
 
 function Supervisor(props) {
     const navigate = useNavigate();
-    const { userDetails, hasPermission } = useRole();
+    const { userDetails, hasPermission, loading: roleLoading, permissions } = useRole();
     
     // Chart refs
     const ordersChartRef = useRef(null);
     const stockChartRef = useRef(null);
     const ordersChartInstance = useRef(null);
     const stockChartInstance = useRef(null);
+    const chartTimerRef = useRef(null);
 
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
     const [subordinates, setSubordinates] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [supervisorWarehouse, setSupervisorWarehouse] = useState(null);
     const [ordersView, setOrdersView] = useState('monthly');
@@ -49,6 +52,8 @@ function Supervisor(props) {
         teamSize: 0,
         ordersPlaced: 0,
         productsManaged: 0,
+        totalCategories: 0,
+        totalWarehouses: 0,
         lowStockItems: 0
     });
 
@@ -125,13 +130,19 @@ function Supervisor(props) {
 
     // Initialize charts
     const initCharts = useCallback(() => {
-        if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); }
-        if (stockChartInstance.current) { stockChartInstance.current.destroy(); }
+        // Clear any pending chart creation timeout
+        if (chartTimerRef.current) {
+            clearTimeout(chartTimerRef.current);
+            chartTimerRef.current = null;
+        }
+
+        if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); ordersChartInstance.current = null; }
+        if (stockChartInstance.current) { stockChartInstance.current.destroy(); stockChartInstance.current = null; }
 
         const ordersChartData = getOrdersData(orders);
         const topProducts = getTopProductsByStock(products);
 
-        setTimeout(() => {
+        chartTimerRef.current = setTimeout(() => {
             if (ordersChartRef.current && orders.length > 0) {
                 try {
                     const ctx = ordersChartRef.current.getContext('2d');
@@ -203,13 +214,17 @@ function Supervisor(props) {
             initCharts();
         }
         return () => {
-            if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); }
-            if (stockChartInstance.current) { stockChartInstance.current.destroy(); }
+            if (chartTimerRef.current) { clearTimeout(chartTimerRef.current); chartTimerRef.current = null; }
+            if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); ordersChartInstance.current = null; }
+            if (stockChartInstance.current) { stockChartInstance.current.destroy(); stockChartInstance.current = null; }
         };
     }, [loading, orders, products, ordersView, initCharts]);
 
-    // Fetch all data on mount
+    // Fetch all data on mount — wait for permissions to be loaded first
     useEffect(() => {
+        // Don't fetch until role/permissions are fully loaded
+        if (roleLoading) return;
+
         // Extract warehouse from user details
         if (userDetails && userDetails.warehouse) {
             // warehouse can be an object {_id, wName, wAddress} or string
@@ -219,7 +234,8 @@ function Supervisor(props) {
             setSupervisorWarehouse(warehouseName);
         }
         fetchAllData();
-    }, [userDetails]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userDetails, roleLoading, permissions]);
 
     const fetchAllData = async () => {
         try {
@@ -231,6 +247,8 @@ function Supervisor(props) {
             let ordersData = [];
             let productsData = [];
             let subordinatesData = [];
+            let categoriesData = [];
+            let warehousesData = [];
 
             // Only fetch orders if user has permission
             if (hasPermission('canViewOrders')) {
@@ -262,6 +280,26 @@ function Supervisor(props) {
             }
             setSubordinates(subordinatesData);
 
+            // Only fetch categories if user has permission
+            if (hasPermission('canViewCategories')) {
+                const categoriesRes = await fetch('http://localhost:5000/api/category/getcategories', {
+                    method: 'POST',
+                    headers
+                });
+                categoriesData = categoriesRes.ok ? await categoriesRes.json() : [];
+            }
+            setCategories(categoriesData);
+
+            // Only fetch warehouses if user has permission
+            if (hasPermission('canViewWarehouses')) {
+                const warehousesRes = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers
+                });
+                warehousesData = warehousesRes.ok ? await warehousesRes.json() : [];
+            }
+            setWarehouses(warehousesData);
+
             // Calculate statistics
             const lowStockCount = productsData.filter(p => p.totalProducts <= 10).length;
 
@@ -269,6 +307,8 @@ function Supervisor(props) {
                 teamSize: subordinatesData.length,
                 ordersPlaced: ordersData.length,
                 productsManaged: productsData.length,
+                totalCategories: categoriesData.length,
+                totalWarehouses: warehousesData.length,
                 lowStockItems: lowStockCount
             });
 
@@ -280,15 +320,15 @@ function Supervisor(props) {
     };
 
     const handleViewTeam = () => {
-        navigate('/employee');
+        navigate('/dashboard/employee');
     };
 
     const handleManageProducts = () => {
-        navigate('/products');
+        navigate('/dashboard/products');
     };
 
     const handleViewOrders = () => {
-        navigate('/customerorders');
+        navigate('/dashboard/orders');
     };
 
     if (loading) {
@@ -331,6 +371,7 @@ function Supervisor(props) {
 
             {/* Key Statistics */}
             <div className="stats-grid">
+                {hasPermission('canViewEmployees') && (
                 <div className="stat-card team-stat">
                     <div className="stat-icon">👥</div>
                     <div className="stat-content">
@@ -339,7 +380,9 @@ function Supervisor(props) {
                         <span className="stat-label">Direct Reports</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewOrders') && (
                 <div className="stat-card orders-stat">
                     <div className="stat-icon">📦</div>
                     <div className="stat-content">
@@ -348,7 +391,9 @@ function Supervisor(props) {
                         <span className="stat-label">Team Orders</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewProducts') && (
                 <div className="stat-card products-stat">
                     <div className="stat-icon">📊</div>
                     <div className="stat-content">
@@ -357,7 +402,9 @@ function Supervisor(props) {
                         <span className="stat-label">Total Products</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewProducts') && (
                 <div className="stat-card alert-stat">
                     <div className="stat-icon">⚠️</div>
                     <div className="stat-content">
@@ -366,9 +413,33 @@ function Supervisor(props) {
                         <span className="stat-label">Items</span>
                     </div>
                 </div>
+                )}
+
+                {hasPermission('canViewCategories') && (
+                <div className="stat-card" style={{ borderLeft: '4px solid #17a2b8' }}>
+                    <div className="stat-icon">🏷️</div>
+                    <div className="stat-content">
+                        <h3>Categories</h3>
+                        <p className="stat-number">{stats.totalCategories}</p>
+                        <span className="stat-label">Product Groups</span>
+                    </div>
+                </div>
+                )}
+
+                {hasPermission('canViewWarehouses') && (
+                <div className="stat-card warehouse-stat">
+                    <div className="stat-icon">🏢</div>
+                    <div className="stat-content">
+                        <h3>Warehouses</h3>
+                        <p className="stat-number">{stats.totalWarehouses}</p>
+                        <span className="stat-label">Storage Units</span>
+                    </div>
+                </div>
+                )}
             </div>
 
             {/* Charts Section */}
+            {hasPermission('canViewOrders') && (
             <div className="row my-4">
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border">
@@ -397,7 +468,9 @@ function Supervisor(props) {
                     </div>
                 </div>
             </div>
+            )}
 
+            {hasPermission('canViewProducts') && (
             <div className="row my-4">
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border">
@@ -415,35 +488,102 @@ function Supervisor(props) {
                     </div>
                 </div>
             </div>
+            )}
 
             {/* Action Cards */}
             <div className="action-cards">
+                {hasPermission('canViewEmployees') && (
                 <div className="action-card" onClick={handleViewTeam}>
                     <h3>👥 Manage Team</h3>
                     <p>View and manage your direct reports</p>
                     <button className="action-btn">View Team</button>
                 </div>
+                )}
 
+                {hasPermission('canViewProducts') && (
                 <div className="action-card" onClick={handleManageProducts}>
                     <h3>📦 Products</h3>
                     <p>Monitor team products and inventory</p>
                     <button className="action-btn">Manage Products</button>
                 </div>
+                )}
 
+                {hasPermission('canViewOrders') && (
                 <div className="action-card" onClick={handleViewOrders}>
                     <h3>📋 Orders</h3>
                     <p>Track team orders and delivery status</p>
                     <button className="action-btn">View Orders</button>
                 </div>
+                )}
 
-                <div className="action-card" onClick={() => navigate('/notifications')}>
+                {hasPermission('canViewNotifications') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/notifications')}>
                     <h3>🔔 Notifications</h3>
                     <p>Stay updated with team activities</p>
                     <button className="action-btn">View Notifications</button>
                 </div>
+                )}
+
+                {hasPermission('canViewCategories') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/category')}>
+                    <h3>🏷️ Categories</h3>
+                    <p>Organize and manage product categories</p>
+                    <button className="action-btn">Manage Categories</button>
+                </div>
+                )}
+
+                {hasPermission('canViewWarehouses') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/warehouses')}>
+                    <h3>🏢 Warehouses</h3>
+                    <p>View warehouse information</p>
+                    <button className="action-btn">View Warehouses</button>
+                </div>
+                )}
             </div>
 
+            {/* Categories Overview */}
+            {hasPermission('canViewCategories') && (
+            <div className="dashboard-section">
+                <h2>Categories Overview</h2>
+                {categories.length > 0 ? (
+                    <div className="row g-3">
+                        {categories.slice(0, 6).map((cat, index) => (
+                            <div key={cat._id || index} className="col-md-4">
+                                <div className="p-3 border rounded-3 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard/category')}>
+                                    <h5 className="mb-1">🏷️ {cat.cName}</h5>
+                                    {cat.cDescription && <p className="text-muted mb-0 small">{cat.cDescription}</p>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="empty-state">No categories defined yet</p>
+                )}
+            </div>
+            )}
+
+            {/* Warehouses Overview */}
+            {hasPermission('canViewWarehouses') && (
+            <div className="dashboard-section">
+                <h2>Warehouses</h2>
+                {warehouses.length > 0 ? (
+                    <div className="warehouses-list">
+                        {warehouses.slice(0, 5).map(warehouse => (
+                            <div key={warehouse._id} className="warehouse-item">
+                                <h4>{warehouse.wName}</h4>
+                                <p>Manager: {warehouse.wManager}</p>
+                                <p>Location: {warehouse.city}, {warehouse.state}</p>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="empty-state">No warehouses configured</p>
+                )}
+            </div>
+            )}
+
             {/* Team Overview */}
+            {hasPermission('canViewEmployees') && (
             <div className="dashboard-section">
                 <h2>Team Overview</h2>
                 {subordinates.length > 0 ? (
@@ -462,8 +602,10 @@ function Supervisor(props) {
                     <p className="empty-state">No team members yet</p>
                 )}
             </div>
+            )}
 
             {/* Recent Orders */}
+            {hasPermission('canViewOrders') && (
             <div className="dashboard-section">
                 <h2>Recent Orders</h2>
                 {orders.length > 0 ? (
@@ -471,12 +613,12 @@ function Supervisor(props) {
                         {orders.slice(0, 5).map(order => (
                             <div key={order._id} className="order-item">
                                 <div className="order-details">
-                                    <h4>{order.customerName}</h4>
-                                    <p>{order.productName}</p>
+                                    <h4>{order.cName || 'N/A'}</h4>
+                                    <p>{order.pName || (order.products && order.products.length > 0 ? order.products[0].productName : 'N/A')}</p>
                                 </div>
                                 <div className="order-status">
-                                    <span className={`status-badge ${order.deliveryStatus}`}>
-                                        {order.deliveryStatus}
+                                    <span className={`status-badge ${order.dStatus || ''}`}>
+                                        {order.dStatus || 'N/A'}
                                     </span>
                                 </div>
                             </div>
@@ -486,6 +628,7 @@ function Supervisor(props) {
                     <p className="empty-state">No orders yet</p>
                 )}
             </div>
+            )}
         </div>
     );
 }

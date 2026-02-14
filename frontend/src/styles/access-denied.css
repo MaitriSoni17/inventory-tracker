@@ -1,0 +1,106 @@
+/* Access Denied Page Styles */
+
+.access-denied-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 65vh;
+    padding: 2rem;
+}
+
+.access-denied-card {
+    text-align: center;
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 3rem 2.5rem;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--border-color, #E5E7EB);
+}
+
+.access-denied-icon {
+    font-size: 4rem;
+    color: var(--warning-color, #F59E0B);
+    margin-bottom: 1.25rem;
+    line-height: 1;
+}
+
+.access-denied-icon i {
+    display: inline-block;
+    animation: access-denied-pulse 2s ease-in-out infinite;
+}
+
+@keyframes access-denied-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.08); opacity: 0.85; }
+}
+
+.access-denied-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1F2937;
+    margin-bottom: 0.75rem;
+}
+
+.access-denied-message {
+    font-size: 1rem;
+    color: #4B5563;
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.access-denied-hint {
+    font-size: 0.875rem;
+    color: #9CA3AF;
+    margin-bottom: 1.75rem;
+    line-height: 1.5;
+}
+
+.access-denied-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.access-denied-actions .btn {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.access-denied-actions .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+    .access-denied-card {
+        padding: 2rem 1.5rem;
+    }
+
+    .access-denied-icon {
+        font-size: 3rem;
+    }
+
+    .access-denied-title {
+        font-size: 1.3rem;
+    }
+
+    .access-denied-actions {
+        flex-direction: column;
+    }
+
+    .access-denied-actions .btn {
+        width: 100%;
+    }
+
+    .access-denied-actions .ms-2 {
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+    }
+}

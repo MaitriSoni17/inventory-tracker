@@ -30,15 +30,18 @@ ChartJS.register(
 );
 function Employee(props) {
     const navigate = useNavigate();
-    const { userDetails, hasPermission } = useRole();
+    const { userDetails, hasPermission, loading: roleLoading, permissions } = useRole();
     const salesRef = useRef(null);
     const stockRef = useRef(null);
     const salesChartInstance = useRef(null);
     const stockChartInstance = useRef(null);
+    const chartTimerRef = useRef(null);
 
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [employees, setEmployees] = useState([]);
+    const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [ordersView, setOrdersView] = useState('monthly');
     const [selectedProduct, setSelectedProduct] = useState(null);
@@ -48,11 +51,16 @@ function Employee(props) {
         totalProducts: 0,
         totalOrders: 0,
         totalCategories: 0,
+        totalEmployees: 0,
+        totalWarehouses: 0,
         lowStockItems: 0
     });
 
-    // Fetch all data on mount
-    useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
+    // Fetch all data on mount — wait for permissions to be loaded first
+    useEffect(() => {
+        // Don't fetch until role/permissions are fully loaded
+        if (roleLoading) return;
+
         // Extract warehouse from user details
         if (userDetails && userDetails.warehouse) {
             // warehouse can be an object {_id, wName, wAddress} or string
@@ -62,7 +70,8 @@ function Employee(props) {
             setEmployeeWarehouse(warehouseName);
         }
         fetchAllData();
-    }, [userDetails]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userDetails, roleLoading, permissions]);
 
     const fetchAllData = async () => {
         try {
@@ -74,6 +83,8 @@ function Employee(props) {
             let ordersData = [];
             let productsData = [];
             let categoriesData = [];
+            let employeesData = [];
+            let warehousesData = [];
 
             // Only fetch orders if user has permission
             if (hasPermission('canViewOrders')) {
@@ -105,14 +116,35 @@ function Employee(props) {
             }
             setCategories(categoriesData);
 
+            // Only fetch employees if user has permission
+            if (hasPermission('canViewEmployees')) {
+                const employeesRes = await fetch('http://localhost:5000/api/employee/getallemployees', {
+                    method: 'POST',
+                    headers
+                });
+                employeesData = employeesRes.ok ? await employeesRes.json() : [];
+            }
+            setEmployees(employeesData);
+
+            // Only fetch warehouses if user has permission
+            if (hasPermission('canViewWarehouses')) {
+                const warehousesRes = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers
+                });
+                warehousesData = warehousesRes.ok ? await warehousesRes.json() : [];
+            }
+            setWarehouses(warehousesData);
+
             // Calculate statistics
             const lowStockCount = productsData.filter(p => p.totalProducts <= 10).length;
-            const uniqueCategories = [...new Set(productsData.map(p => p.category))].length;
 
             setStats({
                 totalProducts: productsData.length,
                 totalOrders: ordersData.length,
-                totalCategories: uniqueCategories,
+                totalCategories: categoriesData.length,
+                totalEmployees: employeesData.length,
+                totalWarehouses: warehousesData.length,
                 lowStockItems: lowStockCount
             });
 
@@ -232,6 +264,12 @@ function Employee(props) {
     };
 
     const initCharts = useCallback(() => {
+        // Clear any pending chart creation timeout
+        if (chartTimerRef.current) {
+            clearTimeout(chartTimerRef.current);
+            chartTimerRef.current = null;
+        }
+
         // Destroy existing charts if they exist
         if (salesChartInstance.current) {
             salesChartInstance.current.destroy();
@@ -246,7 +284,7 @@ function Employee(props) {
         const topProducts = getTopProductsByOrders(products);
 
         // Use setTimeout to ensure DOM is fully rendered
-        setTimeout(() => {
+        chartTimerRef.current = setTimeout(() => {
             if (salesRef.current) {
                 try {
                     const ctx = salesRef.current.getContext('2d');
@@ -360,9 +398,23 @@ function Employee(props) {
 
     // Initialize or update charts when data changes
     useEffect(() => {
-        if (orders.length > 0 && products.length > 0) {
+        if (orders.length > 0 || products.length > 0) {
             initCharts();
         }
+        return () => {
+            if (chartTimerRef.current) {
+                clearTimeout(chartTimerRef.current);
+                chartTimerRef.current = null;
+            }
+            if (salesChartInstance.current) {
+                salesChartInstance.current.destroy();
+                salesChartInstance.current = null;
+            }
+            if (stockChartInstance.current) {
+                stockChartInstance.current.destroy();
+                stockChartInstance.current = null;
+            }
+        };
     }, [orders, products, ordersView, initCharts]);
 
     return (
@@ -408,8 +460,9 @@ function Employee(props) {
 
             {!loading && (
                 <>
-                    {/* Dashboard Cards */}
+                    {/* Dashboard Cards - dynamically shows all permitted stat cards */}
                     <div className="row g-3 my-2">
+                        {hasPermission('canViewProducts') && (
                         <div className="col-md-4">
                             <a href="/dashboard/products" className="text-decoration-none"> <div
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
@@ -422,7 +475,9 @@ function Employee(props) {
                                 </div>
                             </div></a>
                         </div>
+                        )}
 
+                        {hasPermission('canViewOrders') && (
                         <div className="col-md-4">
                             <a href="/dashboard/orders" className="text-decoration-none"><div
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
@@ -435,7 +490,9 @@ function Employee(props) {
                                 </div>
                             </div></a>
                         </div>
+                        )}
 
+                        {hasPermission('canViewCategories') && (
                         <div className="col-md-4">
                             <a href="/dashboard/category" className="text-decoration-none"><div
                                 className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
@@ -448,9 +505,41 @@ function Employee(props) {
                                 </div>
                             </div></a>
                         </div>
+                        )}
+
+                        {hasPermission('canViewEmployees') && (
+                        <div className="col-md-4">
+                            <a href="/dashboard/employee" className="text-decoration-none"><div
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                    <i className="bi bi-people-fill"></i>
+                                </div>
+                                <div className="mt-3">
+                                    <h3 className="fs-2">{stats.totalEmployees}</h3>
+                                    <p className="fs-5">Total Employees</p>
+                                </div>
+                            </div></a>
+                        </div>
+                        )}
+
+                        {hasPermission('canViewWarehouses') && (
+                        <div className="col-md-4">
+                            <a href="/dashboard/warehouses" className="text-decoration-none"><div
+                                className="p-3 bg-white shadow border border-3 border-primary d-flex justify-content-around align-items-center rounded-4 dashboard-card">
+                                <div className="dashboard-card-icon h-25 w-25 p-4 text-white shadow-lg fs-1 rounded-3">
+                                    <i className="bi bi-building"></i>
+                                </div>
+                                <div className="mt-3">
+                                    <h3 className="fs-2">{stats.totalWarehouses}</h3>
+                                    <p className="fs-5">Total Warehouses</p>
+                                </div>
+                            </div></a>
+                        </div>
+                        )}
                     </div>
 
                     {/* Charts */}
+                    {hasPermission('canViewOrders') && (
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
@@ -475,7 +564,9 @@ function Employee(props) {
                             </div>
                         </div>
                     </div>
+                    )}
 
+                    {hasPermission('canViewProducts') && (
                     <div className="row my-4 g-3">
                         <div className="col-md-5 me-5">
                             <div className="p-3 bg-white shadow rounded-4 border border-4">
@@ -489,6 +580,7 @@ function Employee(props) {
                                             <td>Low Stock Items</td>
                                             <td><span className="fw-bold">{stats.lowStockItems}</span></td>
                                         </tr>
+                                        {hasPermission('canViewCategories') && (
                                         <tr 
                                             style={{ cursor: 'pointer' }}
                                             onClick={() => navigate('/dashboard/category')}
@@ -496,6 +588,7 @@ function Employee(props) {
                                             <td>Items Categories</td>
                                             <td><span className="fw-bold">{stats.totalCategories}</span></td>
                                         </tr>
+                                        )}
                                         <tr 
                                             style={{ cursor: 'pointer' }}
                                             onClick={() => navigate('/dashboard/products')}
@@ -551,7 +644,9 @@ function Employee(props) {
                             </div>
                         </div>
                     </div>
+                    )}
 
+                    {hasPermission('canViewProducts') && (
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
@@ -571,6 +666,7 @@ function Employee(props) {
                             </div>
                         </div>
                     </div>
+                    )}
 
                     {/* Product Details Modal */}
                     {showProductModal && selectedProduct && (
@@ -626,6 +722,144 @@ function Employee(props) {
                                 </div>
                             </div>
                         </div>
+                    )}
+
+                    {/* Categories Overview - shown when user has categories permission but not products */}
+                    {hasPermission('canViewCategories') && !hasPermission('canViewProducts') && (
+                    <div className="row my-4">
+                        <div className="col-12">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <h3 className="fs-4 mb-3 d-flex justify-content-between align-items-baseline">
+                                    <span><i className="bi bi-boxes me-2"></i>Categories Overview</span>
+                                    <a href="/dashboard/category" className="text-decoration-none text-violet fs-6 fw-normal">View All</a>
+                                </h3>
+                                {categories.length === 0 ? (
+                                    <div className="alert alert-info" role="alert">
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        No categories found. Add categories to organize your inventory.
+                                    </div>
+                                ) : (
+                                    <div className="row g-3">
+                                        {categories.slice(0, 6).map((cat, index) => (
+                                            <div key={cat._id || index} className="col-md-4">
+                                                <div className="p-3 border rounded-3 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard/category')}>
+                                                    <h5 className="mb-1"><i className="bi bi-tag-fill me-2 text-primary"></i>{cat.cName}</h5>
+                                                    {cat.cDescription && <p className="text-muted mb-0 small">{cat.cDescription}</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    )}
+
+                    {/* Employees Overview - shown when user has employees permission */}
+                    {hasPermission('canViewEmployees') && (
+                    <div className="row my-4">
+                        <div className="col-12">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <h3 className="fs-4 mb-3 d-flex justify-content-between align-items-baseline">
+                                    <span><i className="bi bi-people-fill me-2"></i>Team Overview</span>
+                                    <a href="/dashboard/employee" className="text-decoration-none text-violet fs-6 fw-normal">View All</a>
+                                </h3>
+                                {employees.length === 0 ? (
+                                    <p className="text-muted">No team members found.</p>
+                                ) : (
+                                    <table className="table table-borderless align-middle mb-0">
+                                        <thead className="text-secondary">
+                                            <tr>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">Email</th>
+                                                <th scope="col">Role</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {employees.slice(0, 5).map((emp, index) => (
+                                                <tr key={emp._id || index}>
+                                                    <td>{emp.fname} {emp.lname}</td>
+                                                    <td>{emp.email}</td>
+                                                    <td><span className="badge bg-primary text-capitalize">{emp.role}</span></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    )}
+
+                    {/* Warehouses Overview - shown when user has warehouses permission */}
+                    {hasPermission('canViewWarehouses') && (
+                    <div className="row my-4">
+                        <div className="col-12">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <h3 className="fs-4 mb-3 d-flex justify-content-between align-items-baseline">
+                                    <span><i className="bi bi-building me-2"></i>Warehouses</span>
+                                    <a href="/dashboard/warehouses" className="text-decoration-none text-violet fs-6 fw-normal">View All</a>
+                                </h3>
+                                {warehouses.length === 0 ? (
+                                    <p className="text-muted">No warehouses configured.</p>
+                                ) : (
+                                    <div className="row g-3">
+                                        {warehouses.slice(0, 4).map((warehouse, index) => (
+                                            <div key={warehouse._id || index} className="col-md-6">
+                                                <div className="p-3 border rounded-3 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard/warehouses')}>
+                                                    <h5 className="mb-1"><i className="bi bi-building me-2 text-primary"></i>{warehouse.wName}</h5>
+                                                    {warehouse.wManager && <p className="text-muted mb-0 small">Manager: {warehouse.wManager}</p>}
+                                                    {warehouse.city && <p className="text-muted mb-0 small">Location: {warehouse.city}{warehouse.state ? `, ${warehouse.state}` : ''}</p>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    )}
+
+                    {/* Recent Orders - shown when user has orders permission but as a supplementary section */}
+                    {hasPermission('canViewOrders') && (
+                    <div className="row my-4">
+                        <div className="col-12">
+                            <div className="p-4 bg-white shadow rounded-4 border border-4">
+                                <h3 className="fs-4 mb-3 d-flex justify-content-between align-items-baseline">
+                                    <span><i className="bi bi-clock-history me-2"></i>Recent Orders</span>
+                                    <a href="/dashboard/orders" className="text-decoration-none text-violet fs-6 fw-normal">View All</a>
+                                </h3>
+                                {orders.length === 0 ? (
+                                    <p className="text-muted">No orders found.</p>
+                                ) : (
+                                    <table className="table table-borderless align-middle mb-0">
+                                        <thead className="text-secondary">
+                                            <tr>
+                                                <th scope="col">Customer</th>
+                                                <th scope="col">Product</th>
+                                                <th scope="col">Status</th>
+                                                <th scope="col">Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {orders.slice(0, 5).map((order, index) => (
+                                                <tr key={order._id || index}>
+                                                    <td>{order.cName || 'N/A'}</td>
+                                                    <td>{order.pName || (order.products && order.products.length > 0 ? order.products[0].productName : 'N/A')}</td>
+                                                    <td>
+                                                        <span className={`badge ${order.dStatus === 'Delivered' ? 'bg-success' : order.dStatus === 'Pending' ? 'bg-warning text-dark' : 'bg-info'}`}>
+                                                            {order.dStatus || 'N/A'}
+                                                        </span>
+                                                    </td>
+                                                    <td>{order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                     )}
                 </>
             )}

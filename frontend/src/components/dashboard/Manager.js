@@ -31,13 +31,14 @@ ChartJS.register(
 
 function Manager(props) {
     const navigate = useNavigate();
-    const { userDetails, hasPermission } = useRole();
+    const { userDetails, hasPermission, loading: roleLoading, permissions } = useRole();
     
     // Chart refs
     const ordersChartRef = useRef(null);
     const stockChartRef = useRef(null);
     const ordersChartInstance = useRef(null);
     const stockChartInstance = useRef(null);
+    const chartTimerRef = useRef(null);
 
     const [orders, setOrders] = useState([]);
     const [products, setProducts] = useState([]);
@@ -53,6 +54,7 @@ function Manager(props) {
         totalOrders: 0,
         totalProducts: 0,
         totalWarehouses: 0,
+        totalCategories: 0,
         lowStockItems: 0
     });
 
@@ -129,13 +131,19 @@ function Manager(props) {
 
     // Initialize charts
     const initCharts = useCallback(() => {
-        if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); }
-        if (stockChartInstance.current) { stockChartInstance.current.destroy(); }
+        // Clear any pending chart creation timeout
+        if (chartTimerRef.current) {
+            clearTimeout(chartTimerRef.current);
+            chartTimerRef.current = null;
+        }
+
+        if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); ordersChartInstance.current = null; }
+        if (stockChartInstance.current) { stockChartInstance.current.destroy(); stockChartInstance.current = null; }
 
         const ordersChartData = getOrdersData(orders);
         const topProducts = getTopProductsByStock(products);
 
-        setTimeout(() => {
+        chartTimerRef.current = setTimeout(() => {
             if (ordersChartRef.current && orders.length > 0) {
                 try {
                     const ctx = ordersChartRef.current.getContext('2d');
@@ -207,13 +215,17 @@ function Manager(props) {
             initCharts();
         }
         return () => {
-            if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); }
-            if (stockChartInstance.current) { stockChartInstance.current.destroy(); }
+            if (chartTimerRef.current) { clearTimeout(chartTimerRef.current); chartTimerRef.current = null; }
+            if (ordersChartInstance.current) { ordersChartInstance.current.destroy(); ordersChartInstance.current = null; }
+            if (stockChartInstance.current) { stockChartInstance.current.destroy(); stockChartInstance.current = null; }
         };
     }, [loading, orders, products, ordersView, initCharts]);
 
     // Fetch all data on mount
     useEffect(() => {
+        // Don't fetch until role/permissions are fully loaded
+        if (roleLoading) return;
+
         // Extract warehouse from user details
         if (userDetails && userDetails.warehouse) {
             // warehouse can be an object {_id, wName, wAddress} or string
@@ -223,7 +235,8 @@ function Manager(props) {
             setManagerWarehouse(warehouseName);
         }
         fetchAllData();
-    }, [userDetails]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userDetails, roleLoading, permissions]);
 
     const fetchAllData = async () => {
         try {
@@ -296,6 +309,7 @@ function Manager(props) {
                 totalOrders: ordersData.length,
                 totalProducts: productsData.length,
                 totalWarehouses: warehousesData.length,
+                totalCategories: categoriesData.length,
                 lowStockItems: lowStockCount
             });
 
@@ -346,6 +360,7 @@ function Manager(props) {
 
             {/* Key Statistics */}
             <div className="stats-grid">
+                {hasPermission('canViewEmployees') && (
                 <div className="stat-card employees-stat">
                     <div className="stat-icon">👥</div>
                     <div className="stat-content">
@@ -354,7 +369,9 @@ function Manager(props) {
                         <span className="stat-label">Team Members</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewOrders') && (
                 <div className="stat-card orders-stat">
                     <div className="stat-icon">📦</div>
                     <div className="stat-content">
@@ -363,7 +380,9 @@ function Manager(props) {
                         <span className="stat-label">Total Orders</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewProducts') && (
                 <div className="stat-card products-stat">
                     <div className="stat-icon">📊</div>
                     <div className="stat-content">
@@ -372,7 +391,9 @@ function Manager(props) {
                         <span className="stat-label">In Inventory</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewWarehouses') && (
                 <div className="stat-card warehouse-stat">
                     <div className="stat-icon">🏢</div>
                     <div className="stat-content">
@@ -381,7 +402,20 @@ function Manager(props) {
                         <span className="stat-label">Storage Units</span>
                     </div>
                 </div>
+                )}
 
+                {hasPermission('canViewCategories') && (
+                <div className="stat-card" style={{ borderLeft: '4px solid #17a2b8' }}>
+                    <div className="stat-icon">🏷️</div>
+                    <div className="stat-content">
+                        <h3>Categories</h3>
+                        <p className="stat-number">{stats.totalCategories}</p>
+                        <span className="stat-label">Product Groups</span>
+                    </div>
+                </div>
+                )}
+
+                {hasPermission('canViewProducts') && (
                 <div className="stat-card alert-stat">
                     <div className="stat-icon">⚠️</div>
                     <div className="stat-content">
@@ -390,9 +424,11 @@ function Manager(props) {
                         <span className="stat-label">Items</span>
                     </div>
                 </div>
+                )}
             </div>
 
             {/* Charts Section */}
+            {hasPermission('canViewOrders') && (
             <div className="row my-4">
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border">
@@ -421,7 +457,9 @@ function Manager(props) {
                     </div>
                 </div>
             </div>
+            )}
 
+            {hasPermission('canViewProducts') && (
             <div className="row my-4">
                 <div className="col-12">
                     <div className="p-4 bg-white shadow rounded-4 border">
@@ -439,47 +477,82 @@ function Manager(props) {
                     </div>
                 </div>
             </div>
+            )}
 
             {/* Action Cards */}
             <div className="action-cards">
-                <div className="action-card" onClick={() => navigate('/employee')}>
+                {hasPermission('canViewEmployees') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/employee')}>
                     <h3>👥 Manage Employees</h3>
                     <p>Create, update, and manage team members</p>
                     <button className="action-btn">Go to Employees</button>
                 </div>
+                )}
 
-                <div className="action-card" onClick={() => navigate('/products')}>
+                {hasPermission('canViewProducts') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/products')}>
                     <h3>📦 Manage Products</h3>
                     <p>Create and manage product inventory</p>
                     <button className="action-btn">Go to Products</button>
                 </div>
+                )}
 
-                <div className="action-card" onClick={() => navigate('/warehouse')}>
+                {hasPermission('canViewWarehouses') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/warehouses')}>
                     <h3>🏢 Warehouse Management</h3>
                     <p>Manage warehouse operations</p>
                     <button className="action-btn">Go to Warehouses</button>
                 </div>
+                )}
 
-                <div className="action-card" onClick={() => navigate('/customerorders')}>
+                {hasPermission('canViewOrders') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/orders')}>
                     <h3>📋 Orders</h3>
                     <p>Track and manage customer orders</p>
                     <button className="action-btn">View Orders</button>
                 </div>
+                )}
 
-                <div className="action-card" onClick={() => navigate('/category')}>
+                {hasPermission('canViewCategories') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/category')}>
                     <h3>🏷️ Categories</h3>
                     <p>Manage product categories</p>
                     <button className="action-btn">Manage Categories</button>
                 </div>
+                )}
 
-                <div className="action-card" onClick={() => navigate('/notifications')}>
+                {hasPermission('canViewNotifications') && (
+                <div className="action-card" onClick={() => navigate('/dashboard/notifications')}>
                     <h3>🔔 Notifications</h3>
                     <p>View system notifications</p>
                     <button className="action-btn">View Notifications</button>
                 </div>
+                )}
             </div>
 
+            {/* Categories Overview */}
+            {hasPermission('canViewCategories') && (
+            <div className="dashboard-section">
+                <h2>Categories Overview</h2>
+                {categories.length > 0 ? (
+                    <div className="row g-3">
+                        {categories.slice(0, 6).map((cat, index) => (
+                            <div key={cat._id || index} className="col-md-4">
+                                <div className="p-3 border rounded-3 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard/category')}>
+                                    <h5 className="mb-1">🏷️ {cat.cName}</h5>
+                                    {cat.cDescription && <p className="text-muted mb-0 small">{cat.cDescription}</p>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="empty-state">No categories defined yet</p>
+                )}
+            </div>
+            )}
+
             {/* Team Overview */}
+            {hasPermission('canViewEmployees') && (
             <div className="dashboard-section">
                 <h2>Team Overview</h2>
                 {employees.length > 0 ? (
@@ -498,8 +571,10 @@ function Manager(props) {
                     <p className="empty-state">No employees yet</p>
                 )}
             </div>
+            )}
 
             {/* Warehouse Overview */}
+            {hasPermission('canViewWarehouses') && (
             <div className="dashboard-section">
                 <h2>Warehouses</h2>
                 {warehouses.length > 0 ? (
@@ -516,8 +591,10 @@ function Manager(props) {
                     <p className="empty-state">No warehouses configured</p>
                 )}
             </div>
+            )}
 
             {/* Recent Orders */}
+            {hasPermission('canViewOrders') && (
             <div className="dashboard-section">
                 <h2>Recent Orders</h2>
                 {orders.length > 0 ? (
@@ -525,12 +602,12 @@ function Manager(props) {
                         {orders.slice(0, 5).map(order => (
                             <div key={order._id} className="order-item">
                                 <div className="order-details">
-                                    <h4>{order.customerName}</h4>
-                                    <p>{order.productName}</p>
+                                    <h4>{order.cName || 'N/A'}</h4>
+                                    <p>{order.pName || (order.products && order.products.length > 0 ? order.products[0].productName : 'N/A')}</p>
                                 </div>
                                 <div className="order-status">
-                                    <span className={`status-badge ${order.deliveryStatus}`}>
-                                        {order.deliveryStatus}
+                                    <span className={`status-badge ${order.dStatus || ''}`}>
+                                        {order.dStatus || 'N/A'}
                                     </span>
                                 </div>
                             </div>
@@ -540,6 +617,7 @@ function Manager(props) {
                     <p className="empty-state">No orders yet</p>
                 )}
             </div>
+            )}
         </div>
     );
 }

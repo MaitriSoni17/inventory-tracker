@@ -68,8 +68,25 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
     const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc } = req.body;
 
     try {
+        // Normalize warehouse value - handle string, JSON-encoded array, or array
+        let normalizedWarehouse = [];
+        if (warehouse) {
+            if (Array.isArray(warehouse)) {
+                normalizedWarehouse = warehouse.flat().map(w => {
+                    try { const parsed = JSON.parse(w); return Array.isArray(parsed) ? parsed : [parsed]; } catch { return [w]; }
+                }).flat();
+            } else if (typeof warehouse === 'string') {
+                try {
+                    const parsed = JSON.parse(warehouse);
+                    normalizedWarehouse = Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                    normalizedWarehouse = [warehouse];
+                }
+            }
+        }
+
         let productData = {
-            name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc
+            name, category, price, totalProducts, warehouse: normalizedWarehouse, brand, mDate, eDate, desc
         };
 
         if (req.files && req.files.length > 0) {
@@ -170,83 +187,22 @@ router.post('/getproduct', fetchuser, async (req, res) => {
             // Business owner sees all products in their organization
             products = await Product.find({ businessowner: req.user._id });
         }
-        else if (req.role === 'manager') {
-            // Managers see products from their hired warehouse
+        else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
+            // Employees/managers/supervisors with canViewProducts see all products in their business
+            // The permission check above already ensures they have access
             try {
-                const manager = await Employee.findById(req.user._id).populate('warehouse');
+                const emp = await Employee.findById(req.user._id).populate('warehouse');
                 
-                if (manager && manager.warehouse) {
-                    // Get all products in the warehouse
-                    // warehouse field in products is an array of strings
-                    const warehouseId = manager.warehouse._id.toString();
-                    products = await Product.find({
-                        $or: [
-                            { warehouse: warehouseId },  // Direct match
-                            { warehouse: { $in: [warehouseId] } }  // In array
-                        ]
-                    });
+                // Always scope by business owner for data isolation
+                const businessOwnerId = req.businessowner || (emp && emp.businessowner);
+                
+                if (businessOwnerId) {
+                    products = await Product.find({ businessowner: businessOwnerId });
                 } else {
-                    // If no warehouse assigned, show no products
                     products = [];
                 }
             } catch (err) {
-                // If employee lookup fails, return empty
-                console.error('Manager warehouse lookup error:', err);
-                products = [];
-            }
-        }
-        else if (req.role === 'supervisor') {
-            // Supervisors see products from their hired warehouse
-            // Also include products created by their direct reports in that warehouse
-            try {
-                const supervisor = await Employee.findById(req.user._id).populate('warehouse');
-                const directReports = await Employee.find({ reportingTo: req.user._id }).select('_id');
-                const directReportIds = directReports.map(d => d._id);
-                
-                if (supervisor && supervisor.warehouse) {
-                    const warehouseId = supervisor.warehouse._id.toString();
-                    products = await Product.find({
-                        $or: [
-                            { 
-                                $or: [
-                                    { warehouse: warehouseId },
-                                    { warehouse: { $in: [warehouseId] } }
-                                ]
-                            }, // Products in warehouse
-                            { employee: { $in: directReportIds } } // Direct reports' products
-                        ]
-                    });
-                } else {
-                    // If no warehouse assigned, show only direct reports' products
-                    products = await Product.find({
-                        employee: { $in: directReportIds }
-                    });
-                }
-            } catch (err) {
-                console.error('Supervisor warehouse lookup error:', err);
-                products = [];
-            }
-        }
-        else if (req.role === 'employee') {
-            // Employees see products from their hired warehouse
-            try {
-                const employee = await Employee.findById(req.user._id).populate('warehouse');
-                
-                if (employee && employee.warehouse) {
-                    // Get all products in the warehouse
-                    const warehouseId = employee.warehouse._id.toString();
-                    products = await Product.find({
-                        $or: [
-                            { warehouse: warehouseId },  // Direct match
-                            { warehouse: { $in: [warehouseId] } }  // In array
-                        ]
-                    });
-                } else {
-                    // If no warehouse assigned, show no products
-                    products = [];
-                }
-            } catch (err) {
-                console.error('Employee warehouse lookup error:', err);
+                console.error('Employee product lookup error:', err);
                 products = [];
             }
         }

@@ -43,6 +43,8 @@ import PermissionManager from './components/dashboard/BusinessOwner/PermissionMa
 import Reports from './components/common/Reports';
 import SalaryManagement from './components/dashboard/BusinessOwner/SalaryManagement';
 import { RoleProvider } from './context/RoleContext';
+import { PermissionRouteGuard, RoleRouteGuard } from './components/auth/RouteGuard';
+import AccessDenied from './components/common/AccessDenied';
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -79,37 +81,161 @@ function App() {
                     <Supplier showAlert={showAlert} />
               } />
 
-              {/* Supplier Orders */}
-              <Route path="suppliersorders" element={<SupplierOrders showAlert={showAlert} />} />
-              <Route path="supplierorderdetail/:id" element={<SupplierOrderDetail showAlert={showAlert} />} />
+              {/* Supplier Orders (Supplier view) */}
+              <Route path="suppliersorders" element={
+                <RoleRouteGuard roles="supplier">
+                  <SupplierOrders showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              <Route path="supplierorderdetail/:id" element={
+                <RoleRouteGuard roles="supplier">
+                  <SupplierOrderDetail showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
 
-              {/* Other nested pages */}
-              <Route path="employee" element={<Employees showAlert={showAlert} />} />
-              <Route path="createemployee" element={<CreateEmployee showAlert={showAlert} />} />
-              <Route path="editemployee/:id" element={<EditEmployee showAlert={showAlert} />} />
-              <Route path="suppliers" element={<Suppliers showAlert={showAlert} />} />
-              <Route path="createsupplier" element={<CreateSupplier showAlert={showAlert} />} />
-              <Route path="editsupplier/:id" element={<EditSupplier showAlert={showAlert} />} />
-              <Route path="supplierordes/:id" element={<SupplierOrder showAlert={showAlert} />} />
-              <Route path="addsupplierorder/:id" element={<AddSupplierOrder showAlert={showAlert} />} />
-              <Route path="editsupplierorder/:id" element={<EditSupplierOrder showAlert={showAlert} />} />
-              <Route path="category" element={<Category showAlert={showAlert} />} />
-              <Route path="products" element={<Products showAlert={showAlert} />} />
-              <Route path="addproduct" element={<AddProduct showAlert={showAlert} />} />
-              <Route path="editproduct/:id" element={<EditProduct showAlert={showAlert} />} />
-              <Route path="orders" element={<Orders showAlert={showAlert} />} />
-              <Route path="addorder" element={<AddOrder showAlert={showAlert} />} />
-              <Route path="editorder/:id" element={<EditOrder showAlert={showAlert} />} />
-              <Route path="warehouses" element={<Warehouses showAlert={showAlert} />} />
-              <Route path="settings" element={<Settings showAlert={showAlert} />} />
-              <Route path="notifications" element={<NotificationsPage showAlert={showAlert} />} />
-              <Route path="messages" element={<Messaging />} />
-              <Route path="permissions" element={<PermissionManager showAlert={showAlert} />} />
-              <Route path="reports" element={<Reports showAlert={showAlert} />} />
-              <Route path="salary" element={<SalaryManagement showAlert={showAlert} />} />
+              {/* Employee pages - requires canViewEmployees */}
+              <Route path="employee" element={
+                <PermissionRouteGuard permission="canViewEmployees">
+                  <Employees showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="createemployee" element={
+                <PermissionRouteGuard permission="canManageEmployees">
+                  <CreateEmployee showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="editemployee/:id" element={
+                <PermissionRouteGuard permission="canViewEmployees">
+                  <EditEmployee showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Supplier management - Business Owner only */}
+              <Route path="suppliers" element={
+                <RoleRouteGuard roles="businessowner">
+                  <Suppliers showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              <Route path="createsupplier" element={
+                <RoleRouteGuard roles="businessowner">
+                  <CreateSupplier showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              <Route path="editsupplier/:id" element={
+                <RoleRouteGuard roles="businessowner">
+                  <EditSupplier showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              <Route path="supplierordes/:id" element={
+                <RoleRouteGuard roles="businessowner">
+                  <SupplierOrder showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              <Route path="addsupplierorder/:id" element={
+                <RoleRouteGuard roles="businessowner">
+                  <AddSupplierOrder showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              <Route path="editsupplierorder/:id" element={
+                <RoleRouteGuard roles="businessowner">
+                  <EditSupplierOrder showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              {/* Categories - requires canViewCategories */}
+              <Route path="category" element={
+                <PermissionRouteGuard permission="canViewCategories">
+                  <Category showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Products - requires canViewProducts */}
+              <Route path="products" element={
+                <PermissionRouteGuard permission="canViewProducts">
+                  <Products showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="addproduct" element={
+                <PermissionRouteGuard permission="canCreateProducts">
+                  <AddProduct showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="editproduct/:id" element={
+                <PermissionRouteGuard permission="canEditProducts">
+                  <EditProduct showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Orders - requires canViewOrders */}
+              <Route path="orders" element={
+                <PermissionRouteGuard permission="canViewOrders">
+                  <Orders showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="addorder" element={
+                <PermissionRouteGuard permission="canCreateOrders">
+                  <AddOrder showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="editorder/:id" element={
+                <PermissionRouteGuard permission="canEditOrders">
+                  <EditOrder showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Warehouses - requires canViewWarehouses */}
+              <Route path="warehouses" element={
+                <PermissionRouteGuard permission="canViewWarehouses">
+                  <Warehouses showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Settings - Business Owner only */}
+              <Route path="settings" element={
+                <RoleRouteGuard roles="businessowner">
+                  <Settings showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              {/* Notifications - requires canViewNotifications */}
+              <Route path="notifications" element={
+                <PermissionRouteGuard permission="canViewNotifications">
+                  <NotificationsPage showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Messages - requires canViewMessages */}
+              <Route path="messages" element={
+                <PermissionRouteGuard permission="canViewMessages">
+                  <Messaging />
+                </PermissionRouteGuard>
+              } />
+              {/* Permissions - Business Owner only */}
+              <Route path="permissions" element={
+                <RoleRouteGuard roles="businessowner">
+                  <PermissionManager showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              {/* Reports - requires canExportReports */}
+              <Route path="reports" element={
+                <PermissionRouteGuard permission="canExportReports">
+                  <Reports showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              {/* Salary Management - Business Owner only */}
+              <Route path="salary" element={
+                <RoleRouteGuard roles="businessowner">
+                  <SalaryManagement showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
               
-              <Route path="empsettings" element={<EmpSettings showAlert={showAlert} />} />
-              <Route path="suppliersettings" element={<SupplierSettings showAlert={showAlert} />} />
+              {/* Employee Settings - Employees only */}
+              <Route path="empsettings" element={
+                <RoleRouteGuard roles={['employee', 'supervisor', 'manager']}>
+                  <EmpSettings showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+              {/* Supplier Settings - Supplier only */}
+              <Route path="suppliersettings" element={
+                <RoleRouteGuard roles="supplier">
+                  <SupplierSettings showAlert={showAlert} />
+                </RoleRouteGuard>
+              } />
+
+              {/* Catch-all for unmatched dashboard routes */}
+              <Route path="*" element={<AccessDenied message="The page you're looking for doesn't exist or you don't have permission to access it." />} />
             </Route>
 
           </Routes>

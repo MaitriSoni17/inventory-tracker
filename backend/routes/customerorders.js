@@ -124,18 +124,17 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
                 .populate('warehouse')
                 .populate('products.product');
         } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
-            // Warehouse staff sees only orders assigned to their warehouse
-            const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
+            // Warehouse staff sees orders in their business
+            const staffMember = await require('../models/Employee').findById(req.user._id);
+            const businessOwnerId = req.businessowner || (staffMember && staffMember.businessowner);
             
-            if (staffMember && staffMember.warehouse) {
-                // Get orders assigned to their warehouse
+            if (businessOwnerId) {
                 customerorder = await CustomerOrders.find({
-                    warehouse: staffMember.warehouse._id
+                    businessowner: businessOwnerId
                 })
                     .populate('warehouse')
                     .populate('products.product');
             } else {
-                // If no warehouse assigned, show no orders
                 customerorder = [];
             }
         } else {
