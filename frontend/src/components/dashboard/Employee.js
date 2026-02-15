@@ -70,6 +70,14 @@ function Employee(props) {
             setEmployeeWarehouse(warehouseName);
         }
         fetchAllData();
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchAllData();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userDetails, roleLoading, permissions]);
 

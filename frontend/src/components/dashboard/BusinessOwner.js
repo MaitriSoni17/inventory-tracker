@@ -57,9 +57,17 @@ const BusinessOwner = (props) => {
         totalWarehouses: 0
     });
 
-    // Fetch all data on component mount
+    // Fetch all data on component mount and refresh when tab becomes visible
     useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         fetchAllData();
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                fetchAllData();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, []);
 
     // Initialize or update charts when data changes
