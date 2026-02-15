@@ -338,7 +338,7 @@ router.delete('/deleteaccount', fetchuser, async (req, res) => {
 router.get('/permissions/list', require('../middleware/fetchbusinessowner'), async (req, res) => {
     try {
         const suppliers = await Supplier.find({ businessowner: req.businessowner._id })
-            .select('_id fname lname email companyName canExportReports isActive');
+            .select('_id fname lname email companyName canExportReports canMessage isActive');
         
         res.json({
             success: true,
@@ -349,6 +349,7 @@ router.get('/permissions/list', require('../middleware/fetchbusinessowner'), asy
                 email: s.email,
                 companyName: s.companyName,
                 canExportReports: s.canExportReports || false,
+                canMessage: s.canMessage || false,
                 isActive: s.isActive
             }))
         });
@@ -362,7 +363,7 @@ router.get('/permissions/list', require('../middleware/fetchbusinessowner'), asy
 router.put('/permissions/update/:supplierId', require('../middleware/fetchbusinessowner'), async (req, res) => {
     try {
         const { supplierId } = req.params;
-        const { canExportReports } = req.body;
+        const { canExportReports, canMessage } = req.body;
 
         const supplier = await Supplier.findById(supplierId);
         if (!supplier) {
@@ -374,17 +375,22 @@ router.put('/permissions/update/:supplierId', require('../middleware/fetchbusine
             return res.status(403).json({ error: "Access denied" });
         }
 
-        supplier.canExportReports = canExportReports;
+        if (canExportReports !== undefined) supplier.canExportReports = canExportReports;
+        if (canMessage !== undefined) supplier.canMessage = canMessage;
         await supplier.save();
+
+        const updatedField = canMessage !== undefined ? 'Messaging' : 'Export reports';
+        const updatedValue = canMessage !== undefined ? canMessage : canExportReports;
 
         res.json({
             success: true,
-            message: `Export reports permission ${canExportReports ? 'enabled' : 'disabled'} for ${supplier.fname} ${supplier.lname || ''}`,
+            message: `${updatedField} permission ${updatedValue ? 'enabled' : 'disabled'} for ${supplier.fname} ${supplier.lname || ''}`,
             supplier: {
                 _id: supplier._id,
                 fname: supplier.fname,
                 lname: supplier.lname,
-                canExportReports: supplier.canExportReports
+                canExportReports: supplier.canExportReports,
+                canMessage: supplier.canMessage
             }
         });
     } catch (err) {
@@ -396,11 +402,15 @@ router.put('/permissions/update/:supplierId', require('../middleware/fetchbusine
 // Bulk update supplier permissions (Business Owner only)
 router.put('/permissions/bulk-update', require('../middleware/fetchbusinessowner'), async (req, res) => {
     try {
-        const { supplierIds, canExportReports } = req.body;
+        const { supplierIds, canExportReports, canMessage } = req.body;
 
         if (!Array.isArray(supplierIds) || supplierIds.length === 0) {
             return res.status(400).json({ error: "Please provide an array of supplier IDs" });
         }
+
+        const updateFields = {};
+        if (canExportReports !== undefined) updateFields.canExportReports = canExportReports;
+        if (canMessage !== undefined) updateFields.canMessage = canMessage;
 
         // Update all suppliers that belong to this business owner
         const result = await Supplier.updateMany(
@@ -408,12 +418,15 @@ router.put('/permissions/bulk-update', require('../middleware/fetchbusinessowner
                 _id: { $in: supplierIds },
                 businessowner: req.businessowner._id
             },
-            { $set: { canExportReports: canExportReports } }
+            { $set: updateFields }
         );
+
+        const updatedField = canMessage !== undefined ? 'Messaging' : 'Export reports';
+        const updatedValue = canMessage !== undefined ? canMessage : canExportReports;
 
         res.json({
             success: true,
-            message: `Export reports permission ${canExportReports ? 'enabled' : 'disabled'} for ${result.modifiedCount} supplier(s)`,
+            message: `${updatedField} permission ${updatedValue ? 'enabled' : 'disabled'} for ${result.modifiedCount} supplier(s)`,
             modifiedCount: result.modifiedCount
         });
     } catch (err) {

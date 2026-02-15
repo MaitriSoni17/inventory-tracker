@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { generateIndividualSupplierOrderReportPDF } from '../../../utils/individualReportHelper';
 import '../../../styles/dashboard-elegant.css';
 
 const SupplierOrders = (props) => {
@@ -12,6 +13,7 @@ const SupplierOrders = (props) => {
     const [loading, setLoading] = useState(true);
     const [canExportReports, setCanExportReports] = useState(false);
     const [exportLoading, setExportLoading] = useState(false);
+    const [supplierName, setSupplierName] = useState('');
 
     // Check export permission
     const checkExportPermission = useCallback(async () => {
@@ -65,10 +67,29 @@ const SupplierOrders = (props) => {
         }
     });
 
+    const fetchSupplierName = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/supplier/getsupplier', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setSupplierName(`${data.fname} ${data.lname || ''}`.trim());
+            }
+        } catch (error) {
+            // console.error('Error fetching supplier name:', error);
+        }
+    }, []);
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         fetchSupplierOrders();
         checkExportPermission();
+        fetchSupplierName();
     }, []);
 
     const formatDate = (dateString) => {
@@ -133,6 +154,24 @@ const SupplierOrders = (props) => {
 
         }
         return 'N/A';
+    };
+
+    const downloadIndividualOrderReport = async (e, order) => {
+        e.stopPropagation();
+        if (!canExportReports) {
+            props.showAlert?.('You do not have permission to export reports. Please contact your Business Owner to enable this feature.', 'warning');
+            return;
+        }
+        try {
+            const success = await generateIndividualSupplierOrderReportPDF(order, supplierName);
+            if (success) {
+                props.showAlert?.(`Report downloaded for Order ${order._id.slice(-6)}`, 'success');
+            } else {
+                props.showAlert?.('Failed to generate report', 'danger');
+            }
+        } catch (error) {
+            props.showAlert?.('Error downloading report: ' + error.message, 'danger');
+        }
     };
 
     const exportToExcel = async () => {
@@ -328,6 +367,7 @@ const SupplierOrders = (props) => {
                                     <th scope="col" className="py-2">Order Status</th>
                                     <th scope="col" className="py-2">Payment Status</th>
                                     <th scope="col" className="py-2">Business Owner</th>
+                                    {canExportReports && <th scope="col" className="py-2">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody>
@@ -351,6 +391,13 @@ const SupplierOrders = (props) => {
                                             </span>
                                         </td>
                                         <td>{getBusinessOwnerName(order.businessowner)}</td>
+                                        {canExportReports && (
+                                            <td>
+                                                <button className="btn btn-sm btn-success" onClick={(e) => downloadIndividualOrderReport(e, order)} title="Download Report">
+                                                    <i className="bi bi-download"></i>
+                                                </button>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

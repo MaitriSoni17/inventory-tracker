@@ -24,6 +24,8 @@ const Messaging = () => {
     const [editingContent, setEditingContent] = useState('');
     const [showMessageMenu, setShowMessageMenu] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [supplierCanMessage, setSupplierCanMessage] = useState(null); // null = loading, true/false = result
+    const [supplierBusinessOwner, setSupplierBusinessOwner] = useState(null);
     const messagesEndRef = useRef(null);
     const messageMenuRef = useRef(null);
     const token = localStorage.getItem('token');
@@ -45,6 +47,11 @@ const Messaging = () => {
                     setCurrentUserRole(data.role);
                     // Also store in localStorage as backup
                     localStorage.setItem('userId', data._id);
+
+                    // If supplier, check messaging permission
+                    if (data.role === 'supplier') {
+                        checkSupplierMessagePermission();
+                    }
                 }
             } catch (error) {
                 // console.error('Error fetching current user:', error);
@@ -60,6 +67,30 @@ const Messaging = () => {
             fetchCurrentUser();
         }
     }, [token]);
+
+    // Check supplier messaging permission
+    const checkSupplierMessagePermission = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/messages/supplier/check-permission', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': token
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setSupplierCanMessage(data.canMessage || false);
+                if (data.businessOwner) {
+                    setSupplierBusinessOwner(data.businessOwner);
+                }
+            } else {
+                setSupplierCanMessage(false);
+            }
+        } catch (error) {
+            setSupplierCanMessage(false);
+        }
+    };
 
     // Fetch conversations on mount and when permissions load
     useEffect(() => {
@@ -314,9 +345,9 @@ const Messaging = () => {
         }
     };
 
-    // Load employees/suppliers when selector is opened
+    // Load employees/suppliers when selector is opened (not for suppliers)
     useEffect(() => {
-        if (showEmployeeSelector) {
+        if (showEmployeeSelector && currentUserRole !== 'supplier') {
             if (employees.length === 0 && currentUserRole === 'businessowner') {
                 fetchEmployees();
             }
@@ -416,6 +447,25 @@ const Messaging = () => {
         );
     }
 
+    // Supplier without messaging permission
+    if (currentUserRole === 'supplier' && supplierCanMessage === false) {
+        return (
+            <div className="messaging-container">
+                <div className="messaging-header">
+                    <h1>
+                        <i className="bi bi-chat-dots me-2"></i>
+                        Messages
+                    </h1>
+                </div>
+                <div style={{ padding: '40px', textAlign: 'center' }}>
+                    <i className="bi bi-lock-fill" style={{ fontSize: '48px', color: '#ccc', display: 'block', marginBottom: '15px' }}></i>
+                    <h5 style={{ color: '#666' }}>Messaging Not Enabled</h5>
+                    <p style={{ color: '#888' }}>Your Business Owner has not enabled messaging for you. Please contact your Business Owner to request access.</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="messaging-container">
             <div className="messaging-header">
@@ -440,6 +490,17 @@ const Messaging = () => {
                             <button
                                 className="btn btn-primary btn-sm"
                                 onClick={() => {
+                                    // Suppliers can only message their business owner
+                                    if (currentUserRole === 'supplier') {
+                                        if (supplierBusinessOwner) {
+                                            setSelectedConversation({
+                                                userId: supplierBusinessOwner._id,
+                                                userRole: 'BusinessOwner',
+                                                userDetails: supplierBusinessOwner
+                                            });
+                                        }
+                                        return;
+                                    }
                                     if (showEmployeeSelector) {
                                         setShowEmployeeSelector(false);
                                     } else {
@@ -458,8 +519,8 @@ const Messaging = () => {
                             </button>
                         </div>
                         
-                        {/* User Type Selector - Tabs and Content */}
-                        {showEmployeeSelector && (
+                        {/* User Type Selector - Tabs and Content (hidden for suppliers) */}
+                        {showEmployeeSelector && currentUserRole !== 'supplier' && (
                             <div className="user-selector-section mb-2" style={{ backgroundColor: '#f9f9f9', borderRadius: '0.5rem', padding: '1rem', border: '1px solid #e0e0e0' }}>
                                 {/* Tabs */}
                                 <div className="user-type-tabs mb-3" style={{ display: 'flex', gap: '0', borderBottom: '2px solid #e0e0e0', marginBottom: '1rem' }}>

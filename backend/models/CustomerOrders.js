@@ -33,6 +33,8 @@ const CustomerOrders = new Schema({
     pAvail: { type: String },
     dStatus: { type: String },
     desc: { type: String },
+    isPending: { type: Boolean, default: false },
+    pendingReason: { type: String, default: '' },
 });
 
 module.exports = mongoose.model('CustomerOrders', CustomerOrders);

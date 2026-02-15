@@ -257,6 +257,48 @@ const PermissionManager = (props) => {
         }
     };
 
+    // Toggle supplier messaging permission
+    const handleSupplierMessageToggle = async (supplierId, currentValue) => {
+        setSavingSupplierPermission(supplierId + '-msg');
+        const newValue = !currentValue;
+
+        // Optimistically update UI
+        setSuppliers(prev => prev.map(s => 
+            s._id === supplierId ? { ...s, canMessage: newValue } : s
+        ));
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/supplier/permissions/update/${supplierId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ canMessage: newValue })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                props?.showAlert?.(data.message || 'Supplier messaging permission updated successfully', 'success');
+            } else {
+                // Revert on error
+                setSuppliers(prev => prev.map(s => 
+                    s._id === supplierId ? { ...s, canMessage: currentValue } : s
+                ));
+                const errorData = await response.json();
+                props?.showAlert?.(errorData.error || 'Error updating supplier permission', 'danger');
+            }
+        } catch (error) {
+            // Revert on error
+            setSuppliers(prev => prev.map(s => 
+                s._id === supplierId ? { ...s, canMessage: currentValue } : s
+            ));
+            props?.showAlert?.('Error updating supplier permission', 'danger');
+        } finally {
+            setSavingSupplierPermission(null);
+        }
+    };
+
     // Bulk update all suppliers' export permission
     const handleBulkSupplierPermission = async (enable) => {
         const supplierIds = suppliers.map(s => s._id);
@@ -284,6 +326,38 @@ const PermissionManager = (props) => {
             }
         } catch (error) {
             // console.error('Error updating supplier permissions:', error);
+            props?.showAlert?.('Error updating supplier permissions', 'danger');
+        } finally {
+            setSavingSupplierPermission(null);
+        }
+    };
+
+    // Bulk update all suppliers' messaging permission
+    const handleBulkSupplierMessagePermission = async (enable) => {
+        const supplierIds = suppliers.map(s => s._id);
+        if (supplierIds.length === 0) return;
+
+        setSavingSupplierPermission('bulk-msg');
+
+        try {
+            const response = await fetch('http://localhost:5000/api/supplier/permissions/bulk-update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ supplierIds, canMessage: enable })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                setSuppliers(prev => prev.map(s => ({ ...s, canMessage: enable })));
+                props?.showAlert?.(data.message || `Messaging ${enable ? 'enabled' : 'disabled'} for all suppliers`, 'success');
+            } else {
+                const errorData = await response.json();
+                props?.showAlert?.(errorData.error || 'Error updating supplier permissions', 'danger');
+            }
+        } catch (error) {
             props?.showAlert?.('Error updating supplier permissions', 'danger');
         } finally {
             setSavingSupplierPermission(null);
@@ -1330,52 +1404,97 @@ const PermissionManager = (props) => {
             {mainTab === 'supplier-permissions' && (
                 <div className="permission-panel" style={{ padding: '30px' }}>
                     <div className="panel-header" style={{ marginBottom: '25px' }}>
-                        <h2><i className="fas fa-truck me-2"></i>Supplier Report Permissions</h2>
-                        <p>Control which suppliers can download reports of their orders</p>
+                        <h2><i className="fas fa-truck me-2"></i>Supplier Permissions</h2>
+                        <p>Control supplier report and messaging permissions</p>
                     </div>
 
                     {/* Bulk Actions */}
-                    <div style={{ 
-                        display: 'flex', 
-                        gap: '15px', 
-                        marginBottom: '25px', 
-                        padding: '20px', 
-                        background: '#f8f9fa', 
-                        borderRadius: '10px',
-                        alignItems: 'center',
-                        flexWrap: 'wrap'
-                    }}>
-                        <span style={{ fontWeight: '500', color: '#333' }}>Bulk Actions:</span>
-                        <button 
-                            className="btn btn-success btn-sm"
-                            onClick={() => handleBulkSupplierPermission(true)}
-                            disabled={savingSupplierPermission === 'bulk' || suppliers.length === 0}
-                            style={{ padding: '8px 20px' }}
-                        >
-                            {savingSupplierPermission === 'bulk' ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    Processing...
-                                </>
-                            ) : (
-                                <>
-                                    <i className="fas fa-check-circle me-2"></i>
-                                    Enable All
-                                </>
-                            )}
-                        </button>
-                        <button 
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => handleBulkSupplierPermission(false)}
-                            disabled={savingSupplierPermission === 'bulk' || suppliers.length === 0}
-                            style={{ padding: '8px 20px' }}
-                        >
-                            <i className="fas fa-times-circle me-2"></i>
-                            Disable All
-                        </button>
-                        <span style={{ color: '#666', fontSize: '13px', marginLeft: 'auto' }}>
-                            {suppliers.filter(s => s.canExportReports).length} of {suppliers.length} suppliers can export reports
-                        </span>
+                    <div style={{ display: 'flex', gap: '20px', marginBottom: '25px' }}>
+                        {/* Reports Bulk Actions */}
+                        <div style={{ 
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px', 
+                            padding: '20px', 
+                            background: '#f8f9fa', 
+                            borderRadius: '10px'
+                        }}>
+                            <span style={{ fontWeight: '500', color: '#333' }}>Bulk Actions — Reports:</span>
+                            <button 
+                                className="btn btn-success btn-sm"
+                                onClick={() => handleBulkSupplierPermission(true)}
+                                disabled={savingSupplierPermission === 'bulk' || suppliers.length === 0}
+                                style={{ padding: '8px 20px' }}
+                            >
+                                {savingSupplierPermission === 'bulk' ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-check-circle me-2"></i>
+                                        Enable All
+                                    </>
+                                )}
+                            </button>
+                            <button 
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={() => handleBulkSupplierPermission(false)}
+                                disabled={savingSupplierPermission === 'bulk' || suppliers.length === 0}
+                                style={{ padding: '8px 20px' }}
+                            >
+                                <i className="fas fa-times-circle me-2"></i>
+                                Disable All
+                            </button>
+                            <span style={{ color: '#666', fontSize: '13px', textAlign: 'right' }}>
+                                {suppliers.filter(s => s.canExportReports).length} of {suppliers.length} can export reports
+                            </span>
+                        </div>
+
+                        {/* Messaging Bulk Actions */}
+                        <div style={{ 
+                            flex: 1,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px', 
+                            padding: '20px', 
+                            background: '#f8f9fa', 
+                            borderRadius: '10px'
+                        }}>
+                            <span style={{ fontWeight: '500', color: '#333' }}>Bulk Actions — Messaging:</span>
+                            <button 
+                                className="btn btn-success btn-sm"
+                                onClick={() => handleBulkSupplierMessagePermission(true)}
+                                disabled={savingSupplierPermission === 'bulk-msg' || suppliers.length === 0}
+                                style={{ padding: '8px 20px' }}
+                            >
+                                {savingSupplierPermission === 'bulk-msg' ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        Processing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-check-circle me-2"></i>
+                                        Enable All
+                                    </>
+                                )}
+                            </button>
+                            <button 
+                                className="btn btn-outline-danger btn-sm"
+                                onClick={() => handleBulkSupplierMessagePermission(false)}
+                                disabled={savingSupplierPermission === 'bulk-msg' || suppliers.length === 0}
+                                style={{ padding: '8px 20px' }}
+                            >
+                                <i className="fas fa-times-circle me-2"></i>
+                                Disable All
+                            </button>
+                            <span style={{ color: '#666', fontSize: '13px', textAlign: 'right' }}>
+                                {suppliers.filter(s => s.canMessage).length} of {suppliers.length} can message
+                            </span>
+                        </div>
                     </div>
 
                     {/* Suppliers List */}
@@ -1405,13 +1524,10 @@ const PermissionManager = (props) => {
                                         borderRadius: '10px', 
                                         padding: '20px', 
                                         background: '#fff',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center'
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                                     }}
                                 >
-                                    <div>
+                                    <div style={{ marginBottom: '15px' }}>
                                         <h5 style={{ margin: 0, color: '#333', fontSize: '15px', fontWeight: '600' }}>
                                             {supplier.fname} {supplier.lname || ''}
                                         </h5>
@@ -1424,26 +1540,59 @@ const PermissionManager = (props) => {
                                             </p>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                        <span style={{ 
-                                            fontSize: '12px', 
-                                            color: supplier.canExportReports ? '#28a745' : '#dc3545',
-                                            fontWeight: '500'
-                                        }}>
-                                            {supplier.canExportReports ? 'Enabled' : 'Disabled'}
+                                    {/* Export Reports Toggle */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                                        <span style={{ fontSize: '13px', color: '#555' }}>
+                                            <i className="fas fa-file-export me-2"></i>Export Reports
                                         </span>
-                                        <label className="permission-toggle" style={{ margin: 0 }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={supplier.canExportReports || false}
-                                                onChange={() => handleSupplierPermissionToggle(supplier._id, supplier.canExportReports)}
-                                                disabled={savingSupplierPermission === supplier._id}
-                                            />
-                                            <span className="toggle-slider"></span>
-                                        </label>
-                                        {savingSupplierPermission === supplier._id && (
-                                            <span className="spinner-border spinner-border-sm text-primary" role="status"></span>
-                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ 
+                                                fontSize: '12px', 
+                                                color: supplier.canExportReports ? '#28a745' : '#dc3545',
+                                                fontWeight: '500'
+                                            }}>
+                                                {supplier.canExportReports ? 'Enabled' : 'Disabled'}
+                                            </span>
+                                            <label className="permission-toggle" style={{ margin: 0 }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={supplier.canExportReports || false}
+                                                    onChange={() => handleSupplierPermissionToggle(supplier._id, supplier.canExportReports)}
+                                                    disabled={savingSupplierPermission === supplier._id}
+                                                />
+                                                <span className="toggle-slider"></span>
+                                            </label>
+                                            {savingSupplierPermission === supplier._id && (
+                                                <span className="spinner-border spinner-border-sm text-primary" role="status"></span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {/* Messaging Toggle */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid #f0f0f0' }}>
+                                        <span style={{ fontSize: '13px', color: '#555' }}>
+                                            <i className="fas fa-comment-dots me-2"></i>Messaging
+                                        </span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <span style={{ 
+                                                fontSize: '12px', 
+                                                color: supplier.canMessage ? '#28a745' : '#dc3545',
+                                                fontWeight: '500'
+                                            }}>
+                                                {supplier.canMessage ? 'Enabled' : 'Disabled'}
+                                            </span>
+                                            <label className="permission-toggle" style={{ margin: 0 }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={supplier.canMessage || false}
+                                                    onChange={() => handleSupplierMessageToggle(supplier._id, supplier.canMessage)}
+                                                    disabled={savingSupplierPermission === supplier._id + '-msg'}
+                                                />
+                                                <span className="toggle-slider"></span>
+                                            </label>
+                                            {savingSupplierPermission === supplier._id + '-msg' && (
+                                                <span className="spinner-border spinner-border-sm text-primary" role="status"></span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             ))}
@@ -1453,13 +1602,14 @@ const PermissionManager = (props) => {
                     {/* Info Note */}
                     <div style={{ marginTop: '30px', padding: '20px', background: '#e8f4fd', borderRadius: '10px', borderLeft: '4px solid #0d6efd' }}>
                         <h5 style={{ marginBottom: '10px', color: '#0d6efd', fontSize: '14px' }}>
-                            <i className="fas fa-info-circle me-2"></i>About Supplier Report Permissions
+                            <i className="fas fa-info-circle me-2"></i>About Supplier Permissions
                         </h5>
                         <ul style={{ marginBottom: 0, color: '#333', fontSize: '13px', lineHeight: '1.8', paddingLeft: '20px' }}>
-                            <li>Suppliers with this permission can download PDF and Excel reports of their orders</li>
+                            <li><strong>Export Reports:</strong> Suppliers with this permission can download PDF and Excel reports of their orders</li>
                             <li>They can download both individual order reports and all orders report</li>
-                            <li>Suppliers without this permission will see a locked indicator on their orders page</li>
-                            <li>You can enable/disable this permission anytime</li>
+                            <li><strong>Messaging:</strong> Suppliers with this permission can send messages to you (Business Owner)</li>
+                            <li>Suppliers can only communicate with their Business Owner — not with employees or other suppliers</li>
+                            <li>You can enable/disable these permissions anytime</li>
                         </ul>
                     </div>
                 </div>

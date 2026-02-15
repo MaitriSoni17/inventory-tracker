@@ -23,6 +23,7 @@ const {
   getSubordinates,
   getDataFilter
 } = require('../middleware/roleBasedAccess');
+const { fulfillPendingOrders } = require('../utils/pendingOrderHelper');
 
 // Configure multer for file uploads
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -108,6 +109,11 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
         const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
         try {
             await checkAndNotifyLowStock(product, businessOwnerId);
+        } catch (e) {}
+
+        // Auto-fulfill pending orders if this product was needed
+        try {
+            await fulfillPendingOrders(product._id, businessOwnerId);
         } catch (e) {}
 
         // Send notification to employees if created by business owner
@@ -329,6 +335,12 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
             await checkAndNotifyLowStock(product, businessOwnerId);
         } catch (e) {}
 
+        // Auto-fulfill pending orders if stock increased
+        let fulfilledOrders = [];
+        try {
+            fulfilledOrders = await fulfillPendingOrders(req.params.id, businessOwnerId);
+        } catch (e) {}
+
         // Send notifications based on who updated it
         if (req.role === 'businessowner') {
             try {
@@ -379,7 +391,7 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
             } catch (notifError) {}
         }
 
-        res.json({ product, success: true });
+        res.json({ product, success: true, fulfilledOrders: fulfilledOrders.length > 0 ? fulfilledOrders : undefined });
     } catch (err) {
         res.status(500).send("Internal Server error occurred");
     }

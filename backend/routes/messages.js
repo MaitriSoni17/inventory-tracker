@@ -19,8 +19,10 @@ const hasMessagingPermission = async (userId, userRole, businessOwnerId, permiss
         }
 
         if (userRole === 'supplier') {
-            // Suppliers can always message
-            return true;
+            // Check if supplier has messaging permission
+            const supplier = await Supplier.findById(userId);
+            if (!supplier) return false;
+            return supplier.canMessage === true;
         }
 
         // For employees, check role-based permissions
@@ -104,6 +106,11 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
 
         if (!hasPermission) {
             return res.status(403).json({ error: 'You do not have permission to view messages' });
+        }
+
+        // Suppliers can only view conversations with their Business Owner
+        if (req.role === 'supplier' && userRole !== 'BusinessOwner') {
+            return res.status(403).json({ error: 'Suppliers can only communicate with their Business Owner' });
         }
 
         // Get messages between two users
@@ -265,6 +272,39 @@ router.get('/unread-count', fetchuser, async (req, res) => {
     }
 });
 
+/**
+ * Check if supplier has messaging permission
+ * GET /api/messages/supplier/check-permission
+ */
+router.get('/supplier/check-permission', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'supplier') {
+            return res.json({ canMessage: true }); // Non-suppliers always have messaging access
+        }
+
+        const supplier = await Supplier.findById(req.user._id);
+        if (!supplier) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
+        // Get the business owner details for the supplier to message
+        const businessOwner = await BusinessOwner.findById(supplier.businessowner).select('fname lname email');
+
+        res.json({ 
+            canMessage: supplier.canMessage || false,
+            businessOwner: businessOwner ? {
+                _id: businessOwner._id,
+                fname: businessOwner.fname,
+                lname: businessOwner.lname,
+                email: businessOwner.email
+            } : null
+        });
+    } catch (error) {
+        // console.error('Error checking messaging permission:', error);
+        res.status(500).json({ error: 'Error checking messaging permission' });
+    }
+});
+
 // ==================== POST ROUTES ====================
 
 /**
@@ -294,6 +334,18 @@ router.post('/send', fetchuser, async (req, res) => {
 
         if (!hasPermission) {
             return res.status(403).json({ error: 'You do not have permission to send messages' });
+        }
+
+        // Suppliers can only message their Business Owner
+        if (req.role === 'supplier') {
+            if (recipientRole !== 'BusinessOwner') {
+                return res.status(403).json({ error: 'Suppliers can only communicate with their Business Owner' });
+            }
+            // Verify the recipient is this supplier's business owner
+            const supplier = await Supplier.findById(req.user._id);
+            if (!supplier || supplier.businessowner.toString() !== recipientId) {
+                return res.status(403).json({ error: 'You can only message your own Business Owner' });
+            }
         }
 
         // Validate recipient exists

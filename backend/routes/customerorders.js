@@ -28,6 +28,8 @@ router.post('/createcustomerorder', fetchuser, [
         let totalAmount = 0;
         const processedProducts = [];
         const productNames = [];
+        let hasPendingProducts = false;
+        const pendingReasons = [];
 
         for (const item of products) {
             const productDoc = await Product.findById(item.product);
@@ -37,7 +39,8 @@ router.post('/createcustomerorder', fetchuser, [
 
             // Check if sufficient stock is available
             if (productDoc.totalProducts < item.quantity) {
-                return res.status(400).json({ error: `Insufficient stock for "${productDoc.name}". Available: ${productDoc.totalProducts}, Requested: ${item.quantity}` });
+                hasPendingProducts = true;
+                pendingReasons.push(`Insufficient stock for "${productDoc.name}" (Available: ${productDoc.totalProducts}, Requested: ${item.quantity})`);
             }
             
             const totalPrice = productDoc.price * item.quantity;
@@ -54,23 +57,25 @@ router.post('/createcustomerorder', fetchuser, [
             });
         }
 
-        // Deduct stock for each product
-        for (const item of products) {
-            await Product.findByIdAndUpdate(item.product, {
-                $inc: { totalProducts: -item.quantity }
-            });
-        }
-
-        // Check for low stock alerts after stock deduction
-        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
-        try {
+        // Only deduct stock if NOT pending
+        if (!hasPendingProducts) {
             for (const item of products) {
-                const updatedProduct = await Product.findById(item.product);
-                if (updatedProduct) {
-                    await checkAndNotifyLowStock(updatedProduct, businessOwnerId);
-                }
+                await Product.findByIdAndUpdate(item.product, {
+                    $inc: { totalProducts: -item.quantity }
+                });
             }
-        } catch (e) {}
+
+            // Check for low stock alerts after stock deduction
+            const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
+            try {
+                for (const item of products) {
+                    const updatedProduct = await Product.findById(item.product);
+                    if (updatedProduct) {
+                        await checkAndNotifyLowStock(updatedProduct, businessOwnerId);
+                    }
+                }
+            } catch (e) {}
+        }
 
         let customerorderData = {
             cName, cEmail, cPhone, cAddress,
@@ -80,7 +85,9 @@ router.post('/createcustomerorder', fetchuser, [
             category: processedProducts.length > 0 ? processedProducts[0].category : '',
             ounits: products.reduce((sum, p) => sum + p.quantity, 0),
             amount: totalAmount,
-            oDate, dDate, status, pAvail, dStatus, desc
+            oDate, dDate, status, pAvail, dStatus, desc,
+            isPending: hasPendingProducts,
+            pendingReason: hasPendingProducts ? pendingReasons.join('; ') : ''
         };
 
         if (req.role === 'businessowner') {
@@ -103,7 +110,7 @@ router.post('/createcustomerorder', fetchuser, [
         if (req.role === 'businessowner') {
             await notifyEmployeesAboutOrder(
                 req.user._id,
-                'created',
+                hasPendingProducts ? 'created (pending - low stock)' : 'created',
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
@@ -111,37 +118,45 @@ router.post('/createcustomerorder', fetchuser, [
             await notifyBusinessOwnerAboutOrderByEmployee(
                 req.user.businessowner,
                 req.user._id,
-                'created',
+                hasPendingProducts ? 'created (pending - low stock)' : 'created',
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
         }
 
-        res.json(customerorder);
+        res.json({ 
+            ...customerorder.toObject(), 
+            isPending: hasPendingProducts,
+            pendingReason: hasPendingProducts ? pendingReasons.join('; ') : '',
+            message: hasPendingProducts 
+                ? 'Order saved as pending due to insufficient stock. It will be automatically fulfilled when stock is available.' 
+                : 'Order created successfully'
+        });
     } catch (err) {
         // console.error(err);
         res.status(500).send("Internal Server error occurred");
     }
 });
 
-// Get Customer Orders — accessible by BusinessOwner or Employee
+// Get Customer Orders (non-pending only) — accessible by BusinessOwner or Employee
 router.post('/getcustomerorder', fetchuser, async (req, res) => {
     try {
         let customerorder = [];
 
         if (req.role === 'businessowner') {
-            // Business owner sees all orders in their organization
-            customerorder = await CustomerOrders.find({ businessowner: req.user._id })
+            // Business owner sees all non-pending orders in their organization
+            customerorder = await CustomerOrders.find({ businessowner: req.user._id, isPending: { $ne: true } })
                 .populate('warehouse')
                 .populate('products.product');
         } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
-            // Warehouse staff sees orders in their business
+            // Warehouse staff sees non-pending orders in their business
             const staffMember = await require('../models/Employee').findById(req.user._id);
             const businessOwnerId = req.businessowner || (staffMember && staffMember.businessowner);
             
             if (businessOwnerId) {
                 customerorder = await CustomerOrders.find({
-                    businessowner: businessOwnerId
+                    businessowner: businessOwnerId,
+                    isPending: { $ne: true }
                 })
                     .populate('warehouse')
                     .populate('products.product');
@@ -154,6 +169,35 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
         }
 
         res.json(customerorder);
+    } catch (err) {
+        res.status(500).send("Internal Server error occurred");
+    }
+});
+
+// Get Pending Orders — accessible by BusinessOwner or Employee
+router.post('/getpendingorders', fetchuser, async (req, res) => {
+    try {
+        let pendingOrders = [];
+
+        if (req.role === 'businessowner') {
+            pendingOrders = await CustomerOrders.find({ businessowner: req.user._id, isPending: true })
+                .populate('warehouse')
+                .populate('products.product');
+        } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
+            const staffMember = await require('../models/Employee').findById(req.user._id);
+            const businessOwnerId = req.businessowner || (staffMember && staffMember.businessowner);
+            
+            if (businessOwnerId) {
+                pendingOrders = await CustomerOrders.find({
+                    businessowner: businessOwnerId,
+                    isPending: true
+                })
+                    .populate('warehouse')
+                    .populate('products.product');
+            }
+        }
+
+        res.json(pendingOrders);
     } catch (err) {
         res.status(500).send("Internal Server error occurred");
     }
@@ -334,11 +378,13 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
 
         const businessOwnerId = customerorder.businessowner;
 
-        // Restore stock for each product in the deleted order
-        for (const item of customerorder.products) {
-            await Product.findByIdAndUpdate(item.product, {
-                $inc: { totalProducts: item.quantity }
-            });
+        // Only restore stock if the order was NOT pending (pending orders never deducted stock)
+        if (!customerorder.isPending) {
+            for (const item of customerorder.products) {
+                await Product.findByIdAndUpdate(item.product, {
+                    $inc: { totalProducts: item.quantity }
+                });
+            }
         }
 
         await CustomerOrders.findByIdAndDelete(req.params.id);

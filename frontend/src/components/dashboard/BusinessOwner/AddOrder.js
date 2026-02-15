@@ -139,6 +139,14 @@ const AddOrder = (props) => {
         ));
     };
 
+    // Check if any selected product has insufficient stock
+    const hasInsufficientStock = () => {
+        return selectedProducts.some(item => {
+            const product = products.find(p => p._id === item.product);
+            return product && product.totalProducts < item.quantity;
+        });
+    };
+
     // Filter products for dropdown
     const filteredProducts = products.filter(product => {
         const isNotSelected = !selectedProducts.some(sp => sp.product === product._id);
@@ -326,7 +334,11 @@ const AddOrder = (props) => {
             const data = await response.json();
 
             if (response.ok) {
-                props.showAlert('Order created successfully', 'success');
+                if (data.isPending) {
+                    props.showAlert('Order saved as pending due to insufficient stock. It will be automatically fulfilled when stock becomes available.', 'warning');
+                } else {
+                    props.showAlert('Order created successfully', 'success');
+                }
                 navigate('/dashboard/orders');
             } else {
                 props.showAlert(data.errors?.[0]?.msg || data.error || 'Failed to create order', 'danger');
@@ -442,7 +454,12 @@ const AddOrder = (props) => {
                                                         onClick={() => handleProductSelect(product._id)}
                                                     >
                                                         <span>{product.name}</span>
-                                                        <span className="badge bg-secondary">₹{product.price}</span>
+                                                        <div>
+                                                            <span className={`badge ${product.totalProducts > 0 ? 'bg-success' : 'bg-danger'} me-2`}>
+                                                                Stock: {product.totalProducts}
+                                                            </span>
+                                                            <span className="badge bg-secondary">₹{product.price}</span>
+                                                        </div>
                                                     </button>
                                                 ))}
                                             </div>
@@ -465,6 +482,7 @@ const AddOrder = (props) => {
                                         <thead className="table-light">
                                             <tr>
                                                 <th>Product</th>
+                                                <th style={{ width: '120px' }}>Available</th>
                                                 <th style={{ width: '150px' }}>Unit Price</th>
                                                 <th style={{ width: '150px' }}>Quantity</th>
                                                 <th style={{ width: '150px' }}>Subtotal</th>
@@ -472,9 +490,26 @@ const AddOrder = (props) => {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {selectedProducts.map((item) => (
-                                                <tr key={item.product}>
-                                                    <td>{item.productName}</td>
+                                            {selectedProducts.map((item) => {
+                                                const productInfo = products.find(p => p._id === item.product);
+                                                const availableStock = productInfo ? productInfo.totalProducts : 0;
+                                                const isLowStock = availableStock < item.quantity;
+                                                return (
+                                                <tr key={item.product} className={isLowStock ? 'table-warning' : ''}>
+                                                    <td>
+                                                        {item.productName}
+                                                        {isLowStock && (
+                                                            <div className="small text-danger mt-1">
+                                                                <i className="bi bi-exclamation-triangle-fill me-1"></i>
+                                                                Insufficient stock — order will be saved as pending
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`badge ${isLowStock ? 'bg-danger' : 'bg-success'} rounded-pill px-3 py-2`}>
+                                                            {availableStock}
+                                                        </span>
+                                                    </td>
                                                     <td>₹{item.price.toFixed(2)}</td>
                                                     <td>
                                                         <input
@@ -498,7 +533,8 @@ const AddOrder = (props) => {
                                                         </button>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                );
+                                            })}
                                         </tbody>
                                         <tfoot>
                                             <tr className="table-light fw-bold">
@@ -626,10 +662,22 @@ const AddOrder = (props) => {
                         </div>
                     </div>
 
+                    {/* Insufficient Stock Warning */}
+                    {selectedProducts.length > 0 && hasInsufficientStock() && (
+                        <div className="alert alert-warning d-flex align-items-center mb-4 rounded-4" role="alert">
+                            <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
+                            <div>
+                                <strong>Low Stock Warning:</strong> One or more products have insufficient stock. 
+                                The order will be saved as <strong>Pending</strong> and will automatically move to Customer Orders 
+                                when stock becomes sufficient.
+                            </div>
+                        </div>
+                    )}
+
                     <div className="row mt-4 ms-2 mb-5 pb-5">
                         <div className="col-12 d-flex gap-3 justify-content-start">
                             <button type="submit" className="btn btn-custom-purple btn-lg rounded-3 px-5 shadow-sm" disabled={isSubmitting}>
-                                {isSubmitting ? 'Adding Order...' : 'Add Order'}
+                                {isSubmitting ? 'Adding Order...' : (hasInsufficientStock() ? 'Add as Pending Order' : 'Add Order')}
                             </button>
                             <button type="button" className="btn btn-outline-secondary btn-lg rounded-3 px-5 shadow-sm" onClick={() => navigate('/dashboard/orders')} disabled={isSubmitting}>Cancel</button>
                         </div>

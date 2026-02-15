@@ -60,7 +60,8 @@ const Reports = ({ showAlert }) => {
         products: [],
         orders: [],
         supplierOrders: [],
-        suppliers: []
+        suppliers: [],
+        salary: []
     });
 
     const currentYear = new Date().getFullYear();
@@ -105,6 +106,26 @@ const Reports = ({ showAlert }) => {
                 case 'suppliers':
                     endpoint = '/api/reports/suppliers/list';
                     break;
+                case 'salary': {
+                    // Fetch salary-assigned employees directly
+                    const salaryResponse = await fetch('http://localhost:5000/api/salary/getallsalaries', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'auth-token': token
+                        }
+                    });
+                    if (salaryResponse.ok) {
+                        const salaryData = await salaryResponse.json();
+                        // Only include employees who have a salary assigned (baseSalary > 0)
+                        const salaryItems = salaryData.filter(emp => emp.baseSalary > 0);
+                        setAvailableItems(prev => ({
+                            ...prev,
+                            salary: salaryItems
+                        }));
+                    }
+                    return;
+                }
                 default:
                     return;
             }
@@ -164,7 +185,12 @@ const Reports = ({ showAlert }) => {
                     throw new Error('Failed to fetch salary data');
                 }
 
-                const salaryData = await response.json();
+                let salaryData = await response.json();
+
+                // Filter by specific employee if selected
+                if (reportConfig.specificId && reportConfig.specificId !== 'all') {
+                    salaryData = salaryData.filter(emp => emp._id === reportConfig.specificId);
+                }
 
                 // Fetch paid salaries for all employees
                 const paidSalaries = {};
@@ -296,6 +322,8 @@ const Reports = ({ showAlert }) => {
                 return `${supplierName} - ${new Date(item.oDate).toLocaleDateString()}`;
             case 'suppliers':
                 return `${item.fname} ${item.lname || ''} (${item.companyName || item.email || 'N/A'})`.trim();
+            case 'salary':
+                return `${item.fullName} (${item.role || 'Employee'}) — ₹${item.baseSalary}`;
             default:
                 return '';
         }

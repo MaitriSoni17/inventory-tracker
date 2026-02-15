@@ -30,7 +30,8 @@ const Supplier = new Schema({
     role: { type: String, default: 'supplier' },
     lastLogin: { type: Date },
     // Supplier permissions (controlled by Business Owner)
-    canExportReports: { type: Boolean, default: false }
+    canExportReports: { type: Boolean, default: false },
+    canMessage: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('Supplier', Supplier);
