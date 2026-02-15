@@ -68,7 +68,7 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error('Validation errors:', errors.array());
+        // console.error('Validation errors:', errors.array());
         // You might want to delete the uploaded file if validation fails here
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
@@ -234,7 +234,7 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
                 { employeeId: employee._id, email: employee.email, role }
             );
         } catch (notifError) {
-            console.error('Error notifying business owner:', notifError);
+            // console.error('Error notifying business owner:', notifError);
             // Continue anyway - don't fail the employee creation
         }
         
@@ -248,7 +248,7 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
                     { employeeId: employee._id, email: employee.email, role: 'manager' }
                 );
             } catch (notifError) {
-                console.error('Error notifying managers:', notifError);
+                // console.error('Error notifying managers:', notifError);
                 // Continue anyway - don't fail the employee creation
             }
         }
@@ -681,13 +681,13 @@ router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
                 { employeeId: req.params.id, deletedBy: req.role }
             );
         } catch (notifError) {
-            console.error('Error sending notification:', notifError);
+            // console.error('Error sending notification:', notifError);
             // Don't fail the deletion if notification fails
         }
 
         res.json({ message: "Employee deleted successfully" });
     } catch (err) {
-        console.error('Delete employee error:', err);
+        // console.error('Delete employee error:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }   
 });
@@ -786,7 +786,7 @@ router.delete('/deleteaccount', fetchuser, async (req, res) => {
             requestId: deletionRequest._id
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -834,7 +834,7 @@ router.put('/assignwarehouse/:employeeId', fetchbusinessowner, [
             employee
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ error: "Internal server error occurred" });
     }
 });
@@ -853,7 +853,7 @@ router.get('/unassigned-employees', fetchbusinessowner, async (req, res) => {
             count: unassignedEmployees.length
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ error: "Internal server error occurred" });
     }
 });
@@ -899,7 +899,7 @@ router.post('/assign-missing-warehouses', fetchbusinessowner, async (req, res) =
             warehouseName: warehouse.wName
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ error: "Internal server error occurred" });
     }
 });

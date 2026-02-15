@@ -2,6 +2,9 @@ const Notification = require('../models/Notification');
 const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
 const Supplier = require('../models/Supplier');
+const Product = require('../models/Products');
+const NotificationPreference = require('../models/NotificationPreference');
+const RolePermissions = require('../models/RolePermissions');
 
 /**
  * Create and save a notification
@@ -58,7 +61,7 @@ async function getEmployeesByRole(businessOwnerId, role = null) {
     }
     return await Employee.find(query).select('_id fname lname role email');
   } catch (error) {
-    console.error('Error getting employees by role:', error);
+    // console.error('Error getting employees by role:', error);
     return [];
   }
 }
@@ -70,7 +73,7 @@ async function getManagerSubordinates(managerId) {
   try {
     return await Employee.find({ reportingTo: managerId }).select('_id fname lname role email');
   } catch (error) {
-    console.error('Error getting manager subordinates:', error);
+    // console.error('Error getting manager subordinates:', error);
     return [];
   }
 }
@@ -82,7 +85,7 @@ async function getSupervisorSubordinates(supervisorId) {
   try {
     return await Employee.find({ reportingTo: supervisorId, role: 'employee' }).select('_id fname lname email');
   } catch (error) {
-    console.error('Error getting supervisor subordinates:', error);
+    // console.error('Error getting supervisor subordinates:', error);
     return [];
   }
 }
@@ -116,7 +119,7 @@ async function notifyEmployeesByRole(
       );
     }
   } catch (error) {
-    console.error('Error notifying employees by role:', error);
+    // console.error('Error notifying employees by role:', error);
   }
 }
 
@@ -214,6 +217,7 @@ async function notifyEmployeesAboutProduct(
       }
     }
   } catch (error) {
+    // console.error('Error notifying employees about product:', error);
   }
 }
 
@@ -263,6 +267,7 @@ async function notifyEmployeesAboutOrder(
       }
     }
   } catch (error) {
+    // console.error('Error notifying employees about product:', error);
   }
 }
 
@@ -312,6 +317,7 @@ async function notifyEmployeesAboutCategory(
       }
     }
   } catch (error) {
+    // console.error('Error notifying employees about order:', error);
   }
 }
 
@@ -358,6 +364,7 @@ async function notifyBusinessOwnerAboutProduct(
       );
     }
   } catch (error) {
+    // console.error('Error notifying business owner about order:', error);
   }
 }
 
@@ -399,7 +406,7 @@ async function notifyBusinessOwnerOwnProductChanges(
       );
     }
   } catch (error) {
-    console.error('Error notifying business owner about product changes:', error);
+    // console.error('Error notifying business owner about product changes:', error);
   }
 }
 
@@ -666,7 +673,7 @@ async function notifyManagerAboutEmployeeProduct(
       );
     }
   } catch (error) {
-    console.error('Error notifying manager about employee product:', error);
+    // console.error('Error notifying manager about employee product:', error);
   }
 }
 
@@ -714,7 +721,7 @@ async function notifySupervisorAboutEmployeeProduct(
       );
     }
   } catch (error) {
-    console.error('Error notifying supervisor about employee product:', error);
+    // console.error('Error notifying supervisor about employee product:', error);
   }
 }
 
@@ -777,7 +784,7 @@ async function notifySubordinatesAboutProduct(
       }
     }
   } catch (error) {
-    console.error('Error notifying subordinates about product:', error);
+    // console.error('Error notifying subordinates about product:', error);
   }
 }
 
@@ -837,7 +844,7 @@ async function notifySubordinatesAboutOrder(
       }
     }
   } catch (error) {
-    console.error('Error notifying subordinates about order:', error);
+    // console.error('Error notifying subordinates about order:', error);
   }
 }
 
@@ -905,7 +912,7 @@ async function notifyReportingManager(
       );
     }
   } catch (error) {
-    console.error('Error notifying reporting manager:', error);
+    // console.error('Error notifying reporting manager:', error);
   }
 }
 
@@ -955,7 +962,7 @@ async function notifyAllManagers(
       }
     }
   } catch (error) {
-    console.error('Error notifying all managers:', error);
+    // console.error('Error notifying all managers:', error);
   }
 }
 
@@ -986,7 +993,7 @@ async function notifyManagerAboutNewSubordinate(
       details
     );
   } catch (error) {
-    console.error('Error notifying manager about new subordinate:', error);
+    // console.error('Error notifying manager about new subordinate:', error);
   }
 }
 
@@ -1018,7 +1025,198 @@ async function notifyEmployeeAboutRoleChange(
       details
     );
   } catch (error) {
-    console.error('Error notifying employee about role change:', error);
+    // console.error('Error notifying employee about role change:', error);
+  }
+}
+
+/**
+ * Check low stock for a single product and create alert if below threshold
+ * @param {Object} product - Product document
+ * @param {String} businessOwnerId - Business owner ID
+ */
+async function checkAndNotifyLowStock(product, businessOwnerId) {
+  try {
+    // Get the business owner's notification preferences
+    const preferences = await NotificationPreference.findOne({
+      user: businessOwnerId,
+      role: { $in: ['businessowner', 'BusinessOwner'] }
+    });
+
+    // Check if low stock alerts are enabled (default: true)
+    if (preferences && preferences.productLowStockAlert === false) {
+      return null;
+    }
+
+    const threshold = (preferences && preferences.productLowStockThreshold) || 10;
+    const currentStock = product.totalProducts;
+
+    // Only alert if stock is at or below threshold
+    if (currentStock > threshold) {
+      return null;
+    }
+
+    // Check if a low stock alert already exists for this product today (avoid duplicates)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const existingAlert = await Notification.findOne({
+      recipient: businessOwnerId,
+      type: 'product_low_stock_alert',
+      'data.productId': product._id.toString(),
+      createdAt: { $gte: today }
+    });
+
+    if (existingAlert) {
+      return null; // Already alerted today
+    }
+
+    const alertData = {
+      productId: product._id.toString(),
+      productName: product.name,
+      currentStock: currentStock,
+      threshold: threshold,
+      category: product.category,
+      price: product.price
+    };
+    const alertMessage = `Stock for product "${product.name}" is running low. Current stock: ${currentStock} units (threshold: ${threshold}).`;
+
+    // Create low stock notification for business owner
+    const notification = await createNotification(
+      businessOwnerId,
+      'BusinessOwner',
+      businessOwnerId,
+      'BusinessOwner',
+      'product_low_stock_alert',
+      'Low Stock Alert',
+      alertMessage,
+      alertData
+    );
+
+    // Also notify employees who have permission to view products
+    await notifyPermittedEmployeesLowStock(businessOwnerId, alertMessage, alertData, today);
+
+    return notification;
+  } catch (error) {
+    // Don't throw - alerts shouldn't block other operations
+    return null;
+  }
+}
+
+/**
+ * Notify employees who have canViewProducts permission about low stock
+ * @param {String} businessOwnerId - Business owner ID
+ * @param {String} alertMessage - The alert message
+ * @param {Object} alertData - Alert data object
+ * @param {Date} today - Today's date (start of day) for duplicate check
+ */
+async function notifyPermittedEmployeesLowStock(businessOwnerId, alertMessage, alertData, today) {
+  try {
+    // Get role permissions for this business owner
+    const rolePermissions = await RolePermissions.findOne({ businessowner: businessOwnerId });
+
+    // Determine which roles have canViewProducts permission
+    const permittedRoles = [];
+    if (rolePermissions) {
+      if (rolePermissions.manager && rolePermissions.manager.canViewProducts !== false) {
+        permittedRoles.push('manager');
+      }
+      if (rolePermissions.supervisor && rolePermissions.supervisor.canViewProducts !== false) {
+        permittedRoles.push('supervisor');
+      }
+      if (rolePermissions.employee && rolePermissions.employee.canViewProducts !== false) {
+        permittedRoles.push('employee');
+      }
+    } else {
+      // No custom permissions set — use defaults (all roles can view products by default)
+      permittedRoles.push('manager', 'supervisor', 'employee');
+    }
+
+    if (permittedRoles.length === 0) return;
+
+    // Find all employees with permitted roles under this business owner
+    const employees = await Employee.find({
+      businessowner: businessOwnerId,
+      role: { $in: permittedRoles }
+    }).select('_id role');
+
+    for (const emp of employees) {
+      // Check employee's own notification preferences
+      const empPrefs = await NotificationPreference.findOne({
+        user: emp._id,
+        role: { $in: ['employee', 'Employee', emp.role] }
+      });
+
+      if (empPrefs && empPrefs.productLowStockAlert === false) {
+        continue; // Employee has disabled low stock alerts
+      }
+
+      // Check for duplicate alert today for this employee
+      const existingEmpAlert = await Notification.findOne({
+        recipient: emp._id,
+        type: 'product_low_stock_alert',
+        'data.productId': alertData.productId,
+        createdAt: { $gte: today }
+      });
+
+      if (existingEmpAlert) continue;
+
+      await createNotification(
+        emp._id,
+        'Employee',
+        businessOwnerId,
+        'BusinessOwner',
+        'product_low_stock_alert',
+        'Low Stock Alert',
+        alertMessage,
+        alertData
+      );
+    }
+  } catch (error) {
+    // Don't throw - employee alerts shouldn't block other operations
+  }
+}
+
+/**
+ * Check all products for a business owner and create low stock alerts
+ * @param {String} businessOwnerId - Business owner ID
+ * @returns {Array} Array of created notifications
+ */
+async function checkAllProductsLowStock(businessOwnerId) {
+  try {
+    // Get the business owner's notification preferences
+    const preferences = await NotificationPreference.findOne({
+      user: businessOwnerId,
+      role: { $in: ['businessowner', 'BusinessOwner'] }
+    });
+
+    // Check if low stock alerts are enabled (default: true)
+    if (preferences && preferences.productLowStockAlert === false) {
+      return [];
+    }
+
+    const threshold = (preferences && preferences.productLowStockThreshold) || 10;
+
+    // Find all products with stock at or below the threshold
+    const lowStockProducts = await Product.find({
+      businessowner: businessOwnerId,
+      totalProducts: { $lte: threshold }
+    });
+
+    if (lowStockProducts.length === 0) {
+      return [];
+    }
+
+    const createdNotifications = [];
+
+    for (const product of lowStockProducts) {
+      const notification = await checkAndNotifyLowStock(product, businessOwnerId);
+      if (notification) {
+        createdNotifications.push(notification);
+      }
+    }
+
+    return createdNotifications;
+  } catch (error) {
+    return [];
   }
 }
 
@@ -1047,7 +1245,9 @@ module.exports = {
   notifyAllManagers,
   notifyManagerAboutNewSubordinate,
   notifyEmployeeAboutRoleChange,
-  notifyAboutNewMessage
+  notifyAboutNewMessage,
+  checkAndNotifyLowStock,
+  checkAllProductsLowStock
 };
 
 /**
@@ -1088,7 +1288,7 @@ async function notifyAboutNewMessage(
     await notification.save();
     return notification;
   } catch (error) {
-    console.error('Error creating message notification:', error);
+    // console.error('Error creating message notification:', error);
     // Don't throw - notifications shouldn't block message sending
     return null;
   }

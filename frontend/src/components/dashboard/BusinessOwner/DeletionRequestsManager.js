@@ -38,7 +38,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
       }
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching deletion requests:', error);
+      // console.error('Error fetching deletion requests:', error);
       showAlert?.('Failed to fetch deletion requests', 'danger');
       setLoading(false);
     }
@@ -86,7 +86,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
         setDataSummary(summary);
       }
     } catch (error) {
-      console.error('Error fetching user data summary:', error);
+      // console.error('Error fetching user data summary:', error);
       // Continue with modal even if summary fetch fails
     } finally {
       setLoadingDataSummary(false);
@@ -115,7 +115,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
         showAlert?.(data.message || 'Failed to approve deletion request', 'danger');
       }
     } catch (error) {
-      console.error('Error approving deletion request:', error);
+      // console.error('Error approving deletion request:', error);
       showAlert?.('An error occurred while approving the request', 'danger');
     } finally {
       setActionLoading(false);
@@ -145,7 +145,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
         showAlert?.(data.message || 'Failed to reject deletion request', 'danger');
       }
     } catch (error) {
-      console.error('Error rejecting deletion request:', error);
+      // console.error('Error rejecting deletion request:', error);
       showAlert?.('An error occurred while rejecting the request', 'danger');
     } finally {
       setActionLoading(false);

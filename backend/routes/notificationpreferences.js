@@ -15,9 +15,14 @@ router.get('/', fetchUser, async (req, res) => {
     const userId = req.user._id;
     const userRole = req.role;
 
+    // Also check for legacy capitalized role values
+    const roleVariants = [userRole];
+    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
+    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
+
     let preferences = await NotificationPreference.findOne({
       user: userId,
-      role: userRole
+      role: { $in: roleVariants }
     });
 
     // Create default preferences if not found
@@ -41,7 +46,7 @@ router.get('/', fetchUser, async (req, res) => {
 
     res.json(preferences);
   } catch (error) {
-    console.error('Error fetching notification preferences:', error);
+    // console.error('Error fetching notification preferences:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching notification preferences',
@@ -74,7 +79,7 @@ router.get('/:userId', fetchBusinessOwner, async (req, res) => {
 
     res.json(preferences);
   } catch (error) {
-    console.error('Error fetching notification preferences:', error);
+    // console.error('Error fetching notification preferences:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching notification preferences',
@@ -93,6 +98,11 @@ router.post('/', fetchUser, async (req, res) => {
   try {
     const userId = req.user._id;
     const userRole = req.role;
+
+    // Also check for legacy capitalized role values
+    const roleVariants = [userRole];
+    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
+    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
 
     const {
       salarydueAlert,
@@ -146,7 +156,7 @@ router.post('/', fetchUser, async (req, res) => {
     // Find or create preferences
     let preferences = await NotificationPreference.findOne({
       user: userId,
-      role: userRole
+      role: { $in: roleVariants }
     });
 
     if (preferences) {
@@ -192,7 +202,7 @@ router.post('/', fetchUser, async (req, res) => {
       preferences: preferences
     });
   } catch (error) {
-    console.error('Error saving notification preferences:', error);
+    // console.error('Error saving notification preferences:', error);
     res.status(500).json({
       success: false,
       message: 'Error saving notification preferences',
@@ -211,6 +221,11 @@ router.put('/', fetchUser, async (req, res) => {
   try {
     const userId = req.user._id;
     const userRole = req.role;
+
+    // Also check for legacy capitalized role values
+    const roleVariants = [userRole];
+    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
+    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
 
     const {
       salarydueAlert,
@@ -264,7 +279,7 @@ router.put('/', fetchUser, async (req, res) => {
     // Find and update preferences
     let preferences = await NotificationPreference.findOne({
       user: userId,
-      role: userRole
+      role: { $in: roleVariants }
     });
 
     if (!preferences) {
@@ -298,7 +313,7 @@ router.put('/', fetchUser, async (req, res) => {
       preferences: preferences
     });
   } catch (error) {
-    console.error('Error updating notification preferences:', error);
+    // console.error('Error updating notification preferences:', error);
     res.status(500).json({
       success: false,
       message: 'Error updating notification preferences',
@@ -317,9 +332,14 @@ router.delete('/', fetchUser, async (req, res) => {
     const userId = req.user._id;
     const userRole = req.role;
 
+    // Also check for legacy capitalized role values
+    const roleVariants = [userRole];
+    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
+    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
+
     const preferences = await NotificationPreference.findOne({
       user: userId,
-      role: userRole
+      role: { $in: roleVariants }
     });
 
     if (!preferences) {
@@ -349,7 +369,7 @@ router.delete('/', fetchUser, async (req, res) => {
       preferences: preferences
     });
   } catch (error) {
-    console.error('Error resetting notification preferences:', error);
+    // console.error('Error resetting notification preferences:', error);
     res.status(500).json({
       success: false,
       message: 'Error resetting notification preferences',

@@ -32,7 +32,7 @@ ChartJS.register(
 function Manager(props) {
     const navigate = useNavigate();
     const { userDetails, hasPermission, loading: roleLoading, permissions } = useRole();
-    
+
     // Chart refs
     const ordersChartRef = useRef(null);
     const stockChartRef = useRef(null);
@@ -175,7 +175,8 @@ function Manager(props) {
                             }
                         });
                     }
-                } catch (error) { console.error('Error creating orders chart:', error); }
+                } catch (error) { // console.error('Error creating orders chart:', error); 
+                }
             }
 
             if (stockChartRef.current && products.length > 0) {
@@ -204,7 +205,8 @@ function Manager(props) {
                             }
                         });
                     }
-                } catch (error) { console.error('Error creating stock chart:', error); }
+                } catch (error) { // console.error('Error creating stock chart:', error); 
+                }
             }
         }, 100);
     }, [orders, products, getOrdersData, getTopProductsByStock]);
@@ -229,8 +231,8 @@ function Manager(props) {
         // Extract warehouse from user details
         if (userDetails && userDetails.warehouse) {
             // warehouse can be an object {_id, wName, wAddress} or string
-            const warehouseName = typeof userDetails.warehouse === 'string' 
-                ? userDetails.warehouse 
+            const warehouseName = typeof userDetails.warehouse === 'string'
+                ? userDetails.warehouse
                 : userDetails.warehouse.wName || userDetails.warehouse.name;
             setManagerWarehouse(warehouseName);
         }
@@ -313,6 +315,14 @@ function Manager(props) {
                 lowStockItems: lowStockCount
             });
 
+            // Check and trigger low stock alert notifications
+            try {
+                await fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+                    method: 'POST',
+                    headers
+                });
+            } catch (e) {}
+
             setLoading(false);
         } catch (error) {
             props.showAlert?.('Failed to load dashboard data', 'danger');
@@ -333,10 +343,10 @@ function Manager(props) {
                         <p>Oversee operations and manage resources</p>
                     </div>
                     {managerWarehouse && (
-                        <div style={{ 
-                            backgroundColor: '#e7f3ff', 
-                            padding: '12px 20px', 
-                            borderRadius: '8px', 
+                        <div style={{
+                            backgroundColor: '#e7f3ff',
+                            padding: '12px 20px',
+                            borderRadius: '8px',
                             border: '2px solid #0056b3',
                             textAlign: 'right'
                         }}>
@@ -345,10 +355,10 @@ function Manager(props) {
                         </div>
                     )}
                     {!managerWarehouse && (
-                        <div style={{ 
-                            backgroundColor: '#fff3cd', 
-                            padding: '12px 20px', 
-                            borderRadius: '8px', 
+                        <div style={{
+                            backgroundColor: '#fff3cd',
+                            padding: '12px 20px',
+                            borderRadius: '8px',
                             border: '2px solid #856404',
                             textAlign: 'right'
                         }}>
@@ -361,262 +371,262 @@ function Manager(props) {
             {/* Key Statistics */}
             <div className="stats-grid">
                 {hasPermission('canViewEmployees') && (
-                <div className="stat-card employees-stat">
-                    <div className="stat-icon">👥</div>
-                    <div className="stat-content">
-                        <h3>Total Employees</h3>
-                        <p className="stat-number">{stats.totalEmployees}</p>
-                        <span className="stat-label">Team Members</span>
+                    <div className="stat-card employees-stat">
+                        <div className="stat-icon">👥</div>
+                        <div className="stat-content">
+                            <h3>Total Employees</h3>
+                            <p className="stat-number">{stats.totalEmployees}</p>
+                            <span className="stat-label">Team Members</span>
+                        </div>
                     </div>
-                </div>
                 )}
 
                 {hasPermission('canViewOrders') && (
-                <div className="stat-card orders-stat">
-                    <div className="stat-icon">📦</div>
-                    <div className="stat-content">
-                        <h3>Orders</h3>
-                        <p className="stat-number">{stats.totalOrders}</p>
-                        <span className="stat-label">Total Orders</span>
+                    <div className="stat-card orders-stat">
+                        <div className="stat-icon">📦</div>
+                        <div className="stat-content">
+                            <h3>Orders</h3>
+                            <p className="stat-number">{stats.totalOrders}</p>
+                            <span className="stat-label">Total Orders</span>
+                        </div>
                     </div>
-                </div>
                 )}
 
                 {hasPermission('canViewProducts') && (
-                <div className="stat-card products-stat">
-                    <div className="stat-icon">📊</div>
-                    <div className="stat-content">
-                        <h3>Products</h3>
-                        <p className="stat-number">{stats.totalProducts}</p>
-                        <span className="stat-label">In Inventory</span>
+                    <div className="stat-card products-stat">
+                        <div className="stat-icon">📊</div>
+                        <div className="stat-content">
+                            <h3>Products</h3>
+                            <p className="stat-number">{stats.totalProducts}</p>
+                            <span className="stat-label">In Inventory</span>
+                        </div>
                     </div>
-                </div>
                 )}
 
                 {hasPermission('canViewWarehouses') && (
-                <div className="stat-card warehouse-stat">
-                    <div className="stat-icon">🏢</div>
-                    <div className="stat-content">
-                        <h3>Warehouses</h3>
-                        <p className="stat-number">{stats.totalWarehouses}</p>
-                        <span className="stat-label">Storage Units</span>
+                    <div className="stat-card warehouse-stat">
+                        <div className="stat-icon">🏢</div>
+                        <div className="stat-content">
+                            <h3>Warehouses</h3>
+                            <p className="stat-number">{stats.totalWarehouses}</p>
+                            <span className="stat-label">Storage Units</span>
+                        </div>
                     </div>
-                </div>
                 )}
 
                 {hasPermission('canViewCategories') && (
-                <div className="stat-card" style={{ borderLeft: '4px solid #17a2b8' }}>
-                    <div className="stat-icon">🏷️</div>
-                    <div className="stat-content">
-                        <h3>Categories</h3>
-                        <p className="stat-number">{stats.totalCategories}</p>
-                        <span className="stat-label">Product Groups</span>
+                    <div className="stat-card" style={{ borderLeft: '4px solid #17a2b8' }}>
+                        <div className="stat-icon">🏷️</div>
+                        <div className="stat-content">
+                            <h3>Categories</h3>
+                            <p className="stat-number">{stats.totalCategories}</p>
+                            <span className="stat-label">Product Groups</span>
+                        </div>
                     </div>
-                </div>
                 )}
 
                 {hasPermission('canViewProducts') && (
-                <div className="stat-card alert-stat">
-                    <div className="stat-icon">⚠️</div>
-                    <div className="stat-content">
-                        <h3>Low Stock</h3>
-                        <p className="stat-number">{stats.lowStockItems}</p>
-                        <span className="stat-label">Items</span>
+                    <div className="stat-card alert-stat">
+                        <div className="stat-icon">⚠️</div>
+                        <div className="stat-content">
+                            <h3>Low Stock</h3>
+                            <p className="stat-number">{stats.lowStockItems}</p>
+                            <span className="stat-label">Items</span>
+                        </div>
                     </div>
-                </div>
                 )}
             </div>
 
             {/* Charts Section */}
             {hasPermission('canViewOrders') && (
-            <div className="row my-4">
-                <div className="col-12">
-                    <div className="p-4 bg-white shadow rounded-4 border">
-                        <div className="d-flex justify-content-between align-items-center mb-4">
-                            <h2 className="mb-0">Orders Overview</h2>
-                            <select 
-                                className="form-select w-auto" 
-                                value={ordersView} 
-                                onChange={(e) => setOrdersView(e.target.value)}
-                            >
-                                <option value="monthly">Monthly</option>
-                                <option value="quarterly">Quarterly</option>
-                                <option value="annually">Annually</option>
-                            </select>
-                        </div>
-                        <div style={{ height: '300px' }}>
-                            {orders.length === 0 ? (
-                                <div className="alert alert-info" role="alert">
-                                    <i className="bi bi-info-circle me-2"></i>
-                                    No order data available to display chart.
-                                </div>
-                            ) : (
-                                <canvas ref={ordersChartRef} />
-                            )}
+                <div className="row my-4">
+                    <div className="col-12">
+                        <div className="p-4 bg-white shadow rounded-4 border">
+                            <div className="d-flex justify-content-between align-items-center mb-4">
+                                <h2 className="mb-0">Orders Overview</h2>
+                                <select
+                                    className="form-select w-auto"
+                                    value={ordersView}
+                                    onChange={(e) => setOrdersView(e.target.value)}
+                                >
+                                    <option value="monthly">Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="annually">Annually</option>
+                                </select>
+                            </div>
+                            <div style={{ height: '300px' }}>
+                                {orders.length === 0 ? (
+                                    <div className="alert alert-info" role="alert">
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        No order data available to display chart.
+                                    </div>
+                                ) : (
+                                    <canvas ref={ordersChartRef} />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             )}
 
             {hasPermission('canViewProducts') && (
-            <div className="row my-4">
-                <div className="col-12">
-                    <div className="p-4 bg-white shadow rounded-4 border">
-                        <h2 className="mb-4">Stock Overview - Top Products</h2>
-                        <div style={{ height: '300px' }}>
-                            {products.length === 0 ? (
-                                <div className="alert alert-info" role="alert">
-                                    <i className="bi bi-info-circle me-2"></i>
-                                    No product data available to display chart.
-                                </div>
-                            ) : (
-                                <canvas ref={stockChartRef} />
-                            )}
+                <div className="row my-4">
+                    <div className="col-12">
+                        <div className="p-4 bg-white shadow rounded-4 border">
+                            <h2 className="mb-4">Stock Overview - Top Products</h2>
+                            <div style={{ height: '300px' }}>
+                                {products.length === 0 ? (
+                                    <div className="alert alert-info" role="alert">
+                                        <i className="bi bi-info-circle me-2"></i>
+                                        No product data available to display chart.
+                                    </div>
+                                ) : (
+                                    <canvas ref={stockChartRef} />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
             )}
 
             {/* Action Cards */}
             <div className="action-cards">
                 {hasPermission('canViewEmployees') && (
-                <div className="action-card" onClick={() => navigate('/dashboard/employee')}>
-                    <h3>👥 Manage Employees</h3>
-                    <p>Create, update, and manage team members</p>
-                    <button className="action-btn">Go to Employees</button>
-                </div>
+                    <div className="action-card" onClick={() => navigate('/dashboard/employee')}>
+                        <h3>👥 Manage Employees</h3>
+                        <p>Create, update, and manage team members</p>
+                        <button className="action-btn">Go to Employees</button>
+                    </div>
                 )}
 
                 {hasPermission('canViewProducts') && (
-                <div className="action-card" onClick={() => navigate('/dashboard/products')}>
-                    <h3>📦 Manage Products</h3>
-                    <p>Create and manage product inventory</p>
-                    <button className="action-btn">Go to Products</button>
-                </div>
+                    <div className="action-card" onClick={() => navigate('/dashboard/products')}>
+                        <h3>📦 Manage Products</h3>
+                        <p>Create and manage product inventory</p>
+                        <button className="action-btn">Go to Products</button>
+                    </div>
                 )}
 
                 {hasPermission('canViewWarehouses') && (
-                <div className="action-card" onClick={() => navigate('/dashboard/warehouses')}>
-                    <h3>🏢 Warehouse Management</h3>
-                    <p>Manage warehouse operations</p>
-                    <button className="action-btn">Go to Warehouses</button>
-                </div>
+                    <div className="action-card" onClick={() => navigate('/dashboard/warehouses')}>
+                        <h3>🏢 Warehouse Management</h3>
+                        <p>Manage warehouse operations</p>
+                        <button className="action-btn">Go to Warehouses</button>
+                    </div>
                 )}
 
                 {hasPermission('canViewOrders') && (
-                <div className="action-card" onClick={() => navigate('/dashboard/orders')}>
-                    <h3>📋 Orders</h3>
-                    <p>Track and manage customer orders</p>
-                    <button className="action-btn">View Orders</button>
-                </div>
+                    <div className="action-card" onClick={() => navigate('/dashboard/orders')}>
+                        <h3>📋 Orders</h3>
+                        <p>Track and manage customer orders</p>
+                        <button className="action-btn">View Orders</button>
+                    </div>
                 )}
 
                 {hasPermission('canViewCategories') && (
-                <div className="action-card" onClick={() => navigate('/dashboard/category')}>
-                    <h3>🏷️ Categories</h3>
-                    <p>Manage product categories</p>
-                    <button className="action-btn">Manage Categories</button>
-                </div>
+                    <div className="action-card" onClick={() => navigate('/dashboard/category')}>
+                        <h3>🏷️ Categories</h3>
+                        <p>Manage product categories</p>
+                        <button className="action-btn">Manage Categories</button>
+                    </div>
                 )}
 
                 {hasPermission('canViewNotifications') && (
-                <div className="action-card" onClick={() => navigate('/dashboard/notifications')}>
-                    <h3>🔔 Notifications</h3>
-                    <p>View system notifications</p>
-                    <button className="action-btn">View Notifications</button>
-                </div>
+                    <div className="action-card" onClick={() => navigate('/dashboard/notifications')}>
+                        <h3>🔔 Notifications</h3>
+                        <p>View system notifications</p>
+                        <button className="action-btn">View Notifications</button>
+                    </div>
                 )}
             </div>
 
             {/* Categories Overview */}
             {hasPermission('canViewCategories') && (
-            <div className="dashboard-section">
-                <h2>Categories Overview</h2>
-                {categories.length > 0 ? (
-                    <div className="row g-3">
-                        {categories.slice(0, 6).map((cat, index) => (
-                            <div key={cat._id || index} className="col-md-4">
-                                <div className="p-3 border rounded-3 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard/category')}>
-                                    <h5 className="mb-1">🏷️ {cat.cName}</h5>
-                                    {cat.cDescription && <p className="text-muted mb-0 small">{cat.cDescription}</p>}
+                <div className="dashboard-section">
+                    <h2>Categories Overview</h2>
+                    {categories.length > 0 ? (
+                        <div className="row g-3">
+                            {categories.slice(0, 6).map((cat, index) => (
+                                <div key={cat._id || index} className="col-md-4">
+                                    <div className="p-3 border rounded-3 bg-light" style={{ cursor: 'pointer' }} onClick={() => navigate('/dashboard/category')}>
+                                        <h5 className="mb-1">🏷️ {cat.cName}</h5>
+                                        {cat.cDescription && <p className="text-muted mb-0 small">{cat.cDescription}</p>}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="empty-state">No categories defined yet</p>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="empty-state">No categories defined yet</p>
+                    )}
+                </div>
             )}
 
             {/* Team Overview */}
             {hasPermission('canViewEmployees') && (
-            <div className="dashboard-section">
-                <h2>Team Overview</h2>
-                {employees.length > 0 ? (
-                    <div className="team-list">
-                        {employees.slice(0, 8).map(emp => (
-                            <div key={emp._id} className="team-member">
-                                <div className="member-info">
-                                    <h4>{emp.fname} {emp.lname}</h4>
-                                    <p>{emp.email}</p>
+                <div className="dashboard-section">
+                    <h2>Team Overview</h2>
+                    {employees.length > 0 ? (
+                        <div className="team-list">
+                            {employees.slice(0, 8).map(emp => (
+                                <div key={emp._id} className="team-member">
+                                    <div className="member-info">
+                                        <h4>{emp.fname} {emp.lname}</h4>
+                                        <p>{emp.email}</p>
+                                    </div>
+                                    <span className="member-role">{emp.role}</span>
                                 </div>
-                                <span className="member-role">{emp.role}</span>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="empty-state">No employees yet</p>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="empty-state">No employees yet</p>
+                    )}
+                </div>
             )}
 
             {/* Warehouse Overview */}
             {hasPermission('canViewWarehouses') && (
-            <div className="dashboard-section">
-                <h2>Warehouses</h2>
-                {warehouses.length > 0 ? (
-                    <div className="warehouses-list">
-                        {warehouses.slice(0, 5).map(warehouse => (
-                            <div key={warehouse._id} className="warehouse-item">
-                                <h4>{warehouse.wName}</h4>
-                                <p>Manager: {warehouse.wManager}</p>
-                                <p>Location: {warehouse.city}, {warehouse.state}</p>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="empty-state">No warehouses configured</p>
-                )}
-            </div>
+                <div className="dashboard-section">
+                    <h2>Warehouses</h2>
+                    {warehouses.length > 0 ? (
+                        <div className="warehouses-list">
+                            {warehouses.slice(0, 5).map(warehouse => (
+                                <div key={warehouse._id} className="warehouse-item">
+                                    <h4>{warehouse.wName}</h4>
+                                    <p>Manager: {warehouse.wManager}</p>
+                                    <p>Location: {warehouse.city}, {warehouse.state}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="empty-state">No warehouses configured</p>
+                    )}
+                </div>
             )}
 
             {/* Recent Orders */}
             {hasPermission('canViewOrders') && (
-            <div className="dashboard-section">
-                <h2>Recent Orders</h2>
-                {orders.length > 0 ? (
-                    <div className="orders-list">
-                        {orders.slice(0, 5).map(order => (
-                            <div key={order._id} className="order-item">
-                                <div className="order-details">
-                                    <h4>{order.cName || 'N/A'}</h4>
-                                    <p>{order.pName || (order.products && order.products.length > 0 ? order.products[0].productName : 'N/A')}</p>
+                <div className="dashboard-section">
+                    <h2>Recent Orders</h2>
+                    {orders.length > 0 ? (
+                        <div className="orders-list">
+                            {orders.slice(0, 5).map(order => (
+                                <div key={order._id} className="order-item">
+                                    <div className="order-details">
+                                        <h4>{order.cName || 'N/A'}</h4>
+                                        <p>{order.pName || (order.products && order.products.length > 0 ? order.products[0].productName : 'N/A')}</p>
+                                    </div>
+                                    <div className="order-status">
+                                        <span className={`status-badge ${order.dStatus || ''}`}>
+                                            {order.dStatus || 'N/A'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="order-status">
-                                    <span className={`status-badge ${order.dStatus || ''}`}>
-                                        {order.dStatus || 'N/A'}
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="empty-state">No orders yet</p>
-                )}
-            </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="empty-state">No orders yet</p>
+                    )}
+                </div>
             )}
         </div>
     );

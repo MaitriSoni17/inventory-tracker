@@ -61,7 +61,7 @@ const AddOrder = (props) => {
                 const productList = await response.json();
                 setProducts(productList);
             } catch (error) {
-                console.error('Error fetching products:', error);
+                // console.error('Error fetching products:', error);
             } finally {
                 setLoadingProducts(false);
             }

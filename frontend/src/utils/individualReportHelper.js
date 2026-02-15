@@ -45,7 +45,7 @@ export const generateIndividualEmployeeReportPDF = async (employee, formatDate, 
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating employee report:', error);
+        // console.error('Error generating employee report:', error);
         return false;
     }
 };
@@ -94,7 +94,7 @@ export const generateIndividualProductReportPDF = async (product, categoryMap, w
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating product report:', error);
+        // console.error('Error generating product report:', error);
         return false;
     }
 };
@@ -158,7 +158,7 @@ export const generateIndividualOrderReportPDF = async (order, categoryMap, wareh
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating order report:', error);
+        // console.error('Error generating order report:', error);
         return false;
     }
 };
@@ -211,7 +211,7 @@ export const generateIndividualSupplierOrderReportPDF = async (order, supplierNa
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating supplier order report:', error);
+        // console.error('Error generating supplier order report:', error);
         return false;
     }
 };
@@ -270,7 +270,7 @@ export const generateIndividualSupplierReportPDF = async (supplier) => {
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating supplier report:', error);
+        // console.error('Error generating supplier report:', error);
         return false;
     }
 };

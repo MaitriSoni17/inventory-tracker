@@ -39,7 +39,7 @@ const hasMessagingPermission = async (userId, userRole, businessOwnerId, permiss
         const rolePermissions = rolePerms[employee.role];
         return rolePermissions?.[permission] !== false;
     } catch (error) {
-        console.error('Error checking messaging permission:', error);
+        // console.error('Error checking messaging permission:', error);
         return false;
     }
 };
@@ -57,7 +57,7 @@ const populateSenderDetails = async (message) => {
             message.sender = await Supplier.findById(message.sender).select('fname lname email');
         }
     } catch (error) {
-        console.error('Error populating sender:', error);
+        // console.error('Error populating sender:', error);
     }
     return message;
 };
@@ -75,7 +75,7 @@ const populateRecipientDetails = async (message) => {
             message.recipient = await Supplier.findById(message.recipient).select('fname lname email');
         }
     } catch (error) {
-        console.error('Error populating recipient:', error);
+        // console.error('Error populating recipient:', error);
     }
     return message;
 };
@@ -140,7 +140,7 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
         // Messages are already populated by .populate() above
         res.json({ success: true, messages });
     } catch (error) {
-        console.error('Error fetching conversation:', error);
+        // console.error('Error fetching conversation:', error);
         res.status(500).json({ error: 'Error fetching conversation' });
     }
 });
@@ -234,7 +234,7 @@ router.get('/conversations', fetchuser, async (req, res) => {
 
         res.json({ success: true, conversations: populatedConversations });
     } catch (error) {
-        console.error('Error fetching conversations:', error);
+        // console.error('Error fetching conversations:', error);
         res.status(500).json({ error: 'Error fetching conversations' });
     }
 });
@@ -260,7 +260,7 @@ router.get('/unread-count', fetchuser, async (req, res) => {
 
         res.json({ success: true, unreadCount });
     } catch (error) {
-        console.error('Error fetching unread count:', error);
+        // console.error('Error fetching unread count:', error);
         res.status(500).json({ error: 'Error fetching unread count' });
     }
 });
@@ -346,7 +346,7 @@ router.post('/send', fetchuser, async (req, res) => {
 
         res.json({ success: true, message });
     } catch (error) {
-        console.error('Error sending message:', error);
+        // console.error('Error sending message:', error);
         res.status(500).json({ error: 'Error sending message' });
     }
 });
@@ -374,7 +374,7 @@ router.post('/read/:messageId', fetchuser, async (req, res) => {
 
         res.json({ success: true, message });
     } catch (error) {
-        console.error('Error marking message as read:', error);
+        // console.error('Error marking message as read:', error);
         res.status(500).json({ error: 'Error marking message as read' });
     }
 });
@@ -444,7 +444,7 @@ router.put('/:messageId', fetchuser, async (req, res) => {
 
         res.json({ success: true, message });
     } catch (error) {
-        console.error('Error editing message:', error);
+        // console.error('Error editing message:', error);
         res.status(500).json({ error: 'Error editing message' });
     }
 });
@@ -498,7 +498,7 @@ router.delete('/:messageId', fetchuser, async (req, res) => {
 
         res.json({ success: true, message: 'Message deleted' });
     } catch (error) {
-        console.error('Error deleting message:', error);
+        // console.error('Error deleting message:', error);
         res.status(500).json({ error: 'Error deleting message' });
     }
 });

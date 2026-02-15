@@ -272,7 +272,7 @@ const Settings = (props) => {
         }
       }
     } catch (error) {
-      console.error('Error checking deletion status:', error);
+      // console.error('Error checking deletion status:', error);
     }
   };
 
@@ -319,7 +319,7 @@ const Settings = (props) => {
         }, 1500);
       } else {
         const errorData = await res.json();
-        console.error('Delete error response:', errorData);
+        // console.error('Delete error response:', errorData);
         
         // Check if it's the existing deletion request error
         if (errorData.message && errorData.message.includes('already have an active deletion request')) {
@@ -329,7 +329,7 @@ const Settings = (props) => {
         }
       }
     } catch (error) {
-      console.error('Delete account error:', error);
+      // console.error('Delete account error:', error);
       props.showAlert?.('Error deleting account: ' + error.message, 'danger');
     } finally {
       setSaving(false);
@@ -368,7 +368,7 @@ const Settings = (props) => {
         props.showAlert?.('Failed to cancel deletion: ' + (errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
-      console.error('Cancel deletion error:', error);
+      // console.error('Cancel deletion error:', error);
       props.showAlert?.('Error cancelling deletion: ' + error.message, 'danger');
     } finally {
       setSaving(false);

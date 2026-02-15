@@ -193,7 +193,7 @@ router.post('/getorders', fetchuser, async (req, res) => {
         
         res.json(supplierorders || []);
     } catch (err) {
-        console.error('Error in /getorders:', err);
+        // console.error('Error in /getorders:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });

@@ -45,7 +45,7 @@ export const apiCall = async (url, options = {}) => {
         return response;
 
     } catch (error) {
-        console.error('API call error:', error);
+        // console.error('API call error:', error);
         throw error;
     }
 };
@@ -57,7 +57,7 @@ export const parseResponse = async (response) => {
     try {
         return await response.json();
     } catch (error) {
-        console.error('Error parsing response:', error);
+        // console.error('Error parsing response:', error);
         return null;
     }
 };

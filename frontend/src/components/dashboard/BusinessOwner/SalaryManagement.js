@@ -12,7 +12,7 @@ const SalaryManagement = (props) => {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [paidSalaries, setPaidSalaries] = useState({});
     const [editingId, setEditingId] = useState(null);
-    
+
     const [formData, setFormData] = useState({
         baseSalary: '',
         currency: 'INR',
@@ -59,7 +59,7 @@ const SalaryManagement = (props) => {
                 const data = await response.json();
                 setSalaryData(data);
                 setFilteredSalaryData(data);
-                
+
                 // Fetch paid salaries for all employees
                 data.forEach(emp => {
                     fetchPaidSalary(emp._id);
@@ -68,7 +68,7 @@ const SalaryManagement = (props) => {
                 props.showAlert('Failed to fetch salary data', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching salary data:', error);
+            // console.error('Error fetching salary data:', error);
             props.showAlert('Error fetching salary data', 'danger');
         } finally {
             setLoading(false);
@@ -93,7 +93,7 @@ const SalaryManagement = (props) => {
                 }));
             }
         } catch (error) {
-            console.error('Error fetching paid salary:', error);
+            // console.error('Error fetching paid salary:', error);
         }
     };
 
@@ -215,7 +215,7 @@ const SalaryManagement = (props) => {
                 props.showAlert(errorData.error || 'Failed to save salary', 'danger');
             }
         } catch (error) {
-            console.error('Error saving salary:', error);
+            // console.error('Error saving salary:', error);
             props.showAlert('Error saving salary', 'danger');
         }
     };
@@ -240,7 +240,7 @@ const SalaryManagement = (props) => {
                     props.showAlert(errorData.error || 'Failed to delete salary', 'danger');
                 }
             } catch (error) {
-                console.error('Error deleting salary:', error);
+                // console.error('Error deleting salary:', error);
                 props.showAlert('Error deleting salary', 'danger');
             }
         }
@@ -313,7 +313,7 @@ const SalaryManagement = (props) => {
                 props.showAlert(errorData.error || 'Failed to record payment', 'danger');
             }
         } catch (error) {
-            console.error('Error recording payment:', error);
+            // console.error('Error recording payment:', error);
             props.showAlert('Error recording payment', 'danger');
         }
     };
@@ -353,16 +353,16 @@ const SalaryManagement = (props) => {
                         <p className="text-muted">Total Employees: {stats.totalEmployees}</p>
                     </div>
                     <div className="col-3 ms-5 d-flex justify-content-end align-items-end pb-3 gap-2">
-                        <button 
-                            className="btn btn-link text-decoration-none" 
-                            onClick={() => generateSalaryReportPDF(filteredSalaryData, paidSalaries, formatCurrency)} 
+                        <button
+                            className="btn btn-link text-decoration-none"
+                            onClick={() => generateSalaryReportPDF(filteredSalaryData, paidSalaries, formatCurrency)}
                             title="Export to PDF"
                         >
                             <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                         </button>
-                        <button 
-                            className="btn btn-link text-decoration-none" 
-                            onClick={() => generateSalaryReportExcel(filteredSalaryData, paidSalaries)} 
+                        <button
+                            className="btn btn-link text-decoration-none"
+                            onClick={() => generateSalaryReportExcel(filteredSalaryData, paidSalaries)}
                             title="Export to Excel"
                         >
                             <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
@@ -423,10 +423,10 @@ const SalaryManagement = (props) => {
                     <div className="col-12">
                         <div className="input-group input-group-lg search-bar shadow border-3 rounded-pill">
                             <span className="input-group-text bg-white border-0 ps-3"><i className="bi bi-search"></i></span>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 className="form-control text-secondary border-0 rounded-pill shadow-none"
-                                placeholder="Search by name, email or warehouse..." 
+                                placeholder="Search by name, email or warehouse..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -507,7 +507,7 @@ const SalaryManagement = (props) => {
                                                                 const payments = response.ok ? await response.json() : [];
                                                                 await generateIndividualSalaryReportPDF(emp, payments, paidSalaries[emp._id] || 0, formatCurrency);
                                                             } catch (error) {
-                                                                console.error('Error downloading report:', error);
+                                                                // console.error('Error downloading report:', error);
                                                                 props.showAlert('Error generating report', 'danger');
                                                             }
                                                         }}

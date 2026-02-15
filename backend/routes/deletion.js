@@ -24,7 +24,7 @@ const createNotification = async (recipientId, recipientRole, senderId, senderRo
         await notification.save();
         return notification;
     } catch (err) {
-        console.error('Error creating notification:', err);
+        // console.error('Error creating notification:', err);
     }
 };
 
@@ -105,7 +105,7 @@ router.post('/request', fetchuser, async (req, res) => {
             requestId: deletionRequest._id
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -140,7 +140,7 @@ router.delete('/request/:requestId', fetchuser, async (req, res) => {
             message: 'Account deletion request cancelled successfully'
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -165,7 +165,7 @@ router.get('/pending-requests', fetchuser, async (req, res) => {
             requests: pendingRequests
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -237,7 +237,7 @@ router.put('/approve/:requestId', fetchuser, async (req, res) => {
             scheduledDeletionDate: scheduledDate
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -294,7 +294,7 @@ router.put('/reject/:requestId', fetchuser, async (req, res) => {
             message: 'Deletion request rejected successfully'
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -327,7 +327,7 @@ router.get('/status', fetchuser, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -382,7 +382,7 @@ router.delete('/execute/:requestId', async (req, res) => {
                 // After cascade delete, delete the business owner account
                 await BusinessOwner.findByIdAndDelete(deletionRequest.userId);
             } catch (err) {
-                console.error('Error in cascade deletion:', err);
+                // console.error('Error in cascade deletion:', err);
                 return res.status(500).json({
                     success: false,
                     error: 'Error during cascade deletion: ' + err.message
@@ -429,7 +429,7 @@ router.delete('/execute/:requestId', async (req, res) => {
 
         res.json(response);
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });

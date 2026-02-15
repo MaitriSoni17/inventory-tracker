@@ -4,7 +4,7 @@ const CustomerOrders = require('../models/CustomerOrders');
 const Product = require('../models/Products');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
-const { notifyEmployeesAboutOrder, notifyBusinessOwnerAboutOrderByEmployee } = require('../utils/notificationHelper');
+const { notifyEmployeesAboutOrder, notifyBusinessOwnerAboutOrderByEmployee, checkAndNotifyLowStock } = require('../utils/notificationHelper');
 
 // Create Customer Order — accessible by BusinessOwner or Employee
 router.post('/createcustomerorder', fetchuser, [
@@ -61,6 +61,17 @@ router.post('/createcustomerorder', fetchuser, [
             });
         }
 
+        // Check for low stock alerts after stock deduction
+        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
+        try {
+            for (const item of products) {
+                const updatedProduct = await Product.findById(item.product);
+                if (updatedProduct) {
+                    await checkAndNotifyLowStock(updatedProduct, businessOwnerId);
+                }
+            }
+        } catch (e) {}
+
         let customerorderData = {
             cName, cEmail, cPhone, cAddress,
             products: processedProducts,
@@ -108,7 +119,7 @@ router.post('/createcustomerorder', fetchuser, [
 
         res.json(customerorder);
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -247,6 +258,17 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 $inc: { totalProducts: -item.quantity }
             });
         }
+
+        // Check for low stock alerts after stock adjustment
+        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
+        try {
+            for (const item of products) {
+                const updatedProduct = await Product.findById(item.product);
+                if (updatedProduct) {
+                    await checkAndNotifyLowStock(updatedProduct, businessOwnerId);
+                }
+            }
+        } catch (e) {}
 
         // Prepare update data
         let newCustomerOrder = {

@@ -47,7 +47,7 @@ const Messaging = () => {
                     localStorage.setItem('userId', data._id);
                 }
             } catch (error) {
-                console.error('Error fetching current user:', error);
+                // console.error('Error fetching current user:', error);
                 // Fallback to localStorage if API fails
                 const storedUserId = localStorage.getItem('userId');
                 if (storedUserId) {
@@ -117,7 +117,7 @@ const Messaging = () => {
                 setConversations(data.conversations || []);
             }
         } catch (error) {
-            console.error('Error fetching conversations:', error);
+            // console.error('Error fetching conversations:', error);
         } finally {
             setLoading(false);
         }
@@ -142,7 +142,7 @@ const Messaging = () => {
                 setMessages(data.messages || []);
             }
         } catch (error) {
-            console.error('Error fetching messages:', error);
+            // console.error('Error fetching messages:', error);
         } finally {
             setLoadingMessages(false);
         }
@@ -184,7 +184,7 @@ const Messaging = () => {
                 alert(error.error || 'Error sending message');
             }
         } catch (error) {
-            console.error('Error sending message:', error);
+            // console.error('Error sending message:', error);
             alert('Error sending message');
         } finally {
             setSending(false);
@@ -215,7 +215,7 @@ const Messaging = () => {
                 alert(error.error || 'Error deleting message');
             }
         } catch (error) {
-            console.error('Error deleting message:', error);
+            // console.error('Error deleting message:', error);
             alert('Error deleting message');
         }
     };
@@ -256,7 +256,7 @@ const Messaging = () => {
                 alert(error.error || 'Error editing message');
             }
         } catch (error) {
-            console.error('Error editing message:', error);
+            // console.error('Error editing message:', error);
             alert('Error editing message');
         }
     };
@@ -289,7 +289,7 @@ const Messaging = () => {
                 setEmployees(Array.isArray(data) ? data : (data.employees || []));
             }
         } catch (error) {
-            console.error('Error fetching employees:', error);
+            // console.error('Error fetching employees:', error);
         }
     };
 
@@ -310,7 +310,7 @@ const Messaging = () => {
                 setSuppliers(Array.isArray(data) ? data : (data.suppliers || []));
             }
         } catch (error) {
-            console.error('Error fetching suppliers:', error);
+            // console.error('Error fetching suppliers:', error);
         }
     };
 

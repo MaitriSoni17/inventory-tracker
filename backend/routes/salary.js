@@ -36,7 +36,7 @@ router.post('/getallsalaries', fetchuser, async (req, res) => {
 
         res.json(salaryData);
     } catch (error) {
-        console.error('Error fetching salaries:', error);
+        // console.error('Error fetching salaries:', error);
         res.status(500).json({ error: "Server error while fetching salaries" });
     }
 });
@@ -77,7 +77,7 @@ router.get('/getsalary/:employeeId', fetchuser, async (req, res) => {
 
         res.json(salaryData);
     } catch (error) {
-        console.error('Error fetching employee salary:', error);
+        // console.error('Error fetching employee salary:', error);
         res.status(500).json({ error: "Server error while fetching employee salary" });
     }
 });
@@ -133,7 +133,7 @@ router.post('/assignsalary/:employeeId',
                 salary: employee.salary
             });
         } catch (error) {
-            console.error('Error assigning salary:', error);
+            // console.error('Error assigning salary:', error);
             res.status(500).json({ error: "Server error while assigning salary" });
         }
     }
@@ -190,7 +190,7 @@ router.put('/updatesalary/:employeeId',
                 salary: employee.salary
             });
         } catch (error) {
-            console.error('Error updating salary:', error);
+            // console.error('Error updating salary:', error);
             res.status(500).json({ error: "Server error while updating salary" });
         }
     }
@@ -232,7 +232,7 @@ router.delete('/deletesalary/:employeeId', fetchuser, async (req, res) => {
             message: `Salary removed for ${employee.fname} ${employee.lname || ''}`
         });
     } catch (error) {
-        console.error('Error deleting salary:', error);
+        // console.error('Error deleting salary:', error);
         res.status(500).json({ error: "Server error while deleting salary" });
     }
 });

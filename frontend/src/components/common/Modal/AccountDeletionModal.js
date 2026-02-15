@@ -42,7 +42,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
         setRequestId(null);
       }
     } catch (error) {
-      console.error('Error checking deletion status:', error);
+      // console.error('Error checking deletion status:', error);
     } finally {
       setCheckingStatus(false);
     }
@@ -71,7 +71,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
         showAlert?.(data.message || 'Failed to cancel deletion request', 'danger');
       }
     } catch (error) {
-      console.error('Error cancelling deletion request:', error);
+      // console.error('Error cancelling deletion request:', error);
       showAlert?.('Error cancelling previous request', 'danger');
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
         onClose();
       }, 5000);
     } catch (error) {
-      console.error('Error:', error);
+      // console.error('Error:', error);
       showAlert?.('An error occurred. Please try again.', 'danger');
       setLoading(false);
     }

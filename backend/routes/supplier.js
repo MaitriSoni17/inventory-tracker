@@ -327,7 +327,7 @@ router.delete('/deleteaccount', fetchuser, async (req, res) => {
             requestId: deletionRequest._id
         });
     } catch (err) {
-        console.error(err);
+        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -353,7 +353,7 @@ router.get('/permissions/list', require('../middleware/fetchbusinessowner'), asy
             }))
         });
     } catch (err) {
-        console.error('Error fetching supplier permissions:', err);
+        // console.error('Error fetching supplier permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -388,7 +388,7 @@ router.put('/permissions/update/:supplierId', require('../middleware/fetchbusine
             }
         });
     } catch (err) {
-        console.error('Error updating supplier permission:', err);
+        // console.error('Error updating supplier permission:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -417,7 +417,7 @@ router.put('/permissions/bulk-update', require('../middleware/fetchbusinessowner
             modifiedCount: result.modifiedCount
         });
     } catch (err) {
-        console.error('Error bulk updating supplier permissions:', err);
+        // console.error('Error bulk updating supplier permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });

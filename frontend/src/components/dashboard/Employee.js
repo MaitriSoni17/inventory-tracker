@@ -148,6 +148,14 @@ function Employee(props) {
                 lowStockItems: lowStockCount
             });
 
+            // Check and trigger low stock alert notifications
+            try {
+                await fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+                    method: 'POST',
+                    headers
+                });
+            } catch (e) {}
+
             setLoading(false);
         } catch (error) {
             props.showAlert?.('Failed to load dashboard data', 'danger');

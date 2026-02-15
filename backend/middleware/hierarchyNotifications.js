@@ -39,7 +39,7 @@ const hierarchyNotifications = {
         details
       );
     } catch (error) {
-      console.error('Error in hierarchyNotifications.notifyAboutProductChange:', error);
+      // console.error('Error in hierarchyNotifications.notifyAboutProductChange:', error);
     }
   },
 
@@ -50,7 +50,7 @@ const hierarchyNotifications = {
     try {
       await notifySubordinatesAboutProduct(employeeId, 'employee', action, productName, details);
     } catch (error) {
-      console.error('Error in hierarchyNotifications.notifySubordinatesAboutProductChange:', error);
+      // console.error('Error in hierarchyNotifications.notifySubordinatesAboutProductChange:', error);
     }
   },
 
@@ -80,7 +80,7 @@ const hierarchyNotifications = {
         details
       );
     } catch (error) {
-      console.error('Error in hierarchyNotifications.notifyAboutOrderChange:', error);
+      // console.error('Error in hierarchyNotifications.notifyAboutOrderChange:', error);
     }
   },
 
@@ -91,7 +91,7 @@ const hierarchyNotifications = {
     try {
       await notifySubordinatesAboutOrder(employeeId, 'employee', action, orderDetails, details);
     } catch (error) {
-      console.error('Error in hierarchyNotifications.notifySubordinatesAboutOrderChange:', error);
+      // console.error('Error in hierarchyNotifications.notifySubordinatesAboutOrderChange:', error);
     }
   },
 
@@ -102,7 +102,7 @@ const hierarchyNotifications = {
     try {
       await notifyManagerAboutNewSubordinate(managerId, employeeName, employeeRole, details);
     } catch (error) {
-      console.error('Error in hierarchyNotifications.notifyManagerAboutNewEmployee:', error);
+      // console.error('Error in hierarchyNotifications.notifyManagerAboutNewEmployee:', error);
     }
   }
 };

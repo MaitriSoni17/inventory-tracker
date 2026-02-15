@@ -12,7 +12,8 @@ const {
   notifyBusinessOwnerAboutProduct,
   notifyBusinessOwnerOwnProductChanges,
   notifySubordinatesAboutProduct,
-  notifyReportingManager
+  notifyReportingManager,
+  checkAndNotifyLowStock
 } = require('../utils/notificationHelper');
 const { 
   hasPermission, 
@@ -102,6 +103,12 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
         }
 
         const product = await Product.create(productData);
+
+        // Check for low stock alert
+        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
+        try {
+            await checkAndNotifyLowStock(product, businessOwnerId);
+        } catch (e) {}
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
@@ -202,13 +209,13 @@ router.post('/getproduct', fetchuser, async (req, res) => {
                     products = [];
                 }
             } catch (err) {
-                console.error('Employee product lookup error:', err);
+                // console.error('Employee product lookup error:', err);
                 products = [];
             }
         }
         res.json(products);
     } catch (err) {
-        console.error('Error in getproduct route:', err);
+        // console.error('Error in getproduct route:', err);
         res.status(500).send("Internal Server error occurred");
     }
 });
@@ -240,6 +247,23 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
         const canEdit = await canEditItem(req.user, product.employee);
         if (!canEdit) {
             return res.status(403).json({ error: "You do not have permission to edit this product" });
+        }
+
+        // Normalize warehouse value - handle string, JSON-encoded array, or array
+        let normalizedWarehouse = [];
+        if (warehouse) {
+            if (Array.isArray(warehouse)) {
+                normalizedWarehouse = warehouse.flat().map(w => {
+                    try { const parsed = JSON.parse(w); return Array.isArray(parsed) ? parsed : [parsed]; } catch { return [w]; }
+                }).flat();
+            } else if (typeof warehouse === 'string') {
+                try {
+                    const parsed = JSON.parse(warehouse);
+                    normalizedWarehouse = Array.isArray(parsed) ? parsed : [parsed];
+                } catch {
+                    normalizedWarehouse = [warehouse];
+                }
+            }
         }
 
         // Delete removed image files from the uploads directory
@@ -288,7 +312,7 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
             category, 
             price, 
             totalProducts, 
-            warehouse, 
+            warehouse: normalizedWarehouse, 
             brand, 
             mDate, 
             eDate, 
@@ -298,6 +322,12 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
         };
 
         product = await Product.findByIdAndUpdate(req.params.id, { $set: newProduct }, { new: true });
+
+        // Check for low stock alert after update
+        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
+        try {
+            await checkAndNotifyLowStock(product, businessOwnerId);
+        } catch (e) {}
 
         // Send notifications based on who updated it
         if (req.role === 'businessowner') {

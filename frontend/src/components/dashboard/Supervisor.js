@@ -174,7 +174,9 @@ function Supervisor(props) {
                             }
                         });
                     }
-                } catch (error) { console.error('Error creating orders chart:', error); }
+                } catch (error) { //console.error('Error creating orders chart:', error); 
+
+                }
             }
 
             if (stockChartRef.current && products.length > 0) {
@@ -203,7 +205,9 @@ function Supervisor(props) {
                             }
                         });
                     }
-                } catch (error) { console.error('Error creating stock chart:', error); }
+                } catch (error) { // console.error('Error creating stock chart:', error); 
+
+                }
             }
         }, 100);
     }, [orders, products, getOrdersData, getTopProductsByStock]);
@@ -311,6 +315,14 @@ function Supervisor(props) {
                 totalWarehouses: warehousesData.length,
                 lowStockItems: lowStockCount
             });
+
+            // Check and trigger low stock alert notifications
+            try {
+                await fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+                    method: 'POST',
+                    headers
+                });
+            } catch (e) {}
 
             setLoading(false);
         } catch (error) {

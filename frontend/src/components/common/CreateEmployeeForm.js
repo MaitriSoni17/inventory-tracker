@@ -51,7 +51,7 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
                     setWarehouses(data);
                 }
             } catch (error) {
-                console.error('Error fetching warehouses:', error);
+                // console.error('Error fetching warehouses:', error);
             }
         };
         fetchWarehouses();

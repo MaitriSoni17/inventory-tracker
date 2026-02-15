@@ -8,7 +8,7 @@ const NotificationPreferenceSchema = new Schema({
   },
   role: {
     type: String,
-    enum: ['BusinessOwner', 'Employee', 'Supplier'],
+    enum: ['BusinessOwner', 'Employee', 'Supplier', 'businessowner', 'employee', 'supplier', 'manager', 'supervisor'],
     required: true
   },
   // Salary Notifications (Business Owner)

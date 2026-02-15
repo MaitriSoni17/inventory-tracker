@@ -29,7 +29,7 @@ const SupplierOrders = (props) => {
                 setCanExportReports(data.canExportReports || false);
             }
         } catch (error) {
-            console.error('Error checking export permission:', error);
+            // console.error('Error checking export permission:', error);
         }
     }, []);
 

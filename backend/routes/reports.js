@@ -5,7 +5,7 @@ const PDFDocument = require('pdfkit');
 const stream = require('stream');
 const fetchuser = require('../middleware/fetchuser');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
-const { requireExportReports } = require('../middleware/roleBasedAccess');
+const { requireExportReports, requireBusinessOwnerForReport, requireViewPermissionForReport, hasPermissionAsync } = require('../middleware/roleBasedAccess');
 const Employee = require('../models/Employee');
 const Products = require('../models/Products');
 const Orders = require('../models/CustomerOrders');
@@ -28,7 +28,7 @@ const filterByMonthYear = (data, month, year, dateField = 'createdAt') => {
 // ==================== EMPLOYEE REPORTS ====================
 
 // GET: Generate Employee Report (Excel)
-router.get('/employees/excel', fetchuser, requireExportReports, async (req, res) => {
+router.get('/employees/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canViewEmployees', 'employee'), async (req, res) => {
     try {
         const { month, year, employeeId } = req.query;
         
@@ -137,7 +137,7 @@ router.get('/employees/excel', fetchuser, requireExportReports, async (req, res)
         await workbook.xlsx.write(res);
         // console.log('Report generation completed successfully');
     } catch (error) {
-        console.error('Error generating employee Excel report:', error);
+        // console.error('Error generating employee Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report', details: error.message });
         }
@@ -145,7 +145,7 @@ router.get('/employees/excel', fetchuser, requireExportReports, async (req, res)
 });
 
 // GET: Generate Employee Report (PDF)
-router.get('/employees/pdf', fetchuser, requireExportReports, async (req, res) => {
+router.get('/employees/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canViewEmployees', 'employee'), async (req, res) => {
     try {
         const { month, year, employeeId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -205,7 +205,7 @@ router.get('/employees/pdf', fetchuser, requireExportReports, async (req, res) =
 
         doc.end();
     } catch (error) {
-        console.error('Error generating employee PDF report:', error);
+        // console.error('Error generating employee PDF report:', error);
         res.status(500).json({ error: 'Error generating report' });
     }
 });
@@ -213,7 +213,7 @@ router.get('/employees/pdf', fetchuser, requireExportReports, async (req, res) =
 // ==================== PRODUCT REPORTS ====================
 
 // GET: Generate Product Report (Excel)
-router.get('/products/excel', fetchuser, requireExportReports, async (req, res) => {
+router.get('/products/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canViewProducts', 'product'), async (req, res) => {
     try {
         const { month, year, productId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -326,7 +326,7 @@ router.get('/products/excel', fetchuser, requireExportReports, async (req, res) 
         res.statusCode = 200;
         await workbook.xlsx.write(res);
     } catch (error) {
-        console.error('Error generating product Excel report:', error);
+        // console.error('Error generating product Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -334,7 +334,7 @@ router.get('/products/excel', fetchuser, requireExportReports, async (req, res) 
 });
 
 // GET: Generate Product Report (PDF)
-router.get('/products/pdf', fetchuser, requireExportReports, async (req, res) => {
+router.get('/products/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canViewProducts', 'product'), async (req, res) => {
     try {
         const { month, year, productId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -416,7 +416,7 @@ router.get('/products/pdf', fetchuser, requireExportReports, async (req, res) =>
 
         doc.end();
     } catch (error) {
-        console.error('Error generating product PDF report:', error);
+        // console.error('Error generating product PDF report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -426,7 +426,7 @@ router.get('/products/pdf', fetchuser, requireExportReports, async (req, res) =>
 // ==================== CUSTOMER ORDER REPORTS ====================
 
 // GET: Generate Customer Order Report (Excel)
-router.get('/orders/excel', fetchuser, requireExportReports, async (req, res) => {
+router.get('/orders/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canViewOrders', 'customer order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -493,7 +493,7 @@ router.get('/orders/excel', fetchuser, requireExportReports, async (req, res) =>
                     warehouseName
                 ]);
             } catch (rowError) {
-                console.error('Error processing order row:', rowError);
+                // console.error('Error processing order row:', rowError);
                 // Continue with next row even if current one fails
             }
         });
@@ -525,7 +525,7 @@ router.get('/orders/excel', fetchuser, requireExportReports, async (req, res) =>
         res.statusCode = 200;
         await workbook.xlsx.write(res);
     } catch (error) {
-        console.error('Error generating order Excel report:', error);
+        // console.error('Error generating order Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -533,7 +533,7 @@ router.get('/orders/excel', fetchuser, requireExportReports, async (req, res) =>
 });
 
 // GET: Generate Customer Order Report (PDF)
-router.get('/orders/pdf', fetchuser, requireExportReports, async (req, res) => {
+router.get('/orders/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canViewOrders', 'customer order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -596,7 +596,7 @@ router.get('/orders/pdf', fetchuser, requireExportReports, async (req, res) => {
                     
                     doc.moveDown();
                 } catch (rowError) {
-                    console.error('Error processing order row in PDF:', rowError);
+                    // console.error('Error processing order row in PDF:', rowError);
                     // Continue with next row even if current one fails
                 }
             });
@@ -609,7 +609,7 @@ router.get('/orders/pdf', fetchuser, requireExportReports, async (req, res) => {
 
         doc.end();
     } catch (error) {
-        console.error('Error generating order PDF report:', error);
+        // console.error('Error generating order PDF report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -619,7 +619,7 @@ router.get('/orders/pdf', fetchuser, requireExportReports, async (req, res) => {
 // ==================== SUPPLIER ORDER REPORTS ====================
 
 // GET: Generate Supplier Order Report (Excel)
-router.get('/supplier-orders/excel', fetchuser, requireExportReports, async (req, res) => {
+router.get('/supplier-orders/excel', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -685,7 +685,7 @@ router.get('/supplier-orders/excel', fetchuser, requireExportReports, async (req
                     order.paymentStatus || 'N/A'
                 ]);
             } catch (rowError) {
-                console.error('Error processing supplier order row:', rowError);
+                // console.error('Error processing supplier order row:', rowError);
                 // Continue with next row even if current one fails
             }
         });
@@ -717,7 +717,7 @@ router.get('/supplier-orders/excel', fetchuser, requireExportReports, async (req
         res.statusCode = 200;
         await workbook.xlsx.write(res);
     } catch (error) {
-        console.error('Error generating supplier order Excel report:', error);
+        // console.error('Error generating supplier order Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -725,7 +725,7 @@ router.get('/supplier-orders/excel', fetchuser, requireExportReports, async (req
 });
 
 // GET: Generate Supplier Order Report (PDF)
-router.get('/supplier-orders/pdf', fetchuser, requireExportReports, async (req, res) => {
+router.get('/supplier-orders/pdf', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -784,7 +784,7 @@ router.get('/supplier-orders/pdf', fetchuser, requireExportReports, async (req, 
                     
                     doc.moveDown();
                 } catch (rowError) {
-                    console.error('Error processing supplier order row in PDF:', rowError);
+                    // console.error('Error processing supplier order row in PDF:', rowError);
                     // Continue with next row even if current one fails
                 }
             });
@@ -797,7 +797,7 @@ router.get('/supplier-orders/pdf', fetchuser, requireExportReports, async (req, 
 
         doc.end();
     } catch (error) {
-        console.error('Error generating supplier order PDF report:', error);
+        // console.error('Error generating supplier order PDF report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -809,22 +809,15 @@ router.get('/supplier-orders/pdf', fetchuser, requireExportReports, async (req, 
 // GET: Get all employees for dropdown
 router.get('/employees/list', fetchuser, async (req, res) => {
     try {
-        // console.log('\n=== EMPLOYEES LIST ENDPOINT ===');
-        // console.log('req.user:', req.user ? { _id: req.user._id, name: req.user.name || req.user.username } : 'null');
-        // console.log('req.user.businessowner:', req.user.businessowner);
-        // console.log('req.user.businessOwner:', req.user.businessOwner);
-        // console.log('req.businessowner:', req.businessowner);
-        
-        let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
-        // console.log('DROPDOWN: Using businessOwnerId:', businessOwnerId);
-        // console.log('DROPDOWN: Fetching employees for businessOwnerId:', businessOwnerId);
+        const businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const allowed = await hasPermissionAsync(req.user, 'canViewEmployees', businessOwnerId);
+        if (!allowed) {
+            return res.status(403).json({ error: 'You do not have permission to view employee data' });
+        }
         const employees = await Employee.find({ businessowner: businessOwnerId })
             .select('_id fname lname email role');
-        // console.log('DROPDOWN: Found employees:', employees.length);
-        // console.log('DROPDOWN: Employee data:', employees);
         res.json(employees);
     } catch (error) {
-        console.error('Error fetching employees list:', error);
         res.status(500).json({ error: 'Error fetching employees' });
     }
 });
@@ -832,12 +825,15 @@ router.get('/employees/list', fetchuser, async (req, res) => {
 // GET: Get all products for dropdown
 router.get('/products/list', fetchuser, async (req, res) => {
     try {
-        let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const allowed = await hasPermissionAsync(req.user, 'canViewProducts', businessOwnerId);
+        if (!allowed) {
+            return res.status(403).json({ error: 'You do not have permission to view product data' });
+        }
         const products = await Products.find({ businessowner: businessOwnerId })
             .select('_id name category price');
         res.json(products);
     } catch (error) {
-        console.error('Error fetching products list:', error);
         res.status(500).json({ error: 'Error fetching products' });
     }
 });
@@ -845,47 +841,106 @@ router.get('/products/list', fetchuser, async (req, res) => {
 // GET: Get all orders for dropdown
 router.get('/orders/list', fetchuser, async (req, res) => {
     try {
-        let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const allowed = await hasPermissionAsync(req.user, 'canViewOrders', businessOwnerId);
+        if (!allowed) {
+            return res.status(403).json({ error: 'You do not have permission to view order data' });
+        }
         const orders = await Orders.find({ businessowner: businessOwnerId })
             .select('_id cName oDate');
         res.json(orders);
     } catch (error) {
-        console.error('Error fetching orders list:', error);
         res.status(500).json({ error: 'Error fetching orders' });
     }
 });
 
-// GET: Get all supplier orders for dropdown
+// GET: Get all supplier orders for dropdown (Business Owner only)
 router.get('/supplier-orders/list', fetchuser, async (req, res) => {
     try {
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: 'Only Business Owner can view supplier order data' });
+        }
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         const supplierOrders = await SupplierOrders.find({ businessowner: businessOwnerId })
             .populate('supplier', 'fname lname companyName')
             .select('_id pName oDate supplier');
         res.json(supplierOrders);
     } catch (error) {
-        console.error('Error fetching supplier orders list:', error);
         res.status(500).json({ error: 'Error fetching supplier orders' });
     }
 });
 
 // ==================== SUPPLIER REPORTS ====================
 
-// GET: Get Suppliers List
+// GET: Get Suppliers List (Business Owner only)
 router.get('/suppliers/list', fetchuser, async (req, res) => {
     try {
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: 'Only Business Owner can view supplier data' });
+        }
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         const suppliers = await Supplier.find({ businessowner: businessOwnerId })
             .select('_id fname lname email companyName');
         res.json(suppliers);
     } catch (error) {
-        console.error('Error fetching suppliers list:', error);
         res.status(500).json({ error: 'Error fetching suppliers' });
     }
 });
 
+// GET: Get report permissions for the current user
+// Returns which report types the user is allowed to export
+router.get('/report-permissions', fetchuser, async (req, res) => {
+    try {
+        const businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        const isBusinessOwner = req.role === 'businessowner';
+
+        const canExport = await hasPermissionAsync(req.user, 'canExportReports', businessOwnerId);
+        if (!canExport) {
+            return res.json({
+                canExportReports: false,
+                employees: false,
+                products: false,
+                orders: false,
+                supplierOrders: false,
+                suppliers: false,
+                salary: false
+            });
+        }
+
+        // Business owner gets all report types
+        if (isBusinessOwner) {
+            return res.json({
+                canExportReports: true,
+                employees: true,
+                products: true,
+                orders: true,
+                supplierOrders: true,
+                suppliers: true,
+                salary: true
+            });
+        }
+
+        // For non-business-owner users, check individual view permissions
+        const canViewEmployees = await hasPermissionAsync(req.user, 'canViewEmployees', businessOwnerId);
+        const canViewProducts = await hasPermissionAsync(req.user, 'canViewProducts', businessOwnerId);
+        const canViewOrders = await hasPermissionAsync(req.user, 'canViewOrders', businessOwnerId);
+
+        res.json({
+            canExportReports: true,
+            employees: canViewEmployees,
+            products: canViewProducts,
+            orders: canViewOrders,
+            supplierOrders: false,  // Business owner only
+            suppliers: false,       // Business owner only
+            salary: false           // Business owner only
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error checking report permissions' });
+    }
+});
+
 // GET: Generate Supplier Report (Excel)
-router.get('/suppliers/excel', fetchuser, requireExportReports, async (req, res) => {
+router.get('/suppliers/excel', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier'), async (req, res) => {
     try {
         const { supplierId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -935,7 +990,7 @@ router.get('/suppliers/excel', fetchuser, requireExportReports, async (req, res)
                     supplier.jDate ? new Date(supplier.jDate).toLocaleDateString() : 'N/A'
                 ]);
             } catch (rowError) {
-                console.error('Error processing supplier row:', rowError);
+                // console.error('Error processing supplier row:', rowError);
             }
         });
 
@@ -965,7 +1020,7 @@ router.get('/suppliers/excel', fetchuser, requireExportReports, async (req, res)
         res.statusCode = 200;
         await workbook.xlsx.write(res);
     } catch (error) {
-        console.error('Error generating supplier Excel report:', error);
+        // console.error('Error generating supplier Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -973,7 +1028,7 @@ router.get('/suppliers/excel', fetchuser, requireExportReports, async (req, res)
 });
 
 // GET: Generate Supplier Report (PDF)
-router.get('/suppliers/pdf', fetchuser, requireExportReports, async (req, res) => {
+router.get('/suppliers/pdf', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier'), async (req, res) => {
     try {
         const { supplierId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -1019,7 +1074,7 @@ router.get('/suppliers/pdf', fetchuser, requireExportReports, async (req, res) =
                     
                     doc.moveDown();
                 } catch (rowError) {
-                    console.error('Error processing supplier row in PDF:', rowError);
+                    // console.error('Error processing supplier row in PDF:', rowError);
                 }
             });
         }
@@ -1031,7 +1086,7 @@ router.get('/suppliers/pdf', fetchuser, requireExportReports, async (req, res) =
 
         doc.end();
     } catch (error) {
-        console.error('Error generating supplier PDF report:', error);
+        // console.error('Error generating supplier PDF report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -1067,7 +1122,7 @@ const requireSupplierExportPermission = async (req, res, next) => {
         
         next();
     } catch (error) {
-        console.error('Error checking supplier export permission:', error);
+        // console.error('Error checking supplier export permission:', error);
         res.status(500).json({ error: "Internal server error" });
     }
 };
@@ -1086,7 +1141,7 @@ router.get('/supplier/check-permission', fetchuser, async (req, res) => {
         
         res.json({ canExportReports: supplier.canExportReports || false });
     } catch (error) {
-        console.error('Error checking supplier permission:', error);
+        // console.error('Error checking supplier permission:', error);
         res.status(500).json({ error: "Internal server error" });
     }
 });
@@ -1164,7 +1219,7 @@ router.get('/supplier/my-orders/excel', fetchuser, requireSupplierExportPermissi
                     order.paymentStatus || 'Pending'
                 ]);
             } catch (rowError) {
-                console.error('Error processing supplier order row:', rowError);
+                // console.error('Error processing supplier order row:', rowError);
             }
         });
 
@@ -1201,7 +1256,7 @@ router.get('/supplier/my-orders/excel', fetchuser, requireSupplierExportPermissi
         res.statusCode = 200;
         await workbook.xlsx.write(res);
     } catch (error) {
-        console.error('Error generating supplier orders Excel report:', error);
+        // console.error('Error generating supplier orders Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -1283,7 +1338,7 @@ router.get('/supplier/my-orders/pdf', fetchuser, requireSupplierExportPermission
                     
                     doc.moveDown();
                 } catch (rowError) {
-                    console.error('Error processing order row in PDF:', rowError);
+                    // console.error('Error processing order row in PDF:', rowError);
                 }
             });
 
@@ -1301,7 +1356,7 @@ router.get('/supplier/my-orders/pdf', fetchuser, requireSupplierExportPermission
 
         doc.end();
     } catch (error) {
-        console.error('Error generating supplier orders PDF report:', error);
+        // console.error('Error generating supplier orders PDF report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -1403,7 +1458,7 @@ router.get('/supplier/my-orders/individual/:orderId/pdf', fetchuser, requireSupp
 
         doc.end();
     } catch (error) {
-        console.error('Error generating individual order PDF report:', error);
+        // console.error('Error generating individual order PDF report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }
@@ -1562,7 +1617,7 @@ router.get('/supplier/my-orders/individual/:orderId/excel', fetchuser, requireSu
         await workbook.xlsx.write(res);
         res.end();
     } catch (error) {
-        console.error('Error generating individual order Excel report:', error);
+        // console.error('Error generating individual order Excel report:', error);
         if (!res.headersSent) {
             res.status(500).json({ error: 'Error generating report' });
         }

@@ -99,10 +99,10 @@ const PermissionManager = (props) => {
                 });
                 setExpandedGroups(expanded);
             } else {
-                console.error('Failed to fetch permission groups');
+                // console.error('Failed to fetch permission groups');
             }
         } catch (error) {
-            console.error('Error fetching permission groups:', error);
+            // console.error('Error fetching permission groups:', error);
         }
     }, []);
 
@@ -122,10 +122,10 @@ const PermissionManager = (props) => {
                 setLastUpdated(data.updatedAt);
             } else {
                 const errorData = await response.json();
-                console.error('Error fetching permissions:', errorData);
+                // console.error('Error fetching permissions:', errorData);
             }
         } catch (error) {
-            console.error('Error fetching permissions:', error);
+            //  console.error('Error fetching permissions:', error);
         } finally {
             setLoading(false);
         }
@@ -150,7 +150,7 @@ const PermissionManager = (props) => {
                 props.showAlert(errorData.error || 'Error fetching employees', 'danger');
             }
         } catch (error) {
-            console.error('Error fetching employees:', error);
+            // console.error('Error fetching employees:', error);
             props.showAlert('Error fetching employees', 'danger');
         } finally {
             setLoadingEmployees(false);
@@ -183,10 +183,10 @@ const PermissionManager = (props) => {
                 });
             } else {
                 const errorData = await response.json();
-                console.error('Error fetching notification preferences:', errorData);
+                // console.error('Error fetching notification preferences:', errorData);
             }
         } catch (error) {
-            console.error('Error fetching notification preferences:', error);
+            // console.error('Error fetching notification preferences:', error);
         }
     }, []);
 
@@ -205,10 +205,10 @@ const PermissionManager = (props) => {
                 const data = await response.json();
                 setSuppliers(data.suppliers || []);
             } else {
-                console.error('Error fetching suppliers: Non-OK response');
+                // console.error('Error fetching suppliers: Non-OK response');
             }
         } catch (error) {
-            console.error('Error fetching suppliers:', error);
+            // console.error('Error fetching suppliers:', error);
         } finally {
             setLoadingSuppliers(false);
         }
@@ -250,7 +250,7 @@ const PermissionManager = (props) => {
             setSuppliers(prev => prev.map(s => 
                 s._id === supplierId ? { ...s, canExportReports: currentValue } : s
             ));
-            console.error('Error updating supplier permission:', error);
+            // console.error('Error updating supplier permission:', error);
             props?.showAlert?.('Error updating supplier permission', 'danger');
         } finally {
             setSavingSupplierPermission(null);
@@ -283,7 +283,7 @@ const PermissionManager = (props) => {
                 props?.showAlert?.(errorData.error || 'Error updating supplier permissions', 'danger');
             }
         } catch (error) {
-            console.error('Error updating supplier permissions:', error);
+            // console.error('Error updating supplier permissions:', error);
             props?.showAlert?.('Error updating supplier permissions', 'danger');
         } finally {
             setSavingSupplierPermission(null);
@@ -326,7 +326,7 @@ const PermissionManager = (props) => {
                 props.showAlert(errorData.message || 'Error saving notification preferences', 'danger');
             }
         } catch (error) {
-            console.error('Error saving notification preferences:', error);
+            // console.error('Error saving notification preferences:', error);
             props.showAlert('Error saving notification preferences', 'danger');
         } finally {
             setSavingNotificationPreferences(false);
@@ -419,7 +419,7 @@ const PermissionManager = (props) => {
                 }
             }
         } catch (error) {
-            console.error('Error updating permission:', error);
+            // console.error('Error updating permission:', error);
             setPermissions(prev => ({
                 ...prev,
                 [role]: {
@@ -517,7 +517,7 @@ const PermissionManager = (props) => {
                 }
             }
         } catch (error) {
-            console.error('Error updating employee permission:', error);
+            // console.error('Error updating employee permission:', error);
             setEmployeePermissions(prev => ({
                 ...prev,
                 [permissionKey]: currentValue
@@ -561,7 +561,7 @@ const PermissionManager = (props) => {
                 props.showAlert(errorData.error || 'Error updating permissions', 'danger');
             }
         } catch (error) {
-            console.error('Error updating group permissions:', error);
+            // console.error('Error updating group permissions:', error);
             props.showAlert('Error updating permissions', 'danger');
         } finally {
             setSaving(false);
@@ -594,7 +594,7 @@ const PermissionManager = (props) => {
                 props.showAlert(errorData.error || 'Error resetting permissions', 'danger');
             }
         } catch (error) {
-            console.error('Error resetting permissions:', error);
+            // console.error('Error resetting permissions:', error);
             props.showAlert('Error resetting permissions', 'danger');
         } finally {
             setSaving(false);
@@ -629,7 +629,7 @@ const PermissionManager = (props) => {
                 props.showAlert(errorData.error || 'Error syncing permissions', 'danger');
             }
         } catch (error) {
-            console.error('Error syncing permissions:', error);
+            // console.error('Error syncing permissions:', error);
             props.showAlert('Error syncing permissions', 'danger');
         } finally {
             setSyncing(false);
@@ -670,7 +670,7 @@ const PermissionManager = (props) => {
                 props.showAlert(errorData.error || 'Error resetting permissions', 'danger');
             }
         } catch (error) {
-            console.error('Error resetting employee permissions:', error);
+            // console.error('Error resetting employee permissions:', error);
             props.showAlert('Error resetting permissions', 'danger');
         } finally {
             setSavingEmployee(false);

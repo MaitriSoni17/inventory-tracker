@@ -238,7 +238,7 @@ const CreateEmployee = (props) => {
                 const json = await parseResponse(response);
                 const errorMsg = json?.errors?.map(e => e.msg).join(', ') || json?.error || `Employee creation failed (Status ${response.status})`;
                 props.showAlert(errorMsg, "danger");
-                console.error('Server errors:', json);
+                // console.error('Server errors:', json);
                 return;
             }
             const json = await parseResponse(response);

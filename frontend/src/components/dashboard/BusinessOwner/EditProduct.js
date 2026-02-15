@@ -12,13 +12,14 @@ const EditProduct = (props) => {
         category: '',
         price: '',
         totalProducts: '',
-        warehouse: '',
+        warehouse: [],
         brand: '',
         mDate: '',
         eDate: '',
         desc: '',
         image: ''
     });
+    const [warehouseDropdownOpen, setWarehouseDropdownOpen] = useState(false);
     const [existingImages, setExistingImages] = useState([]);
     const [removedImages, setRemovedImages] = useState([]);
     const [newUploadedImages, setNewUploadedImages] = useState([]);
@@ -78,7 +79,7 @@ const EditProduct = (props) => {
                     category: product.category || '',
                     price: product.price || '',
                     totalProducts: product.totalProducts || '',
-                    warehouse: product.warehouse?.[0] || '',
+                    warehouse: product.warehouse || [],
                     brand: product.brand || '',
                     mDate: formatDate(product.mDate),
                     eDate: formatDate(product.eDate),
@@ -151,7 +152,7 @@ const EditProduct = (props) => {
         const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc } = productDetails;
         
         // Add form validation here
-        if (!name || !category || !price || !totalProducts || !warehouse || !brand || !mDate || !eDate || !desc) {
+        if (!name || !category || !price || !totalProducts || !warehouse || warehouse.length === 0 || !brand || !mDate || !eDate || !desc) {
             props.showAlert('Please fill in all required fields.', "danger");
             return;
         }
@@ -170,7 +171,7 @@ const EditProduct = (props) => {
                 category,
                 price: parseFloat(price),
                 totalProducts: parseInt(totalProducts),
-                warehouse: [warehouse],
+                warehouse: warehouse,
                 brand,
                 mDate,
                 eDate,
@@ -397,24 +398,67 @@ const EditProduct = (props) => {
                                     />
                                 </div>
 
-                                {/* Warehouse */}
+                                {/* Warehouse (Multi-select) */}
                                 <div className="col-md-5 me-5">
-                                    <label htmlFor="warehouse" className="form-label fw-semibold">Warehouse</label>
-                                    <div className="d-flex gap-2 align-items-end">
-                                        <div style={{ flex: 1 }}>
-                                            <select 
-                                                className="form-select rounded-3 shadow-sm" 
-                                                id="warehouse" 
-                                                name="warehouse" 
-                                                value={productDetails.warehouse} 
-                                                onChange={onChange}
-                                                disabled={loadingWarehouses}
+                                    <label htmlFor="warehouse" className="form-label fw-semibold">Warehouses</label>
+                                    <div className="d-flex gap-2 align-items-start">
+                                        <div
+                                            style={{ flex: 1, position: 'relative' }}
+                                            tabIndex={0}
+                                            onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setWarehouseDropdownOpen(false); }}
+                                        >
+                                            <div
+                                                onClick={() => !loadingWarehouses && !submitting && setWarehouseDropdownOpen(!warehouseDropdownOpen)}
+                                                className="form-select rounded-3 shadow-sm"
+                                                style={{ minHeight: '44px', cursor: loadingWarehouses || submitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem', padding: '0.375rem 2.25rem 0.375rem 0.75rem' }}
                                             >
-                                                <option value="" disabled>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouse'}</option>
-                                                {warehouses.map((warehouse) => (
-                                                    <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
-                                                ))}
-                                            </select>
+                                                {productDetails.warehouse.length === 0 ? (
+                                                    <span style={{ color: '#6c757d' }}>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouses'}</span>
+                                                ) : (
+                                                    productDetails.warehouse.map(wId => {
+                                                        const wh = warehouses.find(w => w._id === wId);
+                                                        return (
+                                                            <span key={wId} style={{ background: '#af50ff', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                                {wh ? wh.wName : wId}
+                                                                <span
+                                                                    onClick={(e) => { e.stopPropagation(); setProductDetails({ ...productDetails, warehouse: productDetails.warehouse.filter(id => id !== wId) }); }}
+                                                                    style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '2px', fontSize: '1rem', lineHeight: '1' }}
+                                                                >
+                                                                    &times;
+                                                                </span>
+                                                            </span>
+                                                        );
+                                                    })
+                                                )}
+                                            </div>
+                                            {warehouseDropdownOpen && (
+                                                <div onMouseDown={(e) => e.preventDefault()} style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #dee2e6', borderRadius: '0 0 8px 8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                                                    {warehouses.map((warehouse) => (
+                                                        <label
+                                                            key={warehouse._id}
+                                                            style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', gap: '0.5rem', transition: 'background 0.2s' }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={productDetails.warehouse.includes(warehouse._id)}
+                                                                onChange={() => {
+                                                                    const updated = productDetails.warehouse.includes(warehouse._id)
+                                                                        ? productDetails.warehouse.filter(id => id !== warehouse._id)
+                                                                        : [...productDetails.warehouse, warehouse._id];
+                                                                    setProductDetails({ ...productDetails, warehouse: updated });
+                                                                }}
+                                                                style={{ accentColor: '#af50ff', width: '16px', height: '16px' }}
+                                                            />
+                                                            <span style={{ fontSize: '0.95rem' }}>{warehouse.wName}</span>
+                                                        </label>
+                                                    ))}
+                                                    {warehouses.length === 0 && (
+                                                        <div style={{ padding: '0.75rem', textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>No warehouses available</div>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                         <a href="/dashboard/warehouses" className="btn btn-sm btn-custom-purple w-auto text-decoration-none" title="Add new warehouse">+</a>
                                     </div>

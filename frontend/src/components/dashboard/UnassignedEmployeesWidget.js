@@ -30,7 +30,7 @@ const UnassignedEmployeesWidget = () => {
                 setCount(data.count || 0);
             }
         } catch (error) {
-            console.error('Error fetching unassigned employees:', error);
+            // console.error('Error fetching unassigned employees:', error);
         } finally {
             setLoading(false);
         }

@@ -11,7 +11,7 @@ const fetchbusinessowner = async (req, res, next) => {
         // console.log('Token present:', !!token);
         
         if (!token) {
-            console.error('No auth-token header found');
+            // console.error('No auth-token header found');
             return res.status(401).json({ 
                 success: false,
                 error: "Please authenticate using a valid token" 
@@ -22,7 +22,7 @@ const fetchbusinessowner = async (req, res, next) => {
         const data = jwt.verify(token, JWT_SECRET);
         
         if (!data.id) {
-            console.error('No id in token');
+            // console.error('No id in token');
             return res.status(401).json({ 
                 success: false,
                 error: "Invalid token structure" 
@@ -33,7 +33,7 @@ const fetchbusinessowner = async (req, res, next) => {
         const businessowner = await BusinessOwner.findById(data.id);
         
         if (!businessowner) {
-            console.error('Business owner not found for id:', data.id);
+            // console.error('Business owner not found for id:', data.id);
             return res.status(401).json({ 
                 success: false,
                 error: "Business owner not found" 
@@ -49,8 +49,8 @@ const fetchbusinessowner = async (req, res, next) => {
         req.businessowner = businessowner;
         next();
     } catch (error) {
-        console.error('Token verification error:', error.message);
-        console.error('Error stack:', error.stack);
+        // console.error('Token verification error:', error.message);
+        // console.error('Error stack:', error.stack);
         res.status(401).json({ 
             success: false,
             error: "Invalid token", 

@@ -29,7 +29,7 @@ router.get('/getpayments/:employeeId', fetchuser, async (req, res) => {
 
         res.json(payments);
     } catch (error) {
-        console.error('Error fetching salary payments:', error);
+        // console.error('Error fetching salary payments:', error);
         res.status(500).json({ error: "Server error while fetching salary payments" });
     }
 });
@@ -66,7 +66,7 @@ router.get('/totalpaid/:employeeId', fetchuser, async (req, res) => {
 
         res.json({ totalPaid, currency: 'INR' });
     } catch (error) {
-        console.error('Error calculating total paid salary:', error);
+        // console.error('Error calculating total paid salary:', error);
         res.status(500).json({ error: "Server error while calculating total paid salary" });
     }
 });
@@ -123,7 +123,7 @@ router.post('/recordpayment',
                 payment
             });
         } catch (error) {
-            console.error('Error recording salary payment:', error);
+            // console.error('Error recording salary payment:', error);
             res.status(500).json({ error: "Server error while recording salary payment" });
         }
     }
@@ -175,7 +175,7 @@ router.put('/updatepayment/:paymentId',
                 payment
             });
         } catch (error) {
-            console.error('Error updating salary payment:', error);
+            // console.error('Error updating salary payment:', error);
             res.status(500).json({ error: "Server error while updating salary payment" });
         }
     }
@@ -205,7 +205,7 @@ router.delete('/deletepayment/:paymentId', fetchuser, async (req, res) => {
             message: "Salary payment deleted successfully"
         });
     } catch (error) {
-        console.error('Error deleting salary payment:', error);
+        // console.error('Error deleting salary payment:', error);
         res.status(500).json({ error: "Server error while deleting salary payment" });
     }
 });

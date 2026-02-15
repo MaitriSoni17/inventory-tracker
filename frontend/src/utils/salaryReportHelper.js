@@ -61,7 +61,7 @@ export const generateSalaryReportPDF = async (salaryData, paidSalaries, formatCu
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating PDF:', error);
+        // console.error('Error generating PDF:', error);
         return false;
     }
 };
@@ -102,7 +102,7 @@ export const generateSalaryReportExcel = (salaryData, paidSalaries) => {
         
         return true;
     } catch (error) {
-        console.error('Error generating Excel:', error);
+        // console.error('Error generating Excel:', error);
         return false;
     }
 };
@@ -170,7 +170,7 @@ export const generateIndividualSalaryReportPDF = async (employee, payments, paid
         html2pdf().set(opt).from(htmlContent).save();
         return true;
     } catch (error) {
-        console.error('Error generating individual PDF:', error);
+        // console.error('Error generating individual PDF:', error);
         return false;
     }
 };

@@ -54,12 +54,21 @@ router.post('/get', fetchuser, async (req, res) => {
         
         // If no permissions document exists, create one with defaults
         if (!rolePermissions) {
-            rolePermissions = await RolePermissions.create({
-                businessowner: req.user._id,
-                manager: RolePermissions.getDefaultPermissions('manager'),
-                supervisor: RolePermissions.getDefaultPermissions('supervisor'),
-                employee: RolePermissions.getDefaultPermissions('employee')
-            });
+            try {
+                rolePermissions = await RolePermissions.create({
+                    businessowner: req.user._id,
+                    manager: RolePermissions.getDefaultPermissions('manager'),
+                    supervisor: RolePermissions.getDefaultPermissions('supervisor'),
+                    employee: RolePermissions.getDefaultPermissions('employee')
+                });
+            } catch (createErr) {
+                // Handle race condition: if another request already created it, just fetch it
+                if (createErr.code === 11000) {
+                    rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
+                } else {
+                    throw createErr;
+                }
+            }
         }
 
         res.json({
@@ -72,7 +81,7 @@ router.post('/get', fetchuser, async (req, res) => {
             updatedAt: rolePermissions.updatedAt
         });
     } catch (err) {
-        console.error('Error getting permissions:', err);
+        // console.error('Error getting permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -144,7 +153,7 @@ router.put('/update', fetchuser, async (req, res) => {
             permissions: rolePermissions[role]
         });
     } catch (err) {
-        console.error('Error updating permissions:', err);
+        // console.error('Error updating permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -209,7 +218,7 @@ router.put('/update-single', fetchuser, async (req, res) => {
             value: value
         });
     } catch (err) {
-        console.error('Error updating single permission:', err);
+        // console.error('Error updating single permission:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -282,7 +291,7 @@ router.put('/reset', fetchuser, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Error resetting permissions:', err);
+        // console.error('Error resetting permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -383,7 +392,7 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
             hasCustomPermissions: false
         });
     } catch (err) {
-        console.error('Error getting my permissions:', err);
+        // console.error('Error getting my permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -408,7 +417,7 @@ router.get('/employees', fetchuser, async (req, res) => {
             employees: employees
         });
     } catch (err) {
-        console.error('Error getting employees for permissions:', err);
+        // console.error('Error getting employees for permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -438,7 +447,7 @@ router.get('/employee/:id', fetchuser, async (req, res) => {
             employee: employee
         });
     } catch (err) {
-        console.error('Error getting employee permissions:', err);
+        // console.error('Error getting employee permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -491,7 +500,7 @@ router.put('/employee/:id', fetchuser, async (req, res) => {
             employee: employee
         });
     } catch (err) {
-        console.error('Error updating employee permissions:', err);
+        // console.error('Error updating employee permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -549,7 +558,7 @@ router.put('/employee/:id/single', fetchuser, async (req, res) => {
             value: value
         });
     } catch (err) {
-        console.error('Error updating employee single permission:', err);
+        // console.error('Error updating employee single permission:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -600,7 +609,7 @@ router.put('/employee/:id/reset', fetchuser, async (req, res) => {
             employee: updatedEmployee
         });
     } catch (err) {
-        console.error('Error resetting employee permissions:', err);
+        // console.error('Error resetting employee permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
@@ -724,7 +733,7 @@ router.get('/groups', fetchuser, async (req, res) => {
             groups: permissionGroups
         });
     } catch (err) {
-        console.error('Error getting permission groups:', err);
+        // console.error('Error getting permission groups:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -745,12 +754,20 @@ router.put('/sync-all', fetchuser, async (req, res) => {
         let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: req.user._id });
         
         if (!rolePermissionsDoc) {
-            rolePermissionsDoc = await RolePermissions.create({
-                businessowner: req.user._id,
-                manager: RolePermissions.getDefaultPermissions('manager'),
-                supervisor: RolePermissions.getDefaultPermissions('supervisor'),
-                employee: RolePermissions.getDefaultPermissions('employee')
-            });
+            try {
+                rolePermissionsDoc = await RolePermissions.create({
+                    businessowner: req.user._id,
+                    manager: RolePermissions.getDefaultPermissions('manager'),
+                    supervisor: RolePermissions.getDefaultPermissions('supervisor'),
+                    employee: RolePermissions.getDefaultPermissions('employee')
+                });
+            } catch (createErr) {
+                if (createErr.code === 11000) {
+                    rolePermissionsDoc = await RolePermissions.findOne({ businessowner: req.user._id });
+                } else {
+                    throw createErr;
+                }
+            }
         }
 
         const results = {
@@ -804,7 +821,7 @@ router.put('/sync-all', fetchuser, async (req, res) => {
             results
         });
     } catch (err) {
-        console.error('Error syncing permissions:', err);
+        // console.error('Error syncing permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });

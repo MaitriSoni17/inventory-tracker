@@ -5,6 +5,7 @@ const Notification = require('../models/Notification');
 const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
 const Supplier = require('../models/Supplier');
+const { checkAllProductsLowStock } = require('../utils/notificationHelper');
 
 // Helper function to populate sender based on role
 async function populateSenderData(notifications) {
@@ -43,7 +44,7 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
 
     res.json(notifications);
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    // console.error('Error fetching notifications:', error);
     res.status(500).json({ error: 'Error fetching notifications' });
   }
 });
@@ -66,7 +67,7 @@ router.get('/unreadcount', fetchuser, async (req, res) => {
 
     res.json({ unreadCount: count });
   } catch (error) {
-    console.error('Error fetching unread count:', error);
+    // console.error('Error fetching unread count:', error);
     res.status(500).json({ error: 'Error fetching unread count' });
   }
 });
@@ -93,7 +94,7 @@ router.put('/markasread/:id', fetchuser, async (req, res) => {
 
     res.json(notification);
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    // console.error('Error marking notification as read:', error);
     res.status(500).json({ error: 'Error marking notification as read' });
   }
 });
@@ -119,7 +120,7 @@ router.put('/markallasread', fetchuser, async (req, res) => {
 
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    // console.error('Error marking all notifications as read:', error);
     res.status(500).json({ error: 'Error marking all notifications as read' });
   }
 });
@@ -145,7 +146,7 @@ router.delete('/deletenotification/:id', fetchuser, async (req, res) => {
 
     res.json({ message: 'Notification deleted successfully' });
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    // console.error('Error deleting notification:', error);
     res.status(500).json({ error: 'Error deleting notification' });
   }
 });
@@ -167,7 +168,7 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
 
     res.json({ message: 'All notifications deleted successfully' });
   } catch (error) {
-    console.error('Error deleting all notifications:', error);
+    // console.error('Error deleting all notifications:', error);
     res.status(500).json({ error: 'Error deleting all notifications' });
   }
 });
@@ -186,7 +187,7 @@ router.get('/debug/allnotifications', async (req, res) => {
       notifications: allNotifications
     });
   } catch (error) {
-    console.error('Error fetching all notifications:', error);
+    // console.error('Error fetching all notifications:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -201,8 +202,33 @@ router.get('/debug/userinfo', fetchuser, async (req, res) => {
       user: req.user
     });
   } catch (error) {
-    console.error('Error fetching user info:', error);
+    // console.error('Error fetching user info:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Check and create low stock alert notifications
+// POST /api/notifications/check-low-stock-alerts
+router.post('/check-low-stock-alerts', fetchuser, async (req, res) => {
+  try {
+    let businessOwnerId;
+    if (req.role === 'businessowner') {
+      businessOwnerId = req.user._id;
+    } else if (['employee', 'manager', 'supervisor'].includes(req.role)) {
+      businessOwnerId = req.user.businessowner;
+    } else {
+      return res.status(403).json({ error: 'Not authorized to check low stock alerts' });
+    }
+
+    const createdNotifications = await checkAllProductsLowStock(businessOwnerId);
+
+    res.json({
+      success: true,
+      alertsCreated: createdNotifications.length,
+      notifications: createdNotifications
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error checking low stock alerts' });
   }
 });
 

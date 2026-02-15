@@ -41,7 +41,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.employees = employeeResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting employees: ${err.message}`);
-            console.error('Error deleting employees:', err);
+            // console.error('Error deleting employees:', err);
         }
 
         // 2. Delete all Suppliers
@@ -50,7 +50,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.suppliers = supplierResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting suppliers: ${err.message}`);
-            console.error('Error deleting suppliers:', err);
+            // console.error('Error deleting suppliers:', err);
         }
 
         // 3. Delete all Products
@@ -59,7 +59,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.products = productResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting products: ${err.message}`);
-            console.error('Error deleting products:', err);
+            // console.error('Error deleting products:', err);
         }
 
         // 4. Delete all Categories
@@ -68,7 +68,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.categories = categoryResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting categories: ${err.message}`);
-            console.error('Error deleting categories:', err);
+            // console.error('Error deleting categories:', err);
         }
 
         // 5. Delete all Orders
@@ -77,7 +77,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.orders = orderResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting orders: ${err.message}`);
-            console.error('Error deleting orders:', err);
+            // console.error('Error deleting orders:', err);
         }
 
         // 6. Delete all Warehouses
@@ -86,7 +86,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.warehouses = warehouseResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting warehouses: ${err.message}`);
-            console.error('Error deleting warehouses:', err);
+            // console.error('Error deleting warehouses:', err);
         }
 
         // 7. Delete all Customer Orders
@@ -95,7 +95,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.customerOrders = customerOrderResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting customer orders: ${err.message}`);
-            console.error('Error deleting customer orders:', err);
+            // console.error('Error deleting customer orders:', err);
         }
 
         // 8. Delete all Supplier Orders
@@ -104,7 +104,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.supplierOrders = supplierOrderResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting supplier orders: ${err.message}`);
-            console.error('Error deleting supplier orders:', err);
+            // console.error('Error deleting supplier orders:', err);
         }
 
         // 9. Delete all Notifications related to this Business Owner
@@ -118,7 +118,7 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.notifications = notificationResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting notifications: ${err.message}`);
-            console.error('Error deleting notifications:', err);
+            // console.error('Error deleting notifications:', err);
         }
 
         // 10. Delete all Deletion Requests for this Business Owner
@@ -132,12 +132,12 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
             summary.deletionRequests = deletionResult.deletedCount || 0;
         } catch (err) {
             summary.errors.push(`Error deleting deletion requests: ${err.message}`);
-            console.error('Error deleting deletion requests:', err);
+            // console.error('Error deleting deletion requests:', err);
         }
 
         return summary;
     } catch (err) {
-        console.error('Fatal error in cascade deletion:', err);
+        // console.error('Fatal error in cascade deletion:', err);
         throw new Error(`Cascade deletion failed: ${err.message}`);
     }
 };

@@ -39,7 +39,7 @@ export const RoleProvider = ({ children }) => {
                 }
             }
         } catch (error) {
-            console.error('Error fetching permissions:', error);
+            // console.error('Error fetching permissions:', error);
         }
     }, []);
 
@@ -96,7 +96,7 @@ export const RoleProvider = ({ children }) => {
                 setRole(storedRole || 'employee');
             }
         } catch (error) {
-            console.error('Error fetching user role:', error);
+            // console.error('Error fetching user role:', error);
             // Fallback to stored role on error
             const storedRole = localStorage.getItem('role');
             setRole(storedRole || 'employee');

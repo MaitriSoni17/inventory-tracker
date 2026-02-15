@@ -160,7 +160,7 @@ const hasPermissionAsync = async (user, permission, businessOwnerId) => {
             return customPermissions[user.role][permission];
         }
     } catch (err) {
-        console.error('Error fetching custom permissions:', err);
+        // console.error('Error fetching custom permissions:', err);
     }
     
     // Fall back to role defaults
@@ -319,6 +319,12 @@ const canEditItem = async (requestUser, itemCreatorId, itemOwnerId = null) => {
     // Business owner can edit everything
     if (requestUser.role === 'businessowner') return true;
     
+    // If item has no creator (e.g., created by business owner), allow managers/supervisors based on org
+    if (!itemCreatorId) {
+        if (requestUser.role === 'manager' || requestUser.role === 'supervisor') return true;
+        return false;
+    }
+
     // User can always edit their own items
     if (requestUser._id.toString() === itemCreatorId.toString()) return true;
     
@@ -354,6 +360,12 @@ const canDeleteItem = async (requestUser, itemCreatorId) => {
     
     // Employees cannot delete
     if (requestUser.role === 'employee') return false;
+
+    // If item has no creator (e.g., created by business owner), allow managers/supervisors
+    if (!itemCreatorId) {
+        if (requestUser.role === 'manager' || requestUser.role === 'supervisor') return true;
+        return false;
+    }
     
     // Manager can delete team items
     if (requestUser.role === 'manager') {
@@ -442,17 +454,51 @@ const requireNotificationAccess = (req, res, next) => {
 /**
  * Middleware to verify user can export reports
  */
-const requireExportReports = (req, res, next) => {
+const requireExportReports = async (req, res, next) => {
     if (!req.user) {
         return res.status(401).json({ error: "Not authenticated" });
     }
 
     // Check if user has the canExportReports permission
-    if (!hasPermissionAsync || !hasPermission(req.user, 'canExportReports')) {
+    const businessOwnerId = req.businessowner || req.user.businessowner || req.user._id;
+    const allowed = await hasPermissionAsync(req.user, 'canExportReports', businessOwnerId);
+    if (!allowed) {
         return res.status(403).json({ error: "You do not have permission to export reports" });
     }
 
     next();
+};
+
+/**
+ * Middleware factory to restrict report routes to business owner only
+ */
+const requireBusinessOwnerForReport = (reportName) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ error: "Not authenticated" });
+        }
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: `Only Business Owner can export ${reportName} reports` });
+        }
+        next();
+    };
+};
+
+/**
+ * Middleware factory to check a specific view permission before allowing report export
+ */
+const requireViewPermissionForReport = (viewPermission, reportName) => {
+    return async (req, res, next) => {
+        if (!req.user) {
+            return res.status(401).json({ error: "Not authenticated" });
+        }
+        const businessOwnerId = req.businessowner || req.user.businessowner || req.user._id;
+        const allowed = await hasPermissionAsync(req.user, viewPermission, businessOwnerId);
+        if (!allowed) {
+            return res.status(403).json({ error: `You do not have permission to export ${reportName} reports` });
+        }
+        next();
+    };
 };
 
 module.exports = {
@@ -467,6 +513,8 @@ module.exports = {
     requireAnalyticsAccess,
     requireNotificationAccess,
     requireExportReports,
+    requireBusinessOwnerForReport,
+    requireViewPermissionForReport,
     getDataFilter,
     canEditItem,
     canDeleteItem,

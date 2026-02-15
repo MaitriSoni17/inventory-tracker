@@ -334,7 +334,7 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
         
         // Validate businessowner is properly authenticated
         if (!req.businessowner || !req.businessowner._id) {
-            console.error('No businessowner in request');
+            // console.error('No businessowner in request');
             return res.status(400).json({
                 success: false,
                 error: 'Invalid authentication. Please login again.'
@@ -346,7 +346,7 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
         
         // Validate email exists
         if (!businessOwnerEmail) {
-            console.error('Business owner email not found for id:', businessOwnerId);
+            // console.error('Business owner email not found for id:', businessOwnerId);
             return res.status(400).json({
                 success: false,
                 error: 'Business owner email not found. Please update your profile.'
@@ -390,7 +390,7 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
             requestId: deletionRequest._id
         });
     } catch (err) {
-        console.error('Delete account error:', err);
+        // console.error('Delete account error:', err);
         res.status(500).json({ 
             success: false,
             error: "Internal Server error occurred", 
@@ -428,7 +428,7 @@ router.post('/cancel-deletion', fetchbusinessowner, async (req, res) => {
             message: 'Your deletion request has been cancelled successfully.'
         });
     } catch (err) {
-        console.error('Cancel deletion error:', err);
+        // console.error('Cancel deletion error:', err);
         res.status(500).json({ 
             success: false,
             error: "Internal Server error occurred", 
@@ -467,7 +467,7 @@ router.get('/deletion-status', fetchbusinessowner, async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('Check deletion status error:', err);
+        // console.error('Check deletion status error:', err);
         res.status(500).json({ 
             success: false,
             error: "Internal Server error occurred"

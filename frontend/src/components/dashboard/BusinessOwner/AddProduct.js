@@ -12,12 +12,13 @@ const AddProduct = (props) => {
         category: '',
         price: '',
         totalProducts: '',
-        warehouse: '',
+        warehouse: [],
         brand: '',
         mDate: '',
         eDate: '',
         desc: '',
     });
+    const [warehouseDropdownOpen, setWarehouseDropdownOpen] = useState(false);
     const [uploadedImages, setUploadedImages] = useState([]);
     const [warehouses, setWarehouses] = useState([]);
     const [loadingWarehouses, setLoadingWarehouses] = useState(true);
@@ -114,8 +115,9 @@ const AddProduct = (props) => {
         }
 
         // Warehouse validation
-        const warehouseError = validationRules.required(productDetails.warehouse, 'Warehouse');
-        if (warehouseError) newErrors.warehouse = warehouseError;
+        if (!productDetails.warehouse || productDetails.warehouse.length === 0) {
+            newErrors.warehouse = 'Please select at least one warehouse';
+        }
 
         // Brand validation
         const brandError = validationRules.required(productDetails.brand, 'Brand');
@@ -173,7 +175,7 @@ const AddProduct = (props) => {
                 error = validationRules.required(field, 'Total Products') || validationRules.number(field, 'Total Products');
                 break;
             case 'warehouse':
-                error = validationRules.required(field, 'Warehouse');
+                error = (!field || field.length === 0) ? 'Please select at least one warehouse' : '';
                 break;
             case 'brand':
                 error = validationRules.required(field, 'Brand');
@@ -212,7 +214,7 @@ const AddProduct = (props) => {
             const formData = new FormData();
             formData.append('name', name);
             formData.append('price', price);
-            formData.append('warehouse', warehouse);
+            formData.append('warehouse', JSON.stringify(warehouse));
             formData.append('category', category);
             formData.append('totalProducts', totalProducts);
             formData.append('brand', brand);
@@ -243,7 +245,7 @@ const AddProduct = (props) => {
                     category: '',
                     price: '',
                     totalProducts: '',
-                    warehouse: '',
+                    warehouse: [],
                     brand: '',
                     mDate: '',
                     eDate: '',
@@ -436,26 +438,71 @@ const AddProduct = (props) => {
                                 {errors.category && touched.category && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.category}</div>}
                             </div>
 
-                            {/* Warehouse */}
+                            {/* Warehouse (Multi-select) */}
                             <div>
                                 <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.75rem', color: '#333' }}>
-                                    Warehouse <span style={{ color: '#ef4444' }}>*</span>
+                                    Warehouses <span style={{ color: '#ef4444' }}>*</span>
                                 </label>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-                                    <select
-                                        name="warehouse"
-                                        value={productDetails.warehouse}
-                                        onChange={onChange}
-                                        onBlur={() => handleBlur('warehouse')}
-                                        disabled={loadingWarehouses || isSubmitting}
-                                        className={`form-select ${errors.warehouse && touched.warehouse ? 'is-invalid' : ''} ${!errors.warehouse && touched.warehouse && productDetails.warehouse ? 'is-valid' : ''}`}
-                                        style={{ minHeight: '44px', fontSize: '1rem', flex: 1 }}
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+                                    <div
+                                        style={{ position: 'relative', flex: 1 }}
+                                        tabIndex={0}
+                                        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { setWarehouseDropdownOpen(false); handleBlur('warehouse'); } }}
                                     >
-                                        <option value="">Select Warehouse</option>
-                                        {warehouses.map((warehouse) => (
-                                            <option key={warehouse._id} value={warehouse._id}>{warehouse.wName}</option>
-                                        ))}
-                                    </select>
+                                        <div
+                                            onClick={() => !loadingWarehouses && !isSubmitting && setWarehouseDropdownOpen(!warehouseDropdownOpen)}
+                                            className={`form-select ${errors.warehouse && touched.warehouse ? 'is-invalid' : ''} ${!errors.warehouse && touched.warehouse && productDetails.warehouse.length > 0 ? 'is-valid' : ''}`}
+                                            style={{ minHeight: '44px', fontSize: '1rem', cursor: loadingWarehouses || isSubmitting ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem', padding: '0.375rem 2.25rem 0.375rem 0.75rem' }}
+                                        >
+                                            {productDetails.warehouse.length === 0 ? (
+                                                <span style={{ color: '#6c757d' }}>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouses'}</span>
+                                            ) : (
+                                                productDetails.warehouse.map(wId => {
+                                                    const wh = warehouses.find(w => w._id === wId);
+                                                    return (
+                                                        <span key={wId} style={{ background: '#af50ff', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                            {wh ? wh.wName : wId}
+                                                            <span
+                                                                onClick={(e) => { e.stopPropagation(); const updated = productDetails.warehouse.filter(id => id !== wId); setProductDetails({ ...productDetails, warehouse: updated }); if (errors.warehouse) setErrors({ ...errors, warehouse: updated.length === 0 ? 'Please select at least one warehouse' : '' }); }}
+                                                                style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '2px', fontSize: '1rem', lineHeight: '1' }}
+                                                            >
+                                                                &times;
+                                                            </span>
+                                                        </span>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                        {warehouseDropdownOpen && (
+                                            <div onMouseDown={(e) => e.preventDefault()} style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #dee2e6', borderRadius: '0 0 8px 8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                                                {warehouses.map((warehouse) => (
+                                                    <label
+                                                        key={warehouse._id}
+                                                        style={{ display: 'flex', alignItems: 'center', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f0f0f0', gap: '0.5rem', transition: 'background 0.2s' }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={productDetails.warehouse.includes(warehouse._id)}
+                                                            onChange={() => {
+                                                                const updated = productDetails.warehouse.includes(warehouse._id)
+                                                                    ? productDetails.warehouse.filter(id => id !== warehouse._id)
+                                                                    : [...productDetails.warehouse, warehouse._id];
+                                                                setProductDetails({ ...productDetails, warehouse: updated });
+                                                                if (errors.warehouse) setErrors({ ...errors, warehouse: updated.length === 0 ? 'Please select at least one warehouse' : '' });
+                                                            }}
+                                                            style={{ accentColor: '#af50ff', width: '16px', height: '16px' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.95rem' }}>{warehouse.wName}</span>
+                                                    </label>
+                                                ))}
+                                                {warehouses.length === 0 && (
+                                                    <div style={{ padding: '0.75rem', textAlign: 'center', color: '#666', fontSize: '0.9rem' }}>No warehouses available</div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                     <a href="/dashboard/warehouses" className="btn btn-sm w-auto" style={{ background: '#af50ff', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', textDecoration: 'none', fontSize: '1.2rem', lineHeight: '1', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="Add new warehouse">+</a>
                                 </div>
                                 {errors.warehouse && touched.warehouse && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.warehouse}</div>}

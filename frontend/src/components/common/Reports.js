@@ -6,22 +6,53 @@ import '../../styles/reports.css';
 
 const Reports = ({ showAlert }) => {
     const navigate = useNavigate();
-    const { hasPermission } = useRole();
+    const { hasPermission, role } = useRole();
     const [loading, setLoading] = useState(false);
+    const [reportPermissions, setReportPermissions] = useState(null);
     const [reportConfig, setReportConfig] = useState({
-        reportType: 'employees',
+        reportType: '',
         format: 'excel',
         month: '',
         year: new Date().getFullYear().toString(),
         specificId: 'all'
     });
 
-    // Check permission on component mount
+    // Check permission on component mount and fetch report-level permissions
     useEffect(() => {
         if (!hasPermission('canExportReports')) {
             showAlert('You do not have permission to access reports', 'danger');
             navigate('/dashboard');
+            return;
         }
+
+        const fetchReportPermissions = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('http://localhost:5000/api/reports/report-permissions', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': token
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    setReportPermissions(data);
+                }
+            } catch (error) {
+                // Fallback: business owner sees all, others see none of restricted reports
+                setReportPermissions({
+                    canExportReports: true,
+                    employees: role === 'businessowner',
+                    products: true,
+                    orders: true,
+                    supplierOrders: role === 'businessowner',
+                    suppliers: role === 'businessowner',
+                    salary: role === 'businessowner'
+                });
+            }
+        };
+        fetchReportPermissions();
     }, [navigate]);
 
     const [availableItems, setAvailableItems] = useState({
@@ -94,7 +125,7 @@ const Reports = ({ showAlert }) => {
                 }));
             }
         } catch (error) {
-            console.error('Error fetching items:', error);
+            // console.error('Error fetching items:', error);
         }
     };
 
@@ -109,6 +140,14 @@ const Reports = ({ showAlert }) => {
     const handleDownloadReport = async () => {
         try {
             setLoading(true);
+
+            // Verify the user has permission for this report type
+            const selectedType = allReportTypes.find(t => t.value === reportConfig.reportType);
+            if (reportPermissions && selectedType && !reportPermissions[selectedType.permKey]) {
+                showAlert('You do not have permission to export this report type', 'danger');
+                return;
+            }
+
             const token = localStorage.getItem('token');
             
             // Handle salary report separately
@@ -236,7 +275,7 @@ const Reports = ({ showAlert }) => {
 
             showAlert('Report downloaded successfully!', 'success');
         } catch (error) {
-            console.error('Error downloading report:', error);
+            // console.error('Error downloading report:', error);
             showAlert('Failed to download report', 'danger');
         } finally {
             setLoading(false);
@@ -262,14 +301,26 @@ const Reports = ({ showAlert }) => {
         }
     };
 
-    const reportTypes = [
-        { value: 'employees', label: 'Employees', icon: '👥' },
-        { value: 'products', label: 'Products', icon: '📦' },
-        { value: 'orders', label: 'Customer Orders', icon: '🛒' },
-        { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚' },
-        { value: 'suppliers', label: 'Suppliers', icon: '🏢' },
-        { value: 'salary', label: 'Salary Management', icon: '💼' }
+    const allReportTypes = [
+        { value: 'employees', label: 'Employees', icon: '👥', permKey: 'employees' },
+        { value: 'products', label: 'Products', icon: '📦', permKey: 'products' },
+        { value: 'orders', label: 'Customer Orders', icon: '🛒', permKey: 'orders' },
+        { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚', permKey: 'supplierOrders' },
+        { value: 'suppliers', label: 'Suppliers', icon: '🏢', permKey: 'suppliers' },
+        { value: 'salary', label: 'Salary Management', icon: '💼', permKey: 'salary' }
     ];
+
+    // Filter report types based on user's permissions
+    const reportTypes = reportPermissions
+        ? allReportTypes.filter(type => reportPermissions[type.permKey])
+        : [];
+
+    // Set default report type once permissions are loaded
+    useEffect(() => {
+        if (reportTypes.length > 0 && !reportConfig.reportType) {
+            setReportConfig(prev => ({ ...prev, reportType: reportTypes[0].value }));
+        }
+    }, [reportPermissions]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="reports-container">
@@ -296,6 +347,15 @@ const Reports = ({ showAlert }) => {
                         {/* Report Type Selection */}
                         <div className="form-section">
                             <label className="form-label">Report Type</label>
+                            {!reportPermissions ? (
+                                <div className="text-center py-3">
+                                    <span className="spinner"></span> Loading available reports...
+                                </div>
+                            ) : reportTypes.length === 0 ? (
+                                <div className="info-note" style={{ marginTop: '10px' }}>
+                                    <strong>No reports available.</strong> You do not have permission to export any report types. Contact your Business Owner to update your permissions.
+                                </div>
+                            ) : (
                             <div className="report-type-grid">
                                 {reportTypes.map((type) => (
                                     <div
@@ -310,6 +370,7 @@ const Reports = ({ showAlert }) => {
                                     </div>
                                 ))}
                             </div>
+                            )}
                         </div>
 
                         {/* Format Selection */}
@@ -408,7 +469,7 @@ const Reports = ({ showAlert }) => {
                             <button
                                 className="btn-primary"
                                 onClick={handleDownloadReport}
-                                disabled={loading}
+                                disabled={loading || !reportConfig.reportType || reportTypes.length === 0}
                             >
                                 {loading ? (
                                     <>
