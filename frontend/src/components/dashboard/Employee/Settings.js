@@ -365,7 +365,7 @@ const Settings = (props) => {
                       placeholder="John"
                       value={profileData.fname}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group">
@@ -377,7 +377,7 @@ const Settings = (props) => {
                       placeholder="Doe"
                       value={profileData.lname}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group">
@@ -389,7 +389,7 @@ const Settings = (props) => {
                       placeholder="john@example.com"
                       value={profileData.email}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group">
@@ -401,7 +401,7 @@ const Settings = (props) => {
                       placeholder="+91 9876543210"
                       value={profileData.phone}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group">
@@ -411,7 +411,7 @@ const Settings = (props) => {
                       id="country"
                       value={profileData.country}
                       onChange={handleProfileChange}
-                      required
+                      
                     >
                       <option value="India">India</option>
                       <option value="USA">USA</option>
@@ -429,7 +429,7 @@ const Settings = (props) => {
                       placeholder="Maharashtra"
                       value={profileData.state}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group">
@@ -441,7 +441,7 @@ const Settings = (props) => {
                       placeholder="Mumbai"
                       value={profileData.city}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group">
@@ -453,7 +453,7 @@ const Settings = (props) => {
                       placeholder="400001"
                       value={profileData.pincode}
                       onChange={handleProfileChange}
-                      required
+                      
                     />
                   </div>
                   <div className="form-group full-width">
@@ -465,7 +465,7 @@ const Settings = (props) => {
                       placeholder="Enter your street address"
                       value={profileData.address}
                       onChange={handleProfileChange}
-                      required
+                      
                     ></textarea>
                   </div>
                 </div>
