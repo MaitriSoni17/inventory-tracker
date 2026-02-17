@@ -80,6 +80,14 @@ const Employee = new Schema({
         canViewAnalytics: { type: Boolean, default: false },
         canExportReports: { type: Boolean, default: false },
         
+        // Report Downloads
+        canDownloadEmployeeReport: { type: Boolean, default: false },
+        canDownloadProductReport: { type: Boolean, default: false },
+        canDownloadOrderReport: { type: Boolean, default: false },
+        canDownloadSupplierOrderReport: { type: Boolean, default: false },
+        canDownloadSupplierReport: { type: Boolean, default: false },
+        canDownloadSalaryReport: { type: Boolean, default: false },
+        
         // Notifications
         canSendNotifications: { type: Boolean, default: false },
         canViewNotifications: { type: Boolean, default: true },

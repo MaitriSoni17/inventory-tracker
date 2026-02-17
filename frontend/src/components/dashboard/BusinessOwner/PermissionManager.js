@@ -48,6 +48,14 @@ const PermissionManager = (props) => {
     const [loadingSuppliers, setLoadingSuppliers] = useState(false);
     const [savingSupplierPermission, setSavingSupplierPermission] = useState(null);
 
+    // Report download permissions state
+    const [reportDownloadPerms, setReportDownloadPerms] = useState({
+        employee: { canDownloadEmployeeReport: true, canDownloadProductReport: true, canDownloadOrderReport: false, canDownloadSupplierOrderReport: false, canDownloadSupplierReport: false, canDownloadSalaryReport: false },
+        supervisor: { canDownloadEmployeeReport: true, canDownloadProductReport: true, canDownloadOrderReport: true, canDownloadSupplierOrderReport: true, canDownloadSupplierReport: true, canDownloadSalaryReport: false },
+        manager: { canDownloadEmployeeReport: false, canDownloadProductReport: true, canDownloadOrderReport: true, canDownloadSupplierOrderReport: true, canDownloadSupplierReport: true, canDownloadSalaryReport: false }
+    });
+    const [savingReportPerm, setSavingReportPerm] = useState(null);
+
     // Permission dependencies - if view is disabled, these should be disabled too
     const permissionDependencies = {
         canViewProducts: ['canCreateProducts', 'canEditProducts', 'canDeleteProducts'],
@@ -121,8 +129,7 @@ const PermissionManager = (props) => {
                 setPermissions(data.permissions || {});
                 setLastUpdated(data.updatedAt);
             } else {
-                const errorData = await response.json();
-                // console.error('Error fetching permissions:', errorData);
+                await response.json();
             }
         } catch (error) {
             //  console.error('Error fetching permissions:', error);
@@ -182,8 +189,7 @@ const PermissionManager = (props) => {
                     supplierOrderSupplyDaysThreshold: data.supplierOrderSupplyDaysThreshold || 2
                 });
             } else {
-                const errorData = await response.json();
-                // console.error('Error fetching notification preferences:', errorData);
+                await response.json();
             }
         } catch (error) {
             // console.error('Error fetching notification preferences:', error);
@@ -364,6 +370,80 @@ const PermissionManager = (props) => {
         }
     };
 
+    // Fetch report download permissions from role permissions
+    const fetchReportDownloadPerms = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/get', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                const perms = data.permissions || {};
+                const reportKeys = ['canDownloadEmployeeReport', 'canDownloadProductReport', 'canDownloadOrderReport', 'canDownloadSupplierOrderReport', 'canDownloadSupplierReport', 'canDownloadSalaryReport'];
+                const extracted = {};
+                ['employee', 'supervisor', 'manager'].forEach(role => {
+                    extracted[role] = {};
+                    reportKeys.forEach(key => {
+                        extracted[role][key] = perms[role]?.[key] ?? false;
+                    });
+                });
+                setReportDownloadPerms(extracted);
+            }
+        } catch (error) {
+            // console.error('Error fetching report download permissions:', error);
+        }
+    }, []);
+
+    // Toggle a report download permission for a role
+    const handleReportDownloadToggle = async (role, permissionKey) => {
+        const currentValue = reportDownloadPerms[role]?.[permissionKey] ?? false;
+        const newValue = !currentValue;
+        const saveKey = `${role}-${permissionKey}`;
+
+        // Optimistic update
+        setReportDownloadPerms(prev => ({
+            ...prev,
+            [role]: { ...prev[role], [permissionKey]: newValue }
+        }));
+        setSavingReportPerm(saveKey);
+
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/update-single', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ role, permissionKey, value: newValue })
+            });
+
+            if (response.ok) {
+                props?.showAlert?.('Report download permission updated', 'success');
+            } else {
+                // Revert on error
+                setReportDownloadPerms(prev => ({
+                    ...prev,
+                    [role]: { ...prev[role], [permissionKey]: currentValue }
+                }));
+                const errorData = await response.json();
+                props?.showAlert?.(errorData.error || 'Error updating permission', 'danger');
+            }
+        } catch (error) {
+            // Revert on error
+            setReportDownloadPerms(prev => ({
+                ...prev,
+                [role]: { ...prev[role], [permissionKey]: currentValue }
+            }));
+            props?.showAlert?.('Error updating report download permission', 'danger');
+        } finally {
+            setSavingReportPerm(null);
+        }
+    };
+
     useEffect(() => {
         fetchPermissionGroups();
         fetchPermissions();
@@ -376,8 +456,10 @@ const PermissionManager = (props) => {
             fetchNotificationPreferences();
         } else if (mainTab === 'supplier-permissions') {
             fetchSuppliers();
+        } else if (mainTab === 'report-download') {
+            fetchReportDownloadPerms();
         }
-    }, [mainTab, fetchEmployees, fetchNotificationPreferences, fetchSuppliers]);
+    }, [mainTab, fetchEmployees, fetchNotificationPreferences, fetchSuppliers, fetchReportDownloadPerms]);
 
     // Save notification preferences
     const saveNotificationPreferences = async () => {
@@ -1246,143 +1328,43 @@ const PermissionManager = (props) => {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '30px' }}>
-                        {/* Employees Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
-                                <i className="fas fa-user me-2" style={{ color: '#667eea' }}></i>
-                                Employees Reports
-                            </h4>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                Allow roles to download individual employee reports
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px', transition: 'background 0.2s', ':hover': { background: '#f5f5f5' } }}>
-                                        <input 
-                                            type="checkbox" 
-                                            defaultChecked={true}
-                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
-                                    </label>
-                                ))}
+                        {[
+                            { key: 'canDownloadEmployeeReport', label: 'Employees Reports', desc: 'Allow roles to download individual employee reports', icon: 'fas fa-user', color: '#667eea' },
+                            { key: 'canDownloadProductReport', label: 'Products Reports', desc: 'Allow roles to download individual product reports', icon: 'fas fa-box', color: '#28a745' },
+                            { key: 'canDownloadOrderReport', label: 'Orders Reports', desc: 'Allow roles to download individual order reports', icon: 'fas fa-shopping-cart', color: '#ffc107' },
+                            { key: 'canDownloadSupplierOrderReport', label: 'Supplier Orders Reports', desc: 'Allow roles to download individual supplier order reports', icon: 'fas fa-truck', color: '#dc3545' },
+                            { key: 'canDownloadSupplierReport', label: 'Supplier Reports', desc: 'Allow roles to download individual supplier reports', icon: 'fas fa-users', color: '#fd7e14' },
+                            { key: 'canDownloadSalaryReport', label: 'Salary Reports', desc: 'Allow roles to download salary reports', icon: 'fas fa-wallet', color: '#17a2b8' }
+                        ].map(reportType => (
+                            <div key={reportType.key} style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.3s ease' }}>
+                                <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
+                                    <i className={`${reportType.icon} me-2`} style={{ color: reportType.color }}></i>
+                                    {reportType.label}
+                                </h4>
+                                <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
+                                    {reportType.desc}
+                                </p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {['employee', 'supervisor', 'manager'].map(role => (
+                                        <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: savingReportPerm === `${role}-${reportType.key}` ? 'wait' : 'pointer', padding: '10px', borderRadius: '6px', transition: 'background 0.2s', background: savingReportPerm === `${role}-${reportType.key}` ? '#f0f0f0' : 'transparent' }}>
+                                            <input 
+                                                type="checkbox" 
+                                                checked={reportDownloadPerms[role]?.[reportType.key] ?? false}
+                                                onChange={() => handleReportDownloadToggle(role, reportType.key)}
+                                                disabled={savingReportPerm === `${role}-${reportType.key}`}
+                                                style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
+                                            />
+                                            <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                                                {role}s
+                                            </span>
+                                            {savingReportPerm === `${role}-${reportType.key}` && (
+                                                <i className="fas fa-spinner fa-spin ms-2" style={{ color: '#667eea', fontSize: '12px' }}></i>
+                                            )}
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-
-                        {/* Products Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
-                                <i className="fas fa-box me-2" style={{ color: '#28a745' }}></i>
-                                Products Reports
-                            </h4>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                Allow roles to download individual product reports
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            defaultChecked={true}
-                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Orders Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
-                                <i className="fas fa-shopping-cart me-2" style={{ color: '#ffc107' }}></i>
-                                Orders Reports
-                            </h4>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                Allow roles to download individual order reports
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            defaultChecked={role !== 'employee'}
-                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Supplier Orders Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
-                                <i className="fas fa-truck me-2" style={{ color: '#dc3545' }}></i>
-                                Supplier Orders Reports
-                            </h4>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                Allow roles to download individual supplier order reports
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            defaultChecked={role !== 'employee'}
-                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Supplier Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
-                                <i className="fas fa-users me-2" style={{ color: '#fd7e14' }}></i>
-                                Supplier Reports
-                            </h4>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                Allow roles to download individual supplier reports
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            defaultChecked={true}
-                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Salary Reports */}
-                        <div style={{ border: '1px solid #e0e0e0', borderRadius: '10px', padding: '25px', background: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
-                            <h4 style={{ marginBottom: '15px', color: '#333', fontSize: '16px', fontWeight: '600' }}>
-                                <i className="fas fa-wallet me-2" style={{ color: '#17a2b8' }}></i>
-                                Salary Reports
-                            </h4>
-                            <p style={{ color: '#666', fontSize: '13px', marginBottom: '20px', lineHeight: '1.5' }}>
-                                Allow roles to download salary reports
-                            </p>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {['employee', 'supervisor', 'manager'].map(role => (
-                                    <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '10px', borderRadius: '6px' }}>
-                                        <input 
-                                            type="checkbox" 
-                                            defaultChecked={false}
-                                            style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>{role}s</span>
-                                    </label>
-                                ))}
-                            </div>
-                        </div>
+                        ))}
                     </div>
 
                     <div style={{ marginTop: '30px', padding: '20px', background: '#f0f8ff', borderRadius: '10px', borderLeft: '5px solid #667eea' }}>
@@ -1392,9 +1374,9 @@ const PermissionManager = (props) => {
                         </h5>
                         <ul style={{ marginBottom: 0, color: '#666', fontSize: '13px', lineHeight: '1.8', paddingLeft: '20px' }}>
                             <li>Business Owners can always download all reports</li>
-                            <li>Individual report downloads are available on each list page (Employees, Products, Orders, Supplier Orders, Suppliers)</li>
-                            <li>These permissions only affect individual item downloads, not bulk exports</li>
-                            <li>Permissions are enforced both in the UI and on the backend</li>
+                            <li>These permissions control which report types each role can access on the Reports page</li>
+                            <li>Changes take effect immediately for all users of the selected role</li>
+                            <li>Users also need the "Export Reports" permission (in Role-Based Permissions) to access the Reports page</li>
                         </ul>
                     </div>
                 </div>

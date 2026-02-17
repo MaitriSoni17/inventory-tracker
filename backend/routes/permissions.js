@@ -330,6 +330,12 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
                     canEditOthersWork: true,
                     canViewAnalytics: true,
                     canExportReports: true,
+                    canDownloadEmployeeReport: true,
+                    canDownloadProductReport: true,
+                    canDownloadOrderReport: true,
+                    canDownloadSupplierOrderReport: true,
+                    canDownloadSupplierReport: true,
+                    canDownloadSalaryReport: true,
                     canSendNotifications: true,
                     canViewNotifications: true,
                     canViewDashboard: true

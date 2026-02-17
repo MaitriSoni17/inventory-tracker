@@ -49,6 +49,14 @@ const RolePermissionsSchema = new Schema({
         canViewAnalytics: { type: Boolean, default: true },
         canExportReports: { type: Boolean, default: true },
         
+        // Report Downloads
+        canDownloadEmployeeReport: { type: Boolean, default: false },
+        canDownloadProductReport: { type: Boolean, default: true },
+        canDownloadOrderReport: { type: Boolean, default: true },
+        canDownloadSupplierOrderReport: { type: Boolean, default: true },
+        canDownloadSupplierReport: { type: Boolean, default: true },
+        canDownloadSalaryReport: { type: Boolean, default: false },
+        
         // Notifications
         canSendNotifications: { type: Boolean, default: true },
         canViewNotifications: { type: Boolean, default: true },
@@ -99,6 +107,14 @@ const RolePermissionsSchema = new Schema({
         // Analytics & Reports
         canViewAnalytics: { type: Boolean, default: true },
         canExportReports: { type: Boolean, default: false },
+        
+        // Report Downloads
+        canDownloadEmployeeReport: { type: Boolean, default: true },
+        canDownloadProductReport: { type: Boolean, default: true },
+        canDownloadOrderReport: { type: Boolean, default: true },
+        canDownloadSupplierOrderReport: { type: Boolean, default: true },
+        canDownloadSupplierReport: { type: Boolean, default: true },
+        canDownloadSalaryReport: { type: Boolean, default: false },
         
         // Notifications
         canSendNotifications: { type: Boolean, default: false },
@@ -151,6 +167,14 @@ const RolePermissionsSchema = new Schema({
         canViewAnalytics: { type: Boolean, default: false },
         canExportReports: { type: Boolean, default: false },
         
+        // Report Downloads
+        canDownloadEmployeeReport: { type: Boolean, default: true },
+        canDownloadProductReport: { type: Boolean, default: true },
+        canDownloadOrderReport: { type: Boolean, default: false },
+        canDownloadSupplierOrderReport: { type: Boolean, default: false },
+        canDownloadSupplierReport: { type: Boolean, default: false },
+        canDownloadSalaryReport: { type: Boolean, default: false },
+        
         // Notifications
         canSendNotifications: { type: Boolean, default: false },
         canViewNotifications: { type: Boolean, default: true },
@@ -202,6 +226,12 @@ RolePermissionsSchema.statics.getDefaultPermissions = function(role) {
             canEditOthersWork: true,
             canViewAnalytics: true,
             canExportReports: true,
+            canDownloadEmployeeReport: false,
+            canDownloadProductReport: true,
+            canDownloadOrderReport: true,
+            canDownloadSupplierOrderReport: true,
+            canDownloadSupplierReport: true,
+            canDownloadSalaryReport: false,
             canSendNotifications: true,
             canViewNotifications: true,
             canChat: true,
@@ -233,6 +263,12 @@ RolePermissionsSchema.statics.getDefaultPermissions = function(role) {
             canEditOthersWork: true,
             canViewAnalytics: true,
             canExportReports: false,
+            canDownloadEmployeeReport: true,
+            canDownloadProductReport: true,
+            canDownloadOrderReport: true,
+            canDownloadSupplierOrderReport: true,
+            canDownloadSupplierReport: true,
+            canDownloadSalaryReport: false,
             canSendNotifications: false,
             canViewNotifications: true,
             canChat: true,
@@ -264,6 +300,12 @@ RolePermissionsSchema.statics.getDefaultPermissions = function(role) {
             canEditOthersWork: false,
             canViewAnalytics: false,
             canExportReports: false,
+            canDownloadEmployeeReport: true,
+            canDownloadProductReport: true,
+            canDownloadOrderReport: false,
+            canDownloadSupplierOrderReport: false,
+            canDownloadSupplierReport: false,
+            canDownloadSalaryReport: false,
             canSendNotifications: false,
             canViewNotifications: true,
             canChat: true,

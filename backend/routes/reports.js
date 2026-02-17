@@ -28,7 +28,7 @@ const filterByMonthYear = (data, month, year, dateField = 'createdAt') => {
 // ==================== EMPLOYEE REPORTS ====================
 
 // GET: Generate Employee Report (Excel)
-router.get('/employees/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canViewEmployees', 'employee'), async (req, res) => {
+router.get('/employees/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadEmployeeReport', 'employee'), async (req, res) => {
     try {
         const { month, year, employeeId } = req.query;
         
@@ -145,7 +145,7 @@ router.get('/employees/excel', fetchuser, requireExportReports, requireViewPermi
 });
 
 // GET: Generate Employee Report (PDF)
-router.get('/employees/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canViewEmployees', 'employee'), async (req, res) => {
+router.get('/employees/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadEmployeeReport', 'employee'), async (req, res) => {
     try {
         const { month, year, employeeId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -213,7 +213,7 @@ router.get('/employees/pdf', fetchuser, requireExportReports, requireViewPermiss
 // ==================== PRODUCT REPORTS ====================
 
 // GET: Generate Product Report (Excel)
-router.get('/products/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canViewProducts', 'product'), async (req, res) => {
+router.get('/products/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadProductReport', 'product'), async (req, res) => {
     try {
         const { month, year, productId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -334,7 +334,7 @@ router.get('/products/excel', fetchuser, requireExportReports, requireViewPermis
 });
 
 // GET: Generate Product Report (PDF)
-router.get('/products/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canViewProducts', 'product'), async (req, res) => {
+router.get('/products/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadProductReport', 'product'), async (req, res) => {
     try {
         const { month, year, productId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -426,7 +426,7 @@ router.get('/products/pdf', fetchuser, requireExportReports, requireViewPermissi
 // ==================== CUSTOMER ORDER REPORTS ====================
 
 // GET: Generate Customer Order Report (Excel)
-router.get('/orders/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canViewOrders', 'customer order'), async (req, res) => {
+router.get('/orders/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadOrderReport', 'customer order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -533,7 +533,7 @@ router.get('/orders/excel', fetchuser, requireExportReports, requireViewPermissi
 });
 
 // GET: Generate Customer Order Report (PDF)
-router.get('/orders/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canViewOrders', 'customer order'), async (req, res) => {
+router.get('/orders/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadOrderReport', 'customer order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -619,7 +619,7 @@ router.get('/orders/pdf', fetchuser, requireExportReports, requireViewPermission
 // ==================== SUPPLIER ORDER REPORTS ====================
 
 // GET: Generate Supplier Order Report (Excel)
-router.get('/supplier-orders/excel', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier order'), async (req, res) => {
+router.get('/supplier-orders/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadSupplierOrderReport', 'supplier order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -725,7 +725,7 @@ router.get('/supplier-orders/excel', fetchuser, requireExportReports, requireBus
 });
 
 // GET: Generate Supplier Order Report (PDF)
-router.get('/supplier-orders/pdf', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier order'), async (req, res) => {
+router.get('/supplier-orders/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadSupplierOrderReport', 'supplier order'), async (req, res) => {
     try {
         const { month, year, orderId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -854,13 +854,16 @@ router.get('/orders/list', fetchuser, async (req, res) => {
     }
 });
 
-// GET: Get all supplier orders for dropdown (Business Owner only)
+// GET: Get all supplier orders for dropdown
 router.get('/supplier-orders/list', fetchuser, async (req, res) => {
     try {
-        if (req.role !== 'businessowner') {
-            return res.status(403).json({ error: 'Only Business Owner can view supplier order data' });
-        }
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        if (req.role !== 'businessowner') {
+            const allowed = await hasPermissionAsync(req.user, 'canDownloadSupplierOrderReport', businessOwnerId);
+            if (!allowed) {
+                return res.status(403).json({ error: 'You do not have permission to view supplier order data' });
+            }
+        }
         const supplierOrders = await SupplierOrders.find({ businessowner: businessOwnerId })
             .populate('supplier', 'fname lname companyName')
             .select('_id pName oDate supplier');
@@ -872,13 +875,16 @@ router.get('/supplier-orders/list', fetchuser, async (req, res) => {
 
 // ==================== SUPPLIER REPORTS ====================
 
-// GET: Get Suppliers List (Business Owner only)
+// GET: Get Suppliers List
 router.get('/suppliers/list', fetchuser, async (req, res) => {
     try {
-        if (req.role !== 'businessowner') {
-            return res.status(403).json({ error: 'Only Business Owner can view supplier data' });
-        }
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
+        if (req.role !== 'businessowner') {
+            const allowed = await hasPermissionAsync(req.user, 'canDownloadSupplierReport', businessOwnerId);
+            if (!allowed) {
+                return res.status(403).json({ error: 'You do not have permission to view supplier data' });
+            }
+        }
         const suppliers = await Supplier.find({ businessowner: businessOwnerId })
             .select('_id fname lname email companyName');
         res.json(suppliers);
@@ -895,7 +901,7 @@ router.get('/report-permissions', fetchuser, async (req, res) => {
         const isBusinessOwner = req.role === 'businessowner';
 
         const canExport = await hasPermissionAsync(req.user, 'canExportReports', businessOwnerId);
-        if (!canExport) {
+        if (!canExport && !isBusinessOwner) {
             return res.json({
                 canExportReports: false,
                 employees: false,
@@ -920,19 +926,22 @@ router.get('/report-permissions', fetchuser, async (req, res) => {
             });
         }
 
-        // For non-business-owner users, check individual view permissions
-        const canViewEmployees = await hasPermissionAsync(req.user, 'canViewEmployees', businessOwnerId);
-        const canViewProducts = await hasPermissionAsync(req.user, 'canViewProducts', businessOwnerId);
-        const canViewOrders = await hasPermissionAsync(req.user, 'canViewOrders', businessOwnerId);
+        // For non-business-owner users, check report download permissions
+        const canDownloadEmployeeReport = await hasPermissionAsync(req.user, 'canDownloadEmployeeReport', businessOwnerId);
+        const canDownloadProductReport = await hasPermissionAsync(req.user, 'canDownloadProductReport', businessOwnerId);
+        const canDownloadOrderReport = await hasPermissionAsync(req.user, 'canDownloadOrderReport', businessOwnerId);
+        const canDownloadSupplierOrderReport = await hasPermissionAsync(req.user, 'canDownloadSupplierOrderReport', businessOwnerId);
+        const canDownloadSupplierReport = await hasPermissionAsync(req.user, 'canDownloadSupplierReport', businessOwnerId);
+        const canDownloadSalaryReport = await hasPermissionAsync(req.user, 'canDownloadSalaryReport', businessOwnerId);
 
         res.json({
             canExportReports: true,
-            employees: canViewEmployees,
-            products: canViewProducts,
-            orders: canViewOrders,
-            supplierOrders: false,  // Business owner only
-            suppliers: false,       // Business owner only
-            salary: false           // Business owner only
+            employees: canDownloadEmployeeReport,
+            products: canDownloadProductReport,
+            orders: canDownloadOrderReport,
+            supplierOrders: canDownloadSupplierOrderReport,
+            suppliers: canDownloadSupplierReport,
+            salary: canDownloadSalaryReport
         });
     } catch (error) {
         res.status(500).json({ error: 'Error checking report permissions' });
@@ -940,7 +949,7 @@ router.get('/report-permissions', fetchuser, async (req, res) => {
 });
 
 // GET: Generate Supplier Report (Excel)
-router.get('/suppliers/excel', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier'), async (req, res) => {
+router.get('/suppliers/excel', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadSupplierReport', 'supplier'), async (req, res) => {
     try {
         const { supplierId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
@@ -1028,7 +1037,7 @@ router.get('/suppliers/excel', fetchuser, requireExportReports, requireBusinessO
 });
 
 // GET: Generate Supplier Report (PDF)
-router.get('/suppliers/pdf', fetchuser, requireExportReports, requireBusinessOwnerForReport('supplier'), async (req, res) => {
+router.get('/suppliers/pdf', fetchuser, requireExportReports, requireViewPermissionForReport('canDownloadSupplierReport', 'supplier'), async (req, res) => {
     try {
         const { supplierId } = req.query;
         let businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
