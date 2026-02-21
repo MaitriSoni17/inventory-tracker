@@ -272,9 +272,11 @@ function Employee(props) {
             }));
     };
 
-    const getCategoryNameById = (categoryId) => {
+    const getCategoryNameById = (categoryId, product) => {
         if (!categoryId) return 'N/A';
-        // Find the category by ObjectId and return the cName
+        // Use enriched categoryName from backend if available
+        if (product && product.categoryName) return product.categoryName;
+        // Fallback: find the category by ObjectId and return the cName
         const category = categories.find(cat => cat._id === categoryId);
         return category ? category.cName : categoryId;
     };
@@ -649,7 +651,7 @@ function Employee(props) {
                                                     }}
                                                 >
                                                     <td>{product.name || 'N/A'}</td>
-                                                    <td>{getCategoryNameById(product.category) || 'N/A'}</td>
+                                                    <td>{product.categoryName || getCategoryNameById(product.category, product) || 'N/A'}</td>
                                                     <td>{product.totalProducts || 0} Units</td>
                                                     <td>₹{product.price || 0}</td>
                                                 </tr>
@@ -707,7 +709,7 @@ function Employee(props) {
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label fw-bold text-muted">Category</label>
-                                            <p className="form-control-plaintext">{getCategoryNameById(selectedProduct.category) || 'N/A'}</p>
+                                            <p className="form-control-plaintext">{selectedProduct.categoryName || getCategoryNameById(selectedProduct.category, selectedProduct) || 'N/A'}</p>
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label fw-bold text-muted">Stock</label>

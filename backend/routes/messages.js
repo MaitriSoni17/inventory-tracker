@@ -85,6 +85,58 @@ const populateRecipientDetails = async (message) => {
 // ==================== GET ROUTES ====================
 
 /**
+ * Get messaging contacts for employees (business owner + same-warehouse colleagues)
+ * GET /api/messages/contacts
+ */
+router.get('/contacts', fetchuser, async (req, res) => {
+    try {
+        // Business owners use the employee/supplier routes directly
+        if (req.role === 'businessowner') {
+            return res.status(400).json({ error: 'Business owners should use employee/supplier routes' });
+        }
+
+        // Suppliers can only message their BO
+        if (req.role === 'supplier') {
+            const supplier = await Supplier.findById(req.user._id);
+            if (!supplier) return res.status(404).json({ error: 'Supplier not found' });
+            const bo = await BusinessOwner.findById(supplier.businessowner).select('fname lname email');
+            return res.json({ businessOwner: bo, colleagues: [] });
+        }
+
+        // For employees/managers/supervisors
+        const employee = await Employee.findById(req.user._id).populate('warehouse', '_id wName');
+        if (!employee) return res.status(404).json({ error: 'Employee not found' });
+
+        // Only include business owner if employee has send messages permission
+        let bo = null;
+        const canSendMessages = await hasMessagingPermission(
+            req.user._id, req.role, req.businessowner, 'canSendMessages'
+        );
+        if (canSendMessages) {
+            bo = await BusinessOwner.findById(employee.businessowner).select('fname lname email');
+        }
+
+        // Get colleagues (same warehouse) if permitted
+        let colleagues = [];
+        const canMsgColleagues = await hasMessagingPermission(
+            req.user._id, req.role, req.businessowner, 'canMessageColleagues'
+        );
+
+        if (canMsgColleagues && employee.warehouse) {
+            colleagues = await Employee.find({
+                businessowner: employee.businessowner,
+                warehouse: employee.warehouse._id,
+                _id: { $ne: req.user._id } // Exclude self
+            }).select('fname lname email role').lean();
+        }
+
+        res.json({ businessOwner: bo, colleagues });
+    } catch (error) {
+        res.status(500).json({ error: 'Error fetching contacts' });
+    }
+});
+
+/**
  * Get conversation with a specific user
  * GET /api/messages/conversation/:userId/:userRole
  */
@@ -111,6 +163,16 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
         // Suppliers can only view conversations with their Business Owner
         if (req.role === 'supplier' && userRole !== 'BusinessOwner') {
             return res.status(403).json({ error: 'Suppliers can only communicate with their Business Owner' });
+        }
+
+        // Check if employee has permission to message suppliers
+        if (['employee', 'manager', 'supervisor'].includes(req.role) && userRole === 'Supplier') {
+            const canMsgSuppliers = await hasMessagingPermission(
+                currentUserId, req.role, req.businessowner, 'canMessageSuppliers'
+            );
+            if (!canMsgSuppliers) {
+                return res.status(403).json({ error: 'You do not have permission to message suppliers' });
+            }
         }
 
         // Get messages between two users
@@ -345,6 +407,26 @@ router.post('/send', fetchuser, async (req, res) => {
             const supplier = await Supplier.findById(req.user._id);
             if (!supplier || supplier.businessowner.toString() !== recipientId) {
                 return res.status(403).json({ error: 'You can only message your own Business Owner' });
+            }
+        }
+
+        // Check if employee has permission to message suppliers
+        if (['employee', 'manager', 'supervisor'].includes(req.role) && recipientRole === 'Supplier') {
+            const canMsgSuppliers = await hasMessagingPermission(
+                req.user._id, req.role, req.businessowner, 'canMessageSuppliers'
+            );
+            if (!canMsgSuppliers) {
+                return res.status(403).json({ error: 'You do not have permission to message suppliers' });
+            }
+        }
+
+        // Check if employee has permission to message colleagues
+        if (['employee', 'manager', 'supervisor'].includes(req.role) && recipientRole === 'Employee') {
+            const canMsgColleagues = await hasMessagingPermission(
+                req.user._id, req.role, req.businessowner, 'canMessageColleagues'
+            );
+            if (!canMsgColleagues) {
+                return res.status(403).json({ error: 'You do not have permission to message colleagues' });
             }
         }
 

@@ -39,6 +39,11 @@ const rolePermissions = {
         canDownloadSalaryReport: true,
         canSendNotifications: true,
         canViewNotifications: true,
+        canViewMessages: true,
+        canSendMessages: true,
+        canDeleteMessages: true,
+        canMessageSuppliers: true,
+        canMessageColleagues: true,
         canViewDashboard: true
     },
     manager: {
@@ -72,6 +77,11 @@ const rolePermissions = {
         canDownloadSalaryReport: false,
         canSendNotifications: true,
         canViewNotifications: true,
+        canViewMessages: true,
+        canSendMessages: true,
+        canDeleteMessages: true,
+        canMessageSuppliers: true,
+        canMessageColleagues: true,
         canViewDashboard: true
     },
     supervisor: {
@@ -105,6 +115,11 @@ const rolePermissions = {
         canDownloadSalaryReport: false,
         canSendNotifications: false,
         canViewNotifications: true,
+        canViewMessages: true,
+        canSendMessages: true,
+        canDeleteMessages: true,
+        canMessageSuppliers: true,
+        canMessageColleagues: true,
         canViewDashboard: true
     },
     employee: {
@@ -138,6 +153,11 @@ const rolePermissions = {
         canDownloadSalaryReport: false,
         canSendNotifications: false,
         canViewNotifications: true,
+        canViewMessages: true,
+        canSendMessages: true,
+        canDeleteMessages: true,
+        canMessageSuppliers: true,
+        canMessageColleagues: true,
         canViewDashboard: true
     }
 };

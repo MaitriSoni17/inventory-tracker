@@ -68,6 +68,8 @@ const RolePermissionsSchema = new Schema({
         canViewMessages: { type: Boolean, default: true },
         canSendMessages: { type: Boolean, default: true },
         canDeleteMessages: { type: Boolean, default: true },
+        canMessageSuppliers: { type: Boolean, default: true },
+        canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
         canViewDashboard: { type: Boolean, default: true }
@@ -127,6 +129,8 @@ const RolePermissionsSchema = new Schema({
         canViewMessages: { type: Boolean, default: true },
         canSendMessages: { type: Boolean, default: true },
         canDeleteMessages: { type: Boolean, default: true },
+        canMessageSuppliers: { type: Boolean, default: true },
+        canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
         canViewDashboard: { type: Boolean, default: true }
@@ -186,6 +190,8 @@ const RolePermissionsSchema = new Schema({
         canViewMessages: { type: Boolean, default: true },
         canSendMessages: { type: Boolean, default: true },
         canDeleteMessages: { type: Boolean, default: true },
+        canMessageSuppliers: { type: Boolean, default: true },
+        canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
         canViewDashboard: { type: Boolean, default: true }
@@ -238,6 +244,8 @@ RolePermissionsSchema.statics.getDefaultPermissions = function(role) {
             canViewMessages: true,
             canSendMessages: true,
             canDeleteMessages: true,
+            canMessageSuppliers: true,
+            canMessageColleagues: true,
             canViewDashboard: true
         },
         supervisor: {
@@ -275,6 +283,8 @@ RolePermissionsSchema.statics.getDefaultPermissions = function(role) {
             canViewMessages: true,
             canSendMessages: true,
             canDeleteMessages: true,
+            canMessageSuppliers: true,
+            canMessageColleagues: true,
             canViewDashboard: true
         },
         employee: {
@@ -312,6 +322,8 @@ RolePermissionsSchema.statics.getDefaultPermissions = function(role) {
             canViewMessages: true,
             canSendMessages: true,
             canDeleteMessages: true,
+            canMessageSuppliers: true,
+            canMessageColleagues: true,
             canViewDashboard: true
         }
     };

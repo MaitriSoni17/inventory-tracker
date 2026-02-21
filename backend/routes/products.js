@@ -2,6 +2,8 @@ const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
 const Product = require('../models/Products');
 const Employee = require('../models/Employee');
+const Category = require('../models/Category');
+const Warehouse = require('../models/Warehouse');
 const { body, validationResult } = require('express-validator');
 const fs = require('fs');
 const path = require('path');
@@ -219,7 +221,34 @@ router.post('/getproduct', fetchuser, async (req, res) => {
                 products = [];
             }
         }
-        res.json(products);
+        // Enrich products with category and warehouse names
+        const categoryIds = [...new Set(products.map(p => p.category).filter(Boolean))];
+        const warehouseIds = [...new Set(products.flatMap(p => Array.isArray(p.warehouse) ? p.warehouse : (p.warehouse ? [p.warehouse] : [])).filter(Boolean))];
+
+        const [categoriesList, warehousesList] = await Promise.all([
+            Category.find({ _id: { $in: categoryIds } }).select('_id cName').lean(),
+            Warehouse.find({ _id: { $in: warehouseIds } }).select('_id wName').lean()
+        ]);
+
+        const catMap = {};
+        categoriesList.forEach(c => { catMap[c._id.toString()] = c.cName; });
+        const whMap = {};
+        warehousesList.forEach(w => { whMap[w._id.toString()] = w.wName; });
+
+        const enrichedProducts = products.map(p => {
+            const pObj = p.toObject ? p.toObject() : p;
+            pObj.categoryName = catMap[pObj.category] || null;
+            if (Array.isArray(pObj.warehouse)) {
+                pObj.warehouseNames = pObj.warehouse.map(wId => whMap[wId] || null);
+            } else if (pObj.warehouse) {
+                pObj.warehouseNames = [whMap[pObj.warehouse] || null];
+            } else {
+                pObj.warehouseNames = [];
+            }
+            return pObj;
+        });
+
+        res.json(enrichedProducts);
     } catch (err) {
         // console.error('Error in getproduct route:', err);
         res.status(500).send("Internal Server error occurred");

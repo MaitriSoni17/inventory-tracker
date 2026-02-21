@@ -152,9 +152,8 @@ const Products = (props) => {
     // Filter products based on search and filter criteria
     const getFilteredProducts = () => {
         return products.filter(product => {
-            const categoryName = categoryMap[product.category] || '';
+            const categoryName = product.categoryName || categoryMap[product.category] || '';
             const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                product.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 categoryName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 product.brand?.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -192,13 +191,15 @@ const Products = (props) => {
 
         const dataToExport = filteredProducts.map(product => ({
             'Product Name': product.name,
-            'Category': categoryMap[product.category] || product.category || '-',
+            'Category': product.categoryName || categoryMap[product.category] || product.category || '-',
             'Brand': product.brand || '-',
             'Price': `₹${product.price}`,
             'Stock': product.totalProducts,
-            'Warehouse': Array.isArray(product.warehouse) 
-                ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ')
-                : warehouseMap[product.warehouse] || product.warehouse || '-',
+            'Warehouse': product.warehouseNames && product.warehouseNames.filter(Boolean).length > 0
+                ? product.warehouseNames.filter(Boolean).join(', ')
+                : (Array.isArray(product.warehouse) 
+                    ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ')
+                    : warehouseMap[product.warehouse] || product.warehouse || '-'),
             'Status': 'Active',
             'Mfg Date': new Date(product.mDate).toLocaleDateString(),
             'Exp Date': new Date(product.eDate).toLocaleDateString(),
@@ -319,7 +320,7 @@ const Products = (props) => {
                         >
                             <option value="">Category</option>
                             {categories.map(catId => (
-                                <option key={catId} value={catId}>{categoryMap[catId] || catId}</option>
+                                <option key={catId} value={catId}>{categoryMap[catId] || products.find(p => p.category === catId)?.categoryName || catId}</option>
                             ))}
                         </select>
                     </div>
@@ -404,11 +405,13 @@ const Products = (props) => {
                                                     <td className="fw-bold">{product.name}</td>
                                                     <td><span className="badge custom-badge-purple rounded-pill px-3 py-2">Active</span></td>
                                                     <td>{product.totalProducts} In Stock</td>
-                                                    <td>{categoryMap[product.category] || product.category}</td>
+                                                    <td>{product.categoryName || categoryMap[product.category] || product.category}</td>
                                                     <td>
-                                                        {Array.isArray(product.warehouse) 
-                                                            ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ')
-                                                            : warehouseMap[product.warehouse] || product.warehouse || 'Unassigned'
+                                                        {product.warehouseNames && product.warehouseNames.filter(Boolean).length > 0
+                                                            ? product.warehouseNames.filter(Boolean).join(', ')
+                                                            : (Array.isArray(product.warehouse) 
+                                                                ? product.warehouse.map(wId => warehouseMap[wId] || wId).join(', ')
+                                                                : warehouseMap[product.warehouse] || product.warehouse || 'Unassigned')
                                                         }
                                                     </td>
                                                     <td>₹{product.price}</td>

@@ -612,7 +612,7 @@ const BusinessOwner = (props) => {
                                                     }}
                                                 >
                                                     <td>{product.name || 'N/A'}</td>
-                                                    <td>{product.category || 'N/A'}</td>
+                                                    <td>{product.categoryName || product.category || 'N/A'}</td>
                                                     <td>{product.totalProducts || 0} Units</td>
                                                     <td>₹{product.salePrice || 0}</td>
                                                 </tr>
@@ -715,7 +715,7 @@ const BusinessOwner = (props) => {
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label fw-bold text-muted">Category</label>
-                                            <p className="form-control-plaintext">{selectedProduct.category || 'N/A'}</p>
+                                            <p className="form-control-plaintext">{selectedProduct.categoryName || selectedProduct.category || 'N/A'}</p>
                                         </div>
                                         <div className="mb-3">
                                             <label className="form-label fw-bold text-muted">Stock</label>

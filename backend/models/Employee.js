@@ -96,6 +96,8 @@ const Employee = new Schema({
         canViewMessages: { type: Boolean, default: true },
         canSendMessages: { type: Boolean, default: true },
         canDeleteMessages: { type: Boolean, default: true },
+        canMessageSuppliers: { type: Boolean, default: true },
+        canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
         canViewDashboard: { type: Boolean, default: true }

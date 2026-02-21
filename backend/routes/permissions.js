@@ -338,6 +338,8 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
                     canDownloadSalaryReport: true,
                     canSendNotifications: true,
                     canViewNotifications: true,
+                    canMessageSuppliers: true,
+                    canMessageColleagues: true,
                     canViewDashboard: true
                 }
             });
@@ -367,12 +369,18 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
         // Check if employee has permissions embedded
         const employeePerms = extractPermissions(employee.permissions);
         
+        // Get role defaults to merge with stored permissions
+        // This ensures new permissions (like canMessageSuppliers) are included even for existing employees
+        const roleDefaults = RolePermissions.getDefaultPermissions(employee.role);
+        
         // If employee has permissions set (and they are not all undefined/null), use them
         if (employeePerms && Object.keys(employeePerms).length > 0) {
+            // Merge: role defaults first, then employee overrides on top
+            const mergedPerms = { ...roleDefaults, ...employeePerms };
             return res.json({
                 success: true,
                 role: employee.role,
-                permissions: employeePerms,
+                permissions: mergedPerms,
                 hasCustomPermissions: employee.hasCustomPermissions || false
             });
         }
@@ -382,10 +390,12 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
         
         if (rolePermissions && rolePermissions[employee.role]) {
             const rolePerms = extractPermissions(rolePermissions[employee.role]);
+            // Merge with defaults to ensure new permissions are included
+            const mergedPerms = { ...roleDefaults, ...rolePerms };
             return res.json({
                 success: true,
                 role: employee.role,
-                permissions: rolePerms,
+                permissions: mergedPerms,
                 hasCustomPermissions: false
             });
         }
@@ -720,7 +730,9 @@ router.get('/groups', fetchuser, async (req, res) => {
                 permissions: [
                     { key: 'canViewMessages', label: 'View Messages', description: 'Can view and read messages' },
                     { key: 'canSendMessages', label: 'Send Messages', description: 'Can send messages to other users' },
-                    { key: 'canDeleteMessages', label: 'Delete Messages', description: 'Can delete sent or received messages' }
+                    { key: 'canDeleteMessages', label: 'Delete Messages', description: 'Can delete sent or received messages' },
+                    { key: 'canMessageSuppliers', label: 'Message Suppliers', description: 'Can send messages to suppliers' },
+                    { key: 'canMessageColleagues', label: 'Message Colleagues', description: 'Can send messages to colleagues in the same warehouse' }
                 ]
             },
             {

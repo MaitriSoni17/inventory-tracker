@@ -16,6 +16,9 @@ const Messaging = () => {
     const [currentUserRole, setCurrentUserRole] = useState(null);
     const [employees, setEmployees] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
+    const [colleagues, setColleagues] = useState([]);
+    const [myBusinessOwner, setMyBusinessOwner] = useState(null);
+    const [colleagueSearchTerm, setColleagueSearchTerm] = useState('');
     const [showEmployeeSelector, setShowEmployeeSelector] = useState(false);
     const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
     const [supplierSearchTerm, setSupplierSearchTerm] = useState('');
@@ -345,13 +348,41 @@ const Messaging = () => {
         }
     };
 
-    // Load employees/suppliers when selector is opened (not for suppliers)
+    // Fetch messaging contacts for employees (business owner + same-warehouse colleagues)
+    const fetchContacts = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/messages/contacts', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': token
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.businessOwner) {
+                    setMyBusinessOwner(data.businessOwner);
+                }
+                if (data.colleagues) {
+                    setColleagues(data.colleagues);
+                }
+            }
+        } catch (error) {
+            // console.error('Error fetching contacts:', error);
+        }
+    };
+
+    // Load employees/suppliers/contacts when selector is opened (not for suppliers)
     useEffect(() => {
         if (showEmployeeSelector && currentUserRole !== 'supplier') {
-            if (employees.length === 0 && currentUserRole === 'businessowner') {
-                fetchEmployees();
+            if (currentUserRole === 'businessowner') {
+                if (employees.length === 0) fetchEmployees();
+            } else {
+                // For employees/managers/supervisors - fetch contacts (BO + colleagues)
+                if (!myBusinessOwner) fetchContacts();
             }
-            if (suppliers.length === 0) {
+            if (suppliers.length === 0 && (currentUserRole === 'businessowner' || hasPermission('canMessageSuppliers'))) {
                 fetchSuppliers();
             }
         }
@@ -393,6 +424,11 @@ const Messaging = () => {
         const company = (sup.companyName || '').toLowerCase();
         const searchLower = supplierSearchTerm.toLowerCase();
         return name.includes(searchLower) || company.includes(searchLower);
+    });
+
+    const filteredColleagues = colleagues.filter(col => {
+        const name = `${col.fname || ''} ${col.lname || ''}`.toLowerCase();
+        return name.includes(colleagueSearchTerm.toLowerCase());
     });
 
     const formatTime = (date) => {
@@ -487,6 +523,7 @@ const Messaging = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="form-control"
                             />
+                            {(currentUserRole === 'businessowner' || currentUserRole === 'supplier' || hasPermission('canSendMessages') || hasPermission('canMessageColleagues') || hasPermission('canMessageSuppliers')) && (
                             <button
                                 className="btn btn-primary btn-sm"
                                 onClick={() => {
@@ -505,11 +542,18 @@ const Messaging = () => {
                                         setShowEmployeeSelector(false);
                                     } else {
                                         setShowEmployeeSelector(true);
-                                        // Set default tab based on user role
+                                        // Set default tab based on user role and permissions
                                         if (currentUserRole === 'businessowner') {
                                             setUserTypeTab('employees');
                                         } else {
-                                            setUserTypeTab('suppliers');
+                                            // For employees: default to businessowner tab if they can send messages
+                                            if (hasPermission('canSendMessages')) {
+                                                setUserTypeTab('businessowner');
+                                            } else if (hasPermission('canMessageColleagues')) {
+                                                setUserTypeTab('colleagues');
+                                            } else if (hasPermission('canMessageSuppliers')) {
+                                                setUserTypeTab('suppliers');
+                                            }
                                         }
                                     }
                                 }}
@@ -517,13 +561,14 @@ const Messaging = () => {
                             >
                                 <i className="bi bi-plus-lg"></i>
                             </button>
+                            )}
                         </div>
                         
                         {/* User Type Selector - Tabs and Content (hidden for suppliers) */}
                         {showEmployeeSelector && currentUserRole !== 'supplier' && (
                             <div className="user-selector-section mb-2" style={{ backgroundColor: '#f9f9f9', borderRadius: '0.5rem', padding: '1rem', border: '1px solid #e0e0e0' }}>
                                 {/* Tabs */}
-                                <div className="user-type-tabs mb-3" style={{ display: 'flex', gap: '0', borderBottom: '2px solid #e0e0e0', marginBottom: '1rem' }}>
+                                <div className="user-type-tabs mb-3" style={{ display: 'flex', gap: '0', borderBottom: '2px solid #e0e0e0', marginBottom: '1rem', flexWrap: 'wrap' }}>
                                     {currentUserRole === 'businessowner' && (
                                         <button
                                             className="tab-button"
@@ -544,6 +589,47 @@ const Messaging = () => {
                                             <i className="bi bi-people me-2"></i>Employees
                                         </button>
                                     )}
+                                    {currentUserRole !== 'businessowner' && hasPermission('canSendMessages') && (
+                                        <button
+                                            className="tab-button"
+                                            onClick={() => setUserTypeTab('businessowner')}
+                                            style={{
+                                                padding: '0.75rem 1.25rem',
+                                                border: 'none',
+                                                background: 'none',
+                                                cursor: 'pointer',
+                                                borderBottom: userTypeTab === 'businessowner' ? '3px solid #667eea' : 'none',
+                                                color: userTypeTab === 'businessowner' ? '#667eea' : '#888',
+                                                fontWeight: userTypeTab === 'businessowner' ? '600' : '500',
+                                                fontSize: '0.95rem',
+                                                transition: 'all 0.3s ease',
+                                                marginBottom: '-2px'
+                                            }}
+                                        >
+                                            <i className="bi bi-person-badge me-2"></i>Business Owner
+                                        </button>
+                                    )}
+                                    {currentUserRole !== 'businessowner' && hasPermission('canMessageColleagues') && (
+                                        <button
+                                            className="tab-button"
+                                            onClick={() => setUserTypeTab('colleagues')}
+                                            style={{
+                                                padding: '0.75rem 1.25rem',
+                                                border: 'none',
+                                                background: 'none',
+                                                cursor: 'pointer',
+                                                borderBottom: userTypeTab === 'colleagues' ? '3px solid #667eea' : 'none',
+                                                color: userTypeTab === 'colleagues' ? '#667eea' : '#888',
+                                                fontWeight: userTypeTab === 'colleagues' ? '600' : '500',
+                                                fontSize: '0.95rem',
+                                                transition: 'all 0.3s ease',
+                                                marginBottom: '-2px'
+                                            }}
+                                        >
+                                            <i className="bi bi-people me-2"></i>Colleagues
+                                        </button>
+                                    )}
+                                    {(currentUserRole === 'businessowner' || hasPermission('canMessageSuppliers')) && (
                                     <button
                                         className="tab-button"
                                         onClick={() => setUserTypeTab('suppliers')}
@@ -562,8 +648,107 @@ const Messaging = () => {
                                     >
                                         <i className="bi bi-shop me-2"></i>Suppliers
                                     </button>
+                                    )}
                                 </div>
                                 
+                                {/* Business Owner Selector (for employees) */}
+                                {userTypeTab === 'businessowner' && currentUserRole !== 'businessowner' && (
+                                    <div className="bo-selector">
+                                        {myBusinessOwner ? (
+                                            <button
+                                                className="list-group-item list-group-item-action text-start"
+                                                onClick={() => {
+                                                    setSelectedConversation({
+                                                        userId: myBusinessOwner._id,
+                                                        userRole: 'BusinessOwner',
+                                                        userDetails: myBusinessOwner
+                                                    });
+                                                    setShowEmployeeSelector(false);
+                                                }}
+                                                style={{
+                                                    border: '1px solid #e0e0e0',
+                                                    borderRadius: '0.375rem',
+                                                    marginBottom: '0.75rem',
+                                                    padding: '0.85rem',
+                                                    backgroundColor: '#fff',
+                                                    transition: 'all 0.2s ease',
+                                                    cursor: 'pointer',
+                                                    width: '100%'
+                                                }}
+                                                onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f4ff'}
+                                                onMouseLeave={(e) => e.target.style.backgroundColor = '#fff'}
+                                            >
+                                                <div className="d-flex align-items-center justify-content-between">
+                                                    <div>
+                                                        <strong className="d-block">{myBusinessOwner.fname} {myBusinessOwner.lname}</strong>
+                                                        <small className="text-muted">Business Owner</small>
+                                                    </div>
+                                                    <i className="bi bi-chevron-right text-primary"></i>
+                                                </div>
+                                            </button>
+                                        ) : (
+                                            <p className="text-muted text-center py-4">Loading...</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Colleagues Selector (for employees - same warehouse) */}
+                                {userTypeTab === 'colleagues' && currentUserRole !== 'businessowner' && (
+                                    <div className="colleague-selector">
+                                        <input
+                                            type="text"
+                                            placeholder="Search colleagues by name..."
+                                            value={colleagueSearchTerm}
+                                            onChange={(e) => setColleagueSearchTerm(e.target.value)}
+                                            className="form-control form-control-sm mb-3"
+                                            style={{ borderRadius: '0.375rem' }}
+                                        />
+                                        <div className="colleague-list" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                            {filteredColleagues.length === 0 ? (
+                                                <div className="text-center py-4">
+                                                    <i className="bi bi-people text-muted" style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }}></i>
+                                                    <p className="text-muted mb-0">{colleagues.length === 0 ? 'No colleagues in your warehouse' : 'No matching colleagues'}</p>
+                                                </div>
+                                            ) : (
+                                                filteredColleagues.map((col) => (
+                                                    <button
+                                                        key={col._id}
+                                                        className="list-group-item list-group-item-action text-start"
+                                                        onClick={() => {
+                                                            setSelectedConversation({
+                                                                userId: col._id,
+                                                                userRole: 'Employee',
+                                                                userDetails: col
+                                                            });
+                                                            setShowEmployeeSelector(false);
+                                                            setColleagueSearchTerm('');
+                                                        }}
+                                                        style={{
+                                                            border: '1px solid #e0e0e0',
+                                                            borderRadius: '0.375rem',
+                                                            marginBottom: '0.75rem',
+                                                            padding: '0.85rem',
+                                                            backgroundColor: '#fff',
+                                                            transition: 'all 0.2s ease',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f4ff'}
+                                                        onMouseLeave={(e) => e.target.style.backgroundColor = '#fff'}
+                                                    >
+                                                        <div className="d-flex align-items-center justify-content-between">
+                                                            <div>
+                                                                <strong className="d-block">{col.fname} {col.lname}</strong>
+                                                                <small className="text-muted">{col.role}</small>
+                                                            </div>
+                                                            <i className="bi bi-chevron-right text-primary"></i>
+                                                        </div>
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Employee Selector */}
                                 {userTypeTab === 'employees' && currentUserRole === 'businessowner' && (
                                     <div className="employee-selector">
@@ -611,7 +796,7 @@ const Messaging = () => {
                                 )}
 
                                 {/* Supplier Selector */}
-                                {userTypeTab === 'suppliers' && (
+                                {userTypeTab === 'suppliers' && (currentUserRole === 'businessowner' || hasPermission('canMessageSuppliers')) && (
                                     <div className="supplier-selector">
                                         <input
                                             type="text"
