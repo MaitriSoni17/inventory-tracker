@@ -117,6 +117,7 @@ export const RoleProvider = ({ children }) => {
         // Suppliers have specific permissions for messaging, notifications, and settings
         if (role === 'supplier') {
             const supplierPermissions = {
+                'canViewDashboard': true,
                 'canViewMessages': true,
                 'canSendMessages': true,
                 'canDeleteMessages': true,
