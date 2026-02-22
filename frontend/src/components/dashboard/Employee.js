@@ -556,8 +556,8 @@ function Employee(props) {
                         )}
                     </div>
 
-                    {/* Charts */}
-                    {hasPermission('canViewOrders') && (
+                    {/* Charts - only visible when analytics permission is enabled */}
+                    {hasPermission('canViewAnalytics') && hasPermission('canViewOrders') && (
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">
@@ -584,7 +584,7 @@ function Employee(props) {
                     </div>
                     )}
 
-                    {hasPermission('canViewProducts') && (
+                    {hasPermission('canViewAnalytics') && hasPermission('canViewProducts') && (
                     <div className="row my-4 g-3">
                         <div className="col-md-5 me-5">
                             <div className="p-3 bg-white shadow rounded-4 border border-4">
@@ -664,7 +664,7 @@ function Employee(props) {
                     </div>
                     )}
 
-                    {hasPermission('canViewProducts') && (
+                    {hasPermission('canViewAnalytics') && hasPermission('canViewProducts') && (
                     <div className="row my-5 mb-5">
                         <div className="col-12">
                             <div className="p-4 bg-white shadow rounded-4 border border-4">

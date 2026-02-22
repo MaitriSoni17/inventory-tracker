@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
-import { CanEditWarehouses, CanDeleteWarehouses, CanCreateWarehouses } from '../../auth/RoleGuards';
+import { CanEditWarehouses, CanDeleteWarehouses, CanCreateWarehouses, CanExportReports } from '../../auth/RoleGuards';
 
 const Warehouses = (props) => {
     const [warehouses, setWarehouses] = useState([]);
@@ -389,12 +389,14 @@ const Warehouses = (props) => {
                         <p className="text-muted last-update-text">Total Warehouses: {stats.totalWarehouses}</p>
                     </div>
                     <div className="col-3 d-flex justify-content-end align-items-end pb-3">
-                        <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
-                            <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
-                        </button>
-                        <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
-                            <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
-                        </button>
+                        <CanExportReports>
+                            <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
+                                <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
+                            </button>
+                            <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
+                                <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
+                            </button>
+                        </CanExportReports>
 
                         <CanCreateWarehouses>
                             <button className="btn btn-custom-purple shadow-sm mb-2" onClick={() => { resetForm(); setShowAddModal(true); }}>

@@ -62,6 +62,7 @@ const SideBar = () => {
     const canViewNotifications = hasPermission('canViewNotifications');
     const canViewMessages = hasPermission('canViewMessages');
     const canExportReports = hasPermission('canExportReports');
+    const canViewDashboard = hasPermission('canViewDashboard');
 
     return (
         <>
@@ -84,9 +85,11 @@ const SideBar = () => {
                     </div>
                     <div className="list-group list-group-flush my-3">
                         
+                        {canViewDashboard && (
                         <Link to="/dashboard" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
                             <i className="fas fa-th-large me-2"></i>Dashboard
                         </Link>
+                        )}
                         
                         {/* Categories - Based on canViewCategories permission */}
                         {canViewCategories && (

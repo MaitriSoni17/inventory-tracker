@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import { apiCall, parseResponse } from '../../../utils/apiClient';
 import '../../../styles/dashboard-elegant.css';
-import { CanEditOrders, CanDeleteOrders, CanCreateOrders } from '../../auth/RoleGuards';
+import { CanEditOrders, CanDeleteOrders, CanCreateOrders, CanExportReports } from '../../auth/RoleGuards';
 import { generateIndividualOrderReportPDF } from '../../../utils/individualReportHelper';
 
 const Orders = (props) => {
@@ -343,14 +343,14 @@ const Orders = (props) => {
                     </div>
                     <div className="col-3 d-flex justify-content-end align-items-end ms-5 pb-3">
                         {activeTab === 'orders' && (
-                            <>
+                            <CanExportReports>
                                 <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
                                     <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                                 </button>
                                 <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
                                     <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                                 </button>
-                            </>
+                            </CanExportReports>
                         )}
 
                         <CanCreateOrders>
@@ -485,9 +485,11 @@ const Orders = (props) => {
                                                     </span>
                                                 </td>
                                                 <td className='d-flex'>
-                                                    <button className="btn btn-success me-2" onClick={() => downloadIndividualOrderReport(order)} title="Download Report">
-                                                        <i className="bi bi-download"></i>
-                                                    </button>
+                                                    <CanExportReports>
+                                                        <button className="btn btn-success me-2" onClick={() => downloadIndividualOrderReport(order)} title="Download Report">
+                                                            <i className="bi bi-download"></i>
+                                                        </button>
+                                                    </CanExportReports>
                                                     <CanEditOrders>
                                                         <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-info me-2" title="Edit">
                                                             <i className="bi bi-pencil"></i>

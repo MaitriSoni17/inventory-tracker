@@ -4,7 +4,7 @@ import '../../../styles/dashboard-elegant.css';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { CanCreateProducts, CanDeleteProducts, CanEditProducts } from '../../auth/RoleGuards';
+import { CanCreateProducts, CanDeleteProducts, CanEditProducts, CanExportReports } from '../../auth/RoleGuards';
 import { generateIndividualProductReportPDF } from '../../../utils/individualReportHelper';
 
 const Products = (props) => {
@@ -272,18 +272,20 @@ const Products = (props) => {
 
                     </div>
                     <div className="col-3 ms-5 d-flex justify-content-end align-items-end pb-3">
-                        <button
-                            className="btn btn-link text-danger me-3 fs-2 p-0 border-0"
-                            onClick={exportToPDF}
-                            title="Export to PDF">
-                            <i className="bi bi-file-earmark-pdf-fill"></i>
-                        </button>
-                        <button
-                            className="btn btn-link text-success me-3 fs-2 p-0 border-0"
-                            onClick={exportToExcel}
-                            title="Export to Excel">
-                            <i className="bi bi-file-earmark-excel-fill"></i>
-                        </button>
+                        <CanExportReports>
+                            <button
+                                className="btn btn-link text-danger me-3 fs-2 p-0 border-0"
+                                onClick={exportToPDF}
+                                title="Export to PDF">
+                                <i className="bi bi-file-earmark-pdf-fill"></i>
+                            </button>
+                            <button
+                                className="btn btn-link text-success me-3 fs-2 p-0 border-0"
+                                onClick={exportToExcel}
+                                title="Export to Excel">
+                                <i className="bi bi-file-earmark-excel-fill"></i>
+                            </button>
+                        </CanExportReports>
 
                         <CanCreateProducts>
                             <a className="btn btn-custom-purple shadow-sm text-decoration-none" href="/dashboard/addproduct">
@@ -416,9 +418,11 @@ const Products = (props) => {
                                                     </td>
                                                     <td>₹{product.price}</td>
                                                     <td>
-                                                        <button className="btn btn-success me-2" onClick={() => downloadIndividualProductReport(product)} title="Download Report">
-                                                            <i className="bi bi-download"></i>
-                                                        </button>
+                                                        <CanExportReports>
+                                                            <button className="btn btn-success me-2" onClick={() => downloadIndividualProductReport(product)} title="Download Report">
+                                                                <i className="bi bi-download"></i>
+                                                            </button>
+                                                        </CanExportReports>
                                                         <CanEditProducts>
                                                             <Link to={`/dashboard/editproduct/${product._id}`} className="btn btn-info me-2" title="Edit">
                                                                 <i className="bi bi-pencil"></i>

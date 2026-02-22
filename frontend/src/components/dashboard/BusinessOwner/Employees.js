@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
-import { CanManageEmployees, CanEditEmployees } from '../../../components/auth/RoleGuards';
+import { CanManageEmployees, CanEditEmployees, CanExportReports } from '../../../components/auth/RoleGuards';
 import { generateIndividualEmployeeReportPDF } from '../../../utils/individualReportHelper';
 const Employees = (props) => {
     const [employees, setEmployees] = useState([]);
@@ -303,12 +303,14 @@ const Employees = (props) => {
                         <p className="text-muted">Total Employees: {stats.totalEmployees}</p>
                     </div>
                     <div className="col-3 ms-5 d-flex justify-content-end align-items-end pb-3">
-                        <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
-                            <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
-                        </button>
-                        <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
-                            <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
-                        </button>
+                        <CanExportReports>
+                            <button className="btn btn-link text-decoration-none" onClick={exportToPDF} title="Export to PDF">
+                                <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
+                            </button>
+                            <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
+                                <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
+                            </button>
+                        </CanExportReports>
 
                         <CanManageEmployees>
                             <Link className="btn btn-custom-purple shadow-sm mb-2 text-decoration-none" to="/dashboard/createemployee">

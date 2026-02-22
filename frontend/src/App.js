@@ -11,9 +11,6 @@ import Login from './components/auth/Login';
 import SignUp from './components/auth/SignUp';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import SideBar from './components/common/SideBar';
-import BusinessOwner from './components/dashboard/BusinessOwner';
-import Employee from './components/dashboard/Employee';
-import Supplier from './components/dashboard/Supplier';
 import SupplierOrders from './components/dashboard/Supplier/SupplierOrders';
 import SupplierOrderDetail from './components/dashboard/Supplier/SupplierOrderDetail';
 import SupplierSettings from './components/dashboard/Supplier/Settings';
@@ -45,6 +42,7 @@ import SalaryManagement from './components/dashboard/BusinessOwner/SalaryManagem
 import { RoleProvider } from './context/RoleContext';
 import { PermissionRouteGuard, RoleRouteGuard } from './components/auth/RouteGuard';
 import AccessDenied from './components/common/AccessDenied';
+import DashboardGuard from './components/auth/DashboardGuard';
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -76,9 +74,7 @@ function App() {
               }>
               {/* Default dashboard view based on role */}
               <Route index element={
-                localStorage.getItem('role') === 'businessowner' ? <BusinessOwner showAlert={showAlert} /> :
-                 localStorage.getItem('role') === 'employee' || localStorage.getItem('role') === 'supervisor' || localStorage.getItem('role') === 'manager' ? <Employee showAlert={showAlert} /> :
-                    <Supplier showAlert={showAlert} />
+                <DashboardGuard showAlert={showAlert} />
               } />
 
               {/* Supplier Orders (Supplier view) */}
