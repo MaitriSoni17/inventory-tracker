@@ -302,7 +302,7 @@ const SupplierOrders = (props) => {
                             </>
                         ) : (
                             <small className="text-muted" title="Contact your Business Owner to enable report exports">
-                                <i className="bi bi-lock-fill me-1"></i>Report export disabled
+                                {/* <i className="bi bi-lock-fill me-1"></i>Report export disabled */}
                             </small>
                         )}
                     </div>
