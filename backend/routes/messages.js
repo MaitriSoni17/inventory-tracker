@@ -38,7 +38,14 @@ const hasMessagingPermission = async (userId, userRole, businessOwnerId, permiss
         const rolePerms = await RolePermissions.findOne({ businessowner: businessOwnerId });
         if (!rolePerms) return true; // Allow if no role perms set up yet
 
-        const rolePermissions = rolePerms[employee.role];
+        // Check built-in role permissions first
+        let rolePermissions = rolePerms[employee.role];
+        
+        // If not a built-in role, check customRoles Map
+        if (!rolePermissions && rolePerms.customRoles && rolePerms.customRoles.has(employee.role)) {
+            rolePermissions = rolePerms.customRoles.get(employee.role);
+        }
+        
         return rolePermissions?.[permission] !== false;
     } catch (error) {
         // console.error('Error checking messaging permission:', error);
@@ -146,7 +153,7 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
         const currentUserId = req.user._id;
         // Map all employee types (employee, manager, supervisor) to 'Employee' role
         const currentUserRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                                ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' : 'Supplier';
+                                req.role === 'supplier' ? 'Supplier' : 'Employee';
 
         // Check permission
         const hasPermission = await hasMessagingPermission(
@@ -166,7 +173,7 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
         }
 
         // Check if employee has permission to message suppliers
-        if (['employee', 'manager', 'supervisor'].includes(req.role) && userRole === 'Supplier') {
+        if (req.role !== 'businessowner' && req.role !== 'supplier' && userRole === 'Supplier') {
             const canMsgSuppliers = await hasMessagingPermission(
                 currentUserId, req.role, req.businessowner, 'canMessageSuppliers'
             );
@@ -223,7 +230,7 @@ router.get('/conversations', fetchuser, async (req, res) => {
         const userId = req.user._id;
         // Map all employee types (employee, manager, supervisor) to 'Employee' role
         const userRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                        ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' : 'Supplier';
+                        req.role === 'supplier' ? 'Supplier' : 'Employee';
 
         // Check permission
         const hasPermission = await hasMessagingPermission(
@@ -317,7 +324,7 @@ router.get('/unread-count', fetchuser, async (req, res) => {
         const userId = req.user._id;
         // Map all employee types (employee, manager, supervisor) to 'Employee' role
         const userRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                        ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' : 'Supplier';
+                        req.role === 'supplier' ? 'Supplier' : 'Employee';
 
         const unreadCount = await Message.countDocuments({
             recipient: userId,
@@ -410,8 +417,8 @@ router.post('/send', fetchuser, async (req, res) => {
             }
         }
 
-        // Check if employee has permission to message suppliers
-        if (['employee', 'manager', 'supervisor'].includes(req.role) && recipientRole === 'Supplier') {
+        // Check if employee-type role has permission to message suppliers
+        if (req.role !== 'businessowner' && req.role !== 'supplier' && recipientRole === 'Supplier') {
             const canMsgSuppliers = await hasMessagingPermission(
                 req.user._id, req.role, req.businessowner, 'canMessageSuppliers'
             );
@@ -420,8 +427,8 @@ router.post('/send', fetchuser, async (req, res) => {
             }
         }
 
-        // Check if employee has permission to message colleagues
-        if (['employee', 'manager', 'supervisor'].includes(req.role) && recipientRole === 'Employee') {
+        // Check if employee-type role has permission to message colleagues
+        if (req.role !== 'businessowner' && req.role !== 'supplier' && recipientRole === 'Employee') {
             const canMsgColleagues = await hasMessagingPermission(
                 req.user._id, req.role, req.businessowner, 'canMessageColleagues'
             );
@@ -444,7 +451,7 @@ router.post('/send', fetchuser, async (req, res) => {
             sender: req.user._id,
             // Map all employee types (employee, manager, supervisor) to 'Employee' role
             senderRole: req.role === 'businessowner' ? 'BusinessOwner' : 
-                       ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' : 'Supplier',
+                       req.role === 'supplier' ? 'Supplier' : 'Employee',
             recipient: recipientId,
             recipientRole,
             content: content.trim(),
@@ -472,7 +479,7 @@ router.post('/send', fetchuser, async (req, res) => {
             recipientRole,
             req.user._id,
             req.role === 'businessowner' ? 'BusinessOwner' : 
-            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' : 'Supplier',
+            req.role === 'supplier' ? 'Supplier' : 'Employee',
             senderName,
             content,
             req.businessowner

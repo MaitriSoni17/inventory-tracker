@@ -26,7 +26,7 @@ router.post('/createcategory', fetchuser, [
 
         if (req.role === 'businessowner') {
             categoryData.businessowner = req.user._id;
-        } else if (req.role === 'manager') {
+        } else {
             categoryData.businessowner = req.user.businessowner;
             categoryData.employee = req.user._id;
         }
@@ -41,14 +41,14 @@ router.post('/createcategory', fetchuser, [
                 cName,
                 { categoryId: category._id, description: cDesc }
             );
-        } else if (req.role === 'manager') {
-            // Send notification to business owner if created by manager
+        } else {
+            // Send notification to business owner if created by any employee-type role
             await notifyBusinessOwnerAboutCategory(
                 req.user.businessowner,
                 req.user._id,
                 'created',
                 cName,
-                { categoryId: category._id, description: cDesc, createdBy: 'manager' }
+                { categoryId: category._id, description: cDesc, createdBy: req.role }
             );
         }
 
@@ -70,8 +70,8 @@ router.post('/getcategory', fetchuser, async (req, res) => {
 
         if (req.role === 'businessowner') {
             category = await Category.find({ businessowner: req.user._id });
-        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
-            // For warehouse staff: get categories for their business and their warehouse
+        } else {
+            // For all employee-type roles: get categories for their business and their warehouse
             const Employee = require('../models/Employee');
             const employee = await Employee.findById(req.user._id).populate('warehouse');
             
@@ -131,7 +131,7 @@ router.put('/updatecategory/:id', fetchuser, [
             if (category.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
-        } else if (req.role === 'manager') {
+        } else {
             if (category.businessowner.toString() !== req.user.businessowner.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -147,14 +147,14 @@ router.put('/updatecategory/:id', fetchuser, [
                 cName,
                 { categoryId: category._id, description: cDesc }
             );
-        } else if (req.role === 'manager') {
-            // Send notification to business owner if updated by manager
+        } else {
+            // Send notification to business owner if updated by any employee-type role
             await notifyBusinessOwnerAboutCategory(
                 req.user.businessowner,
                 req.user._id,
                 'updated',
                 cName,
-                { categoryId: category._id, description: cDesc, updatedBy: 'manager' }
+                { categoryId: category._id, description: cDesc, updatedBy: req.role }
             );
         }
 
@@ -176,7 +176,7 @@ router.post('/getcategories', fetchuser, async (req, res) => {
 
         if (req.role === 'businessowner') {
             categories = await Category.find({ businessowner: req.user._id });
-        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+        } else {
             categories = await Category.find({ businessowner: req.user.businessowner });
         }
 
@@ -202,7 +202,7 @@ router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
             if (category.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
-        } else if (req.role === 'manager') {
+        } else {
             if (category.businessowner.toString() !== req.user.businessowner.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -221,14 +221,14 @@ router.delete('/deletecategory/:id', fetchuser, async (req, res) => {
                 categoryName,
                 { categoryId: req.params.id }
             );
-        } else if (req.role === 'manager') {
-            // Send notification to business owner if deleted by manager
+        } else {
+            // Send notification to business owner if deleted by any employee-type role
             await notifyBusinessOwnerAboutCategory(
                 businessOwnerId,
                 req.user._id,
                 'deleted',
                 categoryName,
-                { categoryId: req.params.id, deletedBy: 'manager' }
+                { categoryId: req.params.id, deletedBy: req.role }
             );
         }
 

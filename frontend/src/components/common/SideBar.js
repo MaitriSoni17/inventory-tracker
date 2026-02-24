@@ -49,7 +49,7 @@ const SideBar = () => {
     }, []);
 
     // Check if user can access certain features based on role
-    const isEmployee = ['employee', 'supervisor', 'manager'].includes(currentRole);
+    const isEmployee = currentRole && currentRole !== 'businessowner' && currentRole !== 'supplier';
     const isBusinessOwner = currentRole === 'businessowner';
     const isSupplier = currentRole === 'supplier';
 

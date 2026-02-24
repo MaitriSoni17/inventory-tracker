@@ -40,7 +40,7 @@ export const PermissionRouteGuard = ({ permission, children, message }) => {
  * @param {React.ReactNode} children - The component to render if role matches
  * @param {string} [message] - Optional custom denied message
  */
-export const RoleRouteGuard = ({ roles, children, message }) => {
+export const RoleRouteGuard = ({ roles, children, message, allowCustomRoles }) => {
     const { role, loading } = useRole();
     const storedRole = localStorage.getItem('role');
     const currentRole = role || storedRole;
@@ -56,6 +56,11 @@ export const RoleRouteGuard = ({ roles, children, message }) => {
     }
 
     const allowedRoles = Array.isArray(roles) ? roles : [roles];
+
+    // If allowCustomRoles is true, also allow any custom employee-type role
+    if (allowCustomRoles && currentRole && currentRole !== 'businessowner' && currentRole !== 'supplier') {
+        return children;
+    }
 
     if (!allowedRoles.includes(currentRole)) {
         return <AccessDenied message={message} />;

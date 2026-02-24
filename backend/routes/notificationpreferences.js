@@ -6,6 +6,23 @@ const fetchBusinessOwner = require('../middleware/fetchbusinessowner');
 const fetchEmployee = require('../middleware/fetchemployee');
 
 /**
+ * Get role variants for notification preference queries.
+ * Maps any role to its possible stored variants (lowercase + capitalized).
+ * Custom roles (non-BO, non-supplier) are treated as 'Employee' type.
+ */
+function getRoleVariants(userRole) {
+    const variants = [userRole];
+    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier', 'manager': 'Employee', 'supervisor': 'Employee' };
+    if (roleMap[userRole]) {
+        variants.push(roleMap[userRole]);
+    } else if (userRole !== 'businessowner' && userRole !== 'supplier') {
+        // Custom role — treat as Employee
+        variants.push('Employee');
+    }
+    return variants;
+}
+
+/**
  * Get current user's notification preferences
  * GET /api/notificationpreferences
  * @requires auth-token
@@ -16,9 +33,7 @@ router.get('/', fetchUser, async (req, res) => {
     const userRole = req.role;
 
     // Also check for legacy capitalized role values
-    const roleVariants = [userRole];
-    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
-    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
+    const roleVariants = getRoleVariants(userRole);
 
     let preferences = await NotificationPreference.findOne({
       user: userId,
@@ -100,9 +115,7 @@ router.post('/', fetchUser, async (req, res) => {
     const userRole = req.role;
 
     // Also check for legacy capitalized role values
-    const roleVariants = [userRole];
-    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
-    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
+    const roleVariants = getRoleVariants(userRole);
 
     const {
       salarydueAlert,
@@ -223,9 +236,7 @@ router.put('/', fetchUser, async (req, res) => {
     const userRole = req.role;
 
     // Also check for legacy capitalized role values
-    const roleVariants = [userRole];
-    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
-    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
+    const roleVariants = getRoleVariants(userRole);
 
     const {
       salarydueAlert,
@@ -333,9 +344,7 @@ router.delete('/', fetchUser, async (req, res) => {
     const userRole = req.role;
 
     // Also check for legacy capitalized role values
-    const roleVariants = [userRole];
-    const roleMap = { 'businessowner': 'BusinessOwner', 'employee': 'Employee', 'supplier': 'Supplier' };
-    if (roleMap[userRole]) roleVariants.push(roleMap[userRole]);
+    const roleVariants = getRoleVariants(userRole);
 
     const preferences = await NotificationPreference.findOne({
       user: userId,

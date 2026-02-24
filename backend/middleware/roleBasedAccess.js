@@ -163,6 +163,15 @@ const rolePermissions = {
 };
 
 /**
+ * Check if a role is an employee-type role (not businessowner, not supplier)
+ * @param {String} role - Role to check
+ * @returns {Boolean} - True if the role is an employee-type role
+ */
+const isEmployeeType = (role) => {
+    return role && role !== 'businessowner' && role !== 'supplier';
+};
+
+/**
  * Check if user has specific permission
  * First checks user's custom permissions, then falls back to role defaults
  * @param {Object} user - User object from request
@@ -172,14 +181,22 @@ const rolePermissions = {
 const hasPermission = (user, permission) => {
     if (user.role === 'businessowner') return true; // Business owner has all permissions
     
-    // Check if user has custom permissions set
+    // Check if user has custom permissions set (works for all employee-type roles including custom roles)
     if (user.permissions && user.permissions[permission] !== undefined) {
         return user.permissions[permission];
     }
     
-    // Fall back to role defaults
+    // Fall back to role defaults (for built-in roles)
     const perms = rolePermissions[user.role];
-    return perms ? perms[permission] : false;
+    if (perms) return perms[permission] || false;
+    
+    // For custom roles not found in defaults, fall back to employee defaults
+    if (isEmployeeType(user.role)) {
+        const employeePerms = rolePermissions['employee'];
+        return employeePerms ? employeePerms[permission] || false : false;
+    }
+    
+    return false;
 };
 
 /**
@@ -200,16 +217,34 @@ const hasPermissionAsync = async (user, permission, businessOwnerId) => {
     // Try to get custom permissions from database
     try {
         const customPermissions = await RolePermissions.findOne({ businessowner: businessOwnerId });
-        if (customPermissions && customPermissions[user.role] && customPermissions[user.role][permission] !== undefined) {
-            return customPermissions[user.role][permission];
+        if (customPermissions) {
+            // Check built-in roles first
+            if (customPermissions[user.role] && customPermissions[user.role][permission] !== undefined) {
+                return customPermissions[user.role][permission];
+            }
+            // Check custom roles stored in the Map
+            if (customPermissions.customRoles && customPermissions.customRoles.has(user.role)) {
+                const customRole = customPermissions.customRoles.get(user.role);
+                if (customRole && customRole[permission] !== undefined) {
+                    return customRole[permission];
+                }
+            }
         }
     } catch (err) {
         // console.error('Error fetching custom permissions:', err);
     }
     
-    // Fall back to role defaults
+    // Fall back to role defaults for built-in roles
     const perms = rolePermissions[user.role];
-    return perms ? perms[permission] : false;
+    if (perms) return perms[permission] || false;
+    
+    // For custom roles, fall back to employee defaults
+    if (isEmployeeType(user.role)) {
+        const employeePerms = rolePermissions['employee'];
+        return employeePerms ? employeePerms[permission] || false : false;
+    }
+    
+    return false;
 };
 
 /**
@@ -264,8 +299,9 @@ const requireEmployeeManagement = (req, res, next) => {
         return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (req.user.role !== 'businessowner' && req.user.role !== 'manager') {
-        return res.status(403).json({ error: "Only Business Owner and Managers can manage employees" });
+    // Business owner always has access; for others check canManageEmployees permission
+    if (req.user.role !== 'businessowner' && !hasPermission(req.user, 'canManageEmployees')) {
+        return res.status(403).json({ error: "You do not have permission to manage employees" });
     }
 
     next();
@@ -279,7 +315,7 @@ const requireWarehouseManagement = (req, res, next) => {
         return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (!['businessowner', 'manager'].includes(req.user.role)) {
+    if (req.user.role !== 'businessowner' && !hasPermission(req.user, 'canEditWarehouse')) {
         return res.status(403).json({ error: "You do not have permission to manage warehouses" });
     }
 
@@ -294,7 +330,7 @@ const requireCategoryManagement = (req, res, next) => {
         return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (!['businessowner', 'manager', 'supervisor'].includes(req.user.role)) {
+    if (req.user.role !== 'businessowner' && !hasPermission(req.user, 'canEditCategory')) {
         return res.status(403).json({ error: "You do not have permission to manage categories" });
     }
 
@@ -363,9 +399,10 @@ const canEditItem = async (requestUser, itemCreatorId, itemOwnerId = null) => {
     // Business owner can edit everything
     if (requestUser.role === 'businessowner') return true;
     
-    // If item has no creator (e.g., created by business owner), allow managers/supervisors based on org
+    // If item has no creator (e.g., created by business owner), allow managers/supervisors/custom roles with permission based on org
     if (!itemCreatorId) {
         if (requestUser.role === 'manager' || requestUser.role === 'supervisor') return true;
+        if (isEmployeeType(requestUser.role) && hasPermission(requestUser, 'canEditOthersWork')) return true;
         return false;
     }
 
@@ -388,6 +425,14 @@ const canEditItem = async (requestUser, itemCreatorId, itemOwnerId = null) => {
         }
     }
     
+    // Custom roles with canEditOthersWork permission can edit items in their organization
+    if (isEmployeeType(requestUser.role) && hasPermission(requestUser, 'canEditOthersWork')) {
+        const creator = await Employee.findById(itemCreatorId);
+        if (creator && creator.businessowner.toString() === requestUser.businessowner.toString()) {
+            return true;
+        }
+    }
+    
     return false;
 };
 
@@ -402,12 +447,15 @@ const canDeleteItem = async (requestUser, itemCreatorId) => {
     // Business owner can delete everything
     if (requestUser.role === 'businessowner') return true;
     
-    // Employees cannot delete
-    if (requestUser.role === 'employee') return false;
+    // Check if user has delete permissions
+    if (!hasPermission(requestUser, 'canDeleteOrders') && !hasPermission(requestUser, 'canDeleteProducts')) {
+        return false;
+    }
 
-    // If item has no creator (e.g., created by business owner), allow managers/supervisors
+    // If item has no creator (e.g., created by business owner), allow managers/supervisors/custom roles with permission
     if (!itemCreatorId) {
         if (requestUser.role === 'manager' || requestUser.role === 'supervisor') return true;
+        if (isEmployeeType(requestUser.role) && hasPermission(requestUser, 'canEditOthersWork')) return true;
         return false;
     }
     
@@ -423,6 +471,14 @@ const canDeleteItem = async (requestUser, itemCreatorId) => {
     if (requestUser.role === 'supervisor') {
         const creator = await Employee.findById(itemCreatorId);
         if (creator && creator.reportingTo?.toString() === requestUser._id.toString()) {
+            return true;
+        }
+    }
+    
+    // Custom roles with canEditOthersWork can delete items in their organization
+    if (isEmployeeType(requestUser.role) && hasPermission(requestUser, 'canEditOthersWork')) {
+        const creator = await Employee.findById(itemCreatorId);
+        if (creator && creator.businessowner.toString() === requestUser.businessowner.toString()) {
             return true;
         }
     }
@@ -473,7 +529,7 @@ const requireAnalyticsAccess = (req, res, next) => {
         return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (!['businessowner', 'manager', 'supervisor'].includes(req.user.role)) {
+    if (req.user.role !== 'businessowner' && !hasPermission(req.user, 'canViewAnalytics')) {
         return res.status(403).json({ error: "You do not have permission to view analytics" });
     }
 
@@ -488,8 +544,8 @@ const requireNotificationAccess = (req, res, next) => {
         return res.status(401).json({ error: "Not authenticated" });
     }
 
-    if (!['businessowner', 'manager'].includes(req.user.role)) {
-        return res.status(403).json({ error: "Only Managers and Business Owner can send notifications" });
+    if (req.user.role !== 'businessowner' && !hasPermission(req.user, 'canSendNotifications')) {
+        return res.status(403).json({ error: "You do not have permission to send notifications" });
     }
 
     next();
@@ -548,6 +604,7 @@ const requireViewPermissionForReport = (viewPermission, reportName) => {
 module.exports = {
     hasPermission,
     hasPermissionAsync,
+    isEmployeeType,
     canAccessUserWork,
     requirePermission,
     requireEmployeeManagement,

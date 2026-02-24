@@ -196,6 +196,56 @@ const RolePermissionsSchema = new Schema({
         // Dashboard
         canViewDashboard: { type: Boolean, default: true }
     },
+    // Custom roles defined by the business owner
+    // Each key is a custom role name (lowercase), value is an object with permissions + metadata
+    customRoles: {
+        type: Map,
+        of: new Schema({
+            displayName: { type: String, required: true },
+            description: { type: String, default: '' },
+            // Hierarchy level: 1=employee-level, 2=supervisor-level, 3=manager-level
+            hierarchyLevel: { type: Number, default: 1, min: 1, max: 3 },
+            // Permissions (same structure as built-in roles)
+            canViewProducts: { type: Boolean, default: true },
+            canCreateProducts: { type: Boolean, default: true },
+            canEditProducts: { type: Boolean, default: true },
+            canDeleteProducts: { type: Boolean, default: false },
+            canViewCategories: { type: Boolean, default: false },
+            canCreateCategory: { type: Boolean, default: false },
+            canEditCategory: { type: Boolean, default: false },
+            canDeleteCategory: { type: Boolean, default: false },
+            canViewWarehouses: { type: Boolean, default: false },
+            canCreateWarehouse: { type: Boolean, default: false },
+            canEditWarehouse: { type: Boolean, default: false },
+            canDeleteWarehouse: { type: Boolean, default: false },
+            canViewOrders: { type: Boolean, default: true },
+            canCreateOrders: { type: Boolean, default: true },
+            canEditOrders: { type: Boolean, default: true },
+            canDeleteOrders: { type: Boolean, default: false },
+            canApproveOrders: { type: Boolean, default: false },
+            canViewEmployees: { type: Boolean, default: false },
+            canManageEmployees: { type: Boolean, default: false },
+            canEditOthersWork: { type: Boolean, default: false },
+            canViewAnalytics: { type: Boolean, default: false },
+            canExportReports: { type: Boolean, default: false },
+            canDownloadEmployeeReport: { type: Boolean, default: false },
+            canDownloadProductReport: { type: Boolean, default: false },
+            canDownloadOrderReport: { type: Boolean, default: false },
+            canDownloadSupplierOrderReport: { type: Boolean, default: false },
+            canDownloadSupplierReport: { type: Boolean, default: false },
+            canDownloadSalaryReport: { type: Boolean, default: false },
+            canSendNotifications: { type: Boolean, default: false },
+            canViewNotifications: { type: Boolean, default: true },
+            canChat: { type: Boolean, default: true },
+            canViewMessages: { type: Boolean, default: true },
+            canSendMessages: { type: Boolean, default: true },
+            canDeleteMessages: { type: Boolean, default: true },
+            canMessageSuppliers: { type: Boolean, default: true },
+            canMessageColleagues: { type: Boolean, default: true },
+            canViewDashboard: { type: Boolean, default: true }
+        }, { _id: false }),
+        default: new Map()
+    },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 });

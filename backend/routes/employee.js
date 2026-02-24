@@ -58,12 +58,12 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
     body('email', 'Enter a valid email').isEmail(),
     body('password', 'Password must be at least 5 characters').isLength({ min: 5 })
 ], async (req, res) => {
-    // Ensure only business owner and managers can create employees
-    if (req.role && !['businessowner', 'manager'].includes(req.role)) {
+    // Ensure only business owner and managers (or custom roles with canManageEmployees) can create employees
+    if (req.role && !['businessowner', 'manager'].includes(req.role) && !hasPermission(req.user, 'canManageEmployees')) {
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
-        return res.status(403).json({ error: "Only Business Owner and Manager can create employees" });
+        return res.status(403).json({ error: "Only Business Owner, Manager, or roles with employee management permission can create employees" });
     }
 
     const errors = validationResult(req);
@@ -92,16 +92,16 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
         // Get only the filename from the uploaded file
         const imagePath = req.file ? req.file.filename : undefined;
 
-        // Validate role - only allow valid roles
-        const validRoles = ['employee', 'supervisor', 'manager'];
-        const role = validRoles.includes(req.body.role) ? req.body.role : 'employee';
+        // Validate role - accept built-in and custom roles
+        const builtInRoles = ['employee', 'supervisor', 'manager'];
+        let role = req.body.role || 'employee';
 
         // Determine the businessowner based on the requester's role
         let businessOwnerId;
         if (req.role === 'businessowner') {
             businessOwnerId = req.user._id;
-        } else if (req.role === 'manager') {
-            // Manager's businessowner is stored in their employee record
+        } else {
+            // Any employee-type role (manager, custom roles, etc.)
             businessOwnerId = req.user.businessowner;
         }
 
@@ -111,6 +111,18 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
                 deleteUploadedFile(path.join(uploadsDir, req.file.filename));
             }
             return res.status(400).json({ error: "Unable to determine business owner for this operation" });
+        }
+        
+        // If not a built-in role, verify it's a valid custom role for this business owner
+        if (!builtInRoles.includes(role)) {
+            const rolePermissionsCheck = await RolePermissions.findOne({ businessowner: businessOwnerId });
+            if (!rolePermissionsCheck || !rolePermissionsCheck.customRoles || !rolePermissionsCheck.customRoles.has(role.toLowerCase())) {
+                if (req.file) {
+                    deleteUploadedFile(path.join(uploadsDir, req.file.filename));
+                }
+                return res.status(400).json({ error: "Invalid role. Please select a valid role or create a custom role first." });
+            }
+            role = role.toLowerCase();
         }
 
         // Validate reportingTo if provided - must be a manager or supervisor
@@ -173,18 +185,31 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
             permissions: req.body.permissions || {}
         };
 
-        // Get permissions from business owner's custom role permissions or use defaults
+        // Get permissions from business owner's role permissions or use defaults
         let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: businessOwnerId });
         let employeePermissions;
         
-        if (rolePermissionsDoc && rolePermissionsDoc[role]) {
-            // Use business owner's custom permissions for this role
-            const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
-            // Remove mongoose internal fields
-            delete customPerms._id;
-            delete customPerms.$__;
-            delete customPerms.$isNew;
-            employeePermissions = customPerms;
+        if (rolePermissionsDoc) {
+            // Check built-in roles first
+            if (['manager', 'supervisor', 'employee'].includes(role) && rolePermissionsDoc[role]) {
+                const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+                delete customPerms._id;
+                delete customPerms.$__;
+                delete customPerms.$isNew;
+                employeePermissions = customPerms;
+            } 
+            // Check custom roles
+            else if (rolePermissionsDoc.customRoles && rolePermissionsDoc.customRoles.has(role)) {
+                const customRole = rolePermissionsDoc.customRoles.get(role).toObject();
+                employeePermissions = {};
+                for (const key of Object.keys(customRole)) {
+                    if (key.startsWith('can')) {
+                        employeePermissions[key] = customRole[key];
+                    }
+                }
+            } else {
+                employeePermissions = RolePermissions.getDefaultPermissions(role);
+            }
         } else {
             // Fall back to default permissions from RolePermissions model
             employeePermissions = RolePermissions.getDefaultPermissions(role);
@@ -298,8 +323,10 @@ router.post('/loginemployee', [
 // Get Employee Data using: POST "/api/employee/getemployee". Login required
 router.post('/getemployee', fetchuser, async (req, res) => {
     try {
-        // Allow employees, supervisors, and managers to get their own data
-        if (!['employee', 'supervisor', 'manager'].includes(req.role)) {
+        // Allow employees of any role to get their own data
+        if (req.role === 'businessowner' || req.role === 'supplier') {
+            // These roles use different endpoints
+        } else if (!req.user || !req.user.role) {
             return res.status(403).json({ error: "Access denied" });
         }
 
@@ -322,9 +349,14 @@ router.post('/getemployee', fetchuser, async (req, res) => {
 // Get All Employees using: POST "/api/employee/getallemployees". Permission-based filtering + warehouse filtering
 router.post('/getallemployees', fetchuser, async (req, res) => {
     try {
-        // Check permission to view employees (employees can always view themselves)
-        if (req.role !== 'employee' && !hasPermission(req.user, 'canViewEmployees')) {
-            return res.status(403).json({ error: "You do not have permission to view employees" });
+        // Check permission to view employees (employees and custom roles can always view themselves)
+        if (!hasPermission(req.user, 'canViewEmployees') && req.role !== 'employee') {
+            // Custom roles without canViewEmployees just see their own profile
+            const employee = await Employee.findById(req.user._id)
+                .populate('reportingTo', 'fname lname role email')
+                .populate('warehouse', 'wName wAddress')
+                .select("-password");
+            return res.json([employee]);
         }
 
         // Business owner gets all employees in their business
@@ -342,7 +374,6 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             const manager = await Employee.findById(req.user._id).populate('warehouse');
             
             if (!manager || !manager.warehouse) {
-                // No warehouse assigned, return empty array
                 return res.json([]);
             }
             
@@ -350,8 +381,8 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             const employees = await Employee.find({
                 businessowner: req.user.businessowner,
                 warehouse: warehouseId,
-                _id: { $ne: req.user._id }, // Exclude self
-                role: { $in: ['supervisor', 'employee'] } // Only lower hierarchy roles
+                _id: { $ne: req.user._id },
+                role: { $nin: ['manager'] } // Exclude managers (lower hierarchy only)
             })
                 .populate('reportingTo', 'fname lname role email')
                 .populate('subordinates', 'fname lname role email')
@@ -360,7 +391,7 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             return res.json(employees);
         }
         
-        // Supervisor gets only lower-hierarchy employees in their warehouse (excludes self, managers, and other supervisors)
+        // Supervisor gets only lower-hierarchy employees in their warehouse
         if (req.role === 'supervisor') {
             const supervisor = await Employee.findById(req.user._id).populate('warehouse');
             
@@ -368,25 +399,24 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             
             let employees;
             if (warehouseId) {
-                // Get only regular employees in same warehouse (lower hierarchy only)
                 employees = await Employee.find({
                     businessowner: req.user.businessowner,
                     warehouse: warehouseId,
-                    _id: { $ne: req.user._id }, // Exclude self
-                    role: 'employee' // Only lower hierarchy role
+                    _id: { $ne: req.user._id },
+                    role: { $nin: ['manager', 'supervisor'] } // Exclude managers and supervisors
                 })
                     .populate('reportingTo', 'fname lname role email')
                     .populate('subordinates', 'fname lname role email')
                     .populate('warehouse', 'wName wAddress')
                     .select("-password");
             } else {
-                // No warehouse assigned, show only direct reports (lower hierarchy)
+                // No warehouse assigned, show only direct reports
                 const subordinates = await getSubordinates(req.user._id);
                 const subordinateIds = subordinates.map(sub => sub._id);
                 employees = await Employee.find({
                     _id: { $in: subordinateIds },
                     businessowner: req.user.businessowner,
-                    role: 'employee' // Only lower hierarchy role
+                    role: { $nin: ['manager', 'supervisor'] }
                 })
                     .populate('reportingTo', 'fname lname role email')
                     .populate('subordinates', 'fname lname role email')
@@ -397,16 +427,32 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
             return res.json(employees);
         }
         
-        // Regular employees get only their own profile
-        if (req.role === 'employee') {
-            const employee = await Employee.findById(req.user._id)
-                .populate('reportingTo', 'fname lname role email')
-                .populate('warehouse', 'wName wAddress')
-                .select("-password");
-            return res.json([employee]);
+        // For any other role (including custom roles and 'employee'):
+        // If they have canViewEmployees permission, show their subordinates; otherwise show only their own profile
+        if (hasPermission(req.user, 'canViewEmployees')) {
+            const emp = await Employee.findById(req.user._id).populate('warehouse');
+            let warehouseId = emp && emp.warehouse ? emp.warehouse._id : null;
+            
+            if (warehouseId) {
+                const employees = await Employee.find({
+                    businessowner: req.user.businessowner,
+                    warehouse: warehouseId,
+                    _id: { $ne: req.user._id }
+                })
+                    .populate('reportingTo', 'fname lname role email')
+                    .populate('subordinates', 'fname lname role email')
+                    .populate('warehouse', 'wName wAddress')
+                    .select("-password");
+                return res.json(employees);
+            }
         }
         
-        return res.status(403).json({ error: "You do not have permission to view employees" });
+        // Default: return only own profile
+        const employee = await Employee.findById(req.user._id)
+            .populate('reportingTo', 'fname lname role email')
+            .populate('warehouse', 'wName wAddress')
+            .select("-password");
+        return res.json([employee]);
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
     }
@@ -462,8 +508,8 @@ router.put('/updateemployee', fetchemployee, upload.single('image'), async (req,
 // Update Employee using: PUT "/api/employee/updateemployee/:id". Role-based access control
 router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req, res) => {
     try {
-        // Only businessowner and manager can update employees
-        if (!['businessowner', 'manager'].includes(req.role)) {
+        // Only businessowner, manager, and roles with canManageEmployees can update employees by ID
+        if (!['businessowner', 'manager'].includes(req.role) && !hasPermission(req.user, 'canManageEmployees')) {
             if (req.file) {
                 deleteUploadedFile(path.join(uploadsDir, req.file.filename));
             }
@@ -520,29 +566,51 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req,
         
         // Only businessowner can change role
         if (role && req.role === 'businessowner' && role !== employee.role) {
-            const oldRole = employee.role;
-            employee.role = role;
-            
-            // If employee doesn't have custom permissions, update to new role's permissions
-            if (!employee.hasCustomPermissions) {
-                // Get business owner's custom permissions for the new role
-                let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: employee.businessowner });
-                let newPermissions;
-                
-                if (rolePermissionsDoc && rolePermissionsDoc[role]) {
-                    const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
-                    newPermissions = {};
-                    // Only copy actual permission fields
-                    for (const key of Object.keys(customPerms)) {
-                        if (key.startsWith('can')) {
-                            newPermissions[key] = customPerms[key];
-                        }
-                    }
-                } else {
-                    newPermissions = RolePermissions.getDefaultPermissions(role);
+            // Validate the new role (built-in or custom)
+            const builtInRoles = ['employee', 'supervisor', 'manager'];
+            let validRole = builtInRoles.includes(role);
+            if (!validRole) {
+                const rolePermCheck = await RolePermissions.findOne({ businessowner: employee.businessowner });
+                if (rolePermCheck && rolePermCheck.customRoles && rolePermCheck.customRoles.has(role.toLowerCase())) {
+                    validRole = true;
                 }
+            }
+            
+            if (validRole) {
+                const oldRole = employee.role;
+                employee.role = role;
                 
-                employee.permissions = newPermissions;
+                // If employee doesn't have custom permissions, update to new role's permissions
+                if (!employee.hasCustomPermissions) {
+                    let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: employee.businessowner });
+                    let newPermissions;
+                    
+                    if (rolePermissionsDoc) {
+                        if (builtInRoles.includes(role) && rolePermissionsDoc[role]) {
+                            const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+                            newPermissions = {};
+                            for (const key of Object.keys(customPerms)) {
+                                if (key.startsWith('can')) {
+                                    newPermissions[key] = customPerms[key];
+                                }
+                            }
+                        } else if (rolePermissionsDoc.customRoles && rolePermissionsDoc.customRoles.has(role)) {
+                            const customRole = rolePermissionsDoc.customRoles.get(role).toObject();
+                            newPermissions = {};
+                            for (const key of Object.keys(customRole)) {
+                                if (key.startsWith('can')) {
+                                    newPermissions[key] = customRole[key];
+                                }
+                            }
+                        } else {
+                            newPermissions = RolePermissions.getDefaultPermissions(role);
+                        }
+                    } else {
+                        newPermissions = RolePermissions.getDefaultPermissions(role);
+                    }
+                    
+                    employee.permissions = newPermissions;
+                }
             }
         }
 
@@ -620,8 +688,8 @@ router.put('/changepassword/:id', fetchbusinessowner, [
 
 // Delete Employee using: DELETE "/api/employee/deleteemployee/:id". Role-based access control
 router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
-    // Only businessowner and manager can delete employees
-    if (!['businessowner', 'manager'].includes(req.role)) {
+    // Only businessowner, manager, and roles with canManageEmployees can delete employees
+    if (!['businessowner', 'manager'].includes(req.role) && !hasPermission(req.user, 'canManageEmployees')) {
         return res.status(403).json({ error: "You do not have permission to delete employees" });
     }
 
@@ -747,7 +815,7 @@ router.put('/updatepreferences', fetchemployee, async (req, res) => {
 // This endpoint now uses the new deletion request workflow
 router.delete('/deleteaccount', fetchuser, async (req, res) => {
     try {
-        if (req.role !== 'employee') {
+        if (req.role === 'businessowner' || req.role === 'supplier') {
             return res.status(403).json({ success: false, error: "Access denied" });
         }
 

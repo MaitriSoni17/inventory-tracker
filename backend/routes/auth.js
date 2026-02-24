@@ -31,7 +31,9 @@ router.post('/login', [
 
         if (!user) {
             user = await Employee.findOne({ email });
-            role = 'employee';
+            if (user) {
+                role = user.role || 'employee'; // Use employee's actual role (built-in or custom)
+            }
         }
 
         if (!user) {
@@ -47,8 +49,8 @@ router.post('/login', [
         const token = jwt.sign({ id: user._id, role }, JWT_SECRET);
         const loginTime = new Date();
 
-        // Update lastLogin timestamp
-        if (['employee', 'supervisor', 'manager'].includes(role)) {
+        // Update lastLogin timestamp — check if user is an employee-type role (not businessowner or supplier)
+        if (role !== 'businessowner' && role !== 'supplier') {
             await Employee.findByIdAndUpdate(user._id, { lastLogin: loginTime });
             // Notify business owner about employee login
             await notifyBusinessOwnerAboutEmployeeLogin(

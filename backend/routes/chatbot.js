@@ -302,10 +302,16 @@ router.post('/message', fetchuser, async (req, res) => {
     }
 
     if (!role || !['businessowner', 'employee', 'supplier'].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid role'
-      });
+      // Allow custom roles to use chatbot as 'employee'
+      if (role && role !== 'businessowner' && role !== 'supplier') {
+        // Custom role - treat as employee for chatbot context
+        role = 'employee';
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid role'
+        });
+      }
     }
 
     if (!userId) {

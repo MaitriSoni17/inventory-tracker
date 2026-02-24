@@ -16,12 +16,8 @@ const fetchemployee = async (req, res, next) => {
         }
         req.employee = employee;
         req.user = employee; // Also set req.user for consistency with other middleware
-        req.role = 'employee'; // Will be overridden if supervisor or manager
-        
-        // Update role based on employee's role field
-        if (employee.role === 'supervisor' || employee.role === 'manager') {
-            req.role = employee.role;
-        }
+        // Use the employee's actual role from the database
+        req.role = employee.role || 'employee';
         
         next();
 

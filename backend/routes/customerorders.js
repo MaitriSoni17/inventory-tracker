@@ -95,7 +95,8 @@ router.post('/createcustomerorder', fetchuser, [
             if (warehouse) {
                 customerorderData.warehouse = warehouse;
             }
-        } else if (req.role === 'employee') {
+        } else {
+            // All employee-type roles (including custom roles)
             customerorderData.businessowner = req.user.businessowner;
             customerorderData.employee = req.user._id;
             const employee = await require('../models/Employee').findById(req.user._id);
@@ -114,7 +115,8 @@ router.post('/createcustomerorder', fetchuser, [
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
-        } else if (req.role === 'employee') {
+        } else {
+            // All employee-type roles
             await notifyBusinessOwnerAboutOrderByEmployee(
                 req.user.businessowner,
                 req.user._id,
@@ -148,8 +150,8 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
             customerorder = await CustomerOrders.find({ businessowner: req.user._id, isPending: { $ne: true } })
                 .populate('warehouse')
                 .populate('products.product');
-        } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
-            // Warehouse staff sees non-pending orders in their business
+        } else {
+            // All employee-type roles - see non-pending orders in their business
             const staffMember = await require('../models/Employee').findById(req.user._id);
             const businessOwnerId = req.businessowner || (staffMember && staffMember.businessowner);
             
@@ -163,9 +165,6 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
             } else {
                 customerorder = [];
             }
-        } else {
-            // Fallback for other roles
-            customerorder = [];
         }
 
         res.json(customerorder);
@@ -183,7 +182,8 @@ router.post('/getpendingorders', fetchuser, async (req, res) => {
             pendingOrders = await CustomerOrders.find({ businessowner: req.user._id, isPending: true })
                 .populate('warehouse')
                 .populate('products.product');
-        } else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
+        } else {
+            // All employee-type roles
             const staffMember = await require('../models/Employee').findById(req.user._id);
             const businessOwnerId = req.businessowner || (staffMember && staffMember.businessowner);
             
@@ -215,8 +215,8 @@ router.put('/updatecustomerorder/:id', fetchuser, [
     body('oDate', 'Enter Order Date').exists().isDate(),
     body('dDate', 'Enter Delivery Date').exists().isDate(),
 ], async (req, res) => {
-    // Authorization: Only businessowner or warehouse staff can update
-    if (!['businessowner', 'manager', 'supervisor', 'employee'].includes(req.role)) {
+    // Authorization: Only businessowner or employee-type roles can update
+    if (req.role === 'supplier') {
         return res.status(403).send("Only authorized personnel can update customer orders");
     }
 
@@ -235,8 +235,8 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             if (customerorder.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(401).send("Not Allowed");
             }
-        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
-            // Warehouse staff can only update orders assigned to their warehouse
+        } else {
+            // All employee-type roles - can only update orders assigned to their warehouse
             const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
             
             if (!staffMember || !staffMember.warehouse) {
@@ -340,8 +340,8 @@ router.put('/updatecustomerorder/:id', fetchuser, [
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
-        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
-            // Send notification to business owner if updated by warehouse staff
+        } else {
+            // Send notification to business owner if updated by any employee-type role
             await notifyBusinessOwnerAboutOrderByEmployee(
                 customerorder.businessowner,
                 req.user._id,
@@ -364,8 +364,8 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
     //     return res.status(403).send("Only BusinessOwner can delete products");
     // }
 
-    if (!['businessowner', 'employee'].includes(req.role)) {
-        return res.status(403).send("Only BusinessOwner or Employee can delete category");
+    if (req.role === 'supplier') {
+        return res.status(403).send("Only BusinessOwner or Employee can delete customer orders");
     }
 
     try {
@@ -397,8 +397,8 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
                 req.params.id,
                 { orderId: req.params.id }
             );
-        } else if (req.role === 'employee') {
-            // Send notification to business owner if deleted by employee
+        } else {
+            // Send notification to business owner if deleted by any employee-type role
             await notifyBusinessOwnerAboutOrderByEmployee(
                 businessOwnerId,
                 req.user._id,

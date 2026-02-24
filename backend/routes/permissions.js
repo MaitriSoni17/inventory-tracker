@@ -4,6 +4,14 @@ const RolePermissions = require('../models/RolePermissions');
 const Employee = require('../models/Employee');
 const fetchuser = require('../middleware/fetchuser');
 
+// Built-in roles that cannot be removed or renamed
+const BUILT_IN_ROLES = ['manager', 'supervisor', 'employee'];
+
+/**
+ * Helper: check if a role is built-in
+ */
+const isBuiltInRole = (role) => BUILT_IN_ROLES.includes(role);
+
 /**
  * Helper function to compare if employee permissions match role permissions
  * Returns true if they match (no custom permissions)
@@ -71,13 +79,30 @@ router.post('/get', fetchuser, async (req, res) => {
             }
         }
 
+        // Build response including custom roles
+        const responsePermissions = {
+            manager: rolePermissions.manager,
+            supervisor: rolePermissions.supervisor,
+            employee: rolePermissions.employee
+        };
+
+        // Include custom roles
+        const customRolesInfo = {};
+        if (rolePermissions.customRoles) {
+            for (const [key, val] of rolePermissions.customRoles.entries()) {
+                responsePermissions[key] = val;
+                customRolesInfo[key] = {
+                    displayName: val.displayName,
+                    description: val.description || '',
+                    hierarchyLevel: val.hierarchyLevel || 1
+                };
+            }
+        }
+
         res.json({
             success: true,
-            permissions: {
-                manager: rolePermissions.manager,
-                supervisor: rolePermissions.supervisor,
-                employee: rolePermissions.employee
-            },
+            permissions: responsePermissions,
+            customRoles: customRolesInfo,
             updatedAt: rolePermissions.updatedAt
         });
     } catch (err) {
@@ -99,8 +124,8 @@ router.put('/update', fetchuser, async (req, res) => {
 
         const { role, permissions } = req.body;
 
-        // Validate role
-        if (!['manager', 'supervisor', 'employee'].includes(role)) {
+        // Validate role - accept built-in roles and custom roles
+        if (!role || typeof role !== 'string') {
             return res.status(400).json({ error: "Invalid role specified" });
         }
 
@@ -116,18 +141,35 @@ router.put('/update', fetchuser, async (req, res) => {
             });
         }
 
-        // Update the specific role's permissions
-        rolePermissions[role] = { ...rolePermissions[role].toObject(), ...permissions };
-        await rolePermissions.save();
+        let permissionsToUpdate = {};
 
-        // Convert to plain object for MongoDB update and remove mongoose internal fields
-        const rawPerms = rolePermissions[role].toObject ? rolePermissions[role].toObject() : rolePermissions[role];
-        const permissionsToUpdate = {};
-        
-        // Only copy actual permission fields (those starting with 'can')
-        for (const key of Object.keys(rawPerms)) {
-            if (key.startsWith('can')) {
-                permissionsToUpdate[key] = rawPerms[key];
+        if (isBuiltInRole(role)) {
+            // Update built-in role permissions
+            rolePermissions[role] = { ...rolePermissions[role].toObject(), ...permissions };
+            await rolePermissions.save();
+
+            const rawPerms = rolePermissions[role].toObject ? rolePermissions[role].toObject() : rolePermissions[role];
+            for (const key of Object.keys(rawPerms)) {
+                if (key.startsWith('can')) {
+                    permissionsToUpdate[key] = rawPerms[key];
+                }
+            }
+        } else {
+            // Update custom role permissions
+            const roleKey = role.toLowerCase();
+            if (!rolePermissions.customRoles || !rolePermissions.customRoles.has(roleKey)) {
+                return res.status(404).json({ error: "Custom role not found" });
+            }
+            const existingCustomRole = rolePermissions.customRoles.get(roleKey);
+            const updatedRole = { ...existingCustomRole.toObject(), ...permissions };
+            rolePermissions.customRoles.set(roleKey, updatedRole);
+            await rolePermissions.save();
+
+            const rawPerms = rolePermissions.customRoles.get(roleKey).toObject();
+            for (const key of Object.keys(rawPerms)) {
+                if (key.startsWith('can')) {
+                    permissionsToUpdate[key] = rawPerms[key];
+                }
             }
         }
 
@@ -171,8 +213,8 @@ router.put('/update-single', fetchuser, async (req, res) => {
 
         const { role, permissionKey, value } = req.body;
 
-        // Validate role
-        if (!['manager', 'supervisor', 'employee'].includes(role)) {
+        // Validate role - accept built-in and custom roles
+        if (!role || typeof role !== 'string') {
             return res.status(400).json({ error: "Invalid role specified" });
         }
 
@@ -189,7 +231,17 @@ router.put('/update-single', fetchuser, async (req, res) => {
         }
 
         // Update the specific permission
-        rolePermissions[role][permissionKey] = value;
+        if (isBuiltInRole(role)) {
+            rolePermissions[role][permissionKey] = value;
+        } else {
+            const roleKey = role.toLowerCase();
+            if (!rolePermissions.customRoles || !rolePermissions.customRoles.has(roleKey)) {
+                return res.status(404).json({ error: "Custom role not found" });
+            }
+            const customRole = rolePermissions.customRoles.get(roleKey);
+            customRole[permissionKey] = value;
+            rolePermissions.customRoles.set(roleKey, customRole);
+        }
         await rolePermissions.save();
 
         // Only update employees who don't have custom permissions set
@@ -236,8 +288,8 @@ router.put('/reset', fetchuser, async (req, res) => {
 
         const { role } = req.body;
 
-        // Validate role
-        if (!['manager', 'supervisor', 'employee', 'all'].includes(role)) {
+        // Validate role - accept built-in roles, custom roles, and 'all'
+        if (!role || typeof role !== 'string') {
             return res.status(400).json({ error: "Invalid role specified" });
         }
 
@@ -250,12 +302,12 @@ router.put('/reset', fetchuser, async (req, res) => {
         }
 
         if (role === 'all') {
-            // Reset all roles to defaults
+            // Reset all built-in roles to defaults
             rolePermissions.manager = RolePermissions.getDefaultPermissions('manager');
             rolePermissions.supervisor = RolePermissions.getDefaultPermissions('supervisor');
             rolePermissions.employee = RolePermissions.getDefaultPermissions('employee');
             
-            // Update all employees
+            // Update all employees with built-in roles
             await Employee.updateMany(
                 { businessowner: req.user._id, role: 'manager' },
                 { $set: { permissions: rolePermissions.manager } }
@@ -268,8 +320,21 @@ router.put('/reset', fetchuser, async (req, res) => {
                 { businessowner: req.user._id, role: 'employee' },
                 { $set: { permissions: rolePermissions.employee } }
             );
-        } else {
-            // Reset specific role to defaults
+
+            // Also reset custom roles to their defaults (employee-level)
+            if (rolePermissions.customRoles) {
+                for (const [key, customRole] of rolePermissions.customRoles.entries()) {
+                    const defaultPerms = RolePermissions.getDefaultPermissions('employee');
+                    const updated = { ...customRole.toObject(), ...defaultPerms };
+                    rolePermissions.customRoles.set(key, updated);
+                    await Employee.updateMany(
+                        { businessowner: req.user._id, role: key },
+                        { $set: { permissions: defaultPerms } }
+                    );
+                }
+            }
+        } else if (isBuiltInRole(role)) {
+            // Reset specific built-in role to defaults
             rolePermissions[role] = RolePermissions.getDefaultPermissions(role);
             
             // Update employees of that role
@@ -277,18 +342,41 @@ router.put('/reset', fetchuser, async (req, res) => {
                 { businessowner: req.user._id, role: role },
                 { $set: { permissions: rolePermissions[role] } }
             );
+        } else {
+            // Reset custom role to employee defaults
+            const roleKey = role.toLowerCase();
+            if (!rolePermissions.customRoles || !rolePermissions.customRoles.has(roleKey)) {
+                return res.status(404).json({ error: "Custom role not found" });
+            }
+            const defaultPerms = RolePermissions.getDefaultPermissions('employee');
+            const customRole = rolePermissions.customRoles.get(roleKey);
+            const updated = { ...customRole.toObject(), ...defaultPerms };
+            rolePermissions.customRoles.set(roleKey, updated);
+            
+            await Employee.updateMany(
+                { businessowner: req.user._id, role: roleKey },
+                { $set: { permissions: defaultPerms } }
+            );
         }
 
         await rolePermissions.save();
 
+        // Build response with custom roles
+        const responsePermissions = {
+            manager: rolePermissions.manager,
+            supervisor: rolePermissions.supervisor,
+            employee: rolePermissions.employee
+        };
+        if (rolePermissions.customRoles) {
+            for (const [key, val] of rolePermissions.customRoles.entries()) {
+                responsePermissions[key] = val;
+            }
+        }
+
         res.json({
             success: true,
             message: role === 'all' ? 'All permissions reset to defaults' : `${role.charAt(0).toUpperCase() + role.slice(1)} permissions reset to defaults`,
-            permissions: {
-                manager: rolePermissions.manager,
-                supervisor: rolePermissions.supervisor,
-                employee: rolePermissions.employee
-            }
+            permissions: responsePermissions
         });
     } catch (err) {
         // console.error('Error resetting permissions:', err);
@@ -388,8 +476,18 @@ router.post('/my-permissions', fetchuser, async (req, res) => {
         // Fallback: get from role permissions for this business owner
         const rolePermissions = await RolePermissions.findOne({ businessowner: employee.businessowner });
         
-        if (rolePermissions && rolePermissions[employee.role]) {
-            const rolePerms = extractPermissions(rolePermissions[employee.role]);
+        // Check built-in role first, then custom roles
+        let rolePermsFromDb = null;
+        if (rolePermissions) {
+            if (isBuiltInRole(employee.role) && rolePermissions[employee.role]) {
+                rolePermsFromDb = rolePermissions[employee.role];
+            } else if (rolePermissions.customRoles && rolePermissions.customRoles.has(employee.role)) {
+                rolePermsFromDb = rolePermissions.customRoles.get(employee.role);
+            }
+        }
+
+        if (rolePermsFromDb) {
+            const rolePerms = extractPermissions(rolePermsFromDb);
             // Merge with defaults to ensure new permissions are included
             const mergedPerms = { ...roleDefaults, ...rolePerms };
             return res.json({
@@ -492,11 +590,20 @@ router.put('/employee/:id', fetchuser, async (req, res) => {
             return res.status(404).json({ error: "Employee not found" });
         }
 
-        // Get role permissions to compare
+        // Get role permissions to compare (handle both built-in and custom roles)
         const rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
-        const rolePerms = rolePermissions && rolePermissions[employee.role] 
-            ? rolePermissions[employee.role] 
-            : RolePermissions.getDefaultPermissions(employee.role);
+        let rolePerms;
+        if (rolePermissions) {
+            if (isBuiltInRole(employee.role) && rolePermissions[employee.role]) {
+                rolePerms = rolePermissions[employee.role];
+            } else if (rolePermissions.customRoles && rolePermissions.customRoles.has(employee.role)) {
+                rolePerms = rolePermissions.customRoles.get(employee.role);
+            } else {
+                rolePerms = RolePermissions.getDefaultPermissions(employee.role);
+            }
+        } else {
+            rolePerms = RolePermissions.getDefaultPermissions(employee.role);
+        }
 
         // Check if permissions match role defaults
         const isCustom = !permissionsMatchRole(employee.permissions, rolePerms);
@@ -548,11 +655,20 @@ router.put('/employee/:id/single', fetchuser, async (req, res) => {
             return res.status(404).json({ error: "Employee not found" });
         }
 
-        // Get role permissions to compare
+        // Get role permissions to compare (handle both built-in and custom roles)
         const rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
-        const rolePerms = rolePermissions && rolePermissions[employee.role] 
-            ? rolePermissions[employee.role] 
-            : RolePermissions.getDefaultPermissions(employee.role);
+        let rolePerms;
+        if (rolePermissions) {
+            if (isBuiltInRole(employee.role) && rolePermissions[employee.role]) {
+                rolePerms = rolePermissions[employee.role];
+            } else if (rolePermissions.customRoles && rolePermissions.customRoles.has(employee.role)) {
+                rolePerms = rolePermissions.customRoles.get(employee.role);
+            } else {
+                rolePerms = RolePermissions.getDefaultPermissions(employee.role);
+            }
+        } else {
+            rolePerms = RolePermissions.getDefaultPermissions(employee.role);
+        }
 
         // Check if permissions match role defaults
         const isCustom = !permissionsMatchRole(employee.permissions, rolePerms);
@@ -600,15 +716,26 @@ router.put('/employee/:id/reset', fetchuser, async (req, res) => {
             return res.status(404).json({ error: "Employee not found" });
         }
 
-        // Get role permissions for this business owner
+        // Get role permissions for this business owner (handle built-in and custom roles)
         let rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
         
         let defaultPermissions;
-        if (rolePermissions && rolePermissions[employee.role]) {
-            // Use business owner's customized role permissions
-            defaultPermissions = rolePermissions[employee.role];
+        if (rolePermissions) {
+            if (isBuiltInRole(employee.role) && rolePermissions[employee.role]) {
+                defaultPermissions = rolePermissions[employee.role];
+            } else if (rolePermissions.customRoles && rolePermissions.customRoles.has(employee.role)) {
+                // Extract only permission fields from custom role
+                const customRole = rolePermissions.customRoles.get(employee.role).toObject();
+                defaultPermissions = {};
+                for (const key of Object.keys(customRole)) {
+                    if (key.startsWith('can')) {
+                        defaultPermissions[key] = customRole[key];
+                    }
+                }
+            } else {
+                defaultPermissions = RolePermissions.getDefaultPermissions(employee.role);
+            }
         } else {
-            // Use system defaults
             defaultPermissions = RolePermissions.getDefaultPermissions(employee.role);
         }
 
@@ -794,7 +921,7 @@ router.put('/sync-all', fetchuser, async (req, res) => {
             employee: { synced: 0, skipped: 0 }
         };
 
-        // Sync each role
+        // Sync each built-in role
         for (const role of ['manager', 'supervisor', 'employee']) {
             // Get clean permissions for this role
             const rawPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
@@ -830,8 +957,45 @@ router.put('/sync-all', fetchuser, async (req, res) => {
             results[role].skipped = customCount;
         }
 
-        const totalSynced = results.manager.synced + results.supervisor.synced + results.employee.synced;
-        const totalSkipped = results.manager.skipped + results.supervisor.skipped + results.employee.skipped;
+        // Sync custom roles
+        if (rolePermissionsDoc.customRoles) {
+            for (const [roleKey, customRoleData] of rolePermissionsDoc.customRoles.entries()) {
+                const rawPerms = customRoleData.toObject ? customRoleData.toObject() : customRoleData;
+                const permissionsToSync = {};
+                for (const key of Object.keys(rawPerms)) {
+                    if (key.startsWith('can')) {
+                        permissionsToSync[key] = rawPerms[key];
+                    }
+                }
+
+                const syncResult = await Employee.updateMany(
+                    {
+                        businessowner: req.user._id,
+                        role: roleKey,
+                        $or: [
+                            { hasCustomPermissions: false },
+                            { hasCustomPermissions: { $exists: false } }
+                        ]
+                    },
+                    { $set: { permissions: permissionsToSync } }
+                );
+
+                const customCount = await Employee.countDocuments({
+                    businessowner: req.user._id,
+                    role: roleKey,
+                    hasCustomPermissions: true
+                });
+
+                results[roleKey] = { synced: syncResult.modifiedCount, skipped: customCount };
+            }
+        }
+
+        let totalSynced = 0;
+        let totalSkipped = 0;
+        for (const role of Object.keys(results)) {
+            totalSynced += results[role].synced;
+            totalSkipped += results[role].skipped;
+        }
 
         res.json({
             success: true,
@@ -840,6 +1004,195 @@ router.put('/sync-all', fetchuser, async (req, res) => {
         });
     } catch (err) {
         // console.error('Error syncing permissions:', err);
+        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
+    }
+});
+
+// =============================================
+// CUSTOM ROLE MANAGEMENT ENDPOINTS
+// =============================================
+
+/**
+ * Create a new custom role
+ * POST /api/permissions/custom-role
+ */
+router.post('/custom-role', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: "Only Business Owner can create custom roles" });
+        }
+
+        const { name, description, hierarchyLevel } = req.body;
+
+        if (!name || typeof name !== 'string' || name.trim().length < 2) {
+            return res.status(400).json({ error: "Role name must be at least 2 characters" });
+        }
+
+        const roleKey = name.trim().toLowerCase().replace(/\s+/g, '_');
+
+        // Cannot use built-in role names
+        if (BUILT_IN_ROLES.includes(roleKey) || roleKey === 'businessowner' || roleKey === 'supplier' || roleKey === 'all') {
+            return res.status(400).json({ error: "Cannot use a reserved role name" });
+        }
+
+        // Find or create permissions document
+        let rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
+        if (!rolePermissions) {
+            rolePermissions = new RolePermissions({
+                businessowner: req.user._id,
+                manager: RolePermissions.getDefaultPermissions('manager'),
+                supervisor: RolePermissions.getDefaultPermissions('supervisor'),
+                employee: RolePermissions.getDefaultPermissions('employee')
+            });
+        }
+
+        if (!rolePermissions.customRoles) {
+            rolePermissions.customRoles = new Map();
+        }
+
+        if (rolePermissions.customRoles.has(roleKey)) {
+            return res.status(400).json({ error: "A custom role with this name already exists" });
+        }
+
+        // Create with employee-level defaults
+        const defaultPerms = RolePermissions.getDefaultPermissions('employee');
+        const customRoleData = {
+            displayName: name.trim(),
+            description: description || '',
+            hierarchyLevel: hierarchyLevel || 1,
+            ...defaultPerms
+        };
+
+        rolePermissions.customRoles.set(roleKey, customRoleData);
+        await rolePermissions.save();
+
+        res.json({
+            success: true,
+            message: `Custom role "${name.trim()}" created successfully`,
+            roleKey: roleKey,
+            role: rolePermissions.customRoles.get(roleKey)
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
+    }
+});
+
+/**
+ * Get all custom roles for the business owner
+ * GET /api/permissions/custom-roles
+ */
+router.get('/custom-roles', fetchuser, async (req, res) => {
+    try {
+        // Allow businessowner and all employees to fetch custom roles (needed for dropdowns)
+        let businessOwnerId;
+        if (req.role === 'businessowner') {
+            businessOwnerId = req.user._id;
+        } else {
+            businessOwnerId = req.user.businessowner;
+        }
+
+        const rolePermissions = await RolePermissions.findOne({ businessowner: businessOwnerId });
+
+        const customRoles = {};
+        if (rolePermissions && rolePermissions.customRoles) {
+            for (const [key, val] of rolePermissions.customRoles.entries()) {
+                customRoles[key] = {
+                    displayName: val.displayName,
+                    description: val.description || '',
+                    hierarchyLevel: val.hierarchyLevel || 1
+                };
+            }
+        }
+
+        res.json({ success: true, customRoles });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
+    }
+});
+
+/**
+ * Update a custom role's metadata (name, description, hierarchy level)
+ * PUT /api/permissions/custom-role/:roleKey
+ */
+router.put('/custom-role/:roleKey', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: "Only Business Owner can update custom roles" });
+        }
+
+        const { roleKey } = req.params;
+        const { displayName, description, hierarchyLevel } = req.body;
+
+        if (isBuiltInRole(roleKey)) {
+            return res.status(400).json({ error: "Cannot modify built-in roles through this endpoint" });
+        }
+
+        const rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
+
+        if (!rolePermissions || !rolePermissions.customRoles || !rolePermissions.customRoles.has(roleKey)) {
+            return res.status(404).json({ error: "Custom role not found" });
+        }
+
+        const customRole = rolePermissions.customRoles.get(roleKey);
+        if (displayName) customRole.displayName = displayName;
+        if (description !== undefined) customRole.description = description;
+        if (hierarchyLevel) customRole.hierarchyLevel = hierarchyLevel;
+
+        rolePermissions.customRoles.set(roleKey, customRole);
+        await rolePermissions.save();
+
+        res.json({
+            success: true,
+            message: `Custom role "${customRole.displayName}" updated successfully`,
+            role: rolePermissions.customRoles.get(roleKey)
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
+    }
+});
+
+/**
+ * Delete a custom role
+ * DELETE /api/permissions/custom-role/:roleKey
+ */
+router.delete('/custom-role/:roleKey', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: "Only Business Owner can delete custom roles" });
+        }
+
+        const { roleKey } = req.params;
+
+        if (isBuiltInRole(roleKey)) {
+            return res.status(400).json({ error: "Cannot delete built-in roles" });
+        }
+
+        const rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
+
+        if (!rolePermissions || !rolePermissions.customRoles || !rolePermissions.customRoles.has(roleKey)) {
+            return res.status(404).json({ error: "Custom role not found" });
+        }
+
+        // Check if any employees are using this role
+        const employeeCount = await Employee.countDocuments({
+            businessowner: req.user._id,
+            role: roleKey
+        });
+
+        if (employeeCount > 0) {
+            return res.status(400).json({ 
+                error: `Cannot delete this role. ${employeeCount} employee(s) are currently assigned to it. Please reassign them first.` 
+            });
+        }
+
+        rolePermissions.customRoles.delete(roleKey);
+        await rolePermissions.save();
+
+        res.json({
+            success: true,
+            message: `Custom role deleted successfully`
+        });
+    } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });

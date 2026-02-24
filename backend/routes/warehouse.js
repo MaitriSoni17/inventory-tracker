@@ -30,7 +30,7 @@ router.post('/createwarehouse', fetchuser, [
 
         if (req.role === 'businessowner') {
             warehouseData.businessowner = req.user._id;
-        } else if (req.role === 'manager') {
+        } else {
             warehouseData.businessowner = req.user.businessowner;
             warehouseData.employee = req.user._id;
         }
@@ -69,11 +69,8 @@ router.post('/getwarehouse', fetchuser, async (req, res) => {
         if (req.role === 'businessowner') {
             // Business owner sees all warehouses
             warehouse = await Warehouse.find({ businessowner: req.user._id });
-        } else if (req.role === 'manager') {
-            // Manager sees all warehouses in the business
-            warehouse = await Warehouse.find({ businessowner: req.user.businessowner });
-        } else if (['supervisor', 'employee'].includes(req.role)) {
-            // Supervisor and employee see all warehouses in the business (view-only)
+        } else {
+            // All employee-type roles see all warehouses in the business
             warehouse = await Warehouse.find({ businessowner: req.user.businessowner });
         }
 
@@ -130,7 +127,7 @@ router.put('/updatewarehouse/:id', fetchuser, [
             if (warehouse.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(403).send("Access denied");
             }
-        } else if (req.role === 'manager') {
+        } else {
             if (warehouse.businessowner.toString() !== req.user.businessowner.toString()) {
                 return res.status(403).send("Access denied");
             }
@@ -155,8 +152,8 @@ router.post('/getmanagers', fetchuser, async (req, res) => {
                 businessowner: req.user._id,
                 role: 'manager'
             }).select('_id fname lname email');
-        } else if (req.role === 'manager') {
-            // Manager can see all managers in the business
+        } else {
+            // All employee-type roles can see managers in the business
             managers = await Employee.find({ 
                 businessowner: req.user.businessowner,
                 role: 'manager'
@@ -185,7 +182,7 @@ router.delete('/deletewarehouse/:id', fetchuser, async (req, res) => {
             if (warehouse.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(403).send("Access denied");
             }
-        } else if (req.role === 'manager') {
+        } else {
             if (warehouse.businessowner.toString() !== req.user.businessowner.toString()) {
                 return res.status(403).send("Access denied");
             }

@@ -43,6 +43,7 @@ const CreateEmployee = (props) => {
     );
     const [warehouses, setWarehouses] = useState([]);
     const [loadingWarehouses, setLoadingWarehouses] = useState(true);
+    const [customRoles, setCustomRoles] = useState({});
 
     useEffect(() => {
         const fetchWarehouses = async () => {
@@ -67,7 +68,23 @@ const CreateEmployee = (props) => {
                 setLoadingWarehouses(false);
             }
         };
+        const fetchCustomRoles = async () => {
+            try {
+                const response = await apiCall('http://localhost:5000/api/permissions/custom-roles', {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    const data = await parseResponse(response);
+                    if (data.customRoles) {
+                        setCustomRoles(data.customRoles);
+                    }
+                }
+            } catch (error) {
+                // Custom roles are optional, continue without them
+            }
+        };
         fetchWarehouses();
+        fetchCustomRoles();
     }, []);
 
     const handleImageClick = () => {
@@ -585,6 +602,13 @@ const CreateEmployee = (props) => {
                                     <option value="employee">Employee</option>
                                     <option value="supervisor">Supervisor</option>
                                     <option value="manager">Manager</option>
+                                    {Object.keys(customRoles).length > 0 && (
+                                        <optgroup label="Custom Roles">
+                                            {Object.entries(customRoles).map(([key, role]) => (
+                                                <option key={key} value={key}>{role.displayName}</option>
+                                            ))}
+                                        </optgroup>
+                                    )}
                                 </select>
                                 {errors.role && touched.role && <div className="error-message" style={{ marginTop: '0.5rem' }}>{errors.role}</div>}
                             </div>

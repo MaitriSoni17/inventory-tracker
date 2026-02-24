@@ -16,6 +16,13 @@ const PermissionManager = (props) => {
     const [saving, setSaving] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [activeRole, setActiveRole] = useState('manager');
+    const [customRoles, setCustomRoles] = useState({});
+    const [showCreateRole, setShowCreateRole] = useState(false);
+    const [newRoleName, setNewRoleName] = useState('');
+    const [newRoleDescription, setNewRoleDescription] = useState('');
+    const [newRoleHierarchy, setNewRoleHierarchy] = useState(1);
+    const [creatingRole, setCreatingRole] = useState(false);
+    const [deletingRole, setDeletingRole] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [lastUpdated, setLastUpdated] = useState(null);
     const [expandedGroups, setExpandedGroups] = useState({});
@@ -115,6 +122,25 @@ const PermissionManager = (props) => {
     }, []);
 
     // Fetch role-based permissions
+    // Fetch custom roles
+    const fetchCustomRoles = useCallback(async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCustomRoles(data.customRoles || {});
+            }
+        } catch (error) {
+            // console.error('Error fetching custom roles:', error);
+        }
+    }, []);
+
     const fetchPermissions = useCallback(async () => {
         try {
             const response = await fetch('http://localhost:5000/api/permissions/get', {
@@ -126,7 +152,16 @@ const PermissionManager = (props) => {
             });
             if (response.ok) {
                 const data = await response.json();
-                setPermissions(data.permissions || {});
+                const perms = data.permissions || {};
+                // Merge custom role permissions into permissions state
+                if (data.customRoles) {
+                    Object.entries(data.customRoles).forEach(([key, roleData]) => {
+                        if (!perms[key]) {
+                            perms[key] = roleData;
+                        }
+                    });
+                }
+                setPermissions(perms);
                 setLastUpdated(data.updatedAt);
             } else {
                 await response.json();
@@ -385,12 +420,22 @@ const PermissionManager = (props) => {
                 const perms = data.permissions || {};
                 const reportKeys = ['canDownloadEmployeeReport', 'canDownloadProductReport', 'canDownloadOrderReport', 'canDownloadSupplierOrderReport', 'canDownloadSupplierReport', 'canDownloadSalaryReport'];
                 const extracted = {};
+                // Built-in roles
                 ['employee', 'supervisor', 'manager'].forEach(role => {
                     extracted[role] = {};
                     reportKeys.forEach(key => {
                         extracted[role][key] = perms[role]?.[key] ?? false;
                     });
                 });
+                // Custom roles
+                if (data.customRoles) {
+                    Object.keys(data.customRoles).forEach(roleKey => {
+                        extracted[roleKey] = {};
+                        reportKeys.forEach(key => {
+                            extracted[roleKey][key] = data.customRoles[roleKey]?.[key] ?? perms[roleKey]?.[key] ?? false;
+                        });
+                    });
+                }
                 setReportDownloadPerms(extracted);
             }
         } catch (error) {
@@ -447,7 +492,8 @@ const PermissionManager = (props) => {
     useEffect(() => {
         fetchPermissionGroups();
         fetchPermissions();
-    }, [fetchPermissionGroups, fetchPermissions]);
+        fetchCustomRoles();
+    }, [fetchPermissionGroups, fetchPermissions, fetchCustomRoles]);
 
     useEffect(() => {
         if (mainTab === 'individual') {
@@ -881,11 +927,89 @@ const PermissionManager = (props) => {
         return `${fname?.charAt(0) || ''}${lname?.charAt(0) || ''}`.toUpperCase();
     };
 
-    // Role info
-    const roleInfo = {
+    // Role info - built-in + custom
+    const builtInRoleInfo = {
         manager: { title: 'Manager', icon: 'fas fa-user-tie', class: 'manager' },
         supervisor: { title: 'Supervisor', icon: 'fas fa-user-check', class: 'supervisor' },
         employee: { title: 'Employee', icon: 'fas fa-user', class: 'employee' }
+    };
+
+    const roleInfo = { ...builtInRoleInfo };
+    Object.entries(customRoles).forEach(([key, role]) => {
+        roleInfo[key] = {
+            title: role.displayName || key,
+            icon: role.hierarchyLevel === 3 ? 'fas fa-user-tie' : role.hierarchyLevel === 2 ? 'fas fa-user-check' : 'fas fa-user-tag',
+            class: role.hierarchyLevel === 3 ? 'manager' : role.hierarchyLevel === 2 ? 'supervisor' : 'employee',
+            isCustom: true,
+            description: role.description || ''
+        };
+    });
+
+    // Create custom role handler
+    const handleCreateCustomRole = async () => {
+        if (!newRoleName.trim()) {
+            props.showAlert('Role name is required', 'danger');
+            return;
+        }
+        setCreatingRole(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/custom-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({
+                    name: newRoleName.trim(),
+                    description: newRoleDescription.trim(),
+                    hierarchyLevel: newRoleHierarchy
+                })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                props.showAlert(data.message || 'Custom role created successfully', 'success');
+                setNewRoleName('');
+                setNewRoleDescription('');
+                setNewRoleHierarchy(1);
+                setShowCreateRole(false);
+                fetchCustomRoles();
+                fetchPermissions();
+            } else {
+                props.showAlert(data.error || 'Error creating custom role', 'danger');
+            }
+        } catch (error) {
+            props.showAlert('Error creating custom role', 'danger');
+        } finally {
+            setCreatingRole(false);
+        }
+    };
+
+    // Delete custom role handler
+    const handleDeleteCustomRole = async (roleKey) => {
+        if (!window.confirm(`Are you sure you want to delete the "${roleInfo[roleKey]?.title || roleKey}" role? This cannot be undone.`)) return;
+        setDeletingRole(roleKey);
+        try {
+            const response = await fetch(`http://localhost:5000/api/permissions/custom-role/${roleKey}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                props.showAlert(data.message || 'Custom role deleted', 'success');
+                if (activeRole === roleKey) setActiveRole('manager');
+                fetchCustomRoles();
+                fetchPermissions();
+            } else {
+                props.showAlert(data.error || 'Error deleting custom role', 'danger');
+            }
+        } catch (error) {
+            props.showAlert('Error deleting custom role', 'danger');
+        } finally {
+            setDeletingRole(null);
+        }
     };
 
     if (loading) {
@@ -963,7 +1087,8 @@ const PermissionManager = (props) => {
                             Select Role
                         </h3>
                         <div className="role-list">
-                            {Object.entries(roleInfo).map(([role, info]) => (
+                            {/* Built-in roles */}
+                            {Object.entries(builtInRoleInfo).map(([role, info]) => (
                                 <button
                                     key={role}
                                     className={`role-item ${activeRole === role ? 'active' : ''}`}
@@ -978,6 +1103,91 @@ const PermissionManager = (props) => {
                                     </div>
                                 </button>
                             ))}
+
+                            {/* Custom roles section */}
+                            {Object.keys(customRoles).length > 0 && (
+                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '10px 0', paddingTop: '10px' }}>
+                                    <small style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 15px' }}>Custom Roles</small>
+                                </div>
+                            )}
+                            {Object.entries(customRoles).map(([key, role]) => (
+                                <div key={key} style={{ position: 'relative' }}>
+                                    <button
+                                        className={`role-item ${activeRole === key ? 'active' : ''}`}
+                                        onClick={() => setActiveRole(key)}
+                                        style={{ width: '100%' }}
+                                    >
+                                        <div className={`role-icon ${roleInfo[key]?.class || 'employee'}`}>
+                                            <i className={roleInfo[key]?.icon || 'fas fa-user-tag'}></i>
+                                        </div>
+                                        <div className="role-info">
+                                            <span className="role-name">{role.displayName}</span>
+                                            <span className="role-desc">{role.description || `Manage ${key} access`}</span>
+                                        </div>
+                                    </button>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteCustomRole(key); }}
+                                        disabled={deletingRole === key}
+                                        title={`Delete ${role.displayName} role`}
+                                        style={{ position: 'absolute', top: '50%', right: '8px', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', opacity: 0.6, fontSize: '12px', padding: '4px' }}
+                                    >
+                                        {deletingRole === key ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-trash-alt"></i>}
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Create custom role */}
+                        <div style={{ padding: '10px 15px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                            {!showCreateRole ? (
+                                <button
+                                    onClick={() => setShowCreateRole(true)}
+                                    style={{ width: '100%', padding: '10px', background: 'rgba(102, 126, 234, 0.2)', border: '1px dashed rgba(102, 126, 234, 0.5)', borderRadius: '8px', color: '#667eea', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                                >
+                                    <i className="fas fa-plus me-2"></i>Create Custom Role
+                                </button>
+                            ) : (
+                                <div style={{ background: '#f8f9fa', borderRadius: '8px', padding: '12px', border: '1px solid #e0e0e0' }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Role name (e.g. Team Lead)"
+                                        value={newRoleName}
+                                        onChange={(e) => setNewRoleName(e.target.value)}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff', color: '#333', fontSize: '13px', marginBottom: '8px' }}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Description (optional)"
+                                        value={newRoleDescription}
+                                        onChange={(e) => setNewRoleDescription(e.target.value)}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff', color: '#333', fontSize: '13px', marginBottom: '8px' }}
+                                    />
+                                    <select
+                                        value={newRoleHierarchy}
+                                        onChange={(e) => setNewRoleHierarchy(Number(e.target.value))}
+                                        style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #ccc', background: '#fff', color: '#333', fontSize: '13px', marginBottom: '10px' }}
+                                    >
+                                        <option value={1}>Employee Level</option>
+                                        <option value={2}>Supervisor Level</option>
+                                        <option value={3}>Manager Level</option>
+                                    </select>
+                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                        <button
+                                            onClick={handleCreateCustomRole}
+                                            disabled={creatingRole || !newRoleName.trim()}
+                                            style={{ flex: 1, padding: '8px', background: '#667eea', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                                        >
+                                            {creatingRole ? <><i className="fas fa-spinner fa-spin me-1"></i>Creating...</> : <><i className="fas fa-check me-1"></i>Create</>}
+                                        </button>
+                                        <button
+                                            onClick={() => { setShowCreateRole(false); setNewRoleName(''); setNewRoleDescription(''); setNewRoleHierarchy(1); }}
+                                            style={{ padding: '8px 12px', background: '#e9ecef', color: '#555', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px' }}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="sidebar-actions">
@@ -987,7 +1197,7 @@ const PermissionManager = (props) => {
                                 disabled={saving}
                             >
                                 <i className="fas fa-undo me-2"></i>
-                                Reset {roleInfo[activeRole].title} Defaults
+                                Reset {roleInfo[activeRole]?.title || activeRole} Defaults
                             </button>
                             <button 
                                 className="btn-sync"
@@ -1006,10 +1216,11 @@ const PermissionManager = (props) => {
                         <div className="panel-header">
                             <div>
                                 <h2>
-                                    <i className={`${roleInfo[activeRole].icon} me-2`}></i>
-                                    {roleInfo[activeRole].title} Permissions
+                                    <i className={`${roleInfo[activeRole]?.icon || 'fas fa-user-tag'} me-2`}></i>
+                                    {roleInfo[activeRole]?.title || activeRole} Permissions
+                                    {roleInfo[activeRole]?.isCustom && <span style={{ fontSize: '12px', background: '#667eea', color: '#fff', padding: '2px 8px', borderRadius: '10px', marginLeft: '10px', verticalAlign: 'middle' }}>Custom</span>}
                                 </h2>
-                                <p>Configure what {activeRole}s can access and modify</p>
+                                <p>Configure what {roleInfo[activeRole]?.title || activeRole}s can access and modify</p>
                                 {lastUpdated && (
                                     <small className="text-muted">
                                         Last updated: {new Date(lastUpdated).toLocaleString()}
@@ -1345,7 +1556,7 @@ const PermissionManager = (props) => {
                                     {reportType.desc}
                                 </p>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                    {['employee', 'supervisor', 'manager'].map(role => (
+                                    {Object.keys(roleInfo).map(role => (
                                         <label key={role} style={{ display: 'flex', alignItems: 'center', cursor: savingReportPerm === `${role}-${reportType.key}` ? 'wait' : 'pointer', padding: '10px', borderRadius: '6px', transition: 'background 0.2s', background: savingReportPerm === `${role}-${reportType.key}` ? '#f0f0f0' : 'transparent' }}>
                                             <input 
                                                 type="checkbox" 
@@ -1354,8 +1565,9 @@ const PermissionManager = (props) => {
                                                 disabled={savingReportPerm === `${role}-${reportType.key}`}
                                                 style={{ width: '18px', height: '18px', marginRight: '12px', cursor: 'pointer' }}
                                             />
-                                            <span style={{ textTransform: 'capitalize', color: '#333', fontSize: '14px', fontWeight: '500' }}>
-                                                {role}s
+                                            <span style={{ color: '#333', fontSize: '14px', fontWeight: '500' }}>
+                                                {roleInfo[role]?.title || role}s
+                                                {roleInfo[role]?.isCustom && <span style={{ fontSize: '10px', background: '#667eea', color: '#fff', padding: '1px 5px', borderRadius: '8px', marginLeft: '6px' }}>Custom</span>}
                                             </span>
                                             {savingReportPerm === `${role}-${reportType.key}` && (
                                                 <i className="fas fa-spinner fa-spin ms-2" style={{ color: '#667eea', fontSize: '12px' }}></i>

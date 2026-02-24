@@ -100,7 +100,7 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
 
         if (req.role === 'businessowner') {
             productData.businessowner = req.user._id;
-        } else if (req.role === 'employee') {
+        } else {
             productData.businessowner = req.user.businessowner;
             productData.employee = req.user._id;
         }
@@ -136,28 +136,6 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
                 );
             } catch (notifError) {
             }
-        } else if (req.role === 'employee') {
-            // Send notification to business owner if created by employee
-            try {
-                await notifyBusinessOwnerAboutProduct(
-                    req.user.businessowner,
-                    req.user._id,
-                    'created',
-                    name,
-                    { productId: product._id, category, price }
-                );
-                // Notify reporting manager if exists
-                if (req.user.reportingTo) {
-                  await notifyReportingManager(
-                    req.user._id,
-                    'product_created',
-                    name,
-                    'product',
-                    { productId: product._id, category, price }
-                  );
-                }
-            } catch (notifError) {
-            }
         } else if (['manager', 'supervisor'].includes(req.role)) {
             // If manager/supervisor creates product, notify:
             // 1. Business owner
@@ -178,6 +156,27 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
+            } catch (notifError) {
+            }
+        } else {
+            // Any other employee-type role (custom roles)
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    req.user.businessowner,
+                    req.user._id,
+                    'created',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                if (req.user.reportingTo) {
+                  await notifyReportingManager(
+                    req.user._id,
+                    'product_created',
+                    name,
+                    'product',
+                    { productId: product._id, category, price }
+                  );
+                }
             } catch (notifError) {
             }
         }
@@ -202,8 +201,8 @@ router.post('/getproduct', fetchuser, async (req, res) => {
             // Business owner sees all products in their organization
             products = await Product.find({ businessowner: req.user._id });
         }
-        else if (req.role === 'manager' || req.role === 'supervisor' || req.role === 'employee') {
-            // Employees/managers/supervisors with canViewProducts see all products in their business
+        else {
+            // All employee-type roles (including custom roles) with canViewProducts see all products in their business
             // The permission check above already ensures they have access
             try {
                 const emp = await Employee.findById(req.user._id).populate('warehouse');
@@ -380,26 +379,6 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                     { productId: product._id, category, price }
                 );
             } catch (notifError) {}
-        } else if (req.role === 'employee') {
-            // Notify business owner and reporting manager
-            try {
-                await notifyBusinessOwnerAboutProduct(
-                    req.user.businessowner,
-                    req.user._id,
-                    'updated',
-                    name,
-                    { productId: product._id, category, price }
-                );
-                if (req.user.reportingTo) {
-                  await notifyReportingManager(
-                    req.user._id,
-                    'product_updated',
-                    name,
-                    'product',
-                    { productId: product._id, category, price }
-                  );
-                }
-            } catch (notifError) {}
         } else if (['manager', 'supervisor'].includes(req.role)) {
             // Notify business owner and subordinates
             try {
@@ -417,6 +396,26 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
                     name,
                     { productId: product._id, category, price }
                 );
+            } catch (notifError) {}
+        } else {
+            // Any other employee-type role (custom roles)
+            try {
+                await notifyBusinessOwnerAboutProduct(
+                    req.user.businessowner,
+                    req.user._id,
+                    'updated',
+                    name,
+                    { productId: product._id, category, price }
+                );
+                if (req.user.reportingTo) {
+                  await notifyReportingManager(
+                    req.user._id,
+                    'product_updated',
+                    name,
+                    'product',
+                    { productId: product._id, category, price }
+                  );
+                }
             } catch (notifError) {}
         }
 
@@ -459,8 +458,8 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
                 );
             } catch (notifError) {
             }
-        } else if (['employee', 'supervisor', 'manager'].includes(req.role)) {
-            // Send notification to business owner if deleted by employee
+        } else {
+            // Send notification to business owner if deleted by any employee-type role
             try {
                 await notifyBusinessOwnerAboutProduct(
                     businessOwnerId,

@@ -25,6 +25,7 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
         image: null
     });
     const [warehouses, setWarehouses] = useState([]);
+    const [customRoles, setCustomRoles] = useState({});
 
     const [errors, setErrors] = useState({});
 
@@ -54,7 +55,26 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
                 // console.error('Error fetching warehouses:', error);
             }
         };
+        const fetchCustomRoles = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+                    method: 'GET',
+                    headers: {
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.customRoles) {
+                        setCustomRoles(data.customRoles);
+                    }
+                }
+            } catch (error) {
+                // Custom roles are optional
+            }
+        };
         fetchWarehouses();
+        fetchCustomRoles();
     }, [isBusinessOwner, navigate, showAlert]);
 
     const handleChange = (e) => {
@@ -151,8 +171,11 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
         }
     };
 
-    // Get managers for reporting-to dropdown
-    const managers = employees.filter(emp => emp.role === 'manager');
+    // Get managers/supervisors for reporting-to dropdown (includes custom roles with management permissions)
+    const managers = employees.filter(emp => 
+        emp.role === 'manager' || emp.role === 'supervisor' || 
+        (emp.permissions && emp.permissions.canManageEmployees)
+    );
 
     return (
         <div className="container-fluid py-4">
@@ -216,6 +239,13 @@ const CreateEmployeeForm = ({ showAlert, employees = [] }) => {
                                             <option value="employee">Employee (Basic)</option>
                                             <option value="supervisor">Supervisor</option>
                                             <option value="manager">Manager</option>
+                                            {Object.keys(customRoles).length > 0 && (
+                                                <optgroup label="Custom Roles">
+                                                    {Object.entries(customRoles).map(([key, role]) => (
+                                                        <option key={key} value={key}>{role.displayName}</option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
                                         </select>
                                         <small className="text-muted d-block mt-1">
                                             Employee: Basic access | Supervisor: Team lead | Manager: Full operational control

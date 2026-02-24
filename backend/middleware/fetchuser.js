@@ -21,7 +21,8 @@ const fetchUser = async (req, res, next) => {
             req.user = owner;
             req.role = 'businessowner';
             req.businessowner = owner._id; // Set businessowner for data isolation
-        } else if (data.role === 'employee' || data.role === 'supervisor' || data.role === 'manager') {
+        } else if (data.role === 'businessowner' ? false : data.role !== 'supplier') {
+            // Any non-businessowner, non-supplier role is treated as an employee-type role
             const employee = await Employee.findById(data.id);
             if (!employee) {
                 return res.status(401).send({ error: "Employee not found" });

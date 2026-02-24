@@ -33,8 +33,8 @@ const DashboardGuard = ({ showAlert }) => {
         return <Supplier showAlert={showAlert} />;
     }
 
-    // Employee-type roles: check canViewDashboard permission
-    if (['employee', 'supervisor', 'manager'].includes(currentRole)) {
+    // Employee-type roles (built-in + custom): check canViewDashboard permission
+    if (currentRole && currentRole !== 'businessowner' && currentRole !== 'supplier') {
         if (!hasPermission('canViewDashboard')) {
             return (
                 <AccessDenied

@@ -140,7 +140,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
       <p>
         {userRole === 'businessowner'
           ? 'Deleting your account will permanently remove your business profile and all associated data including employees, suppliers, products, categories, warehouses, and orders. This action affects your entire business ecosystem.'
-          : 'Deleting your account will remove your profile and all your associated data. Your ' + (userRole === 'employee' ? 'manager/Business Owner' : 'Business Owner') + ' will need to approve this request.'}
+          : 'Deleting your account will remove your profile and all your associated data. Your Business Owner will need to approve this request.'}
       </p>
       <div className="deletion-consequences">
         <h5>This action:</h5>

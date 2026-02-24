@@ -125,8 +125,8 @@ router.post('/getallsuppliers', require('../middleware/fetchuser'), async (req, 
             return res.json(suppliers);
         }
         
-        // Managers, supervisors, and employees can view suppliers of their business owner
-        if (['manager', 'supervisor', 'employee'].includes(req.role)) {
+        // All employee-type roles can view suppliers of their business owner
+        if (req.role !== 'businessowner' && req.role !== 'supplier') {
             const suppliers = await Supplier.find({ businessowner: req.user.businessowner }).select('-password');
             return res.json(suppliers);
         }

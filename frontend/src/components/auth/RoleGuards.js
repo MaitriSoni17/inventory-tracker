@@ -45,10 +45,18 @@ export const BusinessOwnerOnly = ({ children, fallback = null }) => {
 };
 
 /**
- * Only renders if user is manager or business owner
+ * Only renders if user is manager, business owner, or custom role with canManageEmployees
  */
 export const ManagerOnly = ({ children, fallback = null }) => {
-    return <RoleGuard roles={['manager', 'businessowner']} fallback={fallback}>{children}</RoleGuard>;
+    const { role, hasPermission } = useRole();
+    const storedRole = localStorage.getItem('role');
+    const currentRole = role || storedRole;
+
+    if (currentRole === 'businessowner' || currentRole === 'manager' || hasPermission('canManageEmployees')) {
+        return children;
+    }
+
+    return fallback;
 };
 
 /**
@@ -178,15 +186,15 @@ export const CanEditOrders = ({ children, fallback = null }) => {
 };
 
 /**
- * Only renders if user can edit employees (Business Owner or Manager only)
+ * Only renders if user can edit employees (Business Owner, Manager, or custom role with canManageEmployees)
  */
 export const CanEditEmployees = ({ children, fallback = null }) => {
-    const { role } = useRole();
+    const { role, hasPermission } = useRole();
     const storedRole = localStorage.getItem('role');
     const currentRole = role || storedRole;
 
-    // Only Business Owner and Manager can edit employees
-    if (['businessowner', 'manager'].includes(currentRole)) {
+    // Business Owner always can, or anyone with canManageEmployees permission
+    if (currentRole === 'businessowner' || hasPermission('canManageEmployees')) {
         return children;
     }
 

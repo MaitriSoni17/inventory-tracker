@@ -88,7 +88,7 @@ export const RoleProvider = ({ children }) => {
                 
                 // For employees, also fetch latest permissions from permissions endpoint
                 // This ensures permissions are up-to-date with any changes made by business owner
-                if (['employee', 'supervisor', 'manager'].includes(currentRole)) {
+                if (currentRole && currentRole !== 'businessowner' && currentRole !== 'supplier') {
                     await fetchPermissions();
                 }
             } else {
@@ -132,7 +132,7 @@ export const RoleProvider = ({ children }) => {
     };
 
     const isSuperior = () => {
-        return ['manager', 'businessowner'].includes(role);
+        return role === 'businessowner' || role === 'manager' || hasPermission('canManageEmployees');
     };
 
     const canManageEmployees = () => {

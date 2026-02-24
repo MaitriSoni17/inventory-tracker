@@ -53,9 +53,9 @@ const DeletionRequestsManager = ({ showAlert }) => {
 
     // Fetch data summary for this user
     try {
-      const endpoint = request.userRole === 'employee' 
-        ? `http://localhost:5000/api/employee/${request.userId}`
-        : `http://localhost:5000/api/supplier/${request.userId}`;
+      const endpoint = request.userRole === 'supplier' 
+        ? `http://localhost:5000/api/supplier/${request.userId}`
+        : `http://localhost:5000/api/employee/${request.userId}`;
 
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -330,7 +330,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
                 <div className="header-left">
                   <h5>{request.userEmail}</h5>
                   <span className="role-badge">
-                    {request.userRole === 'employee' ? '👤 Employee' : '🏢 Supplier'}
+                    {request.userRole === 'supplier' ? '🏢 Supplier' : '👤 Employee'}
                   </span>
                 </div>
                 <div className="header-right">

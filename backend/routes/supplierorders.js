@@ -35,21 +35,11 @@ router.post('/createsupplierorder/:id', fetchuser, [
             if (warehouse) {
                 supplierorderdata.warehouse = warehouse;
             }
-        } else if (req.role === 'manager') {
-            supplierorderdata.businessowner = req.user.businessowner;
-            supplierorderdata.employee = req.user._id;
-            // Manager's order goes to their warehouse
-            const manager = await require('../models/Employee').findById(req.user._id);
-            if (manager && manager.warehouse) {
-                supplierorderdata.warehouse = manager.warehouse;
-            }
-        } else if (['supervisor', 'employee'].includes(req.role)) {
-            // Supervisor and employee orders: find their business owner
+        } else {
+            // All employee-type roles (including custom roles)
             const staffMember = await require('../models/Employee').findById(req.user._id);
-            if (staffMember && staffMember.businessowner) {
-                supplierorderdata.businessowner = staffMember.businessowner;
-            }
-            // Assign to their warehouse
+            supplierorderdata.businessowner = req.user.businessowner || (staffMember && staffMember.businessowner);
+            supplierorderdata.employee = req.user._id;
             if (staffMember && staffMember.warehouse) {
                 supplierorderdata.warehouse = staffMember.warehouse;
             }
@@ -59,7 +49,7 @@ router.post('/createsupplierorder/:id', fetchuser, [
 
         // Send notification to supplier
         try {
-            const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Manager';
+            const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Employee';
             await createNotification(
                 req.params.id,
                 'Supplier',
@@ -94,8 +84,8 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
             supplierorder = await SupplierOrders.find({ businessowner: req.user._id })
                 .populate('businessowner', 'fname lname email phone address')
                 .populate('warehouse');
-        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
-            // Warehouse staff sees orders from their warehouse
+        } else if (req.role !== 'supplier') {
+            // All employee-type roles see orders from their warehouse
             const staffMember = await require('../models/Employee').findById(req.user._id).populate('warehouse');
             
             if (staffMember && staffMember.warehouse) {
@@ -232,7 +222,7 @@ router.put('/updatesupplierorder/:id', fetchuser, [
             if (warehouse) {
                 newSupplierOrder.warehouse = warehouse;
             }
-        } else if (req.role === 'manager') {
+        } else {
             if (supplierorder.businessowner.toString() !== req.user.businessowner.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -242,7 +232,7 @@ router.put('/updatesupplierorder/:id', fetchuser, [
         
         // Send notification to supplier
         try {
-            const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Manager';
+            const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Employee';
             await createNotification(
                 supplierorder.supplier,
                 'Supplier',
@@ -365,7 +355,7 @@ router.delete('/deletesupplierorder/:id', fetchuser, async (req, res) => {
             if (supplierorder.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
-        } else if (req.role === 'manager') {
+        } else {
             if (supplierorder.businessowner.toString() !== req.user.businessowner.toString()) {
                 return res.status(403).json({ error: "Access denied" });
             }
@@ -373,7 +363,7 @@ router.delete('/deletesupplierorder/:id', fetchuser, async (req, res) => {
 
         // Send notification to supplier before deletion
         try {
-            const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Manager';
+            const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Employee';
             await createNotification(
                 supplierorder.supplier,
                 'Supplier',
@@ -445,7 +435,7 @@ router.post('/debug/check-orders', fetchuser, async (req, res) => {
 router.post('/migrate/fix-businessowner', fetchuser, async (req, res) => {
     try {
         // Only allow admin/businessowner to run this
-        if (!req.user || !['businessowner', 'admin'].includes(req.role)) {
+        if (!req.user || req.role !== 'businessowner') {
             return res.status(403).json({ error: "Unauthorized access" });
         }
 

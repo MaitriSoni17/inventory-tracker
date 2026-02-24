@@ -37,12 +37,33 @@ const EditEmployee = (props) => {
     const [passwordErrors, setPasswordErrors] = useState({});
     const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [customRoles, setCustomRoles] = useState({});
 
     useEffect(() => {
         fetchWarehouses();
         fetchEmployee();
+        fetchCustomRoles();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
+
+    const fetchCustomRoles = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+                method: 'GET',
+                headers: {
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.customRoles) {
+                    setCustomRoles(data.customRoles);
+                }
+            }
+        } catch (error) {
+            // Custom roles are optional
+        }
+    };
 
     const fetchWarehouses = async () => {
         try {
@@ -421,6 +442,13 @@ const EditEmployee = (props) => {
                                         <option value="employee">Employee</option>
                                         <option value="manager">Manager</option>
                                         <option value="supervisor">Supervisor</option>
+                                        {Object.keys(customRoles).length > 0 && (
+                                            <optgroup label="Custom Roles">
+                                                {Object.entries(customRoles).map(([key, role]) => (
+                                                    <option key={key} value={key}>{role.displayName}</option>
+                                                ))}
+                                            </optgroup>
+                                        )}
                                     </select>
                                 </div>
                                 <div style={{ flex: 1 }}>

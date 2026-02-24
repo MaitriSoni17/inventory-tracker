@@ -14,8 +14,13 @@ const RoleInfo = () => {
                 return 'bg-info';
             case 'employee':
                 return 'bg-success';
+            case 'businessowner':
+                return 'bg-warning';
+            case 'supplier':
+                return 'bg-dark';
             default:
-                return 'bg-secondary';
+                // Custom roles get a distinct color
+                return 'bg-purple';
         }
     };
 
@@ -29,8 +34,11 @@ const RoleInfo = () => {
                 return 'Employee';
             case 'businessowner':
                 return 'Business Owner';
+            case 'supplier':
+                return 'Supplier';
             default:
-                return 'User';
+                // Custom roles: capitalize and replace underscores/hyphens with spaces
+                return role ? role.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User';
         }
     };
 

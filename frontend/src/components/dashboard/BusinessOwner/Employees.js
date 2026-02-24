@@ -12,6 +12,7 @@ const Employees = (props) => {
     const [filterRole, setFilterRole] = useState('');
     const [loading, setLoading] = useState(true);
     const [warehouseMap, setWarehouseMap] = useState({});
+    const [customRoles, setCustomRoles] = useState({});
     const [stats, setStats] = useState({
         totalEmployees: 0,
         activeEmployees: 0
@@ -20,6 +21,7 @@ const Employees = (props) => {
     useEffect(() => {
         fetchWarehouses();
         fetchEmployees();
+        fetchCustomRoles();
     }, []);
 
     useEffect(() => {
@@ -73,6 +75,25 @@ const Employees = (props) => {
             props.showAlert('Error fetching employees', 'danger');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchCustomRoles = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+                method: 'GET',
+                headers: {
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.customRoles) {
+                    setCustomRoles(data.customRoles);
+                }
+            }
+        } catch (error) {
+            // Custom roles are optional
         }
     };
 
@@ -340,6 +361,9 @@ const Employees = (props) => {
                             <option value="employee">Employee</option>
                             <option value="manager">Manager</option>
                             <option value="supervisor">Supervisor</option>
+                            {Object.entries(customRoles).map(([key, role]) => (
+                                <option key={key} value={key}>{role.displayName}</option>
+                            ))}
                         </select>
                     </div>
                     <div className="col-auto">
@@ -390,7 +414,7 @@ const Employees = (props) => {
                                         <td>{emp.fname} {emp.lname || ''}</td>
                                         <td>{emp.email}</td>
                                         <td>{emp.phone || 'N/A'}</td>
-                                        <td><span className="badge bg-info rounded-pill px-3 py-2">{emp.role}</span></td>
+                                        <td><span className="badge bg-info rounded-pill px-3 py-2">{customRoles[emp.role] ? customRoles[emp.role].displayName : emp.role.charAt(0).toUpperCase() + emp.role.slice(1)}</span></td>
                                         <td>
                                             {emp.warehouse ? (
                                                 <span className="badge bg-success rounded-pill px-3 py-2">

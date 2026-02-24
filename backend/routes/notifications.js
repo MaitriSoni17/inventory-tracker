@@ -28,8 +28,7 @@ router.get('/getnotifications', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role for notification query
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
-                            req.role === 'supplier' ? 'Supplier' : req.role;
+                            req.role === 'supplier' ? 'Supplier' : 'Employee';
 
     let notifications = await Notification.find({
       recipient: userId,
@@ -56,8 +55,7 @@ router.get('/unreadcount', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
-                            req.role === 'supplier' ? 'Supplier' : req.role;
+                            req.role === 'supplier' ? 'Supplier' : 'Employee';
 
     const count = await Notification.countDocuments({
       recipient: userId,
@@ -106,8 +104,7 @@ router.put('/markallasread', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
-                            req.role === 'supplier' ? 'Supplier' : req.role;
+                            req.role === 'supplier' ? 'Supplier' : 'Employee';
 
     await Notification.updateMany(
       {
@@ -158,8 +155,7 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
     const userId = req.user._id;
     // Map lowercase role to capitalized role
     const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                            ['employee', 'manager', 'supervisor'].includes(req.role) ? 'Employee' :
-                            req.role === 'supplier' ? 'Supplier' : req.role;
+                            req.role === 'supplier' ? 'Supplier' : 'Employee';
 
     await Notification.deleteMany({
       recipient: userId,
@@ -214,7 +210,8 @@ router.post('/check-low-stock-alerts', fetchuser, async (req, res) => {
     let businessOwnerId;
     if (req.role === 'businessowner') {
       businessOwnerId = req.user._id;
-    } else if (['employee', 'manager', 'supervisor'].includes(req.role)) {
+    } else if (req.role !== 'supplier') {
+      // All employee-type roles (including custom roles)
       businessOwnerId = req.user.businessowner;
     } else {
       return res.status(403).json({ error: 'Not authorized to check low stock alerts' });

@@ -44,18 +44,10 @@ router.post('/createorder', fetchuser, [
             if (warehouse) {
                 orderData.warehouse = warehouse;
             }
-        } else if (req.role === 'employee') {
+        } else {
+            // All employee-type roles (including custom roles)
             orderData.businessowner = req.user.businessowner;
             orderData.employee = req.user._id;
-            // Employee's order goes to their warehouse
-            const employee = await Employee.findById(req.user._id);
-            if (employee && employee.warehouse) {
-                orderData.warehouse = employee.warehouse;
-            }
-        } else if (['manager', 'supervisor'].includes(req.role)) {
-            orderData.businessowner = req.user.businessowner;
-            orderData.employee = req.user._id;
-            // Manager/Supervisor can assign to their warehouse
             const staffMember = await Employee.findById(req.user._id);
             if (staffMember && staffMember.warehouse) {
                 orderData.warehouse = staffMember.warehouse;
@@ -64,7 +56,16 @@ router.post('/createorder', fetchuser, [
         const order = await Order.create(orderData);
         
         // Send notification to business owner if created by employee
-        if (req.role === 'employee') {
+        if (req.role === 'businessowner') {
+            // Send notification to employees if created by business owner
+            notifyEmployeesAboutOrder(
+                req.user._id,
+                'created',
+                order._id,
+                { orderId: order._id, customerName: order.customerName }
+            ).catch(notifError => {});
+        } else {
+            // All employee-type roles (including custom roles)
             notifyBusinessOwnerAboutOrder(
                 order.businessowner,
                 req.user._id,
@@ -83,32 +84,6 @@ router.post('/createorder', fetchuser, [
                 { orderId: order._id, customerName: order.customerName }
               );
             }
-        } else if (req.role === 'businessowner') {
-            // Send notification to employees if created by business owner
-            notifyEmployeesAboutOrder(
-                req.user._id,
-                'created',
-                order._id,
-                { orderId: order._id, customerName: order.customerName }
-            ).catch(notifError => {});
-        } else if (['manager', 'supervisor'].includes(req.role)) {
-            // Manager/Supervisor creates order - notify business owner and subordinates
-            notifyBusinessOwnerAboutOrder(
-                req.user.businessowner,
-                req.user._id,
-                'created',
-                order._id,
-                { orderId: order._id, customerName: order.customerName, createdBy: req.user.role }
-            ).catch(notifError => {});
-            
-            // Notify subordinates
-            notifySubordinatesAboutOrder(
-                req.user._id,
-                req.user.role,
-                'created',
-                order._id,
-                { orderId: order._id, customerName: order.customerName }
-            ).catch(notifError => {});
         }
         
         res.json({order, success: true});
@@ -130,45 +105,30 @@ router.post('/getorders', fetchuser, async (req, res) => {
         if (req.role === 'businessowner') {
             // Business owner sees all orders in their business
             orders = await Order.find({ businessowner: req.user._id }).populate('warehouse');
-        } else if (req.role === 'manager') {
-            // Manager sees orders from their warehouse
-            const manager = await Employee.findById(req.user._id).populate('warehouse');
+        } else {
+            // All employee-type roles (including custom roles)
+            const staffMember = await Employee.findById(req.user._id).populate('warehouse');
             
-            if (manager && manager.warehouse) {
-                // Get orders assigned to their warehouse
-                orders = await Order.find({
-                    warehouse: manager.warehouse._id
-                }).populate('warehouse');
+            if (['manager', 'supervisor'].includes(req.role)) {
+                // Manager/Supervisor sees all orders from their warehouse
+                if (staffMember && staffMember.warehouse) {
+                    orders = await Order.find({
+                        warehouse: staffMember.warehouse._id
+                    }).populate('warehouse');
+                } else {
+                    orders = [];
+                }
             } else {
-                // If no warehouse assigned, show no orders
-                orders = [];
-            }
-        } else if (req.role === 'supervisor') {
-            // Supervisor sees orders from their warehouse
-            const supervisor = await Employee.findById(req.user._id).populate('warehouse');
-            
-            if (supervisor && supervisor.warehouse) {
-                // Get orders assigned to their warehouse
-                orders = await Order.find({
-                    warehouse: supervisor.warehouse._id
-                }).populate('warehouse');
-            } else {
-                // If no warehouse assigned, show no orders
-                orders = [];
-            }
-        } else if (req.role === 'employee') {
-            // Employees see only their own orders from their warehouse
-            const employee = await Employee.findById(req.user._id).populate('warehouse');
-            
-            if (employee && employee.warehouse) {
-                orders = await Order.find({
-                    businessowner: req.user.businessowner,
-                    warehouse: employee.warehouse._id,
-                    employee: req.user._id
-                }).populate('warehouse');
-            } else {
-                // If no warehouse assigned, show no orders
-                orders = [];
+                // Employee and custom roles see their own orders from their warehouse
+                if (staffMember && staffMember.warehouse) {
+                    orders = await Order.find({
+                        businessowner: req.user.businessowner,
+                        warehouse: staffMember.warehouse._id,
+                        employee: req.user._id
+                    }).populate('warehouse');
+                } else {
+                    orders = [];
+                }
             }
         }
         
@@ -212,8 +172,8 @@ router.put('/updateorder/:id', fetchuser, [
             if (order.businessowner.toString() !== req.user._id.toString()) {
                 return res.status(403).json({ error: "You do not have permission to update this order" });
             }
-        } else if (['manager', 'supervisor', 'employee'].includes(req.role)) {
-            // Warehouse staff can only update orders in their warehouse
+        } else {
+            // All employee-type roles - can only update orders in their warehouse
             const staffMember = await Employee.findById(req.user._id).populate('warehouse');
             
             if (!staffMember || !staffMember.warehouse) {
@@ -255,7 +215,21 @@ router.put('/updateorder/:id', fetchuser, [
         }
         
         // Send notifications based on who updated it
-        if (req.role === 'employee') {
+        if (req.role === 'businessowner') {
+            try {
+                await notifyEmployeesAboutOrder(
+                    req.user._id,
+                    'updated',
+                    order._id.toString(),
+                    { 
+                        orderId: order._id, 
+                        customerName: order.customerName,
+                        updatedFields: newOrder
+                    }
+                );
+            } catch (notifError) {}
+        } else {
+            // All employee-type roles (including custom roles)
             try {
                 await notifyBusinessOwnerAboutOrder(
                     order.businessowner,
@@ -278,34 +252,6 @@ router.put('/updateorder/:id', fetchuser, [
                         { orderId: order._id, customerName: order.customerName }
                     );
                 }
-            } catch (notifError) {}
-        } else if (req.role === 'businessowner') {
-            try {
-                await notifyEmployeesAboutOrder(
-                    req.user._id,
-                    'updated',
-                    order._id.toString(),
-                    { 
-                        orderId: order._id, 
-                        customerName: order.customerName,
-                        updatedFields: newOrder
-                    }
-                );
-            } catch (notifError) {}
-        } else if (['manager', 'supervisor'].includes(req.role)) {
-            try {
-                await notifyBusinessOwnerAboutOrder(
-                    order.businessowner,
-                    req.user._id,
-                    'updated',
-                    order._id.toString(),
-                    { 
-                        orderId: order._id, 
-                        customerName: order.customerName,
-                        updatedBy: req.user.role,
-                        updatedFields: newOrder
-                    }
-                );
             } catch (notifError) {}
         }
         
@@ -339,7 +285,17 @@ router.delete('/deleteorder/:id', fetchuser, async (req, res) => {
         await Order.findByIdAndDelete(req.params.id);
         
         // Send notifications based on who deleted it
-        if (req.role === 'employee') {
+        if (req.role === 'businessowner') {
+            try {
+                await notifyEmployeesAboutOrder(
+                    businessOwnerId,
+                    'deleted',
+                    orderId,
+                    { orderId: orderId }
+                );
+            } catch (notifError) {}
+        } else {
+            // All employee-type roles (including custom roles)
             try {
                 await notifyBusinessOwnerAboutOrder(
                     businessOwnerId,
@@ -358,33 +314,6 @@ router.delete('/deleteorder/:id', fetchuser, async (req, res) => {
                         { orderId: orderId }
                     );
                 }
-            } catch (notifError) {}
-        } else if (req.role === 'businessowner') {
-            try {
-                await notifyEmployeesAboutOrder(
-                    businessOwnerId,
-                    'deleted',
-                    orderId,
-                    { orderId: orderId }
-                );
-            } catch (notifError) {}
-        } else if (['manager', 'supervisor'].includes(req.role)) {
-            try {
-                await notifyBusinessOwnerAboutOrder(
-                    businessOwnerId,
-                    req.user._id,
-                    'deleted',
-                    orderId,
-                    { orderId: orderId, deletedBy: req.user.role }
-                );
-                
-                await notifySubordinatesAboutOrder(
-                    req.user._id,
-                    req.user.role,
-                    'deleted',
-                    orderId,
-                    { orderId: orderId }
-                );
             } catch (notifError) {}
         }
         

@@ -219,7 +219,7 @@ function App() {
               
               {/* Employee Settings - Employees only */}
               <Route path="empsettings" element={
-                <RoleRouteGuard roles={['employee', 'supervisor', 'manager']}>
+                <RoleRouteGuard roles={['employee', 'supervisor', 'manager']} allowCustomRoles={true}>
                   <EmpSettings showAlert={showAlert} />
                 </RoleRouteGuard>
               } />
