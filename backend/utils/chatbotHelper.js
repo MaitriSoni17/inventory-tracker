@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Product = require('../models/Products');
 const Order = require('../models/Orders');
 const Warehouse = require('../models/Warehouse');
@@ -7,17 +8,64 @@ const BusinessOwner = require('../models/BusinessOwner');
 const axios = require('axios');
 const { Groq } = require('groq-sdk');
 
+/**
+ * Safely convert userId to ObjectId for aggregate pipelines
+ */
+const toObjectId = (id) => {
+  try {
+    return new mongoose.Types.ObjectId(id);
+  } catch {
+    return id;
+  }
+};
+
 // Initialize Groq client (FREE API)
-// Get your free API key from: https://console.groq.com/keys
 const GROQ_API_KEY = process.env.GROQ_API_KEY || null;
 const USE_GROQ = !!GROQ_API_KEY;
 
-// Initialize Groq client if API key is available
 let groqClient = null;
 if (USE_GROQ) {
   groqClient = new Groq({ apiKey: GROQ_API_KEY });
-} else {
 }
+
+// In-memory conversation history (per user, last 10 messages)
+const conversationHistory = new Map();
+const MAX_HISTORY = 10;
+
+const getConversationHistory = (userId) => {
+  return conversationHistory.get(userId) || [];
+};
+
+const addToConversationHistory = (userId, role, content) => {
+  if (!conversationHistory.has(userId)) {
+    conversationHistory.set(userId, []);
+  }
+  const history = conversationHistory.get(userId);
+  history.push({ role, content, timestamp: Date.now() });
+  if (history.length > MAX_HISTORY) {
+    history.splice(0, history.length - MAX_HISTORY);
+  }
+  // Clean up conversations older than 1 hour
+  const oneHourAgo = Date.now() - 60 * 60 * 1000;
+  conversationHistory.forEach((val, key) => {
+    if (val.length > 0 && val[val.length - 1].timestamp < oneHourAgo) {
+      conversationHistory.delete(key);
+    }
+  });
+};
+
+/**
+ * Resolve the businessowner ID for any role
+ */
+const resolveBusinessOwnerId = async (userId, role) => {
+  if (role === 'businessowner') return userId;
+  try {
+    const emp = await Employee.findById(userId).select('businessowner');
+    return emp?.businessowner || null;
+  } catch (e) {
+    return null;
+  }
+};
 
 /**
  * Get context based on user role and fetch relevant data
@@ -25,10 +73,7 @@ if (USE_GROQ) {
 const getContextForRole = async (userId, role) => {
   try {
     let context = {};
-
-    if (!userId) {
-      return context;
-    }
+    if (!userId) return context;
 
     if (role === 'businessowner') {
       context.products = await Product.countDocuments({ businessowner: userId });
@@ -37,52 +82,158 @@ const getContextForRole = async (userId, role) => {
         businessowner: userId,
         productStatus: { $in: ['Pending', 'Processing'] }
       });
+      context.completedOrders = await Order.countDocuments({
+        businessowner: userId,
+        productStatus: 'Delivered'
+      });
       context.warehouses = await Warehouse.countDocuments({ businessowner: userId });
       context.suppliers = await Supplier.countDocuments({ businessowner: userId });
       context.employees = await Employee.countDocuments({ businessowner: userId });
 
-      // Get employee details (NEW)
+      // Employee details
       const employeesList = await Employee.find({ businessowner: userId })
-        .select('fname lname email phone hireAt jDate role')
-        .limit(10);
+        .select('fname lname email phone hireAt jDate role salary')
+        .limit(15);
       context.employeesList = employeesList;
 
-      // Get low stock products
+      // Low stock products
       const lowStockProducts = await Product.find({
         businessowner: userId,
         totalProducts: { $lt: 10 }
-      }).select('name totalProducts category').limit(5);
+      }).select('name totalProducts category price').limit(10);
       context.lowStockProducts = lowStockProducts;
 
-      // Get recent orders
+      // Recent orders
       const recentOrders = await Order.find({ businessowner: userId })
         .sort({ createdAt: -1 })
-        .select('customerName productName totalAmt orderDate productStatus')
-        .limit(5);
+        .select('customerName productName totalAmt orderDate productStatus deliveryStatus')
+        .limit(8);
       context.recentOrders = recentOrders;
 
-      // Get orders by employee (NEW)
-      const employeeOrderStats = await Order.aggregate([
-        { $match: { businessowner: userId, employee: { $exists: true, $ne: null } } },
-        { $group: { _id: '$employee', count: { $sum: 1 }, pending: { $sum: { $cond: [{ $in: ['$productStatus', ['Pending', 'Processing']] }, 1, 0] } } } },
+      // Revenue calculation
+      const revenueData = await Order.aggregate([
+        { $match: { businessowner: toObjectId(userId) } },
+        { $group: { _id: null, totalRevenue: { $sum: '$totalAmt' }, avgOrderValue: { $avg: '$totalAmt' } } }
+      ]);
+      if (revenueData.length > 0) {
+        context.totalRevenue = revenueData[0].totalRevenue;
+        context.avgOrderValue = Math.round(revenueData[0].avgOrderValue * 100) / 100;
+      }
+
+      // Orders by status breakdown
+      const statusBreakdown = await Order.aggregate([
+        { $match: { businessowner: toObjectId(userId) } },
+        { $group: { _id: '$productStatus', count: { $sum: 1 } } }
+      ]);
+      context.orderStatusBreakdown = statusBreakdown;
+
+      // Top selling products
+      const topProducts = await Order.aggregate([
+        { $match: { businessowner: toObjectId(userId) } },
+        { $group: { _id: '$productName', totalSold: { $sum: 1 }, totalRevenue: { $sum: '$totalAmt' } } },
+        { $sort: { totalSold: -1 } },
         { $limit: 5 }
       ]);
-      context.employeeOrderStats = employeeOrderStats;
+      context.topProducts = topProducts;
+
+      // Salary data
+      try {
+        const SalaryPayment = require('../models/SalaryPayment');
+        const salaryStats = await SalaryPayment.aggregate([
+          { $match: { businessowner: toObjectId(userId) } },
+          { $group: { _id: null, totalPaid: { $sum: '$amount' }, paymentCount: { $sum: 1 } } }
+        ]);
+        if (salaryStats.length > 0) {
+          context.totalSalaryPaid = salaryStats[0].totalPaid;
+          context.salaryPaymentCount = salaryStats[0].paymentCount;
+        }
+        const recentPayments = await SalaryPayment.find({ businessowner: userId })
+          .sort({ paymentDate: -1 })
+          .populate('employee', 'fname lname')
+          .limit(5);
+        context.recentSalaryPayments = recentPayments;
+      } catch (e) { /* salary model may not exist */ }
+
+      // Supplier orders
+      try {
+        const SupplierOrders = require('../models/SupplierOrders');
+        const supplierOrderStats = await SupplierOrders.aggregate([
+          { $match: { businessowner: toObjectId(userId) } },
+          { $group: { _id: '$status', count: { $sum: 1 }, totalValue: { $sum: { $multiply: ['$ounits', '$amount'] } } } }
+        ]);
+        context.supplierOrderStats = supplierOrderStats;
+      } catch (e) { /* ignore */ }
+
     } else if (role === 'employee') {
+      // Resolve business owner ID so employees see all data they have access to
+      const boId = await resolveBusinessOwnerId(userId, role);
+      const scopeFilter = boId ? { businessowner: boId } : { employee: userId };
+
+      context.totalProducts = await Product.countDocuments(scopeFilter);
       context.assignedProducts = await Product.countDocuments({ employee: userId });
+      context.totalOrders = await Order.countDocuments(scopeFilter);
       context.assignedOrders = await Order.countDocuments({ employee: userId });
       context.pendingTasks = await Order.countDocuments({
-        employee: userId,
+        ...scopeFilter,
         productStatus: { $in: ['Pending', 'Processing'] }
       });
+      context.completedTasks = await Order.countDocuments({
+        ...scopeFilter,
+        productStatus: 'Delivered'
+      });
 
-      // Get assigned orders details
-      const assignedOrders = await Order.find({ employee: userId })
-        .select('productName customerName productStatus deliveryStatus orderDate')
-        .limit(5);
+      // Recent orders within the business scope
+      const assignedOrders = await Order.find(scopeFilter)
+        .select('productName customerName productStatus deliveryStatus orderDate deliveryDeadline totalAmt')
+        .sort({ createdAt: -1 })
+        .limit(8);
       context.assignedOrdersList = assignedOrders;
+
+      // Low stock products
+      const lowStockProducts = await Product.find({
+        ...scopeFilter,
+        totalProducts: { $lt: 10 }
+      }).select('name totalProducts category price').limit(10);
+      context.lowStockProducts = lowStockProducts;
+
+      // Urgent orders (deadline within 3 days)
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+      const urgentOrders = await Order.find({
+        ...scopeFilter,
+        productStatus: { $in: ['Pending', 'Processing'] },
+        deliveryDeadline: { $lte: threeDaysFromNow, $gte: new Date() }
+      }).select('productName customerName deliveryDeadline productStatus').limit(5);
+      context.urgentOrders = urgentOrders;
+
+      // Overdue orders
+      const overdueOrders = await Order.find({
+        ...scopeFilter,
+        productStatus: { $in: ['Pending', 'Processing'] },
+        deliveryDeadline: { $lt: new Date() }
+      }).select('productName customerName deliveryDeadline').limit(5);
+      context.overdueOrders = overdueOrders;
+
+      // Employee profile info
+      const employee = await Employee.findById(userId).select('fname lname role jDate salary businessowner');
+      if (employee) {
+        context.employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+        context.employeeRole = employee.role || 'employee';
+        context.joinDate = employee.jDate;
+        context.businessOwnerId = employee.businessowner;
+      }
+
+      // Salary payments for this employee
+      try {
+        const SalaryPayment = require('../models/SalaryPayment');
+        const myPayments = await SalaryPayment.find({ employee: userId })
+          .sort({ paymentDate: -1 }).limit(5);
+        context.mySalaryPayments = myPayments;
+      } catch (e) { /* ignore */ }
+
     } else if (role === 'supplier') {
       const SupplierOrders = require('../models/SupplierOrders');
+      context.totalOrders = await SupplierOrders.countDocuments({ supplier: userId });
       context.pendingOrders = await SupplierOrders.countDocuments({
         supplier: userId,
         status: 'Pending'
@@ -91,17 +242,37 @@ const getContextForRole = async (userId, role) => {
         supplier: userId,
         status: 'Delivered'
       });
+      context.cancelledOrders = await SupplierOrders.countDocuments({
+        supplier: userId,
+        status: 'Cancelled'
+      });
 
-      // Get supplier order details
+      // Supplier order details (model fields: pName, ounits, amount, status, oDate, dDate)
       const supplierOrders = await SupplierOrders.find({ supplier: userId })
-        .select('productName quantity price status orderDate')
-        .limit(5);
+        .select('pName ounits amount status oDate dDate')
+        .sort({ oDate: -1 })
+        .limit(8);
       context.recentSupplierOrders = supplierOrders;
+
+      // Revenue stats for supplier
+      const supplierRevenue = await SupplierOrders.aggregate([
+        { $match: { supplier: toObjectId(userId) } },
+        { $group: { _id: null, totalValue: { $sum: { $multiply: ['$ounits', '$amount'] } } } }
+      ]);
+      if (supplierRevenue.length > 0) {
+        context.totalOrderValue = supplierRevenue[0].totalValue;
+      }
+
+      // Supplier profile (model uses fname/lname, not sname)
+      const supplier = await Supplier.findById(userId).select('fname lname email phone companyName');
+      if (supplier) {
+        context.supplierName = `${supplier.fname} ${supplier.lname || ''}`.trim();
+        context.supplierCompany = supplier.companyName;
+      }
     }
 
     return context;
   } catch (error) {
-    // Silent fail - return empty context
     return {};
   }
 };
@@ -110,22 +281,52 @@ const getContextForRole = async (userId, role) => {
  * Generate system prompt based on user role
  */
 const generateSystemPrompt = (role) => {
-  const basePrompt = `You are a helpful AI assistant for an Inventory Tracking System. IMPORTANT: You MUST respond ONLY in English. You provide helpful, concise responses about inventory management, orders, products, and related topics.
+  const basePrompt = `You are a smart, friendly AI assistant for "Inline Tracker" — an Inventory Tracking System. You MUST respond ONLY in English.
 
-CRITICAL FORMATTING INSTRUCTION: Always format your responses as NUMBERED LISTS or BULLET POINTS, NEVER as paragraphs. Use bullet points (•) or numbered lists (1., 2., 3., etc.) for every response. When listing features, benefits, or information, always use list format with emojis and clear formatting.
-
-Example of CORRECT format:
-• Feature 1 description
-• Feature 2 description
-• Feature 3 description
-
-Example of INCORRECT format (DO NOT USE):
-"Feature 1 is described as... Feature 2 provides... Feature 3 allows..."`;
+RESPONSE RULES:
+1. Keep responses concise (under 200 words unless detailed data is requested)
+2. Use bullet points or numbered lists for any multi-item response
+3. Use emojis sparingly but effectively for visual clarity
+4. Bold important values with **text**
+5. When showing data, format it clearly with labels
+6. If the user asks something outside inventory management, politely redirect them
+7. Be conversational and helpful — not robotic
+8. Reference the actual data provided in the context when answering
+9. If you don't have specific data to answer, say so honestly and suggest what the user can do`;
 
   const rolePrompts = {
-    businessowner: `${basePrompt} You are assisting a Business Owner who manages inventory, products, suppliers, employees, and customer orders. Help them with insights about their business operations, inventory levels, order status, and business metrics. Be professional and business-oriented. ALWAYS respond in English only. ALWAYS use list format with bullet points or numbers for all responses.`,
-    employee: `${basePrompt} You are assisting an Employee who works with products and orders. Help them understand their assigned tasks, product information, and order statuses. Be helpful and supportive. ALWAYS respond in English only. ALWAYS use list format with bullet points or numbers for all responses.`,
-    supplier: `${basePrompt} You are assisting a Supplier who provides products. Help them with information about their orders, delivery statuses, and product supplies. Be professional and focus on supplier-related queries. ALWAYS respond in English only. ALWAYS use list format with bullet points or numbers for all responses.`
+    businessowner: `${basePrompt}
+
+You are helping a **Business Owner** who manages their entire business through this platform. They care about:
+- Revenue, sales performance, and growth
+- Inventory levels and stock alerts
+- Employee productivity and team management
+- Supplier relationships and order fulfillment
+- Warehouse operations
+- Salary and payment management
+
+Be professional, data-driven, and proactive with actionable insights. When presenting numbers, add context (e.g., "5 pending orders — 2 are urgent").`,
+
+    employee: `${basePrompt}
+
+You are helping an **Employee** who works on assigned tasks and orders. They care about:
+- Their assigned orders and tasks
+- Deadlines and urgent items
+- Product information they're handling
+- Their work performance
+- Their salary payments
+
+Be supportive, clear about priorities, and help them stay organized. Flag urgent or overdue items proactively.`,
+
+    supplier: `${basePrompt}
+
+You are helping a **Supplier** who fulfills product orders. They care about:
+- Pending orders they need to fulfill
+- Delivery schedules and deadlines
+- Order history and payment tracking
+- Their supply performance
+
+Be professional, focus on order fulfillment, and help them track their deliveries efficiently.`
   };
 
   return rolePrompts[role] || basePrompt;
@@ -139,57 +340,124 @@ const formatContextForAI = (context, role) => {
 
   if (role === 'businessowner') {
     formattedContext = `
-Current Business Overview:
+BUSINESS OVERVIEW:
 - Total Products: ${context.products || 0}
 - Total Orders: ${context.totalOrders || 0}
 - Pending Orders: ${context.pendingOrders || 0}
+- Completed Orders: ${context.completedOrders || 0}
 - Warehouses: ${context.warehouses || 0}
 - Suppliers: ${context.suppliers || 0}
-- Employees: ${context.employees || 0}`;
+- Employees: ${context.employees || 0}
+- Total Revenue: $${context.totalRevenue || 0}
+- Average Order Value: $${context.avgOrderValue || 0}`;
+
+    if (context.orderStatusBreakdown?.length) {
+      formattedContext += `\n\nORDER STATUS BREAKDOWN:`;
+      context.orderStatusBreakdown.forEach(s => {
+        formattedContext += `\n- ${s._id}: ${s.count} orders`;
+      });
+    }
+
+    if (context.topProducts?.length) {
+      formattedContext += `\n\nTOP SELLING PRODUCTS:`;
+      context.topProducts.forEach((p, i) => {
+        formattedContext += `\n${i + 1}. ${p._id} — ${p.totalSold} orders, $${p.totalRevenue} revenue`;
+      });
+    }
 
     if (context.employeesList?.length) {
-      formattedContext += `\n\nTeam Members:\n`;
+      formattedContext += `\n\nTEAM MEMBERS:`;
       context.employeesList.forEach(emp => {
-        formattedContext += `- ${emp.fname} ${emp.lname || ''} (${emp.email})\n`;
+        formattedContext += `\n- ${emp.fname} ${emp.lname || ''} (${emp.email}) — Role: ${emp.role || 'employee'}`;
       });
     }
 
     if (context.lowStockProducts?.length) {
-      formattedContext += `\n\nLow Stock Products (< 10 units):\n`;
+      formattedContext += `\n\nLOW STOCK PRODUCTS (< 10 units):`;
       context.lowStockProducts.forEach(p => {
-        formattedContext += `- ${p.name} (Category: ${p.category}) - ${p.totalProducts} units\n`;
+        formattedContext += `\n- ${p.name} (${p.category}) — ${p.totalProducts} units left, Price: $${p.price}`;
       });
     }
 
     if (context.recentOrders?.length) {
-      formattedContext += `\n\nRecent Orders:\n`;
+      formattedContext += `\n\nRECENT ORDERS:`;
       context.recentOrders.forEach(o => {
-        formattedContext += `- Order from ${o.customerName} for ${o.productName} (Status: ${o.productStatus})\n`;
+        formattedContext += `\n- ${o.customerName} -> ${o.productName} — $${o.totalAmt} (${o.productStatus})`;
       });
     }
+
+    if (context.totalSalaryPaid) {
+      formattedContext += `\n\nSALARY DATA:`;
+      formattedContext += `\n- Total Salary Paid: $${context.totalSalaryPaid}`;
+      formattedContext += `\n- Payments Made: ${context.salaryPaymentCount}`;
+    }
+
+    if (context.supplierOrderStats?.length) {
+      formattedContext += `\n\nSUPPLIER ORDER SUMMARY:`;
+      context.supplierOrderStats.forEach(s => {
+        formattedContext += `\n- ${s._id}: ${s.count} orders (Value: $${s.totalValue || 0})`;
+      });
+    }
+
   } else if (role === 'employee') {
     formattedContext = `
-Your Assigned Tasks:
-- Assigned Products: ${context.assignedProducts || 0}
-- Assigned Orders: ${context.assignedOrders || 0}
-- Pending Tasks: ${context.pendingTasks || 0}`;
+YOUR PROFILE:
+- Name: ${context.employeeName || 'N/A'}
+- Role: ${context.employeeRole || 'employee'}
 
-    if (context.assignedOrdersList?.length) {
-      formattedContext += `\n\nYour Assigned Orders:\n`;
-      context.assignedOrdersList.forEach(o => {
-        formattedContext += `- ${o.productName} for ${o.customerName} (Product Status: ${o.productStatus}, Delivery: ${o.deliveryStatus})\n`;
+WORK SUMMARY:
+- Total Products: ${context.totalProducts || 0}
+- Personally Assigned Products: ${context.assignedProducts || 0}
+- Total Orders: ${context.totalOrders || 0}
+- Pending Tasks: ${context.pendingTasks || 0}
+- Completed Tasks: ${context.completedTasks || 0}`;
+
+    if (context.urgentOrders?.length) {
+      formattedContext += `\n\nURGENT ORDERS (deadline within 3 days):`;
+      context.urgentOrders.forEach(o => {
+        const deadline = new Date(o.deliveryDeadline).toLocaleDateString();
+        formattedContext += `\n- ${o.productName} for ${o.customerName} — Due: ${deadline}`;
       });
     }
+
+    if (context.overdueOrders?.length) {
+      formattedContext += `\n\nOVERDUE ORDERS:`;
+      context.overdueOrders.forEach(o => {
+        const deadline = new Date(o.deliveryDeadline).toLocaleDateString();
+        formattedContext += `\n- ${o.productName} for ${o.customerName} — Was due: ${deadline}`;
+      });
+    }
+
+    if (context.assignedOrdersList?.length) {
+      formattedContext += `\n\nYOUR RECENT ORDERS:`;
+      context.assignedOrdersList.forEach(o => {
+        formattedContext += `\n- ${o.productName} for ${o.customerName} — ${o.productStatus} | $${o.totalAmt}`;
+      });
+    }
+
+    if (context.mySalaryPayments?.length) {
+      formattedContext += `\n\nRECENT SALARY PAYMENTS:`;
+      context.mySalaryPayments.forEach(p => {
+        formattedContext += `\n- $${p.amount} on ${new Date(p.paymentDate).toLocaleDateString()} (${p.status})`;
+      });
+    }
+
   } else if (role === 'supplier') {
     formattedContext = `
-Your Supply Overview:
+SUPPLIER PROFILE:
+- Name: ${context.supplierName || 'N/A'}
+
+SUPPLY OVERVIEW:
+- Total Orders: ${context.totalOrders || 0}
 - Pending Orders: ${context.pendingOrders || 0}
-- Delivered Orders: ${context.deliveredOrders || 0}`;
+- Delivered Orders: ${context.deliveredOrders || 0}
+- Cancelled Orders: ${context.cancelledOrders || 0}
+- Total Order Value: $${context.totalOrderValue || 0}`;
 
     if (context.recentSupplierOrders?.length) {
-      formattedContext += `\n\nRecent Orders:\n`;
+      formattedContext += `\n\nRECENT ORDERS:`;
       context.recentSupplierOrders.forEach(o => {
-        formattedContext += `- ${o.productName} (Qty: ${o.quantity}, Price: ${o.price}, Status: ${o.status})\n`;
+        formattedContext += `\n- ${o.pName} — Qty: ${o.ounits}, $${o.amount}/unit (${o.status})`;
       });
     }
   }
@@ -198,13 +466,26 @@ Your Supply Overview:
 };
 
 /**
- * Generate response using OpenAI API or fallback to enhanced rule-based system
- * Supports both specific queries and general conversational queries
+ * Generate AI response - main entry point
  */
 const generateAIResponse = async (userMessage, role, context, userId) => {
   try {
-    // Use intelligent analysis to generate list-format responses
-    const response = await generateIntelligentResponse(userMessage, role, context, userId);
+    // Add user message to conversation history
+    addToConversationHistory(userId, 'user', userMessage);
+
+    let response;
+
+    // Try Groq API first if available
+    if (USE_GROQ && groqClient) {
+      response = await generateGroqResponse(userMessage, role, context, userId);
+    } else {
+      // Use intelligent rule-based response
+      response = await generateIntelligentResponse(userMessage, role, context, userId);
+    }
+
+    // Add bot response to conversation history
+    addToConversationHistory(userId, 'assistant', response);
+
     return response;
   } catch (error) {
     return generateEnhancedResponse(userMessage, role, context);
@@ -216,89 +497,133 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
  */
 const handleSpecificEntityQuery = async (userMessage, role, userId) => {
   const message = userMessage.toLowerCase().trim();
-  
+
+  // Resolve the business owner ID for data scoping
+  const boId = await resolveBusinessOwnerId(userId, role);
+  const dataOwnerId = boId || userId;
+
   // Detect product-specific queries
-  if ((message.includes('product') || message.includes('item')) && 
-      (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about'))) {
-    // Try multiple patterns to extract product name
+  if ((message.includes('product') || message.includes('item')) &&
+    (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about') || message.includes('search'))) {
     let productName = null;
-    
-    // Pattern: "product [name]" or "item [name]"
+
     let match = userMessage.match(/(?:product|item)\s+(?:named\s+)?["']?([^"'.!?]+)["']?/i);
-    if (match && match[1]) {
-      productName = match[1].trim();
-    }
-    
-    // Pattern: "tell me about [product name]"
+    if (match && match[1]) productName = match[1].trim();
+
     if (!productName) {
-      match = userMessage.match(/(?:tell me about|show me|details? (?:on|for|about))\s+(?:(?:the\s+)?product\s+)?["']?([^"'.!?]+)["']?/i);
-      if (match && match[1]) {
-        productName = match[1].trim();
-      }
+      match = userMessage.match(/(?:tell me about|show me|search for|details? (?:on|for|about))\s+(?:(?:the\s+)?product\s+)?["']?([^"'.!?]+)["']?/i);
+      if (match && match[1]) productName = match[1].trim();
     }
 
-    if (productName && role === 'businessowner') {
-      const products = await searchProducts(productName, userId);
+    if (productName && (role === 'businessowner' || role === 'employee')) {
+      const products = await searchProducts(productName, dataOwnerId);
       if (products.length > 0) {
         return formatProductDetailsResponse(products);
       }
-      return `❌ **No products found** matching "${productName}". \n\n💡 Try searching with a different name or check if the product exists in your system.`;
+      return `No products found matching "${productName}".\n\nTry:\n• Check the spelling\n• Search by category or brand\n• Use a partial name`;
     }
   }
 
   // Detect order-specific queries
-  if ((message.includes('order') && 
-       (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about'))) ||
-      message.includes('customer order')) {
+  if ((message.includes('order') &&
+    (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about') || message.includes('search'))) ||
+    message.includes('customer order')) {
     let orderTerm = null;
-    
-    // Pattern: "order for [customer/product]"
+
     let match = userMessage.match(/order\s+(?:for\s+)?["']?([^"'.!?]+)["']?/i);
-    if (match && match[1]) {
-      orderTerm = match[1].trim();
-    }
-    
-    // Pattern: "tell me about [order/customer]"
+    if (match && match[1]) orderTerm = match[1].trim();
+
     if (!orderTerm) {
       match = userMessage.match(/(?:tell me about|show me|details? (?:on|for|about))\s+(?:(?:the\s+)?order\s+)?["']?([^"'.!?]+)["']?/i);
-      if (match && match[1]) {
-        orderTerm = match[1].trim();
-      }
+      if (match && match[1]) orderTerm = match[1].trim();
     }
 
-    if (orderTerm && role === 'businessowner') {
-      const orders = await searchOrders(orderTerm, userId);
+    if (orderTerm && (role === 'businessowner' || role === 'employee')) {
+      const orders = await searchOrders(orderTerm, dataOwnerId);
       if (orders.length > 0) {
         return formatOrderDetailsResponse(orders);
       }
-      return `❌ **No orders found** matching "${orderTerm}". \n\n💡 Try searching with a customer name or product name.`;
+      return `No orders found matching "${orderTerm}".\n\nTry searching by:\n• Customer name\n• Product name`;
     }
   }
 
   // Detect category queries
-  if (message.includes('category') || message.includes('categories') || message.includes('category list')) {
-    if (role === 'businessowner') {
-      const categories = await getCategoryDetails(userId);
-      if (categories.length > 0) {
-        return formatCategoryDetailsResponse(categories);
-      }
-      return `📦 **No categories found.** Create categories in your dashboard to organize products.`;
+  if (message.includes('category') || message.includes('categories')) {
+    if (role === 'businessowner' || role === 'employee') {
+      const categories = await getCategoryDetails(dataOwnerId);
+      if (categories.length > 0) return formatCategoryDetailsResponse(categories);
+      return `No categories found yet. Create categories from your dashboard to organize products.`;
     }
   }
 
   // Detect warehouse queries with details
-  if ((message.includes('warehouse') || message.includes('warehouses')) && 
-      (message.includes('detail') || message.includes('address') || message.includes('manager') || message.includes('location') || message.includes('info'))) {
+  if ((message.includes('warehouse') || message.includes('warehouses')) &&
+    (message.includes('detail') || message.includes('address') || message.includes('manager') || message.includes('location') || message.includes('info') || message.includes('show') || message.includes('list'))) {
+    if (role === 'businessowner' || role === 'employee') {
+      const warehouses = await getWarehouseDetails(dataOwnerId);
+      if (warehouses.length > 0) return formatWarehouseDetailsResponse(warehouses);
+      return `No warehouses set up yet. Add warehouses from your dashboard to manage inventory locations.`;
+    }
+  }
+
+  // Detect salary/payment queries
+  if (message.includes('salary') || message.includes('payment') || message.includes('pay') || message.includes('wage') || message.includes('payroll')) {
+    const context = await getContextForRole(userId, role);
     if (role === 'businessowner') {
-      const warehouses = await getWarehouseDetails(userId);
-      if (warehouses.length > 0) {
-        return formatWarehouseDetailsResponse(warehouses);
-      }
-      return `🏢 **No warehouses found.** Add warehouses in your dashboard to start managing inventory locations.`;
+      return getSalaryResponse(context);
+    } else if (role === 'employee') {
+      return getEmployeeSalaryResponse(context);
     }
   }
 
   return null;
+};
+
+/**
+ * Salary response for business owner
+ */
+const getSalaryResponse = (context) => {
+  let response = `**SALARY & PAYMENTS OVERVIEW:**\n\n`;
+
+  if (context.totalSalaryPaid) {
+    response += `• Total Salary Paid: **$${context.totalSalaryPaid.toLocaleString()}**\n`;
+    response += `• Payment Transactions: **${context.salaryPaymentCount}**\n\n`;
+  } else {
+    response += `• No salary payments recorded yet.\n\n`;
+  }
+
+  if (context.recentSalaryPayments?.length) {
+    response += `**Recent Payments:**\n`;
+    context.recentSalaryPayments.forEach((p, i) => {
+      const empName = p.employee ? `${p.employee.fname} ${p.employee.lname || ''}`.trim() : 'Unknown';
+      response += `${i + 1}. **${empName}** — $${p.amount} on ${new Date(p.paymentDate).toLocaleDateString()} (${p.status})\n`;
+    });
+    response += `\n`;
+  }
+
+  response += `Manage salary payments from the **Salary Management** section in your dashboard.`;
+  return response;
+};
+
+/**
+ * Salary response for employee
+ */
+const getEmployeeSalaryResponse = (context) => {
+  let response = `**YOUR SALARY PAYMENTS:**\n\n`;
+
+  if (context.mySalaryPayments?.length) {
+    context.mySalaryPayments.forEach((p, i) => {
+      response += `${i + 1}. **$${p.amount}** — ${new Date(p.paymentDate).toLocaleDateString()}\n`;
+      response += `   • Method: ${p.paymentMethod || 'N/A'}\n`;
+      response += `   • Period: ${p.paymentPeriod || 'N/A'}\n`;
+      response += `   • Status: ${p.status}\n\n`;
+    });
+  } else {
+    response += `No salary payments found in your records.\n\n`;
+  }
+
+  response += `Contact your business owner for salary-related questions.`;
+  return response;
 };
 
 /**
@@ -307,21 +632,20 @@ const handleSpecificEntityQuery = async (userMessage, role, userId) => {
 const formatProductDetailsResponse = (products) => {
   if (!products || products.length === 0) return null;
 
-  let response = `📦 **PRODUCT DETAILS:**\n\n`;
+  let response = `**PRODUCT DETAILS** (${products.length} found):\n\n`;
 
   products.forEach((product, index) => {
     const details = getProductDetails(product);
-    response += `${index + 1}. **${details.name}**\n`;
-    response += `   📂 Category: ${details.category}\n`;
-    response += `   💰 Price: $${details.price}\n`;
-    response += `   📊 Stock: ${details.stock} units\n`;
-    response += `   🏷️ Brand: ${details.brand || 'N/A'}\n`;
-    response += `   📅 Manufacture Date: ${details.manufactureDate}\n`;
-    response += `   📅 Expiry Date: ${details.expiryDate}\n`;
-    response += `   🏢 Warehouses: ${details.warehouses.join(', ')}\n`;
-    response += `   📝 Description: ${details.description}\n`;
-    if (details.stock < 10) {
-      response += `   ⚠️ **LOW STOCK ALERT**\n`;
+    response += `**${index + 1}. ${details.name}**\n`;
+    response += `   • Category: ${details.category}\n`;
+    response += `   • Price: $${details.price}\n`;
+    response += `   • Stock: ${details.stock} units ${details.stock < 10 ? '⚠️ LOW' : '✅'}\n`;
+    response += `   • Brand: ${details.brand || 'N/A'}\n`;
+    response += `   • Mfg Date: ${details.manufactureDate}\n`;
+    response += `   • Exp Date: ${details.expiryDate}\n`;
+    response += `   • Warehouses: ${details.warehouses.join(', ')}\n`;
+    if (details.description !== 'No description available') {
+      response += `   • Description: ${details.description}\n`;
     }
     response += `\n`;
   });
@@ -335,25 +659,22 @@ const formatProductDetailsResponse = (products) => {
 const formatOrderDetailsResponse = (orders) => {
   if (!orders || orders.length === 0) return null;
 
-  let response = `📋 **ORDER DETAILS:**\n\n`;
+  let response = `**ORDER DETAILS** (${orders.length} found):\n\n`;
 
   orders.forEach((order, index) => {
     const details = getOrderDetails(order);
-    response += `${index + 1}. **Order for ${details.customer}**\n`;
-    response += `   👤 Customer: ${details.customer}\n`;
-    response += `   📦 Product: ${details.product}\n`;
-    response += `   📂 Category: ${details.category || 'N/A'}\n`;
-    response += `   💵 Amount: ${details.amount}\n`;
-    response += `   📅 Order Date: ${details.orderDate}\n`;
-    response += `   ⏰ Deadline: ${details.deadline}\n`;
+    response += `**${index + 1}. Order for ${details.customer}**\n`;
+    response += `   • Product: ${details.product}\n`;
+    response += `   • Amount: ${details.amount}\n`;
+    response += `   • Ordered: ${details.orderDate}\n`;
+    response += `   • Deadline: ${details.deadline}\n`;
     if (details.daysRemaining !== 'N/A') {
-      response += `   ⏱️ Days Remaining: ${details.daysRemaining} days\n`;
-      response += `   ${details.urgency}\n`;
+      response += `   • ${details.urgency} (${details.daysRemaining} days)\n`;
     }
-    response += `   ✅ Product Status: ${details.productStatus}\n`;
-    response += `   🚚 Delivery Status: ${details.deliveryStatus}\n`;
-    response += `   📍 Delivery Address: ${details.address}\n`;
-    response += `   📝 Notes: ${details.notes}\n`;
+    response += `   • Status: ${details.productStatus} | Delivery: ${details.deliveryStatus}\n`;
+    if (details.address !== 'Not provided') {
+      response += `   • Address: ${details.address}\n`;
+    }
     response += `\n`;
   });
 
@@ -366,14 +687,12 @@ const formatOrderDetailsResponse = (orders) => {
 const formatCategoryDetailsResponse = (categories) => {
   if (!categories || categories.length === 0) return null;
 
-  let response = `📂 **CATEGORY DETAILS:**\n\n`;
-  response += `Total Categories: ${categories.length}\n\n`;
+  let response = `**CATEGORIES** (${categories.length} total):\n\n`;
 
   categories.forEach((category, index) => {
     response += `${index + 1}. **${category.name}**\n`;
-    response += `   📝 Description: ${category.description}\n`;
-    response += `   📦 Products: ${category.productCount} items\n`;
-    response += `\n`;
+    response += `   • Description: ${category.description}\n`;
+    response += `   • Products: ${category.productCount} items\n\n`;
   });
 
   return response;
@@ -385,16 +704,17 @@ const formatCategoryDetailsResponse = (categories) => {
 const formatWarehouseDetailsResponse = (warehouses) => {
   if (!warehouses || warehouses.length === 0) return null;
 
-  let response = `🏢 **WAREHOUSE DETAILS:**\n\n`;
-  response += `Total Warehouses: ${warehouses.length}\n\n`;
+  let response = `**WAREHOUSES** (${warehouses.length} total):\n\n`;
 
   warehouses.forEach((warehouse, index) => {
-    response += `${index + 1}. **${warehouse.wName}**\n`;
-    response += `   👨‍💼 Manager: ${warehouse.wManager}\n`;
-    response += `   📍 Address: ${warehouse.wAddress}\n`;
-    response += `   📞 Contact: ${warehouse.wContact}\n`;
-    response += `   📧 Email: ${warehouse.wEmail}\n`;
-    response += `   🏙️ City: ${warehouse.city || 'N/A'} | State: ${warehouse.state || 'N/A'} | Country: ${warehouse.country || 'N/A'}\n`;
+    response += `**${index + 1}. ${warehouse.wName}**\n`;
+    response += `   • Manager: ${warehouse.wManager}\n`;
+    response += `   • Address: ${warehouse.wAddress}\n`;
+    response += `   • Contact: ${warehouse.wContact}\n`;
+    response += `   • Email: ${warehouse.wEmail}\n`;
+    if (warehouse.city || warehouse.state) {
+      response += `   • Location: ${[warehouse.city, warehouse.state, warehouse.country].filter(Boolean).join(', ')}\n`;
+    }
     response += `\n`;
   });
 
@@ -402,118 +722,53 @@ const formatWarehouseDetailsResponse = (warehouses) => {
 };
 
 /**
- * Convert paragraph response to list format
+ * Generate response using Groq API with conversation history
  */
-const convertToListFormat = (text) => {
-  if (!text) return text;
-  
-  // If already formatted as a list, return as is
-  if (text.includes('\n•') || text.includes('\n-') || text.includes('\n✅') || text.includes('\n1.')) {
-    return text;
-  }
-  
-  // Split by periods and convert to bullet points
-  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
-  
-  if (sentences.length > 1) {
-    // Multiple sentences - convert to bullet list
-    let listResponse = '';
-    sentences.forEach((sentence, index) => {
-      const cleanSentence = sentence.replace(/^[0-9]+\.\s*/, '').trim();
-      if (cleanSentence.length > 0) {
-        listResponse += `• ${cleanSentence}\n`;
-      }
-    });
-    return listResponse.trim();
-  }
-  
-  return text;
-};
-
-/**
- * Generate response using Groq API (FREE)
- * Groq provides fast, free LLM inference without API costs
- */
-const generateGroqResponse = async (userMessage, role, context) => {
+const generateGroqResponse = async (userMessage, role, context, userId) => {
   try {
     if (!USE_GROQ || !groqClient) {
       return generateEnhancedResponse(userMessage, role, context);
     }
 
+    // First check for specific entity queries that need DB lookups
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId);
+    if (entityResponse) return entityResponse;
+
     const systemPrompt = generateSystemPrompt(role);
     const contextString = formatContextForAI(context, role);
 
+    // Build conversation messages with history
     const messages = [
       {
         role: 'system',
-        content: `${systemPrompt}\n\nCurrent Business Context:\n${contextString}\n\nIMPORTANT INSTRUCTION: You MUST respond ONLY in English language. Do not use any other language. Provide helpful, concise, and accurate responses based on the user's query and the provided context. If the user asks something not related to inventory management, politely redirect them.`
-      },
-      {
-        role: 'user',
-        content: userMessage
+        content: `${systemPrompt}\n\nCurrent Data:\n${contextString}`
       }
     ];
+
+    // Add conversation history for multi-turn context
+    const history = getConversationHistory(userId);
+    history.slice(-6).forEach(msg => {
+      if (msg.role === 'user' || msg.role === 'assistant') {
+        messages.push({ role: msg.role, content: msg.content });
+      }
+    });
+
+    // Add current user message
+    messages.push({ role: 'user', content: userMessage });
 
     const response = await groqClient.chat.completions.create({
       messages: messages,
-      model: 'mixtral-8x7b-32768', // Free Groq model - very fast and capable
-      max_tokens: 500,
-      temperature: 0.7
+      model: 'llama-3.1-8b-instant',
+      max_tokens: 600,
+      temperature: 0.6,
+      top_p: 0.9
     });
 
     let responseText = response.choices[0].message.content.trim();
-    
-    // Convert paragraph response to list format
-    responseText = convertToListFormat(responseText);
-    
     return responseText;
   } catch (error) {
-    // Fallback to rule-based response
-    return generateEnhancedResponse(userMessage, role, context);
-  }
-};
-
-/**
- * Generate response using OpenAI API (DEPRECATED)
- * This function is kept for reference only
- * New implementations should use Groq API instead
- */
-const generateOpenAIResponse = async (userMessage, role, context) => {
-  try {
-    const systemPrompt = generateSystemPrompt(role);
-    const contextString = formatContextForAI(context, role);
-
-    const messages = [
-      {
-        role: 'system',
-        content: `${systemPrompt}\n\nCurrent Business Context:\n${contextString}\n\nIMPORTANT INSTRUCTION: You MUST respond ONLY in English language. Do not use any other language. Provide helpful, concise, and accurate responses based on the user's query and the provided context. If the user asks something not related to inventory management, politely redirect them.`
-      },
-      {
-        role: 'user',
-        content: userMessage
-      }
-    ];
-
-    const response = await axios.post(
-      'https://api.openai.com/v1/chat/completions',
-      {
-        model: 'gpt-3.5-turbo',
-        messages: messages,
-        max_tokens: 500,
-        temperature: 0.7
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
-
-    return response.data.choices[0].message.content.trim();
-  } catch (error) {
-    // Fallback to rule-based response
-    return generateEnhancedResponse(userMessage, role, context);
+    // Fallback to intelligent rule-based response
+    return generateIntelligentResponse(userMessage, role, context, userId);
   }
 };
 
@@ -522,17 +777,45 @@ const generateOpenAIResponse = async (userMessage, role, context) => {
  */
 const searchProducts = async (productName, businessownerId) => {
   try {
-    // Escape special regex characters to prevent injection
     const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
     const products = await Product.find({
       businessowner: businessownerId,
       $or: [
         { name: { $regex: escapedName, $options: 'i' } },
-        { pcode: { $regex: escapedName, $options: 'i' } },
-        { desc: { $regex: escapedName, $options: 'i' } }
+        { desc: { $regex: escapedName, $options: 'i' } },
+        { brand: { $regex: escapedName, $options: 'i' } }
       ]
     }).select('name category price totalProducts brand mDate eDate desc warehouse').limit(5);
+
+    // Resolve category and warehouse names for display
+    if (products.length > 0) {
+      const Category = require('../models/Category');
+      const catIds = [...new Set(products.map(p => p.category).filter(Boolean))];
+      const whIds = [...new Set(products.flatMap(p => Array.isArray(p.warehouse) ? p.warehouse : (p.warehouse ? [p.warehouse] : [])).filter(Boolean))];
+
+      const [cats, whs] = await Promise.all([
+        Category.find({ _id: { $in: catIds } }).select('_id cName').lean(),
+        Warehouse.find({ _id: { $in: whIds } }).select('_id wName').lean()
+      ]);
+
+      const catMap = {};
+      cats.forEach(c => { catMap[c._id.toString()] = c.cName; });
+      const whMap = {};
+      whs.forEach(w => { whMap[w._id.toString()] = w.wName; });
+
+      return products.map(p => {
+        const pObj = p.toObject ? p.toObject() : { ...p };
+        pObj.categoryName = catMap[pObj.category] || pObj.category;
+        if (Array.isArray(pObj.warehouse)) {
+          pObj.warehouseNames = pObj.warehouse.map(wId => whMap[wId] || wId).filter(Boolean);
+        } else if (pObj.warehouse) {
+          pObj.warehouseNames = [whMap[pObj.warehouse] || pObj.warehouse];
+        } else {
+          pObj.warehouseNames = [];
+        }
+        return pObj;
+      });
+    }
     return products;
   } catch (error) {
     return [];
@@ -544,17 +827,14 @@ const searchProducts = async (productName, businessownerId) => {
  */
 const searchOrders = async (searchTerm, businessownerId) => {
   try {
-    // Escape special regex characters
     const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    
     const orders = await Order.find({
       businessowner: businessownerId,
       $or: [
         { customerName: { $regex: escapedTerm, $options: 'i' } },
-        { productName: { $regex: escapedTerm, $options: 'i' } },
-        { customerContactNo: { $regex: escapedTerm, $options: 'i' } }
+        { productName: { $regex: escapedTerm, $options: 'i' } }
       ]
-    }).select('customerName productName totalAmt orderDate productStatus deliveryStatus address notes').limit(5);
+    }).select('customerName productName totalAmt orderDate productStatus deliveryStatus deliveryDeadline address additionalNotes productCategory pAvailability').limit(5);
     return orders;
   } catch (error) {
     return [];
@@ -568,18 +848,13 @@ const getCategoryDetails = async (businessownerId) => {
   try {
     const Category = require('../models/Category');
     const categories = await Category.find({ businessowner: businessownerId });
-    
     const categoriesWithCounts = await Promise.all(
       categories.map(async (cat) => {
         const count = await Product.countDocuments({
           businessowner: businessownerId,
-          category: cat.cName
+          category: cat._id.toString()
         });
-        return {
-          name: cat.cName,
-          description: cat.cDesc,
-          productCount: count
-        };
+        return { name: cat.cName, description: cat.cDesc, productCount: count };
       })
     );
     return categoriesWithCounts;
@@ -606,16 +881,15 @@ const getWarehouseDetails = async (businessownerId) => {
  */
 const getProductDetails = (product) => {
   if (!product) return null;
-  
   return {
     name: product.name,
-    category: product.category,
+    category: product.categoryName || product.category,
     price: product.price,
     stock: product.totalProducts,
     brand: product.brand,
     manufactureDate: product.mDate ? new Date(product.mDate).toLocaleDateString() : 'N/A',
     expiryDate: product.eDate ? new Date(product.eDate).toLocaleDateString() : 'N/A',
-    warehouses: product.warehouse && product.warehouse.length > 0 ? product.warehouse : ['Not assigned'],
+    warehouses: product.warehouseNames && product.warehouseNames.length > 0 ? product.warehouseNames : (product.warehouse && product.warehouse.length > 0 ? product.warehouse : ['Not assigned']),
     description: product.desc || 'No description available'
   };
 };
@@ -625,17 +899,16 @@ const getProductDetails = (product) => {
  */
 const getOrderDetails = (order) => {
   if (!order) return null;
-  
+
   const daysUntilDeadline = order.deliveryDeadline ? Math.ceil((new Date(order.deliveryDeadline) - new Date()) / (1000 * 60 * 60 * 24)) : 'N/A';
-  
-  // Determine urgency level
+
   let urgency = '✅ On Track';
   if (typeof daysUntilDeadline === 'number') {
     if (daysUntilDeadline < 0) urgency = '🔴 OVERDUE';
-    else if (daysUntilDeadline < 3) urgency = '⚠️ URGENT - DEADLINE APPROACHING';
+    else if (daysUntilDeadline < 3) urgency = '⚠️ URGENT';
     else if (daysUntilDeadline < 7) urgency = '⚡ Due Soon';
   }
-  
+
   return {
     customer: order.customerName,
     product: order.productName,
@@ -654,330 +927,488 @@ const getOrderDetails = (order) => {
 };
 
 /**
- * Enhanced rule-based response system supporting general queries
+ * Enhanced rule-based response system
  */
 const generateEnhancedResponse = (userMessage, role, context) => {
   const message = userMessage.toLowerCase().trim();
-  
-  // Intent detection for various query types
+
   const intents = {
-    inventory_status: ['inventory', 'stock', 'products', 'how many products', 'product count', 'stock levels'],
-    order_status: ['order', 'orders', 'pending', 'status', 'delivery', 'shipment'],
-    low_stock_alert: ['low stock', 'reorder', 'out of stock', 'running low', 'stock levels'],
-    employee_tasks: ['tasks', 'assigned', 'my work', 'what do i do'],
-    employee_details: ['employee', 'employees', 'team', 'staff', 'worker', 'personnel', 'my team', 'show employees'],
-    supplier_info: ['supplier', 'supply', 'pending orders'],
-    warehouse_info: ['warehouse', 'storage', 'location', 'address', 'manager'],
-    product_details: ['product detail', 'product info', 'show product', 'tell me about product', 'item detail', 'item info'],
-    order_details: ['order detail', 'order info', 'show order', 'tell me about order', 'customer order', 'order status detail'],
-    category_details: ['category', 'categories', 'category list', 'all categories'],
-    help: ['help', 'what can you do', 'capabilities', 'features'],
-    greeting: ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
-    general_inquiry: ['how', 'what', 'tell me', 'why', 'when', 'where', 'which']
+    greeting: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy', 'greetings'],
+    dashboard: ['dashboard', 'overview', 'summary', 'business summary', 'how is business', 'how are things'],
+    inventory_status: ['inventory', 'stock', 'products', 'how many products', 'product count', 'stock level'],
+    order_status: ['order', 'orders', 'pending', 'delivery', 'shipment', 'tracking'],
+    low_stock_alert: ['low stock', 'reorder', 'out of stock', 'running low', 'stock alert', 'need restock'],
+    employee_info: ['employee', 'employees', 'team', 'staff', 'worker', 'personnel', 'my team', 'members'],
+    supplier_info: ['supplier', 'supply', 'vendor', 'procurement'],
+    warehouse_info: ['warehouse', 'storage', 'location', 'depot'],
+    salary_info: ['salary', 'payment', 'pay', 'wage', 'compensation', 'payroll'],
+    revenue_info: ['revenue', 'income', 'earning', 'sales', 'profit', 'money'],
+    top_products: ['top product', 'best selling', 'popular', 'top selling', 'most sold'],
+    urgent_tasks: ['urgent', 'overdue', 'deadline', 'due soon', 'priority', 'critical'],
+    reports: ['report', 'analytics', 'export', 'download', 'generate report'],
+    help: ['help', 'what can you do', 'capabilities', 'features', 'commands'],
+    thanks: ['thank', 'thanks', 'appreciate', 'great', 'awesome', 'perfect', 'good job'],
   };
 
-  // Detect user intent
   let detectedIntent = null;
+  let bestScore = 0;
   for (const [intent, keywords] of Object.entries(intents)) {
-    if (keywords.some(keyword => message.includes(keyword))) {
+    const score = keywords.filter(kw => message.includes(kw)).length;
+    if (score > bestScore) {
+      bestScore = score;
       detectedIntent = intent;
-      break;
     }
   }
 
-  // Generate response based on detected intent
-  if (detectedIntent === 'greeting') {
-    const greetings = {
-      businessowner: "Hello! 👋 I'm your AI Assistant. I can help you with inventory management, order tracking, product insights, supplier management, and business analytics. What would you like to know?",
-      employee: "Hello! 👋 I'm here to help. I can assist with your assigned tasks, order details, product information, and work schedules. How can I help?",
-      supplier: "Hello! 👋 Welcome! I can help you with your pending orders, delivery status, product supplies, and order history. What do you need?"
-    };
-    return greetings[role] || greetings.businessowner;
+  switch (detectedIntent) {
+    case 'greeting':
+      return getGreetingResponse(role, context);
+    case 'dashboard':
+      return getDashboardResponse(role, context);
+    case 'inventory_status':
+      return getInventoryStatusResponse(role, context);
+    case 'order_status':
+      return getOrderStatusResponse(role, context);
+    case 'low_stock_alert':
+      return getLowStockResponse(role, context);
+    case 'employee_info':
+      return getEmployeeDetailsResponse(role, context);
+    case 'supplier_info':
+      return getSupplierInfoResponse(role, context);
+    case 'warehouse_info':
+      return getWarehouseInfoResponse(role, context);
+    case 'salary_info':
+      return role === 'employee' ? getEmployeeSalaryResponse(context) : getSalaryResponse(context);
+    case 'revenue_info':
+      return getRevenueResponse(role, context);
+    case 'top_products':
+      return getTopProductsResponse(role, context);
+    case 'urgent_tasks':
+      return getUrgentTasksResponse(role, context);
+    case 'reports':
+      return getReportsHelpResponse(role);
+    case 'help':
+      return getHelpResponse(role);
+    case 'thanks':
+      return `You're welcome! 😊 Let me know if there's anything else I can help with.`;
+    default:
+      return getDefaultResponse(role);
   }
-
-  if (detectedIntent === 'inventory_status') {
-    return getInventoryStatusResponse(role, context);
-  }
-
-  if (detectedIntent === 'order_status') {
-    return getOrderStatusResponse(role, context);
-  }
-
-  if (detectedIntent === 'low_stock_alert') {
-    return getLowStockResponse(role, context);
-  }
-
-  if (detectedIntent === 'employee_tasks') {
-    return getEmployeeTasksResponse(role, context);
-  }
-
-  if (detectedIntent === 'employee_details') {
-    return getEmployeeDetailsResponse(role, context);
-  }
-
-  if (detectedIntent === 'supplier_info') {
-    return getSupplierInfoResponse(role, context);
-  }
-
-  if (detectedIntent === 'warehouse_info') {
-    return getWarehouseInfoResponse(role, context);
-  }
-
-  if (detectedIntent === 'product_details') {
-    return `📦 **Product Details:** Please specify the product name.\n\nExample: "Tell me about product iPhone 13" or "Show me details for Laptop"`;
-  }
-
-  if (detectedIntent === 'order_details') {
-    return `📋 **Order Details:** Please specify the customer name or product name.\n\nExample: "Show order for John Doe" or "Tell me about order for Laptop"`;
-  }
-
-  if (detectedIntent === 'category_details') {
-    return `📂 **Category Details:** Please wait while I fetch all categories...`;
-  }
-
-  if (detectedIntent === 'help') {
-    return getHelpResponse(role);
-  }
-
-  // General inquiry - provide contextual information
-  if (detectedIntent === 'general_inquiry') {
-    return getComprehensiveDashboard(role, context);
-  }
-
-  // For queries not matching specific intents, provide helpful response
-  return `I'm not sure I understood that query. I can help with:\n- Inventory and stock management\n- Order tracking and status\n- Product information\n- Employee tasks and assignments\n- Supplier orders and deliveries\n- Warehouse information\n\nFeel free to ask me anything related to your inventory management!`;
 };
 
 /**
- * Response generators for specific intents
+ * Response generators
  */
+const getGreetingResponse = (role, context) => {
+  const roleGreetings = {
+    businessowner: () => {
+      let msg = `👋 Hello! Welcome back to your dashboard.\n\n**Quick Overview:**\n`;
+      msg += `• ${context.products || 0} products in stock\n`;
+      msg += `• ${context.pendingOrders || 0} pending orders\n`;
+      msg += `• ${context.employees || 0} team members\n`;
+      if (context.lowStockProducts?.length > 0) {
+        msg += `\n⚠️ **Alert:** ${context.lowStockProducts.length} items need restocking!\n`;
+      }
+      msg += `\nHow can I help you today?`;
+      return msg;
+    },
+    employee: () => {
+      let msg = `👋 Hello${context.employeeName ? `, ${context.employeeName}` : ''}! Ready to tackle your tasks?\n\n`;
+      msg += `**Your Status:**\n`;
+      msg += `• ${context.totalProducts || 0} products\n`;
+      msg += `• ${context.pendingTasks || 0} pending tasks\n`;
+      msg += `• ${context.totalOrders || 0} orders\n`;
+      if (context.urgentOrders?.length > 0) {
+        msg += `\n🚨 **${context.urgentOrders.length} urgent order(s)** need attention!\n`;
+      }
+      if (context.overdueOrders?.length > 0) {
+        msg += `🔴 **${context.overdueOrders.length} overdue order(s)** — please prioritize!\n`;
+      }
+      msg += `\nWhat would you like to know?`;
+      return msg;
+    },
+    supplier: () => {
+      let msg = `👋 Hello${context.supplierName ? `, ${context.supplierName}` : ''}!\n\n`;
+      msg += `**Your Orders:**\n`;
+      msg += `• ${context.pendingOrders || 0} pending deliveries\n`;
+      msg += `• ${context.deliveredOrders || 0} completed deliveries\n`;
+      msg += `\nHow can I assist you?`;
+      return msg;
+    }
+  };
+  return (roleGreetings[role] || roleGreetings.businessowner)();
+};
+
+const getDashboardResponse = (role, context) => {
+  if (role === 'businessowner') {
+    let msg = `📊 **BUSINESS DASHBOARD**\n\n`;
+    msg += `**Key Metrics:**\n`;
+    msg += `• Products: **${context.products || 0}**\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending: **${context.pendingOrders || 0}** | Completed: **${context.completedOrders || 0}**\n`;
+    msg += `• Revenue: **$${(context.totalRevenue || 0).toLocaleString()}**\n`;
+    msg += `• Avg Order: **$${context.avgOrderValue || 0}**\n\n`;
+    msg += `👥 **Team:** ${context.employees || 0} employees\n`;
+    msg += `🏢 **Warehouses:** ${context.warehouses || 0}\n`;
+    msg += `📦 **Suppliers:** ${context.suppliers || 0}\n\n`;
+
+    if (context.lowStockProducts?.length > 0) {
+      msg += `⚠️ **Alerts:**\n`;
+      msg += `• ${context.lowStockProducts.length} products low on stock\n`;
+    }
+
+    if (context.topProducts?.length > 0) {
+      msg += `\n🏆 **Top Products:**\n`;
+      context.topProducts.slice(0, 3).forEach((p, i) => {
+        msg += `${i + 1}. ${p._id} — ${p.totalSold} orders ($${p.totalRevenue})\n`;
+      });
+    }
+    return msg;
+  } else if (role === 'employee') {
+    let msg = `📋 **YOUR DASHBOARD**\n\n`;
+    msg += `• Total Products: **${context.totalProducts || 0}**\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending Tasks: **${context.pendingTasks || 0}**\n`;
+    msg += `• Completed: **${context.completedTasks || 0}**\n\n`;
+    if (context.urgentOrders?.length > 0) {
+      msg += `🚨 **Urgent:** ${context.urgentOrders.length} orders due within 3 days\n`;
+    }
+    if (context.overdueOrders?.length > 0) {
+      msg += `🔴 **Overdue:** ${context.overdueOrders.length} past deadline\n`;
+    }
+    return msg;
+  } else if (role === 'supplier') {
+    let msg = `📦 **SUPPLY DASHBOARD**\n\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending: **${context.pendingOrders || 0}**\n`;
+    msg += `• Delivered: **${context.deliveredOrders || 0}**\n`;
+    msg += `• Total Value: **$${(context.totalOrderValue || 0).toLocaleString()}**\n`;
+    return msg;
+  }
+  return getDashboardResponse('businessowner', context);
+};
+
 const getInventoryStatusResponse = (role, context) => {
   if (role === 'businessowner') {
-    return `📊 **Inventory Overview:**\n\n✓ Total Products: ${context.products || 0}\n✓ Active Warehouses: ${context.warehouses || 0}\n✓ Managed Suppliers: ${context.suppliers || 0}\n${context.lowStockProducts?.length > 0 ? `\n⚠️ **Alert:** ${context.lowStockProducts.length} products have low stock:\n${context.lowStockProducts.map(p => `  • ${p.name} - ${p.totalProducts} units`).join('\n')}` : '\n✅ All products have adequate stock levels.'}`;
+    let msg = `📦 **INVENTORY STATUS:**\n\n`;
+    msg += `• Total Products: **${context.products || 0}**\n`;
+    msg += `• Warehouses: **${context.warehouses || 0}**\n`;
+    msg += `• Suppliers: **${context.suppliers || 0}**\n\n`;
+    if (context.lowStockProducts?.length > 0) {
+      msg += `⚠️ **Low Stock Alert** (${context.lowStockProducts.length} items):\n`;
+      context.lowStockProducts.forEach(p => {
+        msg += `• ${p.name} — **${p.totalProducts}** units (${p.category})\n`;
+      });
+    } else {
+      msg += `✅ All products are adequately stocked!`;
+    }
+    return msg;
   } else if (role === 'employee') {
-    return `📦 **Your Inventory Assignment:**\n\n✓ Assigned Products: ${context.assignedProducts || 0}\n✓ Active Orders: ${context.assignedOrders || 0}\n✓ Pending Tasks: ${context.pendingTasks || 0}\n\nFocus on completing your assigned tasks on time.`;
+    let msg = `📦 **INVENTORY STATUS:**\n\n`;
+    msg += `• Total Products: **${context.totalProducts || 0}**\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending Tasks: **${context.pendingTasks || 0}**\n`;
+    if (context.lowStockProducts?.length > 0) {
+      msg += `\n⚠️ **Low Stock** (${context.lowStockProducts.length} items):\n`;
+      context.lowStockProducts.forEach(p => {
+        msg += `• ${p.name} — **${p.totalProducts}** units\n`;
+      });
+    }
+    return msg;
   } else if (role === 'supplier') {
-    return `📋 **Your Supply Status:**\n\n✓ Pending Orders: ${context.pendingOrders || 0}\n✓ Delivered Orders: ${context.deliveredOrders || 0}\n\nMake sure to fulfill pending orders promptly.`;
+    return `📋 **Supply Status:**\n\n• Pending Orders: **${context.pendingOrders || 0}**\n• Delivered: **${context.deliveredOrders || 0}**\n\nPlease fulfill pending orders promptly.`;
   }
+  return 'Inventory information is available from your dashboard.';
 };
 
 const getOrderStatusResponse = (role, context) => {
   if (role === 'businessowner') {
-    return `📈 **Order Management Status:**\n\n✓ Total Orders: ${context.totalOrders || 0}\n✓ Pending Orders: ${context.pendingOrders || 0}\n${context.recentOrders?.length > 0 ? `\n**Recent Orders:**\n${context.recentOrders.slice(0, 3).map(o => `  • ${o.customerName} - ${o.productName} (${o.productStatus})`).join('\n')}` : ''}\n\nKeep track of order deadlines and ensure timely delivery.`;
+    let msg = `📋 **ORDER STATUS:**\n\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending: **${context.pendingOrders || 0}**\n`;
+    msg += `• Completed: **${context.completedOrders || 0}**\n\n`;
+    if (context.recentOrders?.length > 0) {
+      msg += `**Recent Orders:**\n`;
+      context.recentOrders.slice(0, 5).forEach((o, i) => {
+        msg += `${i + 1}. ${o.customerName} → ${o.productName} — $${o.totalAmt} (${o.productStatus})\n`;
+      });
+    }
+    return msg;
   } else if (role === 'employee') {
-    return `✓ **Your Assigned Orders:**\n\n✓ Total Assigned: ${context.assignedOrders || 0}\n✓ Pending Tasks: ${context.pendingTasks || 0}\n${context.assignedOrdersList?.length > 0 ? `\n**Your Orders:**\n${context.assignedOrdersList.slice(0, 3).map(o => `  • ${o.productName} for ${o.customerName} - Status: ${o.productStatus}`).join('\n')}` : ''}\n\nFocus on completing your assigned tasks on time.`;
+    let msg = `📋 **ORDERS:**\n\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending: **${context.pendingTasks || 0}**\n`;
+    msg += `• Completed: **${context.completedTasks || 0}**\n\n`;
+    if (context.assignedOrdersList?.length > 0) {
+      msg += `**Your Recent Orders:**\n`;
+      context.assignedOrdersList.slice(0, 5).forEach((o, i) => {
+        msg += `${i + 1}. ${o.productName} for ${o.customerName} — ${o.productStatus}\n`;
+      });
+    }
+    return msg;
   } else if (role === 'supplier') {
-    return `✓ **Your Supply Orders:**\n\n✓ Pending: ${context.pendingOrders || 0}\n✓ Delivered: ${context.deliveredOrders || 0}\n${context.recentSupplierOrders?.length > 0 ? `\n**Recent Orders:**\n${context.recentSupplierOrders.slice(0, 3).map(o => `  • ${o.productName} (Qty: ${o.quantity}) - ${o.status}`).join('\n')}` : ''}\n\nEnsure timely delivery of all pending orders.`;
+    let msg = `📦 **YOUR SUPPLY ORDERS:**\n\n`;
+    msg += `• Pending: **${context.pendingOrders || 0}**\n`;
+    msg += `• Delivered: **${context.deliveredOrders || 0}**\n\n`;
+    if (context.recentSupplierOrders?.length > 0) {
+      msg += `**Recent Orders:**\n`;
+      context.recentSupplierOrders.slice(0, 5).forEach((o, i) => {
+        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, $${o.amount}/unit (${o.status})\n`;
+      });
+    }
+    return msg;
   }
+  return 'Order information is available from your dashboard.';
 };
 
 const getLowStockResponse = (role, context) => {
   if (role === 'businessowner') {
     if (context.lowStockProducts?.length > 0) {
-      return `⚠️ **Low Stock Alert:**\n\nYou have ${context.lowStockProducts.length} products with less than 10 units:\n\n${context.lowStockProducts.map(p => `• **${p.name}** (${p.category})\n  Currently: ${p.totalProducts} units\n  Action: Consider reordering`).join('\n\n')}\n\nWould you like to create supplier orders for these products?`;
-    } else {
-      return `✅ **Great News!** All your products have adequate stock levels. Your inventory is well-managed!`;
+      let msg = `⚠️ **LOW STOCK ALERT** (${context.lowStockProducts.length} products):\n\n`;
+      context.lowStockProducts.forEach((p, i) => {
+        msg += `${i + 1}. **${p.name}** (${p.category})\n`;
+        msg += `   • Current stock: **${p.totalProducts}** units\n`;
+        msg += `   • Price: $${p.price}\n`;
+        msg += `   • Action: Reorder recommended\n\n`;
+      });
+      msg += `💡 Create supplier orders for these products from your dashboard.`;
+      return msg;
     }
+    return `✅ **Great news!** All your products have adequate stock levels. No restocking needed right now.`;
   }
-  return `Your inventory appears to be in good condition. No immediate restocking needed.`;
-};
-
-const getEmployeeTasksResponse = (role, context) => {
-  if (role === 'employee') {
-    return `📋 **Your Tasks Summary:**\n\n✓ Assigned Products: ${context.assignedProducts || 0}\n✓ Assigned Orders: ${context.assignedOrders || 0}\n✓ Pending Tasks: ${context.pendingTasks || 0}\n${context.assignedOrdersList?.length > 0 ? `\n**Current Assignments:**\n${context.assignedOrdersList.map(o => `  • ${o.productName} for ${o.customerName}\n    Status: ${o.productStatus} | Delivery: ${o.deliveryStatus}`).join('\n\n')}` : ''}\n\nWork on completing your pending tasks efficiently!`;
-  }
-  return `You don't have access to employee task information.`;
+  return `Stock information is managed by the business owner. Check your dashboard for relevant details.`;
 };
 
 const getEmployeeDetailsResponse = (role, context) => {
   if (role === 'businessowner') {
-    if (context.employeesList && context.employeesList.length > 0) {
-      const employeeDetails = context.employeesList.map(emp => {
+    if (context.employeesList?.length > 0) {
+      let msg = `👥 **TEAM MEMBERS** (${context.employees || 0} total):\n\n`;
+      context.employeesList.forEach((emp, i) => {
         const name = `${emp.fname} ${emp.lname || ''}`.trim();
         const joinDate = emp.jDate ? new Date(emp.jDate).toLocaleDateString() : 'N/A';
-        return `• **${name}**\n  Email: ${emp.email}\n  Phone: ${emp.phone || 'N/A'}\n  Joined: ${joinDate}\n  Role: ${emp.role || 'employee'}`;
-      }).join('\n\n');
-
-      return `👥 **Team Members:**\n\nTotal Employees: ${context.employees || 0}\n\n**Employee Details:**\n${employeeDetails}\n\n💡 **Tip:** You can manage employees from the Employee section in your dashboard. Add, edit, or remove team members as needed.`;
-    } else {
-      return `👥 **Team Information:**\n\nYou have ${context.employees || 0} employees in your team.\n\n📝 **No detailed information available yet.** Start by adding employees to your team from the dashboard.`;
+        msg += `**${i + 1}. ${name}**\n`;
+        msg += `   • Email: ${emp.email}\n`;
+        msg += `   • Phone: ${emp.phone || 'N/A'}\n`;
+        msg += `   • Role: ${emp.role || 'employee'}\n`;
+        msg += `   • Joined: ${joinDate}\n\n`;
+      });
+      msg += `💡 Manage your team from the **Employees** section.`;
+      return msg;
     }
+    return `👥 You have **${context.employees || 0}** employees. Add team members from your dashboard.`;
+  } else if (role === 'employee') {
+    let msg = `👤 **YOUR PROFILE:**\n\n`;
+    msg += `• Name: **${context.employeeName || 'N/A'}**\n`;
+    msg += `• Role: **${context.employeeRole || 'employee'}**\n`;
+    msg += `• Pending Tasks: **${context.pendingTasks || 0}**\n`;
+    msg += `• Completed Tasks: **${context.completedTasks || 0}**\n`;
+    return msg;
   }
-  return `You don't have access to employee information.`;
+  return `Employee information is not accessible for your role.`;
 };
 
 const getSupplierInfoResponse = (role, context) => {
   if (role === 'supplier') {
-    return `📦 **Your Supply Overview:**\n\n✓ Pending Orders: ${context.pendingOrders || 0}\n✓ Delivered Orders: ${context.deliveredOrders || 0}\n${context.recentSupplierOrders?.length > 0 ? `\n**Your Recent Orders:**\n${context.recentSupplierOrders.map(o => `  • ${o.productName}\n    Quantity: ${o.quantity} | Price: ${o.price} | Status: ${o.status}`).join('\n\n')}` : ''}\n\nMaintain good delivery performance to keep strong business relationships.`;
+    let msg = `📦 **YOUR SUPPLY OVERVIEW:**\n\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Pending: **${context.pendingOrders || 0}**\n`;
+    msg += `• Delivered: **${context.deliveredOrders || 0}**\n`;
+    msg += `• Total Value: **$${(context.totalOrderValue || 0).toLocaleString()}**\n\n`;
+    if (context.recentSupplierOrders?.length > 0) {
+      msg += `**Recent Orders:**\n`;
+      context.recentSupplierOrders.slice(0, 5).forEach((o, i) => {
+        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, $${o.amount}/unit (${o.status})\n`;
+      });
+    }
+    return msg;
   } else if (role === 'businessowner') {
-    return `✓ You have ${context.suppliers || 0} active suppliers. Manage your supplier relationships to ensure consistent product availability.`;
+    return `📦 **Suppliers:** You have **${context.suppliers || 0}** active suppliers. Manage them from the **Suppliers** section.`;
   }
+  return `Supplier information is not available for your role.`;
 };
 
 const getWarehouseInfoResponse = (role, context) => {
   if (role === 'businessowner') {
-    return `🏢 **Warehouse Management:**\n\n✓ Total Warehouses: ${context.warehouses || 0}\n\nYour warehouses are strategically important for inventory distribution. Ensure proper organization and stock tracking across all locations.`;
+    return `🏢 **WAREHOUSES:**\n\n• Total: **${context.warehouses || 0}** warehouses\n\n💡 For detailed warehouse info (addresses, managers), ask: *"Show warehouse details"*`;
   }
-  return `You don't have access to warehouse information.`;
+  return `Warehouse information is managed by the business owner.`;
 };
 
-const getComprehensiveDashboard = (role, context) => {
+const getRevenueResponse = (role, context) => {
   if (role === 'businessowner') {
-    let dashboard = `📊 **BUSINESS DASHBOARD - COMPREHENSIVE OVERVIEW**\n\n`;
-    
-    // Key metrics section
-    dashboard += `🎯 **Key Performance Indicators:**\n`;
-    dashboard += `  • Products in Stock: ${context.products || 0}\n`;
-    dashboard += `  • Total Orders: ${context.totalOrders || 0}\n`;
-    dashboard += `  • Pending Orders: ${context.pendingOrders || 0}\n`;
-    dashboard += `  • Team Members: ${context.employees || 0}\n`;
-    dashboard += `  • Active Warehouses: ${context.warehouses || 0}\n`;
-    dashboard += `  • Suppliers: ${context.suppliers || 0}\n\n`;
+    let msg = `💰 **REVENUE & SALES:**\n\n`;
+    msg += `• Total Revenue: **$${(context.totalRevenue || 0).toLocaleString()}**\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
+    msg += `• Avg Order Value: **$${context.avgOrderValue || 0}**\n\n`;
 
-    // Alerts section
-    if (context.lowStockProducts?.length > 0) {
-      dashboard += `⚠️ **Urgent Alerts:**\n`;
-      dashboard += `  ${context.lowStockProducts.length} products need restocking\n`;
-      dashboard += `  - ${context.lowStockProducts.slice(0, 2).map(p => `${p.name} (${p.totalProducts} units)`).join('\n  - ')}\n\n`;
-    }
-
-    // Recent activity section
-    if (context.recentOrders?.length > 0) {
-      dashboard += `📈 **Recent Activity:**\n`;
-      context.recentOrders.slice(0, 2).forEach(order => {
-        dashboard += `  • Order from ${order.customerName}: ${order.productName} (${order.productStatus})\n`;
+    if (context.topProducts?.length > 0) {
+      msg += `🏆 **Top Revenue Products:**\n`;
+      context.topProducts.forEach((p, i) => {
+        msg += `${i + 1}. ${p._id} — ${p.totalSold} orders, $${p.totalRevenue} revenue\n`;
       });
-      dashboard += `\n`;
     }
 
-    // Team section
-    if (context.employeesList?.length > 0) {
-      dashboard += `👥 **Your Team (${context.employeesList.length} members):**\n`;
-      context.employeesList.slice(0, 3).forEach(emp => {
-        dashboard += `  • ${emp.fname} ${emp.lname || ''} - ${emp.email}\n`;
-      });
-      dashboard += `\n`;
+    if (context.totalSalaryPaid) {
+      msg += `\n💼 **Expenses:**\n`;
+      msg += `• Salary paid: $${context.totalSalaryPaid.toLocaleString()}\n`;
     }
-
-    // Recommendations section
-    dashboard += `💡 **Recommendations:**\n`;
-    if (context.lowStockProducts?.length > 0) {
-      dashboard += `  1. Reorder low stock items immediately\n`;
-    }
-    if (context.pendingOrders > 5) {
-      dashboard += `  2. Focus on clearing pending orders\n`;
-    }
-    dashboard += `  3. Review employee performance metrics\n`;
-    dashboard += `  4. Maintain supplier relationships\n`;
-
-    return dashboard;
-  } else if (role === 'employee') {
-    const summary = `📋 **YOUR WORK SUMMARY:**\n\n`;
-    const metrics = `✓ Assigned Products: ${context.assignedProducts || 0}\n`;
-    const orders = `✓ Assigned Orders: ${context.assignedOrders || 0}\n`;
-    const pending = `⚠️ Pending Tasks: ${context.pendingTasks || 0}\n\n`;
-    const recommendation = `Focus on completing your pending tasks to keep the team on track!`;
-    
-    return summary + metrics + orders + pending + recommendation;
+    return msg;
   } else if (role === 'supplier') {
-    return `📦 **SUPPLIER OVERVIEW:**\n\n✓ Pending Orders: ${context.pendingOrders || 0}\n✓ Delivered: ${context.deliveredOrders || 0}\n\nMaintain excellent delivery performance to strengthen your business relationship with us.`;
+    return `💰 **Your Total Order Value:** $${(context.totalOrderValue || 0).toLocaleString()}\n• Pending: ${context.pendingOrders || 0}\n• Delivered: ${context.deliveredOrders || 0}`;
   }
+  return `Revenue information is accessible to business owners only.`;
+};
+
+const getTopProductsResponse = (role, context) => {
+  if (role === 'businessowner') {
+    if (context.topProducts?.length > 0) {
+      let msg = `🏆 **TOP SELLING PRODUCTS:**\n\n`;
+      context.topProducts.forEach((p, i) => {
+        msg += `**${i + 1}. ${p._id}**\n`;
+        msg += `   • Orders: ${p.totalSold}\n`;
+        msg += `   • Revenue: $${p.totalRevenue}\n\n`;
+      });
+      return msg;
+    }
+    return `📊 No sales data available yet. Start selling to see your top products!`;
+  }
+  return `Top product information is available to business owners.`;
+};
+
+const getUrgentTasksResponse = (role, context) => {
+  if (role === 'employee') {
+    let msg = `🚨 **URGENT & OVERDUE TASKS:**\n\n`;
+    if (context.overdueOrders?.length > 0) {
+      msg += `🔴 **OVERDUE** (${context.overdueOrders.length}):\n`;
+      context.overdueOrders.forEach((o, i) => {
+        msg += `${i + 1}. ${o.productName} for ${o.customerName} — Due: ${new Date(o.deliveryDeadline).toLocaleDateString()}\n`;
+      });
+      msg += `\n`;
+    }
+    if (context.urgentOrders?.length > 0) {
+      msg += `⚠️ **DUE SOON** (${context.urgentOrders.length}):\n`;
+      context.urgentOrders.forEach((o, i) => {
+        msg += `${i + 1}. ${o.productName} for ${o.customerName} — Due: ${new Date(o.deliveryDeadline).toLocaleDateString()}\n`;
+      });
+    }
+    if (!context.overdueOrders?.length && !context.urgentOrders?.length) {
+      msg += `✅ No urgent or overdue tasks. You're on track!`;
+    }
+    return msg;
+  } else if (role === 'businessowner') {
+    let msg = `🚨 **ATTENTION REQUIRED:**\n\n`;
+    msg += `• Pending Orders: **${context.pendingOrders || 0}**\n`;
+    if (context.lowStockProducts?.length > 0) {
+      msg += `• Low Stock Items: **${context.lowStockProducts.length}**\n`;
+    }
+    msg += `\n💡 Review your dashboard for detailed action items.`;
+    return msg;
+  }
+  return `Check your dashboard for priority items.`;
+};
+
+const getReportsHelpResponse = (role) => {
+  if (role === 'businessowner') {
+    return `📊 **REPORTS & ANALYTICS:**\n\nGenerate and download reports from the **Reports** section:\n\n• 📦 Product Reports — stock levels, categories\n• 📋 Order Reports — sales, status tracking\n• 👥 Employee Reports — team performance\n• 📦 Supplier Reports — supply chain data\n• 💰 Salary Reports — payment history\n\n💡 Go to **Dashboard → Reports** to export data.`;
+  } else if (role === 'employee') {
+    return `📊 **REPORTS:**\n\nYou can view and export reports (if permitted) from the **Reports** section.\n\n💡 Ask your business owner if you need specific report access.`;
+  }
+  return `📊 Reports are available from the Reports section in your dashboard.`;
 };
 
 const getHelpResponse = (role) => {
   const helpMessages = {
-    businessowner: `🤖 **I can help you with:**\n\n📊 Business Insights\n  • Inventory status and stock levels\n  • Product availability and low stock alerts\n  • Order management and tracking\n  • Warehouse information\n  • Supplier management\n  • Employee details and team information\n  • Category management\n\n📦 **Specific Details**\n  • Product details, pricing, stock levels\n  • Order information by customer or product\n  • Warehouse locations and managers\n  • Category listings and product counts\n  • Employee information and contact details\n\n💡 **Try asking:**\n  • "How many products do I have?"\n  • "Show me low stock items"\n  • "What's my order status?"\n  • "Tell me about my employees"\n  • "Show my team members"\n  • "Tell me details about product iPhone"\n  • "Show order for John Doe"\n  • "Show all categories"\n  • "Tell me about warehouse locations"\n  • "Help with inventory"`,
-    
-    employee: `🤖 **I can help you with:**\n\n📦 Task Management\n  • Your assigned tasks and orders\n  • Product details\n  • Delivery status\n  • Work assignments\n\n💡 **Try asking:**\n  • "What are my tasks?"\n  • "Show my assigned orders"\n  • "Tell me about my assignments"\n  • "What products am I managing?"\n  • "Show me my order details"`,
-    
-    supplier: `🤖 **I can help you with:**\n\n📋 Supply Management\n  • Your pending orders\n  • Delivery status\n  • Order history\n  • Supply requests\n  • Order details and pricing\n\n💡 **Try asking:**\n  • "What are my pending orders?"\n  • "Show my delivery status"\n  • "Tell me about recent orders"\n  • "What do I need to supply?"\n  • "Show order details for [product name]"`
+    businessowner: `🤖 **I CAN HELP YOU WITH:**\n\n📊 **Business Insights:**\n• "Show my dashboard" — overview of everything\n• "Revenue summary" — sales and income\n• "Top selling products" — best performers\n\n📦 **Inventory:**\n• "Stock status" — current inventory\n• "Low stock alerts" — items needing restock\n• "Product details [name]" — specific product info\n\n📋 **Orders:**\n• "Order status" — pending and recent orders\n• "Show orders for [customer]" — specific order info\n\n👥 **Team:**\n• "Show employees" — team member list\n• "Salary overview" — payment information\n\n🏢 **Operations:**\n• "Warehouse details" — locations and managers\n• "Show categories" — product categories\n• "Supplier info" — supplier management\n\n📊 **Reports:**\n• "Report help" — how to generate reports`,
+
+    employee: `🤖 **I CAN HELP YOU WITH:**\n\n📋 **Your Work:**\n• "My dashboard" — your task overview\n• "My orders" — assigned orders list\n• "Urgent tasks" — deadlines and overdue items\n\n💰 **Salary:**\n• "My salary" — payment history\n\n📦 **Products:**\n• "Inventory status" — your assigned products\n\n❓ Just ask naturally — I'll understand!`,
+
+    supplier: `🤖 **I CAN HELP YOU WITH:**\n\n📦 **Orders:**\n• "My orders" — all your supply orders\n• "Pending orders" — what needs delivery\n• "Order status" — delivery tracking\n\n💰 **Business:**\n• "Revenue" — your total order value\n• "Dashboard" — quick overview\n\n❓ Ask me anything about your supply operations!`
   };
 
   return helpMessages[role] || helpMessages.businessowner;
 };
 
-/**
- * Natural Language Understanding - Advanced Analysis
- * Analyzes user query to understand intent without relying on exact keywords
- */
-const analyzeUserIntent = (userMessage) => {
-  const message = userMessage.toLowerCase().trim();
-  
-  // Keywords grouped by concept (ENGLISH ONLY)
-  const intents = {
-    // INVENTORY RELATED
-    inventory: {
-      keywords: ['stock', 'inventory', 'item', 'product', 'goods', 'material', 'supplies', 'merchandise'],
-      actions: ['check', 'see', 'show', 'view', 'tell', 'how many', 'how much', 'count'],
-      variations: ['low stock', 'out of stock', 'available', 'in stock']
-    },
-    // ORDER RELATED
-    order: {
-      keywords: ['order', 'orders', 'customer', 'purchase', 'delivery', 'shipment', 'sold', 'sale', 'transaction'],
-      actions: ['check', 'track', 'status', 'pending', 'see', 'show', 'tell', 'view', 'list'],
-      variations: ['pending order', 'complete order', 'delivered', 'completed', 'processed']
-    },
-    // LOW STOCK ALERT
-    alert: {
-      keywords: ['low', 'alert', 'warning', 'ending', 'finish', 'out of stock', 'no stock', 'critical'],
-      actions: ['need', 'require', 'must', 'should', 'reorder', 'urgent'],
-      variations: ['reorder', 'stock out', 'stock ended', 'no items', 'empty']
-    },
-    // EMPLOYEE RELATED
-    employee: {
-      keywords: ['employee', 'staff', 'worker', 'team', 'member', 'person', 'people', 'manager', 'supervisor'],
-      actions: ['show', 'list', 'tell', 'get', 'details', 'info', 'view', 'see'],
-      variations: ['my team', 'workers', 'my staff', 'team members', 'all employees']
-    },
-    // WAREHOUSE RELATED
-    warehouse: {
-      keywords: ['warehouse', 'storage', 'location', 'address', 'store', 'depot', 'place', 'facility'],
-      actions: ['where', 'show', 'tell', 'location', 'address', 'find'],
-      variations: ['where is', 'find warehouse', 'warehouse location', 'storage location']
-    },
-    // CATEGORY RELATED
-    category: {
-      keywords: ['category', 'categories', 'type', 'types', 'group', 'classification', 'class', 'kind'],
-      actions: ['show', 'list', 'see', 'all', 'view', 'get'],
-      variations: ['all categories', 'product types', 'categories list', 'show categories']
-    },
-    // SUPPLIER RELATED
-    supplier: {
-      keywords: ['supplier', 'vendor', 'seller', 'purchase', 'supply', 'ordering', 'procurement', 'source'],
-      actions: ['show', 'tell', 'pending', 'check', 'view', 'list'],
-      variations: ['pending supplies', 'supplier order', 'purchase order']
-    },
-    // HELP REQUEST
-    help: {
-      keywords: ['help', 'what can', 'capability', 'feature', 'assist', 'guidance', 'support', 'instructions'],
-      actions: ['do', 'help', 'can', 'show', 'guide'],
-      variations: ['what can you do', 'how to use', 'commands', 'features']
-    }
-  };
-
-  // Analyze intent
-  for (const [intent, data] of Object.entries(intents)) {
-    const hasKeyword = data.keywords.some(kw => message.includes(kw));
-    const hasAction = data.actions.some(act => message.includes(act));
-    
-    // If has keyword + action or keyword + variation, it's likely this intent
-    if (hasKeyword) {
-      const hasContext = hasAction || data.variations.some(v => message.includes(v));
-      if (hasContext) {
-        return intent;
-      }
-    }
-  }
-  
-  return 'general'; // Default to general inquiry
+const getDefaultResponse = (role) => {
+  return `I'm not sure I understood that. Here are some things I can help with:\n\n• "Dashboard" — quick overview\n• "Stock status" — inventory levels\n• "Orders" — order tracking\n• "Revenue" or "Salary" — financial info\n• "Help" — see all commands\n\nTry asking in a different way, or type **help** for the full list!`;
 };
 
 /**
- * Extract specific parameters from user query
+ * Intent Analysis for intelligent responses
+ */
+const analyzeUserIntent = (userMessage) => {
+  const message = userMessage.toLowerCase().trim();
+
+  const intents = {
+    inventory: {
+      keywords: ['stock', 'inventory', 'item', 'product', 'goods', 'material'],
+      actions: ['check', 'see', 'show', 'view', 'tell', 'how many', 'count'],
+      variations: ['low stock', 'out of stock', 'available', 'in stock']
+    },
+    order: {
+      keywords: ['order', 'orders', 'customer', 'purchase', 'delivery', 'shipment', 'sale'],
+      actions: ['check', 'track', 'status', 'pending', 'see', 'show', 'tell', 'view'],
+      variations: ['pending order', 'delivered', 'completed', 'processed']
+    },
+    alert: {
+      keywords: ['low', 'alert', 'warning', 'ending', 'finish', 'out of stock', 'critical'],
+      actions: ['need', 'require', 'reorder', 'urgent'],
+      variations: ['reorder', 'stock out', 'empty']
+    },
+    employee: {
+      keywords: ['employee', 'staff', 'worker', 'team', 'member', 'manager', 'supervisor'],
+      actions: ['show', 'list', 'tell', 'get', 'details', 'info', 'view'],
+      variations: ['my team', 'workers', 'team members', 'all employees']
+    },
+    warehouse: {
+      keywords: ['warehouse', 'storage', 'location', 'depot', 'facility'],
+      actions: ['where', 'show', 'tell', 'location', 'address', 'find'],
+      variations: ['where is', 'find warehouse', 'warehouse location']
+    },
+    category: {
+      keywords: ['category', 'categories', 'type', 'group', 'classification'],
+      actions: ['show', 'list', 'see', 'all', 'view', 'get'],
+      variations: ['all categories', 'product types', 'categories list']
+    },
+    supplier: {
+      keywords: ['supplier', 'vendor', 'seller', 'supply', 'procurement'],
+      actions: ['show', 'tell', 'pending', 'check', 'view', 'list'],
+      variations: ['supplier order', 'purchase order']
+    },
+    salary: {
+      keywords: ['salary', 'payment', 'pay', 'wage', 'compensation', 'payroll'],
+      actions: ['show', 'check', 'my', 'view', 'history'],
+      variations: ['my salary', 'salary history', 'pay slip']
+    },
+    revenue: {
+      keywords: ['revenue', 'income', 'earning', 'sales', 'profit', 'money', 'financial'],
+      actions: ['show', 'total', 'how much', 'check'],
+      variations: ['total sales', 'revenue report', 'income summary']
+    },
+    help: {
+      keywords: ['help', 'what can', 'capability', 'feature', 'command', 'guide'],
+      actions: ['do', 'help', 'can', 'show'],
+      variations: ['what can you do', 'how to use', 'commands']
+    }
+  };
+
+  for (const [intent, data] of Object.entries(intents)) {
+    const hasKeyword = data.keywords.some(kw => message.includes(kw));
+    const hasAction = data.actions.some(act => message.includes(act));
+
+    if (hasKeyword) {
+      const hasContext = hasAction || data.variations.some(v => message.includes(v));
+      if (hasContext) return intent;
+    }
+  }
+
+  return 'general';
+};
+
+/**
+ * Extract query parameters
  */
 const extractQueryParameters = (userMessage) => {
   const message = userMessage.toLowerCase();
-  
   return {
     searchTerm: extractSearchTerm(message),
     timeFrame: extractTimeFrame(message),
@@ -986,18 +1417,13 @@ const extractQueryParameters = (userMessage) => {
 };
 
 const extractSearchTerm = (message) => {
-  // Look for terms after common prepositions
   const patterns = [
     /(?:product|item|order)?\s+(?:named|called|for|about|of)?\s+["']?([^"'.!?]+?)["']?(?:\s|$|\.)/i,
     /["']([^"']+)["']/,
-    /\b([A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\b/ // CamelCase names
   ];
-  
   for (const pattern of patterns) {
     const match = message.match(pattern);
-    if (match && match[1]) {
-      return match[1].trim();
-    }
+    if (match && match[1]) return match[1].trim();
   }
   return null;
 };
@@ -1018,175 +1444,50 @@ const extractStatus = (message) => {
 };
 
 /**
- * Convert responses to LIST FORMAT
- */
-const formatResponseAsList = (title, items, format = 'simple') => {
-  if (!items || items.length === 0) {
-    return `❌ **${title}**\n\nNo information found.`;
-  }
-
-  let response = `✅ **${title}**\n\n`;
-  
-  if (format === 'detailed') {
-    items.forEach((item, index) => {
-      response += `**${index + 1}. ${item.name || item.label}**\n`;
-      Object.keys(item).forEach(key => {
-        if (key !== 'name' && key !== 'label') {
-          response += `   • ${key.replace(/([A-Z])/g, ' $1').toLowerCase()}: ${item[key]}\n`;
-        }
-      });
-      response += '\n';
-    });
-  } else if (format === 'simple') {
-    items.forEach((item, index) => {
-      const label = item.name || item.label || item;
-      response += `${index + 1}. ${label}\n`;
-    });
-  } else if (format === 'table') {
-    // Table format
-    response += '| # | Name | Details |\n';
-    response += '|---|------|---------|\n';
-    items.forEach((item, index) => {
-      response += `| ${index + 1} | ${item.name || item.label} | ${item.details || ''} |\n`;
-    });
-  }
-  
-  return response;
-};
-
-/**
- * Generate LIST FORMAT responses for different intents
- */
-const generateListFormatResponse = (intent, context, userId, role, params = {}) => {
-  const lists = {
-    inventory: () => {
-      const items = context.lowStockProducts?.map(p => ({
-        name: `${p.name}`,
-        label: `${p.name}`,
-        category: p.category,
-        current_stock: `${p.totalProducts} units`,
-        status: p.totalProducts < 5 ? '🔴 Critical' : '🟡 Low'
-      })) || [];
-      
-      return formatResponseAsList('📦 Stock Status', [
-        `📊 Total Products: ${context.products || 0}`,
-        `⚠️ Low Stock Items: ${context.lowStockProducts?.length || 0}`,
-        ...(items.length > 0 ? ['', '**Low Stock Products:**'] : []),
-        ...items.map(i => `   • ${i.name} - ${i.current_stock} (${i.status})`)
-      ]);
-    },
-
-    order: () => {
-      const items = context.recentOrders?.map(o => ({
-        name: `${o.customerName} - ${o.productName}`,
-        amount: `Amount: ${o.totalAmt}`,
-        status: o.productStatus,
-        date: new Date(o.orderDate).toLocaleDateString('en-US')
-      })) || [];
-      
-      return formatResponseAsList('📋 Order Information', [
-        `📦 Total Orders: ${context.totalOrders || 0}`,
-        `⏳ Pending Orders: ${context.pendingOrders || 0}`,
-        ...(items.length > 0 ? ['', '**Recent Orders:**'] : []),
-        ...items.map(i => `   • ${i.name} - ${i.amount} (${i.status}) - ${i.date}`)
-      ]);
-    },
-
-    employee: () => {
-      const items = context.employeesList?.map(e => ({
-        name: `${e.fname} ${e.lname || ''}`,
-        email: e.email,
-        phone: e.phone,
-        position: e.role,
-        joined: new Date(e.jDate).toLocaleDateString('en-US')
-      })) || [];
-      
-      return formatResponseAsList('👥 Employee List', [
-        `👤 Total Employees: ${context.employees || 0}`,
-        ...(items.length > 0 ? ['', '**Employee Details:**'] : []),
-        ...items.map(i => `   • ${i.name}\n      📧 ${i.email}\n      📱 ${i.phone}\n      👔 ${i.position}`)
-      ]);
-    },
-
-    warehouse: () => {
-      const items = context.warehouses || 0;
-      
-      return formatResponseAsList('🏢 Warehouse Information', [
-        `🏢 Total Warehouses: ${items}`,
-        `📍 Active Locations: ${items}`,
-        `📦 Capacity Status: ${items > 0 ? 'Active' : 'No information available'}`
-      ]);
-    },
-
-    category: () => {
-      return formatResponseAsList('📂 Categories', [
-        `📂 All Categories`,
-        `🏷️ View all product categories`,
-        `✏️ Add new categories`
-      ]);
-    },
-
-    supplier: () => {
-      const items = context.recentSupplierOrders?.map(s => ({
-        name: s.productName,
-        quantity: `${s.quantity} units`,
-        price: `Price: ${s.price}`,
-        status: s.status
-      })) || [];
-      
-      return formatResponseAsList('📦 Supplier Orders', [
-        `📋 Pending Orders: ${context.pendingOrders || 0}`,
-        `✅ Delivered Orders: ${context.deliveredOrders || 0}`,
-        ...(items.length > 0 ? ['', '**Recent Orders:**'] : []),
-        ...items.map(i => `   • ${i.name} - ${i.quantity} - ${i.price} (${i.status})`)
-      ]);
-    },
-
-    help: () => {
-      return `ℹ️ **What Can I Help You With?**\n\n` +
-        `I can assist you with the following:\n\n` +
-        `1. 📦 **Check Stock**: "How much stock do I have?" or "Show low stock items"\n` +
-        `2. 📋 **View Orders**: "Show orders" or "Pending orders"\n` +
-        `3. 👥 **Employee Information**: "Show employees" or "Team list"\n` +
-        `4. 🏢 **Warehouse Details**: "Where is the warehouse?"\n` +
-        `5. 📂 **Categories**: "Show all categories"\n` +
-        `6. 📦 **Supplier Orders**: "Supplier orders"\n\n` +
-        `**Ask me clearly in English - I will understand! 😊**`;
-    }
-  };
-
-  return lists[intent]?.() || lists.help();
-};
-
-/**
- * Generate response with intelligent analysis
+ * Generate response with intelligent analysis (fallback when Groq is unavailable)
  */
 const generateIntelligentResponse = async (userMessage, role, context, userId) => {
   try {
-    // 1. ANALYZE USER INTENT
-    const intent = analyzeUserIntent(userMessage);
-    
-    // 2. EXTRACT PARAMETERS
-    const params = extractQueryParameters(userMessage);
-    
-    // 3. FETCH ADDITIONAL DATA IF NEEDED
+    // Check for specific entity queries first
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId);
+    if (entityResponse) return entityResponse;
+
+    // Fetch context if needed
     if (!context || Object.keys(context).length === 0) {
       context = await getContextForRole(userId, role);
     }
-    
-    // 4. GENERATE LIST FORMAT RESPONSE
-    let response = generateListFormatResponse(intent, context, userId, role, params);
-    
-    return response;
+
+    // Use enhanced response system
+    return generateEnhancedResponse(userMessage, role, context);
   } catch (error) {
-    return `❌ **Error Occurred**\n\nPlease try again or type 'help' for assistance.`;
+    return `Something went wrong. Please try again or type **help** for assistance.`;
   }
 };
 
-/**
- * Generate response using simulated AI (can be replaced with real API)
- * For now, uses rule-based responses based on keywords
- */
+// Backward compatibility exports
+const convertToListFormat = (text) => {
+  if (!text) return text;
+  if (text.includes('\n•') || text.includes('\n-') || text.includes('\n✅') || text.includes('\n1.')) {
+    return text;
+  }
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim().length > 0);
+  if (sentences.length > 1) {
+    return sentences.map(s => `• ${s.replace(/^[0-9]+\.\s*/, '').trim()}`).join('\n');
+  }
+  return text;
+};
+
+const formatResponseAsList = (title, items, format = 'simple') => {
+  if (!items || items.length === 0) {
+    return `**${title}**\n\nNo information found.`;
+  }
+  let response = `**${title}**\n\n`;
+  items.forEach((item, index) => {
+    const label = item.name || item.label || item;
+    response += `${index + 1}. ${label}\n`;
+  });
+  return response;
+};
 
 module.exports = {
   getContextForRole,
@@ -1199,5 +1500,3 @@ module.exports = {
   generateIntelligentResponse,
   convertToListFormat
 };
-
-

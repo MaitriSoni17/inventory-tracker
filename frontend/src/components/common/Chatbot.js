@@ -1,22 +1,134 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import '../../styles/chatbot.css';
+
+/**
+ * Parse markdown-like formatting from bot responses into React elements
+ */
+const parseFormattedText = (text) => {
+  if (!text) return null;
+
+  // Split by newlines and process each line
+  const lines = text.split('\n');
+  const elements = [];
+
+  lines.forEach((line, lineIdx) => {
+    if (lineIdx > 0) {
+      elements.push(<br key={`br-${lineIdx}`} />);
+    }
+
+    // Process inline formatting: **bold**, *italic*, emojis
+    const parts = line.split(/(\*\*[^*]+\*\*)/g);
+    const processedParts = parts.map((part, partIdx) => {
+      // Bold text
+      const boldMatch = part.match(/^\*\*(.+)\*\*$/);
+      if (boldMatch) {
+        return <strong key={`b-${lineIdx}-${partIdx}`}>{boldMatch[1]}</strong>;
+      }
+      return <span key={`t-${lineIdx}-${partIdx}`}>{part}</span>;
+    });
+
+    // Detect list items (•, -, numbered)
+    const trimmed = line.trim();
+    if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('· ')) {
+      elements.push(
+        <div key={`li-${lineIdx}`} className="chat-list-item">
+          <span className="chat-bullet">•</span>
+          <span>{processedParts.map((p, i) => {
+            // Remove the leading bullet from the text
+            if (i === 0 && typeof p.props?.children === 'string') {
+              const txt = p.props.children.replace(/^[•\-·]\s*/, '');
+              return <span key={`fix-${i}`}>{txt}</span>;
+            }
+            return p;
+          })}</span>
+        </div>
+      );
+    } else if (/^\d+\.\s/.test(trimmed)) {
+      const numMatch = trimmed.match(/^(\d+)\.\s/);
+      elements.push(
+        <div key={`nl-${lineIdx}`} className="chat-list-item numbered">
+          <span className="chat-number">{numMatch[1]}.</span>
+          <span>{processedParts.map((p, i) => {
+            if (i === 0 && typeof p.props?.children === 'string') {
+              const txt = p.props.children.replace(/^\d+\.\s*/, '');
+              return <span key={`fix-${i}`}>{txt}</span>;
+            }
+            return p;
+          })}</span>
+        </div>
+      );
+    } else if (trimmed.length > 0) {
+      elements.push(<span key={`line-${lineIdx}`}>{processedParts}</span>);
+    }
+  });
+
+  return elements;
+};
+
+/**
+ * Get quick action suggestions based on user role
+ */
+const getQuickActions = (role) => {
+  const actions = {
+    businessowner: [
+      { label: '📊 Dashboard', text: 'Show my dashboard overview' },
+      { label: '📦 Stock', text: 'Show inventory status' },
+      { label: '⚠️ Low Stock', text: 'Show low stock alerts' },
+      { label: '📋 Orders', text: 'Show order status' },
+      { label: '💰 Revenue', text: 'Revenue summary' },
+      { label: '👥 Team', text: 'Show employees' },
+    ],
+    employee: [
+      { label: '📋 My Tasks', text: 'Show my dashboard' },
+      { label: '🚨 Urgent', text: 'Show urgent tasks' },
+      { label: '📦 My Orders', text: 'Show my orders' },
+      { label: '💰 Salary', text: 'My salary payments' },
+    ],
+    supplier: [
+      { label: '📦 My Orders', text: 'Show my orders' },
+      { label: '⏳ Pending', text: 'Show pending orders' },
+      { label: '💰 Revenue', text: 'My total order value' },
+      { label: '📊 Overview', text: 'Show dashboard' },
+    ],
+  };
+  return actions[role] || actions.businessowner;
+};
+
+/**
+ * Get role-aware welcome message
+ */
+const getWelcomeMessage = (role) => {
+  const messages = {
+    businessowner: "👋 Hello! I'm your AI Business Assistant. I can help you with inventory, orders, revenue, employees, and more. Try the quick actions below or ask me anything!",
+    employee: "👋 Hi there! I'm your AI Assistant. I can help with your tasks, orders, deadlines, and salary info. What would you like to know?",
+    supplier: "👋 Hello! I'm your AI Supply Assistant. I can help with order tracking, delivery updates, and supply status. How can I help?",
+  };
+  return messages[role] || messages.businessowner;
+};
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      text: "Hello! I'm your AI Assistant. How can I help you with your inventory management today?",
-      sender: 'bot',
-      timestamp: new Date()
-    }
-  ]);
+  const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(true);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const userRole = localStorage.getItem('role') || 'user';
+
+  // Initialize with role-aware welcome
+  useEffect(() => {
+    setMessages([
+      {
+        id: 1,
+        text: getWelcomeMessage(userRole),
+        sender: 'bot',
+        timestamp: new Date()
+      }
+    ]);
+  }, [userRole]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -32,43 +144,38 @@ const Chatbot = () => {
     }
   }, [isOpen, isMinimized]);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
+  const sendMessage = useCallback(async (messageText) => {
+    if (!messageText.trim()) return;
 
-    if (!inputMessage.trim()) return;
-
-    const userRole = localStorage.getItem('role') || 'user';
     const userId = localStorage.getItem('userId') || '';
     const authToken = localStorage.getItem('token') || '';
 
-    // Check if token exists
     if (!authToken) {
-      const errorMessage = {
-        id: messages.length + 1,
-        text: 'Authentication error: Please login again.',
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        text: '🔒 Authentication error: Please login again.',
         sender: 'bot',
         timestamp: new Date(),
         isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }]);
       return;
     }
 
-    // Add user message to chat
-    const newUserMessage = {
-      id: messages.length + 1,
-      text: inputMessage,
+    // Add user message
+    const userMsg = {
+      id: Date.now(),
+      text: messageText,
       sender: 'user',
       timestamp: new Date()
     };
-
-    setMessages(prev => [...prev, newUserMessage]);
+    setMessages(prev => [...prev, userMsg]);
     setInputMessage('');
     setIsLoading(true);
+    setShowQuickActions(false);
 
     try {
       const response = await axios.post('http://localhost:5000/api/chatbot/message', {
-        message: inputMessage,
+        message: messageText,
         role: userRole,
         userId: userId
       }, {
@@ -79,47 +186,65 @@ const Chatbot = () => {
       });
 
       if (response.data.success) {
-        const botMessage = {
-          id: messages.length + 2,
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1,
           text: response.data.message,
           sender: 'bot',
           timestamp: new Date()
-        };
-        setMessages(prev => [...prev, botMessage]);
+        }]);
+
+        // Extract and show contextual suggestions
+        const suggestions = getContextualSuggestions(messageText, userRole);
+        if (suggestions.length > 0) {
+          setMessages(prev => [...prev, {
+            id: Date.now() + 2,
+            suggestions: suggestions,
+            sender: 'suggestions',
+            timestamp: new Date()
+          }]);
+        }
       }
     } catch (error) {
-      let errorText = 'Sorry, I encountered an error. Please try again.';
-      
+      let errorText = '❌ Sorry, I encountered an error. Please try again.';
       if (error.response?.status === 401) {
-        errorText = 'Authentication failed. Please login again.';
+        errorText = '🔒 Authentication failed. Please login again.';
       } else if (error.response?.status === 400) {
-        errorText = 'Invalid request. Please check your input.';
+        errorText = '⚠️ Invalid request. Please rephrase your question.';
       } else if (error.response?.status === 500) {
-        errorText = 'Server error. Please try again later.';
+        errorText = '🔧 Server error. Please try again in a moment.';
       }
-      
-      const errorMessage = {
-        id: messages.length + 2,
+
+      setMessages(prev => [...prev, {
+        id: Date.now() + 1,
         text: errorText,
         sender: 'bot',
         timestamp: new Date(),
         isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }]);
     } finally {
       setIsLoading(false);
     }
+  }, [userRole]);
+
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    sendMessage(inputMessage);
+  };
+
+  const handleQuickAction = (text) => {
+    sendMessage(text);
   };
 
   const handleClearChat = () => {
     setMessages([
       {
-        id: 1,
-        text: "Hello! I'm your AI Assistant. How can I help you with your inventory management today?",
+        id: Date.now(),
+        text: getWelcomeMessage(userRole),
         sender: 'bot',
         timestamp: new Date()
       }
     ]);
+    setShowQuickActions(true);
   };
 
   const toggleChat = () => {
@@ -134,6 +259,8 @@ const Chatbot = () => {
   const formatTime = (date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const quickActions = getQuickActions(userRole);
 
   return (
     <>
@@ -159,7 +286,11 @@ const Chatbot = () => {
               <h3 className="chatbot-title">
                 <i className="fas fa-robot me-2"></i>AI Assistant
               </h3>
-              <p className="chatbot-subtitle">Always here to help</p>
+              <p className="chatbot-subtitle">
+                {userRole === 'businessowner' ? 'Business Intelligence' :
+                 userRole === 'employee' ? 'Task Helper' :
+                 userRole === 'supplier' ? 'Supply Manager' : 'Always here to help'}
+              </p>
             </div>
             <div className="chatbot-controls">
               <button 
@@ -185,24 +316,66 @@ const Chatbot = () => {
           {!isMinimized && (
             <>
               <div className="chatbot-messages">
-                {messages.map((msg) => (
-                  <div 
-                    key={msg.id} 
-                    className={`message ${msg.sender} ${msg.isError ? 'error' : ''}`}
-                  >
-                    <div className="message-content">
-                      {msg.sender === 'bot' && (
-                        <div className="message-avatar bot-avatar">
-                          <i className="fas fa-robot"></i>
+                {messages.map((msg) => {
+                  // Render suggestion chips
+                  if (msg.sender === 'suggestions') {
+                    return (
+                      <div key={msg.id} className="suggestions-row">
+                        {msg.suggestions.map((s, i) => (
+                          <button
+                            key={i}
+                            className="suggestion-chip"
+                            onClick={() => handleQuickAction(s.text)}
+                            disabled={isLoading}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div 
+                      key={msg.id} 
+                      className={`message ${msg.sender} ${msg.isError ? 'error' : ''}`}
+                    >
+                      <div className="message-content">
+                        {msg.sender === 'bot' && (
+                          <div className="message-avatar bot-avatar">
+                            <i className="fas fa-robot"></i>
+                          </div>
+                        )}
+                        <div className="message-bubble">
+                          <div className="message-text">
+                            {msg.sender === 'bot' ? parseFormattedText(msg.text) : msg.text}
+                          </div>
+                          <span className="message-time">{formatTime(msg.timestamp)}</span>
                         </div>
-                      )}
-                      <div className="message-bubble">
-                        <p>{msg.text}</p>
-                        <span className="message-time">{formatTime(msg.timestamp)}</span>
                       </div>
                     </div>
+                  );
+                })}
+
+                {/* Quick Actions on first load */}
+                {showQuickActions && messages.length <= 1 && (
+                  <div className="quick-actions-container">
+                    <p className="quick-actions-label">Quick Actions:</p>
+                    <div className="quick-actions-grid">
+                      {quickActions.map((action, i) => (
+                        <button
+                          key={i}
+                          className="quick-action-btn"
+                          onClick={() => handleQuickAction(action.text)}
+                          disabled={isLoading}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+
                 {isLoading && (
                   <div className="message bot">
                     <div className="message-content">
@@ -227,7 +400,7 @@ const Chatbot = () => {
                     ref={inputRef}
                     type="text"
                     className="chatbot-input"
-                    placeholder="Type your question..."
+                    placeholder="Ask me anything..."
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     disabled={isLoading}
@@ -259,6 +432,53 @@ const Chatbot = () => {
       )}
     </>
   );
+};
+
+/**
+ * Generate contextual follow-up suggestions based on what the user asked
+ */
+const getContextualSuggestions = (userMessage, role) => {
+  const msg = userMessage.toLowerCase();
+
+  if (msg.includes('dashboard') || msg.includes('overview')) {
+    if (role === 'businessowner') {
+      return [
+        { label: '⚠️ Low Stock', text: 'Show low stock alerts' },
+        { label: '📋 Orders', text: 'Show recent orders' },
+        { label: '💰 Revenue', text: 'Revenue summary' },
+      ];
+    }
+    return [];
+  }
+
+  if (msg.includes('order') || msg.includes('delivery')) {
+    if (role === 'businessowner') {
+      return [
+        { label: '⏳ Pending Only', text: 'Show pending orders only' },
+        { label: '🏆 Top Products', text: 'Show top selling products' },
+      ];
+    }
+    return [];
+  }
+
+  if (msg.includes('stock') || msg.includes('inventory')) {
+    return [
+      { label: '🏢 Warehouses', text: 'Show warehouse details' },
+      { label: '📂 Categories', text: 'Show categories' },
+    ];
+  }
+
+  if (msg.includes('employee') || msg.includes('team')) {
+    return [
+      { label: '💰 Salary', text: 'Salary overview' },
+    ];
+  }
+
+  if (msg.includes('help')) {
+    return [];
+  }
+
+  return [];
 };
 
 export default Chatbot;

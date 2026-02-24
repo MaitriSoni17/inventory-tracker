@@ -1,6 +1,51 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { chatbotKnowledge, keywordMappings } from './utils/chatbotKnowledge';
 import '../../styles/homepagechatbot.css';
+
+/**
+ * Parse formatted text for display (handles **bold**, emojis, bullets)
+ */
+const parseFormattedText = (text) => {
+  if (!text) return null;
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, idx) => {
+    const boldMatch = part.match(/^\*\*(.+)\*\*$/);
+    if (boldMatch) return <strong key={idx}>{boldMatch[1]}</strong>;
+    return <span key={idx}>{part}</span>;
+  });
+};
+
+/**
+ * Find the best matching FAQ answer for a user query
+ */
+const findFAQMatch = (userInput) => {
+  const lower = userInput.toLowerCase();
+  let bestFaq = null;
+  let bestScore = 0;
+
+  for (const faqCategory of Object.values(chatbotKnowledge.faqs)) {
+    for (const faq of faqCategory) {
+      const qWords = faq.q.toLowerCase().split(/\s+/);
+      let score = 0;
+      qWords.forEach(w => {
+        if (w.length > 3 && lower.includes(w)) score++;
+      });
+      // Bonus for question-type words aligning
+      if ((lower.includes('how') && faq.q.toLowerCase().includes('how')) ||
+          (lower.includes('what') && faq.q.toLowerCase().includes('what')) ||
+          (lower.includes('can') && faq.q.toLowerCase().includes('can'))) {
+        score += 0.5;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestFaq = faq;
+      }
+    }
+  }
+
+  // Only return if reasonable match (at least 2 keyword matches)
+  return bestScore >= 2 ? bestFaq : null;
+};
 
 const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,13 +58,15 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
       if (onExternalOpenHandled) onExternalOpenHandled();
     }
   }, [externalOpen, onExternalOpenHandled]);
+
   const [messages, setMessages] = useState([
     {
       id: 1,
-      text: "👋 Hello! I'm your AI Assistant. I can help you with information about Inline Tracker, our features, pricing, and FAQs. What would you like to know?",
+      text: "👋 Hello! I'm the **Inline Tracker** Assistant. I can help you learn about our features, pricing, and how to get started.",
       sender: 'bot',
       timestamp: new Date(),
-      isList: false
+      hasSuggestions: true,
+      suggestions: ['📋 Features', '💰 Pricing', '🚀 Getting Started', '📞 Support']
     }
   ]);
   const [inputMessage, setInputMessage] = useState('');
@@ -41,167 +88,204 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
     }
   }, [isOpen, isMinimized]);
 
-  // Function to match keywords and find relevant response
+  // Enhanced keyword matching with scoring
   const findMatchingResponse = (userInput) => {
     const lowerInput = userInput.toLowerCase();
     let bestMatch = null;
-    let matchScore = 0;
+    let bestScore = 0;
 
-    // Check keyword mappings
     for (const [keywords, category] of Object.entries(keywordMappings)) {
       const keywordArray = keywords.split('|');
       let score = 0;
       
       keywordArray.forEach(keyword => {
         if (lowerInput.includes(keyword.trim())) {
-          score += 1;
+          score += keyword.trim().length > 4 ? 2 : 1; // Longer keywords score higher
         }
       });
 
-      if (score > matchScore) {
-        matchScore = score;
+      if (score > bestScore) {
+        bestScore = score;
         bestMatch = category;
       }
     }
 
-    return { category: bestMatch, score: matchScore };
+    return { category: bestMatch, score: bestScore };
   };
 
-  // Function to format response as a list
-  const formatResponseAsList = (items, title = '') => {
-    if (!items || items.length === 0) return null;
-
-    return {
-      title: title,
-      items: Array.isArray(items) ? items : [items],
-      isList: true
-    };
-  };
-
-  // Function to generate response based on user input
-  const generateResponse = (userInput) => {
-    const { category } = findMatchingResponse(userInput);
+  // Generate response with follow-up suggestions
+  const generateResponse = useCallback((userInput) => {
+    const { category, score } = findMatchingResponse(userInput);
     const lowerInput = userInput.toLowerCase();
 
-    // Direct feature lookup
-    if (category === 'inventory' || lowerInput.includes('inventory')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.inventory.benefits,
-        '📦 Inventory Management Features:'
-      );
+    // Check for greetings
+    if (/^(hi|hello|hey|howdy|greetings|good morning|good afternoon|good evening)\b/.test(lowerInput)) {
+      return {
+        text: "👋 Hello! Welcome to **Inline Tracker**. I'm here to help you learn about our inventory management solution. What interests you?",
+        suggestions: ['📋 All Features', '💰 Pricing', '⭐ Why Choose Us', '📞 Contact'],
+        hasSuggestions: true
+      };
     }
 
-    if (category === 'orders' || lowerInput.includes('order')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.orders.benefits,
-        '📋 Order Management Features:'
-      );
+    // Check for thanks
+    if (/\b(thank|thanks|appreciate|great|awesome|perfect)\b/.test(lowerInput)) {
+      return {
+        text: "You're welcome! 😊 Is there anything else you'd like to know about Inline Tracker?",
+        suggestions: ['📋 Features', '💰 Pricing', '📞 Support'],
+        hasSuggestions: true
+      };
     }
 
-    if (category === 'employees' || lowerInput.includes('employee')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.employees.benefits,
-        '👥 Employee Management Features:'
-      );
+    // Check for "getting started" / "how to start"
+    if (lowerInput.includes('start') || lowerInput.includes('begin') || lowerInput.includes('sign up') || lowerInput.includes('register') || lowerInput.includes('create account')) {
+      return {
+        text: "🚀 **Getting Started with Inline Tracker:**",
+        items: [
+          "1. **Sign up** — Create your free account in seconds",
+          "2. **Set up your business** — Add your company details",
+          "3. **Add products** — Import or manually add your inventory",
+          "4. **Invite team** — Add employees and assign roles",
+          "5. **Start managing** — Track orders, stock, and analytics"
+        ],
+        followUp: "We offer a **14-day free trial** with full access to all features!",
+        suggestions: ['💰 Pricing', '📋 Features', '📞 Support'],
+        isList: true,
+        hasSuggestions: true
+      };
     }
 
-    if (category === 'suppliers' || lowerInput.includes('supplier')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.suppliers.benefits,
-        '🚚 Supplier Management Features:'
-      );
+    // FAQ matching
+    const faqMatch = findFAQMatch(userInput);
+    if (faqMatch && score < 2) {
+      return {
+        text: `**Q: ${faqMatch.q}**\n\n${faqMatch.a}`,
+        suggestions: ['📋 More Features', '💰 Pricing', '📞 Support'],
+        hasSuggestions: true
+      };
     }
 
-    if (category === 'warehouses' || lowerInput.includes('warehouse')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.warehouses.benefits,
-        '🏭 Warehouse Management Features:'
-      );
-    }
+    // Feature lookups with follow-up suggestions
+    const featureMap = {
+      inventory: { key: 'inventory', icon: '📦', followSuggestions: ['📋 Orders', '🏭 Warehouses', '📊 Analytics'] },
+      orders: { key: 'orders', icon: '📋', followSuggestions: ['📦 Inventory', '🚚 Suppliers', '📊 Reports'] },
+      employees: { key: 'employees', icon: '👥', followSuggestions: ['🔒 Security', '📊 Analytics', '💰 Pricing'] },
+      suppliers: { key: 'suppliers', icon: '🚚', followSuggestions: ['📋 Orders', '🏭 Warehouses'] },
+      warehouses: { key: 'warehouses', icon: '🏭', followSuggestions: ['📦 Inventory', '📊 Reports'] },
+      chatbot: { key: 'chatbot', icon: '🤖', followSuggestions: ['📋 Features', '💰 Pricing'] },
+      analytics: { key: 'analytics', icon: '📊', followSuggestions: ['📦 Inventory', '📋 Orders'] },
+      security: { key: 'security', icon: '🔒', followSuggestions: ['👥 Employees', '📋 Features'] },
+      integration: { key: 'integration', icon: '🔗', followSuggestions: ['📊 Analytics', '💰 Pricing'] },
+    };
 
-    if (category === 'chatbot' || lowerInput.includes('chatbot')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.chatbot.benefits,
-        '🤖 AI Chatbot Assistant Features:'
-      );
-    }
-
-    if (category === 'analytics' || lowerInput.includes('analytics') || lowerInput.includes('report')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.analytics.benefits,
-        '📊 Analytics & Reports Features:'
-      );
-    }
-
-    if (category === 'security' || lowerInput.includes('security')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.security.benefits,
-        '🔒 Security & Compliance Features:'
-      );
-    }
-
-    if (category === 'integration' || lowerInput.includes('integration')) {
-      return formatResponseAsList(
-        chatbotKnowledge.features.integration.benefits,
-        '🔗 Integration & Automation Features:'
-      );
+    // Direct feature checks (category match or keyword in input)
+    for (const [matchKey, config] of Object.entries(featureMap)) {
+      const featureKeywords = {
+        inventory: ['inventory', 'stock', 'product tracking'],
+        orders: ['order'],
+        employees: ['employee', 'team', 'staff'],
+        suppliers: ['supplier', 'vendor'],
+        warehouses: ['warehouse'],
+        chatbot: ['chatbot', 'ai assistant'],
+        analytics: ['analytics', 'report', 'dashboard'],
+        security: ['security', 'encryption'],
+        integration: ['integration', 'api'],
+      };
+      
+      if (category === matchKey || featureKeywords[matchKey].some(kw => lowerInput.includes(kw))) {
+        const feature = chatbotKnowledge.features[config.key];
+        if (feature) {
+          return {
+            title: `${config.icon} ${feature.title}:`,
+            items: feature.benefits,
+            isList: true,
+            suggestions: config.followSuggestions,
+            hasSuggestions: true
+          };
+        }
+      }
     }
 
     // Why choose us
-    if (lowerInput.includes('why') || lowerInput.includes('choose') || lowerInput.includes('advantage') || lowerInput.includes('benefit')) {
-      return formatResponseAsList(
-        chatbotKnowledge.whyChooseUs.reasons,
-        '⭐ Why Choose Inline Tracker?'
-      );
+    if (category === 'whyChooseUs' || lowerInput.includes('why') || lowerInput.includes('advantage') || lowerInput.includes('benefit')) {
+      return {
+        title: '⭐ Why Choose Inline Tracker?',
+        items: chatbotKnowledge.whyChooseUs.reasons,
+        isList: true,
+        suggestions: ['💰 Pricing', '🚀 Get Started', '📞 Support'],
+        hasSuggestions: true
+      };
     }
 
     // Pricing
-    if (lowerInput.includes('price') || lowerInput.includes('cost') || lowerInput.includes('plan') || lowerInput.includes('subscription')) {
-      return formatResponseAsList(
-        chatbotKnowledge.pricing.plans,
-        '💰 Our Pricing Plans:'
-      );
+    if (category === 'pricing' || lowerInput.includes('price') || lowerInput.includes('cost') || lowerInput.includes('plan')) {
+      return {
+        title: '💰 Pricing Plans:',
+        items: [
+          ...chatbotKnowledge.pricing.plans,
+          '',
+          '✅ 14-day free trial available!',
+          '💡 Up to 20% discount for annual billing'
+        ].filter(Boolean),
+        isList: true,
+        suggestions: ['📋 Features', '🚀 Get Started', '📞 Contact'],
+        hasSuggestions: true
+      };
     }
 
-    // Support
-    if (lowerInput.includes('support') || lowerInput.includes('help') || lowerInput.includes('contact')) {
-      const supportInfo = [
-        `📧 Email: ${chatbotKnowledge.support.email}`,
-        `📞 Phone: ${chatbotKnowledge.support.phone}`,
-        `⏰ Hours: ${chatbotKnowledge.support.hours}`,
-        `💬 Live Chat: ${chatbotKnowledge.support.liveChat}`
-      ];
-      return formatResponseAsList(supportInfo, '📞 Contact & Support:');
+    // Support / Contact
+    if (category === 'support' || lowerInput.includes('contact') || lowerInput.includes('support') || lowerInput.includes('help me')) {
+      return {
+        title: '📞 Contact & Support:',
+        items: [
+          `📧 Email: ${chatbotKnowledge.support.email}`,
+          `📞 Phone: ${chatbotKnowledge.support.phone}`,
+          `⏰ Hours: ${chatbotKnowledge.support.hours}`,
+          `💬 Live Chat: ${chatbotKnowledge.support.liveChat}`,
+          '',
+          '💡 We respond within 2 hours for urgent issues!'
+        ].filter(Boolean),
+        isList: true,
+        suggestions: ['📋 Features', '💰 Pricing'],
+        hasSuggestions: true
+      };
     }
 
-    // All features
-    if (lowerInput.includes('all feature') || lowerInput.includes('what features') || lowerInput.includes('feature list')) {
-      const allFeatures = Object.values(chatbotKnowledge.features).map(f => f.title);
-      return formatResponseAsList(allFeatures, '✨ All Available Features:');
+    // All features list
+    if (lowerInput.includes('all feature') || lowerInput.includes('feature list') || lowerInput.includes('what feature') ||
+        (lowerInput.includes('feature') && !Object.keys(featureMap).some(k => lowerInput.includes(k)))) {
+      const allFeatures = Object.values(chatbotKnowledge.features).map(f => `${f.title} — ${f.description}`);
+      return {
+        title: '✨ All Inline Tracker Features:',
+        items: allFeatures,
+        isList: true,
+        suggestions: ['📦 Inventory', '📋 Orders', '👥 Employees', '💰 Pricing'],
+        hasSuggestions: true
+      };
     }
 
-    // Default response with suggestions
+    // FAQ fallback
+    if (faqMatch) {
+      return {
+        text: `**Q: ${faqMatch.q}**\n\n${faqMatch.a}`,
+        suggestions: ['📋 Features', '💰 Pricing', '📞 Support'],
+        hasSuggestions: true
+      };
+    }
+
+    // Default response
     return {
-      text: 'I can help you with information about Inline Tracker! Here are some things you can ask me about:',
-      suggestions: [
-        'Features available',
-        'Why choose us',
-        'Pricing plans',
-        'Getting started',
-        'Support & contact'
-      ]
+      text: "I'd love to help! Here are some popular topics you can ask about:",
+      suggestions: ['📋 All Features', '💰 Pricing Plans', '⭐ Why Choose Us', '🚀 Getting Started', '📞 Contact Us'],
+      hasSuggestions: true
     };
-  };
+  }, []);
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
+  const processMessage = useCallback((messageText) => {
+    if (!messageText.trim()) return;
 
-    if (!inputMessage.trim()) return;
-
-    // Add user message
     const userMessage = {
-      id: messages.length + 1,
-      text: inputMessage,
+      id: Date.now(),
+      text: messageText,
       sender: 'user',
       timestamp: new Date()
     };
@@ -212,57 +296,41 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
 
     // Simulate bot thinking
     setTimeout(() => {
-      const response = generateResponse(inputMessage);
+      const response = generateResponse(messageText);
       
-      if (response.isList) {
-        // Format as list
-        const botMessage = {
-          id: messages.length + 2,
-          title: response.title,
-          items: response.items,
-          sender: 'bot',
-          timestamp: new Date(),
-          isList: true
-        };
-        setMessages(prev => [...prev, botMessage]);
-      } else if (response.suggestions) {
-        // Format with suggestions
-        const botMessage = {
-          id: messages.length + 2,
-          text: response.text,
-          suggestions: response.suggestions,
-          sender: 'bot',
-          timestamp: new Date(),
-          hasSuggestions: true
-        };
-        setMessages(prev => [...prev, botMessage]);
-      } else {
-        // Regular text response
-        const botMessage = {
-          id: messages.length + 2,
-          text: response.text || "I'm not sure about that. Please ask me about our features, pricing, or support.",
-          sender: 'bot',
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, botMessage]);
-      }
+      const botMessage = {
+        id: Date.now() + 1,
+        sender: 'bot',
+        timestamp: new Date(),
+        ...response
+      };
       
+      setMessages(prev => [...prev, botMessage]);
       setIsLoading(false);
-    }, 500);
+    }, 400 + Math.random() * 300);
+  }, [generateResponse]);
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    processMessage(inputMessage);
   };
 
+  // Click suggestion to send immediately
   const handleSuggestion = (suggestion) => {
-    setInputMessage(suggestion);
+    // Strip emoji prefix for cleaner query
+    const cleanText = suggestion.replace(/^[^\w\s]+\s*/, '').trim();
+    processMessage(cleanText);
   };
 
   const handleClearChat = () => {
     setMessages([
       {
-        id: 1,
-        text: "👋 Hello! I'm your AI Assistant. I can help you with information about Inline Tracker, our features, pricing, and FAQs. What would you like to know?",
+        id: Date.now(),
+        text: "👋 Hello! I'm the **Inline Tracker** Assistant. I can help you learn about our features, pricing, and how to get started.",
         sender: 'bot',
         timestamp: new Date(),
-        isList: false
+        hasSuggestions: true,
+        suggestions: ['📋 Features', '💰 Pricing', '🚀 Getting Started', '📞 Support']
       }
     ]);
   };
@@ -302,9 +370,9 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
           <div className="chatbot-header">
             <div className="chatbot-header-content">
               <h3 className="chatbot-title">
-                <i className="fas fa-robot me-2"></i>AI Assistant
+                <i className="fas fa-robot me-2"></i>Inline Tracker
               </h3>
-              <p className="chatbot-subtitle">Always here to help</p>
+              <p className="chatbot-subtitle">Your inventory assistant</p>
             </div>
             <div className="chatbot-controls">
               <button 
@@ -344,32 +412,35 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
                       <div className="message-bubble">
                         {msg.isList ? (
                           <div className="list-response">
-                            <p className="list-title">{msg.title}</p>
+                            <p className="list-title">{parseFormattedText(msg.title)}</p>
                             <ul className="response-list">
                               {msg.items.map((item, idx) => (
                                 <li key={idx} className="list-item">
-                                  {item}
+                                  {parseFormattedText(item)}
                                 </li>
                               ))}
                             </ul>
+                            {msg.followUp && (
+                              <p className="follow-up-text">{parseFormattedText(msg.followUp)}</p>
+                            )}
                           </div>
                         ) : (
-                          <>
-                            <p>{msg.text}</p>
-                            {msg.hasSuggestions && (
-                              <div className="suggestions">
-                                {msg.suggestions.map((suggestion, idx) => (
-                                  <button
-                                    key={idx}
-                                    className="suggestion-btn"
-                                    onClick={() => handleSuggestion(suggestion)}
-                                  >
-                                    {suggestion}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </>
+                          <div className="message-text">
+                            {msg.text && parseFormattedText(msg.text)}
+                          </div>
+                        )}
+                        {msg.hasSuggestions && msg.suggestions && (
+                          <div className="suggestions">
+                            {msg.suggestions.map((suggestion, idx) => (
+                              <button
+                                key={idx}
+                                className="suggestion-btn"
+                                onClick={() => handleSuggestion(suggestion)}
+                              >
+                                {suggestion}
+                              </button>
+                            ))}
+                          </div>
                         )}
                         <span className="message-time">{formatTime(msg.timestamp)}</span>
                       </div>
