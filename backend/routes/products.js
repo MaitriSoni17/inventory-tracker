@@ -277,8 +277,19 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
         let product = await Product.findById(req.params.id);
         if (!product) return res.status(404).send("Not Found");
 
-        // Check if user can edit this product based on hierarchy
-        const canEdit = await canEditItem(req.user, product.employee);
+        // Check if user can edit this product
+        // Business owners can edit any product, employees can edit their own or others' if they have canEditOthersWork
+        let canEdit = false;
+        if (req.role === 'businessowner') {
+            canEdit = true;
+        } else if (product.employee && product.employee.toString() === req.user._id.toString()) {
+            canEdit = true; // Own product
+        } else if (hasPermission(req.user, 'canEditOthersWork')) {
+            canEdit = true; // Has permission to edit others' work
+        } else if (!product.employee) {
+            // Product created by business owner — allow if user has canEditProducts
+            canEdit = hasPermission(req.user, 'canEditProducts');
+        }
         if (!canEdit) {
             return res.status(403).json({ error: "You do not have permission to edit this product" });
         }

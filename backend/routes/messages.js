@@ -316,32 +316,6 @@ router.get('/conversations', fetchuser, async (req, res) => {
 });
 
 /**
- * Get unread message count
- * GET /api/messages/unread-count
- */
-router.get('/unread-count', fetchuser, async (req, res) => {
-    try {
-        const userId = req.user._id;
-        // Map all employee types (employee, manager, supervisor) to 'Employee' role
-        const userRole = req.role === 'businessowner' ? 'BusinessOwner' : 
-                        req.role === 'supplier' ? 'Supplier' : 'Employee';
-
-        const unreadCount = await Message.countDocuments({
-            recipient: userId,
-            recipientRole: userRole,
-            isRead: false,
-            deletedByRecipient: false,
-            businessowner: req.businessowner
-        });
-
-        res.json({ success: true, unreadCount });
-    } catch (error) {
-        // console.error('Error fetching unread count:', error);
-        res.status(500).json({ error: 'Error fetching unread count' });
-    }
-});
-
-/**
  * Check if supplier has messaging permission
  * GET /api/messages/supplier/check-permission
  */
@@ -489,34 +463,6 @@ router.post('/send', fetchuser, async (req, res) => {
     } catch (error) {
         // console.error('Error sending message:', error);
         res.status(500).json({ error: 'Error sending message' });
-    }
-});
-
-/**
- * Mark message as read
- * POST /api/messages/read/:messageId
- */
-router.post('/read/:messageId', fetchuser, async (req, res) => {
-    try {
-        const message = await Message.findById(req.params.messageId);
-
-        if (!message) {
-            return res.status(404).json({ error: 'Message not found' });
-        }
-
-        // Check if user is the recipient
-        if (message.recipient.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ error: 'Not authorized to mark this message' });
-        }
-
-        message.isRead = true;
-        message.readAt = new Date();
-        await message.save();
-
-        res.json({ success: true, message });
-    } catch (error) {
-        // console.error('Error marking message as read:', error);
-        res.status(500).json({ error: 'Error marking message as read' });
     }
 });
 

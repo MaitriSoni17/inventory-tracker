@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import '../../../styles/dashboard-elegant.css';
 import { generateSalaryReportPDF, generateSalaryReportExcel, generateIndividualSalaryReportPDF } from '../../../utils/salaryReportHelper';
 

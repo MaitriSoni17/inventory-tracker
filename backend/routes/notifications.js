@@ -169,40 +169,6 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
   }
 });
 
-// DEBUG: Get all notifications in database
-// GET /api/notifications/debug/allnotifications
-router.get('/debug/allnotifications', async (req, res) => {
-  try {
-    let allNotifications = await Notification.find({});
-
-    // Populate sender data
-    allNotifications = await populateSenderData(allNotifications);
-
-    res.json({
-      totalCount: allNotifications.length,
-      notifications: allNotifications
-    });
-  } catch (error) {
-    // console.error('Error fetching all notifications:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// DEBUG: Get current user info
-// GET /api/notifications/debug/userinfo
-router.get('/debug/userinfo', fetchuser, async (req, res) => {
-  try {
-    res.json({
-      userId: req.user._id,
-      userRole: req.role,
-      user: req.user
-    });
-  } catch (error) {
-    // console.error('Error fetching user info:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Check and create low stock alert notifications
 // POST /api/notifications/check-low-stock-alerts
 router.post('/check-low-stock-alerts', fetchuser, async (req, res) => {

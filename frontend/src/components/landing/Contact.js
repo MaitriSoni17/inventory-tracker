@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navigation from '../common/Navigation';
 import validationRules from '../../utils/validationHelper';

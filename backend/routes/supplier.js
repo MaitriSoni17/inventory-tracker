@@ -54,36 +54,6 @@ router.post('/createsupplier', fetchbusinessowner, [
     }
 });
 
-// Login Supplier using: POST "/api/supplier/loginsupplier". No login required
-router.post('/loginsupplier', [
-    body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password cannot be blank').exists(),
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { email, password } = req.body;
-
-    try {
-        let supplier = await Supplier.findOne({ email });
-        if (!supplier) {
-            return res.status(400).json({ error: "Please try to login with correct credentials" });
-        }
-
-        const passwordCompare = await bcrypt.compare(password, supplier.password);
-        if (!passwordCompare) {
-            return res.status(400).json({ error: "Please try to login with correct credentials" });
-        }
-
-        const authToken = jwt.sign({ id: supplier._id, role: 'supplier' }, JWT_SECRET);
-        res.json({ success: true, authtoken: authToken });
-    } catch (err) {
-        res.status(500).json({ error: "Internal Server error occurred" });
-    }
-});
-
 // Get Supplier Data using: POST "/api/supplier/getsupplier". Login required
 router.post('/getsupplier', fetchuser, async (req, res) => {
     try {
@@ -277,58 +247,6 @@ router.post('/deactivate', fetchuser, async (req, res) => {
         res.json({ success: true, message: "Account deactivated successfully" });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
-    }
-});
-
-// Delete own account using: DELETE "/api/supplier/deleteaccount". Supplier login required
-// This endpoint now uses the new deletion request workflow
-router.delete('/deleteaccount', fetchuser, async (req, res) => {
-    try {
-        if (req.role !== 'supplier') {
-            return res.status(403).json({ error: "Access denied" });
-        }
-
-        // Redirect to the new deletion request system
-        const DeletionRequest = require('../models/DeletionRequest');
-        const supplierId = req.user._id;
-
-        // Check if there's already a pending deletion request
-        const existingRequest = await DeletionRequest.findOne({
-            userId: supplierId,
-            status: { $in: ['pending', 'approved'] }
-        });
-
-        if (existingRequest) {
-            return res.status(400).json({
-                success: false,
-                message: 'You already have an active deletion request. Please wait for it to be processed.'
-            });
-        }
-
-        // Create deletion request for supplier
-        const supplier = await Supplier.findById(supplierId);
-        if (!supplier) {
-            return res.status(404).json({ error: "Supplier not found" });
-        }
-
-        const deletionRequest = new DeletionRequest({
-            userId: supplierId,
-            userEmail: supplier.email,
-            userRole: 'supplier',
-            creatorId: supplier.businessowner,
-            reason: 'Supplier initiated account deletion'
-        });
-
-        await deletionRequest.save();
-
-        res.json({
-            success: true,
-            message: 'Your account deletion request has been sent to your Business Owner for approval.',
-            requestId: deletionRequest._id
-        });
-    } catch (err) {
-        // console.error(err);
-        res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
 

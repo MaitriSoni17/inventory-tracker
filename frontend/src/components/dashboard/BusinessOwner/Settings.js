@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import '../../../styles/settings.css';
 import DeletionRequestsManager from './DeletionRequestsManager';
 

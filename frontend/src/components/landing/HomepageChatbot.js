@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { chatbotKnowledge, keywordMappings } from './utils/chatbotKnowledge';
 import '../../styles/homepagechatbot.css';
 

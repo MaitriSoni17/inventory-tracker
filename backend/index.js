@@ -52,7 +52,6 @@ app.use('/api/customerorders', require('./routes/customerorders'));
 app.use('/api/supplierorders', require('./routes/supplierorders'));
 app.use('/api/warehouse', require('./routes/warehouse'));
 app.use('/api/category', require('./routes/category'));
-app.use('/api/orders', require('./routes/orders'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/notificationpreferences', require('./routes/notificationpreferences'));
 app.use('/api/chatbot', require('./routes/chatbot'));

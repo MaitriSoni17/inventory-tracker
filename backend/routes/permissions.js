@@ -537,36 +537,6 @@ router.get('/employees', fetchuser, async (req, res) => {
 });
 
 /**
- * Get individual employee permissions
- * GET /api/permissions/employee/:id
- */
-router.get('/employee/:id', fetchuser, async (req, res) => {
-    try {
-        // Only business owner can access this
-        if (req.role !== 'businessowner') {
-            return res.status(403).json({ error: "Only Business Owner can manage permissions" });
-        }
-
-        const employee = await Employee.findOne({ 
-            _id: req.params.id, 
-            businessowner: req.user._id 
-        }).select('fname lname email role permissions department image');
-
-        if (!employee) {
-            return res.status(404).json({ error: "Employee not found" });
-        }
-
-        res.json({
-            success: true,
-            employee: employee
-        });
-    } catch (err) {
-        // console.error('Error getting employee permissions:', err);
-        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
-    }
-});
-
-/**
  * Update individual employee permissions
  * PUT /api/permissions/employee/:id
  */
@@ -1105,47 +1075,6 @@ router.get('/custom-roles', fetchuser, async (req, res) => {
         }
 
         res.json({ success: true, customRoles });
-    } catch (err) {
-        res.status(500).json({ error: "Internal Server error occurred", details: err.message });
-    }
-});
-
-/**
- * Update a custom role's metadata (name, description, hierarchy level)
- * PUT /api/permissions/custom-role/:roleKey
- */
-router.put('/custom-role/:roleKey', fetchuser, async (req, res) => {
-    try {
-        if (req.role !== 'businessowner') {
-            return res.status(403).json({ error: "Only Business Owner can update custom roles" });
-        }
-
-        const { roleKey } = req.params;
-        const { displayName, description, hierarchyLevel } = req.body;
-
-        if (isBuiltInRole(roleKey)) {
-            return res.status(400).json({ error: "Cannot modify built-in roles through this endpoint" });
-        }
-
-        const rolePermissions = await RolePermissions.findOne({ businessowner: req.user._id });
-
-        if (!rolePermissions || !rolePermissions.customRoles || !rolePermissions.customRoles.has(roleKey)) {
-            return res.status(404).json({ error: "Custom role not found" });
-        }
-
-        const customRole = rolePermissions.customRoles.get(roleKey);
-        if (displayName) customRole.displayName = displayName;
-        if (description !== undefined) customRole.description = description;
-        if (hierarchyLevel) customRole.hierarchyLevel = hierarchyLevel;
-
-        rolePermissions.customRoles.set(roleKey, customRole);
-        await rolePermissions.save();
-
-        res.json({
-            success: true,
-            message: `Custom role "${customRole.displayName}" updated successfully`,
-            role: rolePermissions.customRoles.get(roleKey)
-        });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }

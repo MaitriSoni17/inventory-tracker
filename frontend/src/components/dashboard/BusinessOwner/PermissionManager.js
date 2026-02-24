@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import '../../../styles/permissions.css';
 
 const PermissionManager = (props) => {

@@ -59,7 +59,11 @@ router.post('/createwarehouse', fetchuser, [
 // Get Warehouse — permission-based access (view-only)
 router.post('/getwarehouse', fetchuser, async (req, res) => {
     // Check permission to view warehouses
-    if (!hasPermission(req.user, 'canViewWarehouses')) {
+    // Also allow users with product permissions (they need warehouse list for product forms)
+    if (!hasPermission(req.user, 'canViewWarehouses') && 
+        !hasPermission(req.user, 'canViewProducts') && 
+        !hasPermission(req.user, 'canCreateProducts') && 
+        !hasPermission(req.user, 'canEditProducts')) {
         return res.status(403).json({ error: "You do not have permission to view warehouses" });
     }
 

@@ -61,7 +61,11 @@ router.post('/createcategory', fetchuser, [
 // Get Category — permission-based access with warehouse filtering
 router.post('/getcategory', fetchuser, async (req, res) => {
     // Check permission to view categories
-    if (!hasPermission(req.user, 'canViewCategories')) {
+    // Also allow users with product permissions (they need category list for product forms)
+    if (!hasPermission(req.user, 'canViewCategories') && 
+        !hasPermission(req.user, 'canViewProducts') && 
+        !hasPermission(req.user, 'canCreateProducts') && 
+        !hasPermission(req.user, 'canEditProducts')) {
         return res.status(403).json({ error: "You do not have permission to view categories" });
     }
 

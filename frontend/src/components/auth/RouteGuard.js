@@ -4,7 +4,6 @@
  * Shows AccessDenied component when the user lacks required access.
  */
 
-import React from 'react';
 import { useRole } from '../../context/RoleContext';
 import AccessDenied from '../common/AccessDenied';
 

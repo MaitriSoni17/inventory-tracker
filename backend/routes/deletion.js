@@ -3,10 +3,8 @@ const router = express.Router();
 const DeletionRequest = require('../models/DeletionRequest');
 const Employee = require('../models/Employee');
 const Supplier = require('../models/Supplier');
-const BusinessOwner = require('../models/BusinessOwner');
 const Notification = require('../models/Notification');
 const fetchuser = require('../middleware/fetchuser');
-const { cascadeDeleteBusinessOwner } = require('../utils/cascadeDelete');
 
 // Helper function to create notification
 const createNotification = async (recipientId, recipientRole, senderId, senderRole, type, title, message, data = {}) => {
@@ -319,6 +317,7 @@ router.get('/status', fetchuser, async (req, res) => {
             success: true,
             hasRequest: true,
             requestData: {
+                _id: deletionRequest._id,
                 status: deletionRequest.status,
                 requestDate: deletionRequest.requestDate,
                 scheduledDeletionDate: deletionRequest.scheduledDeletionDate,
@@ -326,108 +325,6 @@ router.get('/status', fetchuser, async (req, res) => {
                 reason: deletionRequest.reason
             }
         });
-    } catch (err) {
-        // console.error(err);
-        res.status(500).json({ success: false, error: "Internal server error occurred" });
-    }
-});
-
-// 7. EXECUTE DELETION (called by cron job or admin)
-// DELETE "/api/deletion/execute/:requestId" - Remove user's connectivity to business owner (data preserved)
-router.delete('/execute/:requestId', async (req, res) => {
-    try {
-        const deletionRequest = await DeletionRequest.findById(req.params.requestId);
-
-        if (!deletionRequest) {
-            return res.status(404).json({ success: false, error: "Deletion request not found" });
-        }
-
-        if (deletionRequest.status !== 'approved') {
-            return res.status(400).json({
-                success: false,
-                message: 'Only approved deletion requests can be executed'
-            });
-        }
-
-        const now = new Date();
-        if (now < deletionRequest.scheduledDeletionDate) {
-            return res.status(400).json({
-                success: false,
-                message: 'Deletion is not yet scheduled. Please wait until ' + deletionRequest.scheduledDeletionDate
-            });
-        }
-
-        let deletionSummary = null;
-
-        // Remove user's connectivity to business owner based on role
-        if (deletionRequest.userRole === 'employee') {
-            // Remove employee's business owner reference
-            await Employee.findByIdAndUpdate(
-                deletionRequest.userId,
-                { businessowner: null },
-                { new: true }
-            );
-        } else if (deletionRequest.userRole === 'supplier') {
-            // Remove supplier's business owner reference
-            await Supplier.findByIdAndUpdate(
-                deletionRequest.userId,
-                { businessowner: null },
-                { new: true }
-            );
-        } else if (deletionRequest.userRole === 'businessowner') {
-            // For business owner deletion, cascade delete all associated data
-            try {
-                deletionSummary = await cascadeDeleteBusinessOwner(deletionRequest.userId);
-                
-                // After cascade delete, delete the business owner account
-                await BusinessOwner.findByIdAndDelete(deletionRequest.userId);
-            } catch (err) {
-                // console.error('Error in cascade deletion:', err);
-                return res.status(500).json({
-                    success: false,
-                    error: 'Error during cascade deletion: ' + err.message
-                });
-            }
-        }
-
-        // Send completion notification
-        if (deletionRequest.userRole !== 'businessowner' && deletionRequest.creatorId) {
-            const roleLabel = deletionRequest.userRole === 'employee' ? 'Employee' : 'Supplier';
-            await createNotification(
-                deletionRequest.creatorId,
-                'BusinessOwner',
-                deletionRequest.userId,
-                deletionRequest.userRole.charAt(0).toUpperCase() + deletionRequest.userRole.slice(1),
-                'account_deleted',
-                `${roleLabel} Account Disconnected`,
-                `The ${deletionRequest.userRole} account (${deletionRequest.userEmail}) has been disconnected from your business. Their data has been preserved and archived.`,
-                {
-                    deletionRequestId: deletionRequest._id,
-                    deletedEmail: deletionRequest.userEmail,
-                    userRole: deletionRequest.userRole,
-                    reason: 'Account connectivity removed per user request'
-                }
-            );
-        }
-
-        // Mark deletion request as completed
-        deletionRequest.status = 'completed';
-        await deletionRequest.save();
-
-        const responseMessage = deletionRequest.userRole === 'businessowner'
-            ? 'Business Owner account and all associated data have been permanently deleted.'
-            : 'Account connectivity removed successfully. User data has been preserved and archived.';
-
-        const response = {
-            success: true,
-            message: responseMessage
-        };
-
-        if (deletionSummary) {
-            response.deletionSummary = deletionSummary;
-        }
-
-        res.json(response);
     } catch (err) {
         // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });

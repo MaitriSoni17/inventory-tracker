@@ -41,47 +41,6 @@ router.post('/getallsalaries', fetchuser, async (req, res) => {
     }
 });
 
-// Get salary details for a specific employee
-// GET "/api/salary/getsalary/:employeeId". Business Owner only
-router.get('/getsalary/:employeeId', fetchuser, async (req, res) => {
-    try {
-        // Only business owner can view employee salaries
-        if (req.role !== 'businessowner') {
-            return res.status(403).json({ error: "Only Business Owner can view employee salaries" });
-        }
-
-        const employee = await Employee.findById(req.params.employeeId)
-            .select('fname lname email role department salary hireAt');
-
-        if (!employee) {
-            return res.status(404).json({ error: "Employee not found" });
-        }
-
-        // Verify the employee belongs to the business owner
-        if (employee.businessowner.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ error: "Unauthorized access to employee salary" });
-        }
-
-        const salaryData = {
-            _id: employee._id,
-            fullName: `${employee.fname} ${employee.lname || ''}`.trim(),
-            email: employee.email,
-            role: employee.role,
-            department: employee.department || 'N/A',
-            hireDate: employee.hireAt,
-            baseSalary: employee.salary?.baseSalary || 0,
-            currency: employee.salary?.currency || 'INR',
-            paymentFrequency: employee.salary?.paymentFrequency || 'monthly',
-            lastUpdated: employee.salary?.lastUpdated
-        };
-
-        res.json(salaryData);
-    } catch (error) {
-        // console.error('Error fetching employee salary:', error);
-        res.status(500).json({ error: "Server error while fetching employee salary" });
-    }
-});
-
 // Assign or update salary for an employee
 // POST "/api/salary/assignsalary/:employeeId". Business Owner only
 router.post('/assignsalary/:employeeId', 

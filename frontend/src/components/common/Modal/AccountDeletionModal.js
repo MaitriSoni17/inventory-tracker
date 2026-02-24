@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import CenteredModal from './CenteredModal';
 import '../../../styles/AccountDeletionModal.css';
 
@@ -53,7 +53,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/deletion/request', {
+      const response = await fetch(`http://localhost:5000/api/deletion/request/${existingRequest._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

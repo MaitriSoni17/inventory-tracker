@@ -289,37 +289,6 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
     }
 });
 
-// Login Employee using: POST "/api/employee/loginemployee". No login required
-router.post('/loginemployee', [
-    body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password cannot be blank').exists(),
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-    }
-
-    const { email, password } = req.body;
-
-    try {
-        let employee = await Employee.findOne({ email });
-        if (!employee) {
-            return res.status(400).json({ error: "Please try to login with correct credentials" });
-        }
-
-        const passwordCompare = await bcrypt.compare(password, employee.password);
-        if (!passwordCompare) {
-            return res.status(400).json({ error: "Please try to login with correct credentials" });
-        }
-
-        // Use the employee's actual role (employee, supervisor, or manager)
-        const authToken = jwt.sign({ id: employee._id, role: employee.role }, JWT_SECRET);
-        res.json({ success: true, authtoken: authToken, role: employee.role });
-    } catch (err) {
-        res.status(500).json({ error: "Internal Server error occurred" });
-    }
-});
-
 // Get Employee Data using: POST "/api/employee/getemployee". Login required
 router.post('/getemployee', fetchuser, async (req, res) => {
     try {
@@ -811,50 +780,23 @@ router.put('/updatepreferences', fetchemployee, async (req, res) => {
     }
 });
 
-// Employee self-deletion: DELETE "/api/employee/deleteaccount". Employee login required
-// This endpoint now uses the new deletion request workflow
-router.delete('/deleteaccount', fetchuser, async (req, res) => {
+// Employee account deactivation: PUT "/api/employee/deactivateemployee"
+router.put('/deactivateemployee', fetchuser, async (req, res) => {
     try {
         if (req.role === 'businessowner' || req.role === 'supplier') {
             return res.status(403).json({ success: false, error: "Access denied" });
         }
 
-        // Redirect to the new deletion request system
-        const DeletionRequest = require('../models/DeletionRequest');
-        const employeeId = req.user._id;
-
-        // Check if there's already a pending deletion request
-        const existingRequest = await DeletionRequest.findOne({
-            userId: employeeId,
-            status: { $in: ['pending', 'approved'] }
-        });
-
-        if (existingRequest) {
-            return res.status(400).json({
-                success: false,
-                message: 'You already have an active deletion request. Please wait for it to be processed.'
-            });
+        const employee = await Employee.findById(req.user._id);
+        if (!employee) {
+            return res.status(404).json({ success: false, error: "Employee not found" });
         }
 
-        // Create deletion request for employee
-        const employee = await Employee.findById(employeeId);
-        const deletionRequest = new DeletionRequest({
-            userId: employeeId,
-            userEmail: employee.email,
-            userRole: 'employee',
-            creatorId: employee.businessowner,
-            reason: 'Employee initiated account deletion'
-        });
+        employee.isActive = false;
+        await employee.save();
 
-        await deletionRequest.save();
-
-        res.json({
-            success: true,
-            message: 'Your account deletion request has been sent to your Business Owner for approval.',
-            requestId: deletionRequest._id
-        });
+        res.json({ success: true, message: "Account deactivated successfully" });
     } catch (err) {
-        // console.error(err);
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }
 });
@@ -919,52 +861,6 @@ router.get('/unassigned-employees', fetchbusinessowner, async (req, res) => {
             success: true,
             unassignedEmployees,
             count: unassignedEmployees.length
-        });
-    } catch (err) {
-        // console.error(err);
-        res.status(500).json({ error: "Internal server error occurred" });
-    }
-});
-
-// Assign first warehouse to all unassigned employees (migration endpoint)
-// This helps fix existing employees that don't have warehouse assigned
-router.post('/assign-missing-warehouses', fetchbusinessowner, async (req, res) => {
-    try {
-        // Get first warehouse of the business owner
-        const Warehouse = require('../models/Warehouse');
-        const warehouse = await Warehouse.findOne({ employee: req.user._id })
-            .sort({ createdAt: 1 });
-        
-        if (!warehouse) {
-            return res.status(400).json({ 
-                error: "No warehouse found to assign. Please create at least one warehouse first.",
-                updated: 0
-            });
-        }
-
-        // Find all employees without warehouse assignment
-        const unassignedEmployees = await Employee.find({
-            businessowner: req.businessowner._id,
-            $or: [
-                { warehouse: null },
-                { warehouse: undefined }
-            ]
-        });
-
-        // Update all unassigned employees to assigned warehouse
-        let updateCount = 0;
-        for (const employee of unassignedEmployees) {
-            employee.warehouse = warehouse._id;
-            await employee.save();
-            updateCount++;
-        }
-
-        res.json({
-            success: true,
-            message: `Successfully assigned warehouse to ${updateCount} employees`,
-            updated: updateCount,
-            warehouseId: warehouse._id,
-            warehouseName: warehouse.wName
         });
     } catch (err) {
         // console.error(err);

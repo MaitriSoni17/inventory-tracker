@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import CenteredModal from '../../common/Modal/CenteredModal';
 import '../../../styles/DeletionRequestsManager.css';
 
@@ -51,43 +51,26 @@ const DeletionRequestsManager = ({ showAlert }) => {
     setLoadingDataSummary(true);
     setShowModal(true);
 
-    // Fetch data summary for this user
+    // Build data summary from the populated request data
     try {
-      const endpoint = request.userRole === 'supplier' 
-        ? `http://localhost:5000/api/supplier/${request.userId}`
-        : `http://localhost:5000/api/employee/${request.userId}`;
-
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'auth-token': localStorage.getItem('token')
+      const userData = request.userId && typeof request.userId === 'object' ? request.userId : null;
+      
+      const summary = {
+        email: request.userEmail || (userData && userData.email) || 'Unknown',
+        name: userData ? `${userData.fname || ''} ${userData.lname || ''}`.trim() : request.userEmail || 'Unknown',
+        role: request.userRole,
+        createdDate: request.requestDate ? new Date(request.requestDate).toLocaleDateString() : 'Unknown',
+        lastActive: 'N/A',
+        preserved: {
+          profileData: userData ? (userData.fname || userData.lname) : true,
+          address: 'Profile data',
+          documents: 'All historical records'
         }
-      });
-
-      if (response.ok) {
-        const userData = await response.json();
-        
-        // Build data summary
-        const summary = {
-          email: userData.email,
-          name: `${userData.fname || ''} ${userData.lname || ''}`.trim(),
-          role: request.userRole,
-          createdDate: new Date(userData.createdAt).toLocaleDateString(),
-          lastActive: userData.lastActive ? new Date(userData.lastActive).toLocaleDateString() : 'Unknown',
-          // Additional data that will be preserved
-          preserved: {
-            profileData: userData.fname || userData.lname || userData.phone,
-            address: userData.city || userData.state || userData.address,
-            documents: 'All historical records'
-          }
-        };
-        
-        setDataSummary(summary);
-      }
+      };
+      
+      setDataSummary(summary);
     } catch (error) {
-      // console.error('Error fetching user data summary:', error);
-      // Continue with modal even if summary fetch fails
+      // Continue with modal even if summary build fails
     } finally {
       setLoadingDataSummary(false);
     }

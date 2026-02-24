@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useRole } from '../../../context/RoleContext';
 import '../../../styles/validation.css';
@@ -29,6 +29,7 @@ const EditProduct = (props) => {
     const [loadingWarehouses, setLoadingWarehouses] = useState(true);
     const [categories, setCategories] = useState([]);
     const [loadingCategories, setLoadingCategories] = useState(true);
+    const [enrichedNames, setEnrichedNames] = useState({ warehouseNames: [], categoryName: '' });
 
     // Check permission on mount
     useEffect(() => {
@@ -85,6 +86,12 @@ const EditProduct = (props) => {
                     eDate: formatDate(product.eDate),
                     desc: product.desc || '',
                     image: product.image || ''
+                });
+
+                // Store enriched names from API response for display fallback
+                setEnrichedNames({
+                    warehouseNames: product.warehouseNames || [],
+                    categoryName: product.categoryName || ''
                 });
                 
                 // Store all existing images
@@ -375,6 +382,10 @@ const EditProduct = (props) => {
                                                 disabled={loadingCategories}
                                             >
                                                 <option value="" disabled>{loadingCategories ? 'Loading categories...' : 'Select Category'}</option>
+                                                {/* Show enriched category name as fallback if current category not in loaded list */}
+                                                {productDetails.category && !categories.find(c => c._id === productDetails.category) && enrichedNames.categoryName && (
+                                                    <option value={productDetails.category}>{enrichedNames.categoryName}</option>
+                                                )}
                                                 {categories.map((category) => (
                                                     <option key={category._id} value={category._id}>{category.cName}</option>
                                                 ))}
@@ -415,11 +426,12 @@ const EditProduct = (props) => {
                                                 {productDetails.warehouse.length === 0 ? (
                                                     <span style={{ color: '#6c757d' }}>{loadingWarehouses ? 'Loading warehouses...' : 'Select Warehouses'}</span>
                                                 ) : (
-                                                    productDetails.warehouse.map(wId => {
+                                                    productDetails.warehouse.map((wId, idx) => {
                                                         const wh = warehouses.find(w => w._id === wId);
+                                                        const displayName = wh ? wh.wName : (enrichedNames.warehouseNames[idx] || wId);
                                                         return (
                                                             <span key={wId} style={{ background: '#af50ff', color: 'white', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                                {wh ? wh.wName : wId}
+                                                                {displayName}
                                                                 <span
                                                                     onClick={(e) => { e.stopPropagation(); setProductDetails({ ...productDetails, warehouse: productDetails.warehouse.filter(id => id !== wId) }); }}
                                                                     style={{ cursor: 'pointer', fontWeight: 'bold', marginLeft: '2px', fontSize: '1rem', lineHeight: '1' }}
