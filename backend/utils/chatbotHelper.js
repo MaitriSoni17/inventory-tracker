@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const Product = require('../models/Products');
-const Order = require('../models/Orders');
+const CustomerOrders = require('../models/CustomerOrders');
 const Warehouse = require('../models/Warehouse');
 const Supplier = require('../models/Supplier');
 const Employee = require('../models/Employee');
@@ -77,14 +77,14 @@ const getContextForRole = async (userId, role) => {
 
     if (role === 'businessowner') {
       context.products = await Product.countDocuments({ businessowner: userId });
-      context.totalOrders = await Order.countDocuments({ businessowner: userId });
-      context.pendingOrders = await Order.countDocuments({
+      context.totalOrders = await CustomerOrders.countDocuments({ businessowner: userId });
+      context.pendingOrders = await CustomerOrders.countDocuments({
         businessowner: userId,
-        productStatus: { $in: ['Pending', 'Processing'] }
+        status: { $in: ['Pending', 'Processing'] }
       });
-      context.completedOrders = await Order.countDocuments({
+      context.completedOrders = await CustomerOrders.countDocuments({
         businessowner: userId,
-        productStatus: 'Delivered'
+        status: 'Delivered'
       });
       context.warehouses = await Warehouse.countDocuments({ businessowner: userId });
       context.suppliers = await Supplier.countDocuments({ businessowner: userId });
@@ -104,16 +104,16 @@ const getContextForRole = async (userId, role) => {
       context.lowStockProducts = lowStockProducts;
 
       // Recent orders
-      const recentOrders = await Order.find({ businessowner: userId })
-        .sort({ createdAt: -1 })
-        .select('customerName productName totalAmt orderDate productStatus deliveryStatus')
+      const recentOrders = await CustomerOrders.find({ businessowner: userId })
+        .sort({ oDate: -1 })
+        .select('cName pName amount oDate status dStatus products')
         .limit(8);
       context.recentOrders = recentOrders;
 
       // Revenue calculation
-      const revenueData = await Order.aggregate([
+      const revenueData = await CustomerOrders.aggregate([
         { $match: { businessowner: toObjectId(userId) } },
-        { $group: { _id: null, totalRevenue: { $sum: '$totalAmt' }, avgOrderValue: { $avg: '$totalAmt' } } }
+        { $group: { _id: null, totalRevenue: { $sum: '$amount' }, avgOrderValue: { $avg: '$amount' } } }
       ]);
       if (revenueData.length > 0) {
         context.totalRevenue = revenueData[0].totalRevenue;
@@ -121,16 +121,16 @@ const getContextForRole = async (userId, role) => {
       }
 
       // Orders by status breakdown
-      const statusBreakdown = await Order.aggregate([
+      const statusBreakdown = await CustomerOrders.aggregate([
         { $match: { businessowner: toObjectId(userId) } },
-        { $group: { _id: '$productStatus', count: { $sum: 1 } } }
+        { $group: { _id: '$status', count: { $sum: 1 } } }
       ]);
       context.orderStatusBreakdown = statusBreakdown;
 
       // Top selling products
-      const topProducts = await Order.aggregate([
+      const topProducts = await CustomerOrders.aggregate([
         { $match: { businessowner: toObjectId(userId) } },
-        { $group: { _id: '$productName', totalSold: { $sum: 1 }, totalRevenue: { $sum: '$totalAmt' } } },
+        { $group: { _id: '$pName', totalSold: { $sum: 1 }, totalRevenue: { $sum: '$amount' } } },
         { $sort: { totalSold: -1 } },
         { $limit: 5 }
       ]);
@@ -171,21 +171,21 @@ const getContextForRole = async (userId, role) => {
 
       context.totalProducts = await Product.countDocuments(scopeFilter);
       context.assignedProducts = await Product.countDocuments({ employee: userId });
-      context.totalOrders = await Order.countDocuments(scopeFilter);
-      context.assignedOrders = await Order.countDocuments({ employee: userId });
-      context.pendingTasks = await Order.countDocuments({
+      context.totalOrders = await CustomerOrders.countDocuments(scopeFilter);
+      context.assignedOrders = await CustomerOrders.countDocuments({ employee: userId });
+      context.pendingTasks = await CustomerOrders.countDocuments({
         ...scopeFilter,
-        productStatus: { $in: ['Pending', 'Processing'] }
+        status: { $in: ['Pending', 'Processing'] }
       });
-      context.completedTasks = await Order.countDocuments({
+      context.completedTasks = await CustomerOrders.countDocuments({
         ...scopeFilter,
-        productStatus: 'Delivered'
+        status: 'Delivered'
       });
 
       // Recent orders within the business scope
-      const assignedOrders = await Order.find(scopeFilter)
-        .select('productName customerName productStatus deliveryStatus orderDate deliveryDeadline totalAmt')
-        .sort({ createdAt: -1 })
+      const assignedOrders = await CustomerOrders.find(scopeFilter)
+        .select('pName cName status dStatus oDate dDate amount products')
+        .sort({ oDate: -1 })
         .limit(8);
       context.assignedOrdersList = assignedOrders;
 
@@ -199,19 +199,19 @@ const getContextForRole = async (userId, role) => {
       // Urgent orders (deadline within 3 days)
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-      const urgentOrders = await Order.find({
+      const urgentOrders = await CustomerOrders.find({
         ...scopeFilter,
-        productStatus: { $in: ['Pending', 'Processing'] },
-        deliveryDeadline: { $lte: threeDaysFromNow, $gte: new Date() }
-      }).select('productName customerName deliveryDeadline productStatus').limit(5);
+        status: { $in: ['Pending', 'Processing'] },
+        dDate: { $lte: threeDaysFromNow, $gte: new Date() }
+      }).select('pName cName dDate status products').limit(5);
       context.urgentOrders = urgentOrders;
 
       // Overdue orders
-      const overdueOrders = await Order.find({
+      const overdueOrders = await CustomerOrders.find({
         ...scopeFilter,
-        productStatus: { $in: ['Pending', 'Processing'] },
-        deliveryDeadline: { $lt: new Date() }
-      }).select('productName customerName deliveryDeadline').limit(5);
+        status: { $in: ['Pending', 'Processing'] },
+        dDate: { $lt: new Date() }
+      }).select('pName cName dDate products').limit(5);
       context.overdueOrders = overdueOrders;
 
       // Employee profile info
@@ -382,7 +382,8 @@ BUSINESS OVERVIEW:
     if (context.recentOrders?.length) {
       formattedContext += `\n\nRECENT ORDERS:`;
       context.recentOrders.forEach(o => {
-        formattedContext += `\n- ${o.customerName} -> ${o.productName} — $${o.totalAmt} (${o.productStatus})`;
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        formattedContext += `\n- ${o.cName} -> ${productName} — $${o.amount} (${o.status})`;
       });
     }
 
@@ -415,23 +416,26 @@ WORK SUMMARY:
     if (context.urgentOrders?.length) {
       formattedContext += `\n\nURGENT ORDERS (deadline within 3 days):`;
       context.urgentOrders.forEach(o => {
-        const deadline = new Date(o.deliveryDeadline).toLocaleDateString();
-        formattedContext += `\n- ${o.productName} for ${o.customerName} — Due: ${deadline}`;
+        const deadline = new Date(o.dDate).toLocaleDateString();
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        formattedContext += `\n- ${productName} for ${o.cName} — Due: ${deadline}`;
       });
     }
 
     if (context.overdueOrders?.length) {
       formattedContext += `\n\nOVERDUE ORDERS:`;
       context.overdueOrders.forEach(o => {
-        const deadline = new Date(o.deliveryDeadline).toLocaleDateString();
-        formattedContext += `\n- ${o.productName} for ${o.customerName} — Was due: ${deadline}`;
+        const deadline = new Date(o.dDate).toLocaleDateString();
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        formattedContext += `\n- ${productName} for ${o.cName} — Was due: ${deadline}`;
       });
     }
 
     if (context.assignedOrdersList?.length) {
       formattedContext += `\n\nYOUR RECENT ORDERS:`;
       context.assignedOrdersList.forEach(o => {
-        formattedContext += `\n- ${o.productName} for ${o.customerName} — ${o.productStatus} | $${o.totalAmt}`;
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        formattedContext += `\n- ${productName} for ${o.cName} — ${o.status} | $${o.amount}`;
       });
     }
 
@@ -828,13 +832,13 @@ const searchProducts = async (productName, businessownerId) => {
 const searchOrders = async (searchTerm, businessownerId) => {
   try {
     const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const orders = await Order.find({
+    const orders = await CustomerOrders.find({
       businessowner: businessownerId,
       $or: [
-        { customerName: { $regex: escapedTerm, $options: 'i' } },
-        { productName: { $regex: escapedTerm, $options: 'i' } }
+        { cName: { $regex: escapedTerm, $options: 'i' } },
+        { pName: { $regex: escapedTerm, $options: 'i' } }
       ]
-    }).select('customerName productName totalAmt orderDate productStatus deliveryStatus deliveryDeadline address additionalNotes productCategory pAvailability').limit(5);
+    }).select('cName pName amount oDate status dStatus dDate cAddress desc pAvail products').limit(5);
     return orders;
   } catch (error) {
     return [];
@@ -900,7 +904,7 @@ const getProductDetails = (product) => {
 const getOrderDetails = (order) => {
   if (!order) return null;
 
-  const daysUntilDeadline = order.deliveryDeadline ? Math.ceil((new Date(order.deliveryDeadline) - new Date()) / (1000 * 60 * 60 * 24)) : 'N/A';
+  const daysUntilDeadline = order.dDate ? Math.ceil((new Date(order.dDate) - new Date()) / (1000 * 60 * 60 * 24)) : 'N/A';
 
   let urgency = '✅ On Track';
   if (typeof daysUntilDeadline === 'number') {
@@ -909,20 +913,22 @@ const getOrderDetails = (order) => {
     else if (daysUntilDeadline < 7) urgency = '⚡ Due Soon';
   }
 
+  const productName = order.pName || (order.products && order.products.length > 0 ? order.products.map(p => p.productName).join(', ') : 'N/A');
+
   return {
-    customer: order.customerName,
-    product: order.productName,
-    category: order.productCategory,
-    amount: `$${order.totalAmt}`,
-    orderDate: new Date(order.orderDate).toLocaleDateString(),
-    deadline: order.deliveryDeadline ? new Date(order.deliveryDeadline).toLocaleDateString() : 'N/A',
+    customer: order.cName,
+    product: productName,
+    category: order.category,
+    amount: `$${order.amount}`,
+    orderDate: new Date(order.oDate).toLocaleDateString(),
+    deadline: order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A',
     daysRemaining: daysUntilDeadline,
     urgency: urgency,
-    productStatus: order.productStatus || 'Pending',
-    deliveryStatus: order.deliveryStatus || 'Not shipped',
-    availability: order.pAvailability || 'Unknown',
-    address: order.address || 'Not provided',
-    notes: order.additionalNotes || 'None'
+    productStatus: order.status || 'Pending',
+    deliveryStatus: order.dStatus || 'Not shipped',
+    availability: order.pAvail || 'Unknown',
+    address: order.cAddress || 'Not provided',
+    notes: order.desc || 'None'
   };
 };
 
@@ -1130,7 +1136,8 @@ const getOrderStatusResponse = (role, context) => {
     if (context.recentOrders?.length > 0) {
       msg += `**Recent Orders:**\n`;
       context.recentOrders.slice(0, 5).forEach((o, i) => {
-        msg += `${i + 1}. ${o.customerName} → ${o.productName} — $${o.totalAmt} (${o.productStatus})\n`;
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        msg += `${i + 1}. ${o.cName} → ${productName} — $${o.amount} (${o.status})\n`;
       });
     }
     return msg;
@@ -1142,7 +1149,8 @@ const getOrderStatusResponse = (role, context) => {
     if (context.assignedOrdersList?.length > 0) {
       msg += `**Your Recent Orders:**\n`;
       context.assignedOrdersList.slice(0, 5).forEach((o, i) => {
-        msg += `${i + 1}. ${o.productName} for ${o.customerName} — ${o.productStatus}\n`;
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        msg += `${i + 1}. ${productName} for ${o.cName} — ${o.status}\n`;
       });
     }
     return msg;
@@ -1281,14 +1289,16 @@ const getUrgentTasksResponse = (role, context) => {
     if (context.overdueOrders?.length > 0) {
       msg += `🔴 **OVERDUE** (${context.overdueOrders.length}):\n`;
       context.overdueOrders.forEach((o, i) => {
-        msg += `${i + 1}. ${o.productName} for ${o.customerName} — Due: ${new Date(o.deliveryDeadline).toLocaleDateString()}\n`;
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        msg += `${i + 1}. ${productName} for ${o.cName} — Due: ${new Date(o.dDate).toLocaleDateString()}\n`;
       });
       msg += `\n`;
     }
     if (context.urgentOrders?.length > 0) {
       msg += `⚠️ **DUE SOON** (${context.urgentOrders.length}):\n`;
       context.urgentOrders.forEach((o, i) => {
-        msg += `${i + 1}. ${o.productName} for ${o.customerName} — Due: ${new Date(o.deliveryDeadline).toLocaleDateString()}\n`;
+        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
+        msg += `${i + 1}. ${productName} for ${o.cName} — Due: ${new Date(o.dDate).toLocaleDateString()}\n`;
       });
     }
     if (!context.overdueOrders?.length && !context.urgentOrders?.length) {

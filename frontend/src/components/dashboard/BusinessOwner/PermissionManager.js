@@ -1107,7 +1107,7 @@ const PermissionManager = (props) => {
                             {/* Custom roles section */}
                             {Object.keys(customRoles).length > 0 && (
                                 <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '10px 0', paddingTop: '10px' }}>
-                                    <small style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 15px' }}>Custom Roles</small>
+                                    <small style={{ color: 'black', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 15px' }}>Custom Roles</small>
                                 </div>
                             )}
                             {Object.entries(customRoles).map(([key, role]) => (
