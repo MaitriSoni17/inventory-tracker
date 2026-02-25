@@ -73,11 +73,11 @@ const BusinessOwner = (props) => {
     // Initialize or update charts when data changes
     useEffect(() => { // eslint-disable-line react-hooks/exhaustive-deps
         if (orders.length > 0 || products.length > 0) {
-            // Use setTimeout to ensure DOM is updated before accessing refs
-            const timer = setTimeout(() => {
+            // Use requestAnimationFrame to ensure DOM is painted before accessing refs
+            const rafId = requestAnimationFrame(() => {
                 initCharts();
-            }, 100);
-            return () => clearTimeout(timer);
+            });
+            return () => cancelAnimationFrame(rafId);
         }
     }, [orders, products, salesView]);
 
@@ -88,36 +88,36 @@ const BusinessOwner = (props) => {
                 'auth-token': localStorage.getItem('token')
             };
 
-            // Fetch orders
-            const ordersRes = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
-                method: 'POST',
-                headers
-            });
-            const ordersData = ordersRes.ok ? await ordersRes.json() : [];
+            // Fetch all data in parallel using Promise.all
+            const [ordersRes, productsRes, warehousesRes, employeesRes] = await Promise.all([
+                fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+                    method: 'POST',
+                    headers
+                }),
+                fetch('http://localhost:5000/api/products/getproduct', {
+                    method: 'POST',
+                    headers
+                }),
+                fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST',
+                    headers
+                }),
+                fetch('http://localhost:5000/api/employee/getallemployees', {
+                    method: 'POST',
+                    headers
+                })
+            ]);
+
+            const [ordersData, productsData, warehousesData, employeesData] = await Promise.all([
+                ordersRes.ok ? ordersRes.json() : [],
+                productsRes.ok ? productsRes.json() : [],
+                warehousesRes.ok ? warehousesRes.json() : [],
+                employeesRes.ok ? employeesRes.json() : []
+            ]);
+
             setOrders(ordersData);
-
-            // Fetch products
-            const productsRes = await fetch('http://localhost:5000/api/products/getproduct', {
-                method: 'POST',
-                headers
-            });
-            const productsData = productsRes.ok ? await productsRes.json() : [];
             setProducts(productsData);
-
-            // Fetch warehouses
-            const warehousesRes = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
-                method: 'POST',
-                headers
-            });
-            const warehousesData = warehousesRes.ok ? await warehousesRes.json() : [];
             setWarehouses(warehousesData);
-
-            // Fetch employees
-            const employeesRes = await fetch('http://localhost:5000/api/employee/getallemployees', {
-                method: 'POST',
-                headers
-            });
-            const employeesData = employeesRes.ok ? await employeesRes.json() : [];
             setEmployees(employeesData);
 
             // Calculate statistics
@@ -133,15 +133,13 @@ const BusinessOwner = (props) => {
                 totalWarehouses: warehousesData.length
             });
 
-            // Check and trigger low stock alert notifications
-            try {
-                await fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
-                    method: 'POST',
-                    headers
-                });
-            } catch (e) {}
-
             setLoading(false);
+
+            // Check low stock alerts in the background (non-blocking)
+            fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+                method: 'POST',
+                headers
+            }).catch(() => {});
         } catch (error) {
             props.showAlert?.('Failed to load dashboard data', 'danger');
             setLoading(false);
@@ -285,6 +283,7 @@ const BusinessOwner = (props) => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -341,6 +340,7 @@ const BusinessOwner = (props) => {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     plugins: {
                         legend: { display: false },
                         tooltip: {

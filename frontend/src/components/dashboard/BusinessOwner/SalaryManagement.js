@@ -623,9 +623,6 @@ const SalaryManagement = (props) => {
                                     }}
                                 >
                                     <option value="INR">Indian Rupee (INR)</option>
-                                    <option value="USD">US Dollar (USD)</option>
-                                    <option value="EUR">Euro (EUR)</option>
-                                    <option value="GBP">British Pound (GBP)</option>
                                 </select>
                             </div>
 

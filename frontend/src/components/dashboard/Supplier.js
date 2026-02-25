@@ -258,6 +258,7 @@ function Supplier(props) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -337,6 +338,7 @@ function Supplier(props) {
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: { duration: 400 },
                     cutout: '65%',
                     plugins: {
                         legend: {

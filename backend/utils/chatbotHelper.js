@@ -348,8 +348,8 @@ BUSINESS OVERVIEW:
 - Warehouses: ${context.warehouses || 0}
 - Suppliers: ${context.suppliers || 0}
 - Employees: ${context.employees || 0}
-- Total Revenue: $${context.totalRevenue || 0}
-- Average Order Value: $${context.avgOrderValue || 0}`;
+- Total Revenue: ₹${context.totalRevenue || 0}
+- Average Order Value: ₹${context.avgOrderValue || 0}`;
 
     if (context.orderStatusBreakdown?.length) {
       formattedContext += `\n\nORDER STATUS BREAKDOWN:`;
@@ -361,7 +361,7 @@ BUSINESS OVERVIEW:
     if (context.topProducts?.length) {
       formattedContext += `\n\nTOP SELLING PRODUCTS:`;
       context.topProducts.forEach((p, i) => {
-        formattedContext += `\n${i + 1}. ${p._id} — ${p.totalSold} orders, $${p.totalRevenue} revenue`;
+        formattedContext += `\n${i + 1}. ${p._id} — ${p.totalSold} orders, ₹${p.totalRevenue} revenue`;
       });
     }
 
@@ -375,7 +375,7 @@ BUSINESS OVERVIEW:
     if (context.lowStockProducts?.length) {
       formattedContext += `\n\nLOW STOCK PRODUCTS (< 10 units):`;
       context.lowStockProducts.forEach(p => {
-        formattedContext += `\n- ${p.name} (${p.category}) — ${p.totalProducts} units left, Price: $${p.price}`;
+        formattedContext += `\n- ${p.name} (${p.category}) — ${p.totalProducts} units left, Price: ₹${p.price}`;
       });
     }
 
@@ -383,20 +383,20 @@ BUSINESS OVERVIEW:
       formattedContext += `\n\nRECENT ORDERS:`;
       context.recentOrders.forEach(o => {
         const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
-        formattedContext += `\n- ${o.cName} -> ${productName} — $${o.amount} (${o.status})`;
+        formattedContext += `\n- ${o.cName} -> ${productName} — ₹${o.amount} (${o.status})`;
       });
     }
 
     if (context.totalSalaryPaid) {
       formattedContext += `\n\nSALARY DATA:`;
-      formattedContext += `\n- Total Salary Paid: $${context.totalSalaryPaid}`;
+      formattedContext += `\n- Total Salary Paid: ₹${context.totalSalaryPaid}`;
       formattedContext += `\n- Payments Made: ${context.salaryPaymentCount}`;
     }
 
     if (context.supplierOrderStats?.length) {
       formattedContext += `\n\nSUPPLIER ORDER SUMMARY:`;
       context.supplierOrderStats.forEach(s => {
-        formattedContext += `\n- ${s._id}: ${s.count} orders (Value: $${s.totalValue || 0})`;
+        formattedContext += `\n- ${s._id}: ${s.count} orders (Value: ₹${s.totalValue || 0})`;
       });
     }
 
@@ -435,14 +435,14 @@ WORK SUMMARY:
       formattedContext += `\n\nYOUR RECENT ORDERS:`;
       context.assignedOrdersList.forEach(o => {
         const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
-        formattedContext += `\n- ${productName} for ${o.cName} — ${o.status} | $${o.amount}`;
+        formattedContext += `\n- ${productName} for ${o.cName} — ${o.status} | ₹${o.amount}`;
       });
     }
 
     if (context.mySalaryPayments?.length) {
       formattedContext += `\n\nRECENT SALARY PAYMENTS:`;
       context.mySalaryPayments.forEach(p => {
-        formattedContext += `\n- $${p.amount} on ${new Date(p.paymentDate).toLocaleDateString()} (${p.status})`;
+        formattedContext += `\n- ₹${p.amount} on ${new Date(p.paymentDate).toLocaleDateString()} (${p.status})`;
       });
     }
 
@@ -456,12 +456,12 @@ SUPPLY OVERVIEW:
 - Pending Orders: ${context.pendingOrders || 0}
 - Delivered Orders: ${context.deliveredOrders || 0}
 - Cancelled Orders: ${context.cancelledOrders || 0}
-- Total Order Value: $${context.totalOrderValue || 0}`;
+- Total Order Value: ₹${context.totalOrderValue || 0}`;
 
     if (context.recentSupplierOrders?.length) {
       formattedContext += `\n\nRECENT ORDERS:`;
       context.recentSupplierOrders.forEach(o => {
-        formattedContext += `\n- ${o.pName} — Qty: ${o.ounits}, $${o.amount}/unit (${o.status})`;
+        formattedContext += `\n- ${o.pName} — Qty: ${o.ounits}, ₹${o.amount}/unit (${o.status})`;
       });
     }
   }
@@ -590,7 +590,7 @@ const getSalaryResponse = (context) => {
   let response = `**SALARY & PAYMENTS OVERVIEW:**\n\n`;
 
   if (context.totalSalaryPaid) {
-    response += `• Total Salary Paid: **$${context.totalSalaryPaid.toLocaleString()}**\n`;
+    response += `• Total Salary Paid: **₹${context.totalSalaryPaid.toLocaleString()}**\n`;
     response += `• Payment Transactions: **${context.salaryPaymentCount}**\n\n`;
   } else {
     response += `• No salary payments recorded yet.\n\n`;
@@ -600,7 +600,7 @@ const getSalaryResponse = (context) => {
     response += `**Recent Payments:**\n`;
     context.recentSalaryPayments.forEach((p, i) => {
       const empName = p.employee ? `${p.employee.fname} ${p.employee.lname || ''}`.trim() : 'Unknown';
-      response += `${i + 1}. **${empName}** — $${p.amount} on ${new Date(p.paymentDate).toLocaleDateString()} (${p.status})\n`;
+      response += `${i + 1}. **${empName}** — ₹${p.amount} on ${new Date(p.paymentDate).toLocaleDateString()} (${p.status})\n`;
     });
     response += `\n`;
   }
@@ -617,7 +617,7 @@ const getEmployeeSalaryResponse = (context) => {
 
   if (context.mySalaryPayments?.length) {
     context.mySalaryPayments.forEach((p, i) => {
-      response += `${i + 1}. **$${p.amount}** — ${new Date(p.paymentDate).toLocaleDateString()}\n`;
+      response += `${i + 1}. **₹${p.amount}** — ${new Date(p.paymentDate).toLocaleDateString()}\n`;
       response += `   • Method: ${p.paymentMethod || 'N/A'}\n`;
       response += `   • Period: ${p.paymentPeriod || 'N/A'}\n`;
       response += `   • Status: ${p.status}\n\n`;
@@ -642,7 +642,7 @@ const formatProductDetailsResponse = (products) => {
     const details = getProductDetails(product);
     response += `**${index + 1}. ${details.name}**\n`;
     response += `   • Category: ${details.category}\n`;
-    response += `   • Price: $${details.price}\n`;
+    response += `   • Price: ₹${details.price}\n`;
     response += `   • Stock: ${details.stock} units ${details.stock < 10 ? '⚠️ LOW' : '✅'}\n`;
     response += `   • Brand: ${details.brand || 'N/A'}\n`;
     response += `   • Mfg Date: ${details.manufactureDate}\n`;
@@ -919,7 +919,7 @@ const getOrderDetails = (order) => {
     customer: order.cName,
     product: productName,
     category: order.category,
-    amount: `$${order.amount}`,
+    amount: `₹${order.amount}`,
     orderDate: new Date(order.oDate).toLocaleDateString(),
     deadline: order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A',
     daysRemaining: daysUntilDeadline,
@@ -1052,8 +1052,8 @@ const getDashboardResponse = (role, context) => {
     msg += `• Products: **${context.products || 0}**\n`;
     msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
     msg += `• Pending: **${context.pendingOrders || 0}** | Completed: **${context.completedOrders || 0}**\n`;
-    msg += `• Revenue: **$${(context.totalRevenue || 0).toLocaleString()}**\n`;
-    msg += `• Avg Order: **$${context.avgOrderValue || 0}**\n\n`;
+    msg += `• Revenue: **₹${(context.totalRevenue || 0).toLocaleString()}**\n`;
+    msg += `• Avg Order: **₹${context.avgOrderValue || 0}**\n\n`;
     msg += `👥 **Team:** ${context.employees || 0} employees\n`;
     msg += `🏢 **Warehouses:** ${context.warehouses || 0}\n`;
     msg += `📦 **Suppliers:** ${context.suppliers || 0}\n\n`;
@@ -1066,7 +1066,7 @@ const getDashboardResponse = (role, context) => {
     if (context.topProducts?.length > 0) {
       msg += `\n🏆 **Top Products:**\n`;
       context.topProducts.slice(0, 3).forEach((p, i) => {
-        msg += `${i + 1}. ${p._id} — ${p.totalSold} orders ($${p.totalRevenue})\n`;
+        msg += `${i + 1}. ${p._id} — ${p.totalSold} orders (₹${p.totalRevenue})\n`;
       });
     }
     return msg;
@@ -1088,7 +1088,7 @@ const getDashboardResponse = (role, context) => {
     msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
     msg += `• Pending: **${context.pendingOrders || 0}**\n`;
     msg += `• Delivered: **${context.deliveredOrders || 0}**\n`;
-    msg += `• Total Value: **$${(context.totalOrderValue || 0).toLocaleString()}**\n`;
+    msg += `• Total Value: **₹${(context.totalOrderValue || 0).toLocaleString()}**\n`;
     return msg;
   }
   return getDashboardResponse('businessowner', context);
@@ -1137,7 +1137,7 @@ const getOrderStatusResponse = (role, context) => {
       msg += `**Recent Orders:**\n`;
       context.recentOrders.slice(0, 5).forEach((o, i) => {
         const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
-        msg += `${i + 1}. ${o.cName} → ${productName} — $${o.amount} (${o.status})\n`;
+        msg += `${i + 1}. ${o.cName} → ${productName} — ₹${o.amount} (${o.status})\n`;
       });
     }
     return msg;
@@ -1161,7 +1161,7 @@ const getOrderStatusResponse = (role, context) => {
     if (context.recentSupplierOrders?.length > 0) {
       msg += `**Recent Orders:**\n`;
       context.recentSupplierOrders.slice(0, 5).forEach((o, i) => {
-        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, $${o.amount}/unit (${o.status})\n`;
+        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, ₹${o.amount}/unit (${o.status})\n`;
       });
     }
     return msg;
@@ -1176,7 +1176,7 @@ const getLowStockResponse = (role, context) => {
       context.lowStockProducts.forEach((p, i) => {
         msg += `${i + 1}. **${p.name}** (${p.category})\n`;
         msg += `   • Current stock: **${p.totalProducts}** units\n`;
-        msg += `   • Price: $${p.price}\n`;
+        msg += `   • Price: ₹${p.price}\n`;
         msg += `   • Action: Reorder recommended\n\n`;
       });
       msg += `💡 Create supplier orders for these products from your dashboard.`;
@@ -1221,11 +1221,11 @@ const getSupplierInfoResponse = (role, context) => {
     msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
     msg += `• Pending: **${context.pendingOrders || 0}**\n`;
     msg += `• Delivered: **${context.deliveredOrders || 0}**\n`;
-    msg += `• Total Value: **$${(context.totalOrderValue || 0).toLocaleString()}**\n\n`;
+    msg += `• Total Value: **₹${(context.totalOrderValue || 0).toLocaleString()}**\n\n`;
     if (context.recentSupplierOrders?.length > 0) {
       msg += `**Recent Orders:**\n`;
       context.recentSupplierOrders.slice(0, 5).forEach((o, i) => {
-        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, $${o.amount}/unit (${o.status})\n`;
+        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, ₹${o.amount}/unit (${o.status})\n`;
       });
     }
     return msg;
@@ -1245,24 +1245,24 @@ const getWarehouseInfoResponse = (role, context) => {
 const getRevenueResponse = (role, context) => {
   if (role === 'businessowner') {
     let msg = `💰 **REVENUE & SALES:**\n\n`;
-    msg += `• Total Revenue: **$${(context.totalRevenue || 0).toLocaleString()}**\n`;
+    msg += `• Total Revenue: **₹${(context.totalRevenue || 0).toLocaleString()}**\n`;
     msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
-    msg += `• Avg Order Value: **$${context.avgOrderValue || 0}**\n\n`;
+    msg += `• Avg Order Value: **₹${context.avgOrderValue || 0}**\n\n`;
 
     if (context.topProducts?.length > 0) {
       msg += `🏆 **Top Revenue Products:**\n`;
       context.topProducts.forEach((p, i) => {
-        msg += `${i + 1}. ${p._id} — ${p.totalSold} orders, $${p.totalRevenue} revenue\n`;
+        msg += `${i + 1}. ${p._id} — ${p.totalSold} orders, ₹${p.totalRevenue} revenue\n`;
       });
     }
 
     if (context.totalSalaryPaid) {
       msg += `\n💼 **Expenses:**\n`;
-      msg += `• Salary paid: $${context.totalSalaryPaid.toLocaleString()}\n`;
+      msg += `• Salary paid: ₹${context.totalSalaryPaid.toLocaleString()}\n`;
     }
     return msg;
   } else if (role === 'supplier') {
-    return `💰 **Your Total Order Value:** $${(context.totalOrderValue || 0).toLocaleString()}\n• Pending: ${context.pendingOrders || 0}\n• Delivered: ${context.deliveredOrders || 0}`;
+    return `💰 **Your Total Order Value:** ₹${(context.totalOrderValue || 0).toLocaleString()}\n• Pending: ${context.pendingOrders || 0}\n• Delivered: ${context.deliveredOrders || 0}`;
   }
   return `Revenue information is accessible to business owners only.`;
 };
@@ -1274,7 +1274,7 @@ const getTopProductsResponse = (role, context) => {
       context.topProducts.forEach((p, i) => {
         msg += `**${i + 1}. ${p._id}**\n`;
         msg += `   • Orders: ${p.totalSold}\n`;
-        msg += `   • Revenue: $${p.totalRevenue}\n\n`;
+        msg += `   • Revenue: ₹${p.totalRevenue}\n\n`;
       });
       return msg;
     }

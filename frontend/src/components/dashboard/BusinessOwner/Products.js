@@ -268,7 +268,7 @@ const Products = (props) => {
                 <div className="row mb-3 my-2">
                     <div className="col-8 py-3 me-4">
                         <h1 className="display-5 fw-normal mb-3">Products</h1>
-                        <p className="text-muted">Last Update {lastUpdateTime.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })} at {lastUpdateTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
+                        <p className="text-muted">Last Update {lastUpdateTime.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} at {lastUpdateTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}</p>
 
                     </div>
                     <div className="col-3 ms-5 d-flex justify-content-end align-items-end pb-3">

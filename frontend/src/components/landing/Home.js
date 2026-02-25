@@ -145,7 +145,7 @@ function Home() {
           </div>
           <div className="price-card featured">
             <h3>Professional</h3>
-            <p className="price">$49<span>/month</span></p>
+            <p className="price">₹3,999<span>/month</span></p>
             <ul>
               <li>✓ Unlimited items</li>
               <li>✓ Advanced analytics</li>

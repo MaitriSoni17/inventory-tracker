@@ -178,7 +178,7 @@ const chatbotKnowledge = {
     'pricing': [
       {
         q: 'What are your pricing plans?',
-        a: 'We offer flexible plans starting from $29/month for startups to enterprise solutions'
+        a: 'We offer flexible plans starting from ₹2,499/month for startups to enterprise solutions'
       },
       {
         q: 'Can I upgrade or downgrade my plan?',

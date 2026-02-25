@@ -88,60 +88,58 @@ function Employee(props) {
                 'auth-token': localStorage.getItem('token')
             };
 
-            let ordersData = [];
-            let productsData = [];
-            let categoriesData = [];
-            let employeesData = [];
-            let warehousesData = [];
-
-            // Only fetch orders if user has permission
+            // Build fetch promises in parallel based on permissions
+            const fetchPromises = {};
             if (hasPermission('canViewOrders')) {
-                const ordersRes = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
-                    method: 'POST',
-                    headers
+                fetchPromises.orders = fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+                    method: 'POST', headers
                 });
-                ordersData = ordersRes.ok ? await ordersRes.json() : [];
             }
-            setOrders(ordersData);
-
-            // Only fetch products if user has permission
             if (hasPermission('canViewProducts')) {
-                const productsRes = await fetch('http://localhost:5000/api/products/getproduct', {
-                    method: 'POST',
-                    headers
+                fetchPromises.products = fetch('http://localhost:5000/api/products/getproduct', {
+                    method: 'POST', headers
                 });
-                productsData = productsRes.ok ? await productsRes.json() : [];
             }
-            setProducts(productsData);
-
-            // Only fetch categories if user has permission
             if (hasPermission('canViewCategories')) {
-                const categoriesRes = await fetch('http://localhost:5000/api/category/getcategories', {
-                    method: 'POST',
-                    headers
+                fetchPromises.categories = fetch('http://localhost:5000/api/category/getcategories', {
+                    method: 'POST', headers
                 });
-                categoriesData = categoriesRes.ok ? await categoriesRes.json() : [];
             }
-            setCategories(categoriesData);
-
-            // Only fetch employees if user has permission
             if (hasPermission('canViewEmployees')) {
-                const employeesRes = await fetch('http://localhost:5000/api/employee/getallemployees', {
-                    method: 'POST',
-                    headers
+                fetchPromises.employees = fetch('http://localhost:5000/api/employee/getallemployees', {
+                    method: 'POST', headers
                 });
-                employeesData = employeesRes.ok ? await employeesRes.json() : [];
             }
-            setEmployees(employeesData);
-
-            // Only fetch warehouses if user has permission
             if (hasPermission('canViewWarehouses')) {
-                const warehousesRes = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
-                    method: 'POST',
-                    headers
+                fetchPromises.warehouses = fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    method: 'POST', headers
                 });
-                warehousesData = warehousesRes.ok ? await warehousesRes.json() : [];
             }
+
+            // Await all fetches in parallel
+            const keys = Object.keys(fetchPromises);
+            const responses = await Promise.all(Object.values(fetchPromises));
+            const responseMap = {};
+            keys.forEach((key, i) => { responseMap[key] = responses[i]; });
+
+            // Parse JSON responses in parallel
+            const jsonPromises = keys.map(key =>
+                responseMap[key].ok ? responseMap[key].json() : Promise.resolve([])
+            );
+            const jsonResults = await Promise.all(jsonPromises);
+            const dataMap = {};
+            keys.forEach((key, i) => { dataMap[key] = jsonResults[i]; });
+
+            const ordersData = dataMap.orders || [];
+            const productsData = dataMap.products || [];
+            const categoriesData = dataMap.categories || [];
+            const employeesData = dataMap.employees || [];
+            const warehousesData = dataMap.warehouses || [];
+
+            setOrders(ordersData);
+            setProducts(productsData);
+            setCategories(categoriesData);
+            setEmployees(employeesData);
             setWarehouses(warehousesData);
 
             // Calculate statistics
@@ -156,15 +154,12 @@ function Employee(props) {
                 lowStockItems: lowStockCount
             });
 
-            // Check and trigger low stock alert notifications
-            try {
-                await fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
-                    method: 'POST',
-                    headers
-                });
-            } catch (e) {}
-
             setLoading(false);
+
+            // Check low stock alerts in the background (non-blocking)
+            fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+                method: 'POST', headers
+            }).catch(() => {});
         } catch (error) {
             props.showAlert?.('Failed to load dashboard data', 'danger');
             setLoading(false);
@@ -282,9 +277,9 @@ function Employee(props) {
     };
 
     const initCharts = useCallback(() => {
-        // Clear any pending chart creation timeout
+        // Clear any pending chart creation
         if (chartTimerRef.current) {
-            clearTimeout(chartTimerRef.current);
+            cancelAnimationFrame(chartTimerRef.current);
             chartTimerRef.current = null;
         }
 
@@ -301,8 +296,8 @@ function Employee(props) {
         const monthlyOrders = getOrdersData(orders);
         const topProducts = getTopProductsByOrders(products);
 
-        // Use setTimeout to ensure DOM is fully rendered
-        chartTimerRef.current = setTimeout(() => {
+        // Use requestAnimationFrame for efficient DOM-ready chart creation
+        chartTimerRef.current = requestAnimationFrame(() => {
             if (salesRef.current) {
                 try {
                     const ctx = salesRef.current.getContext('2d');
@@ -328,6 +323,7 @@ function Employee(props) {
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            animation: { duration: 400 },
                             plugins: {
                                 legend: { display: false },
                                 tooltip: {
@@ -385,6 +381,7 @@ function Employee(props) {
                             options: {
                                 responsive: true,
                                 maintainAspectRatio: false,
+                                animation: { duration: 400 },
                                 plugins: {
                                     legend: { display: false },
                                     tooltip: {
@@ -411,7 +408,7 @@ function Employee(props) {
                 } catch (error) {
                 }
             }
-        }, 100); // Increased timeout
+        });
     }, [orders, products, ordersView]);
 
     // Initialize or update charts when data changes
@@ -421,7 +418,7 @@ function Employee(props) {
         }
         return () => {
             if (chartTimerRef.current) {
-                clearTimeout(chartTimerRef.current);
+                cancelAnimationFrame(chartTimerRef.current);
                 chartTimerRef.current = null;
             }
             if (salesChartInstance.current) {

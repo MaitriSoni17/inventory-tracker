@@ -290,8 +290,8 @@ router.get('/products/excel', fetchuser, requireExportReports, requireViewPermis
                 categoryName,
                 product.sku || 'N/A',
                 product.totalProducts || 0,
-                `$${product.price || 0}`,
-                `$${product.price || 0}`,
+                `₹${product.price || 0}`,
+                `₹${product.price || 0}`,
                 warehouseNames,
                 product.totalProducts > 10 ? 'In Stock' : 'Low Stock',
                 product.mDate ? new Date(product.mDate).toLocaleDateString() : 'N/A'
@@ -401,7 +401,7 @@ router.get('/products/pdf', fetchuser, requireExportReports, requireViewPermissi
                 doc.text(`Category: ${categoryName}`);
                 doc.text(`SKU: ${product.sku || 'N/A'}`);
                 doc.text(`Quantity: ${product.totalProducts || 0}`);
-                doc.text(`Price: $${product.price || 0}`);
+                doc.text(`Price: ₹${product.price || 0}`);
                 doc.text(`Warehouse: ${warehouseNames}`);
                 doc.text(`Status: ${product.totalProducts > 10 ? 'In Stock' : 'Low Stock'}`);
                 doc.text(`Added Date: ${product.mDate ? new Date(product.mDate).toLocaleDateString() : 'N/A'}`);
@@ -487,7 +487,7 @@ router.get('/orders/excel', fetchuser, requireExportReports, requireViewPermissi
                     order.cEmail || 'N/A',
                     order.cPhone || 'N/A',
                     order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A',
-                    `$${order.amount || 0}`,
+                    `₹${order.amount || 0}`,
                     order.status || 'N/A',
                     order.pAvail || 'N/A',
                     warehouseName
@@ -585,7 +585,7 @@ router.get('/orders/pdf', fetchuser, requireExportReports, requireViewPermission
                     doc.text(`Customer Address: ${order.cAddress || 'N/A'}`);
                     doc.text(`Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}`);
                     doc.text(`Delivery Date: ${order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A'}`);
-                    doc.text(`Total Amount: $${order.amount || 0}`);
+                    doc.text(`Total Amount: ₹${order.amount || 0}`);
                     doc.text(`Status: ${order.status || 'N/A'}`);
                     doc.text(`Delivery Status: ${order.dStatus || 'N/A'}`);
                     doc.text(`Warehouse: ${warehouseName}`);
@@ -680,7 +680,7 @@ router.get('/supplier-orders/excel', fetchuser, requireExportReports, requireVie
                     order.supplier ? order.supplier.phone : 'N/A',
                     order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A',
                     order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A',
-                    `$${order.amount || 0}`,
+                    `₹${order.amount || 0}`,
                     order.status || 'N/A',
                     order.paymentStatus || 'N/A'
                 ]);
@@ -777,7 +777,7 @@ router.get('/supplier-orders/pdf', fetchuser, requireExportReports, requireViewP
                     doc.text(`Category: ${order.category || 'N/A'}`);
                     doc.text(`Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}`);
                     doc.text(`Expected Delivery: ${order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A'}`);
-                    doc.text(`Total Amount: $${order.amount || 0}`);
+                    doc.text(`Total Amount: ₹${order.amount || 0}`);
                     doc.text(`Quantity: ${order.ounits || 0}`);
                     doc.text(`Status: ${order.status || 'N/A'}`);
                     doc.text(`Payment Status: ${order.paymentStatus || 'N/A'}`);
