@@ -3,9 +3,9 @@ import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
 import { CanEditWarehouses, CanDeleteWarehouses, CanCreateWarehouses, CanExportReports } from '../../auth/RoleGuards';
+import validationRules from '../../../utils/validationHelper';
 
-const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
-const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
 const Warehouses = (props) => {
     const [warehouses, setWarehouses] = useState([]);
@@ -156,8 +156,8 @@ const Warehouses = (props) => {
             return;
         }
 
-        if (!isValidPhoneNumber(warehouseForm.wContact)) {
-            props.showAlert('Contact number must be exactly 10 digits', 'danger');
+        if (validationRules.phone(warehouseForm.wContact)) {
+            props.showAlert(validationRules.phone(warehouseForm.wContact), 'danger');
             return;
         }
 
@@ -206,8 +206,8 @@ const Warehouses = (props) => {
             return;
         }
 
-        if (!isValidPhoneNumber(warehouseForm.wContact)) {
-            props.showAlert('Contact number must be exactly 10 digits', 'danger');
+        if (validationRules.phone(warehouseForm.wContact)) {
+            props.showAlert(validationRules.phone(warehouseForm.wContact), 'danger');
             return;
         }
 

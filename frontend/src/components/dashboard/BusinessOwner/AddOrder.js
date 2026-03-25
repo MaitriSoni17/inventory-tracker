@@ -291,7 +291,7 @@ const AddOrder = (props) => {
         const { id, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [id]: id === 'cPhone' ? value.replace(/\D/g, '').slice(0, 10) : value
+            [id]: id === 'cPhone' ? value.replace(/[^\d+\-()\s]/g, '').slice(0, 16) : value
         }));
         // Clear error for this field when user starts typing
         if (errors[id]) {
@@ -405,7 +405,7 @@ const AddOrder = (props) => {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="cPhone" className="form-label fw-semibold mb-2">Customer Phone</label>
-                                    <input type="tel" className={`form-control rounded-3 shadow-sm ${errors.cPhone ? 'is-invalid' : ''}`} id="cPhone" placeholder="Enter Customer Phone" value={formData.cPhone} onChange={handleChange} onBlur={handleBlur} maxLength={10} pattern="[0-9]{10}" required />
+                                    <input type="tel" className={`form-control rounded-3 shadow-sm ${errors.cPhone ? 'is-invalid' : ''}`} id="cPhone" placeholder="+91 9876543210" value={formData.cPhone} onChange={handleChange} onBlur={handleBlur} maxLength={16} pattern="[\+]?[\d\s\-\(\)]*" required />
                                     {errors.cPhone && <div className="error-message">{errors.cPhone}</div>}
                                 </div>
                             </div>

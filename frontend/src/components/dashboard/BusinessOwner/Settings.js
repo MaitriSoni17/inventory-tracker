@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import '../../../styles/settings.css';
 import DeletionRequestsManager from './DeletionRequestsManager';
+import validationRules from '../../../utils/validationHelper';
 
-const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
-const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
 const Settings = (props) => {
   const [activeTab, setActiveTab] = useState('profile');
@@ -129,8 +129,8 @@ const Settings = (props) => {
   const handleSaveProfile = async (e) => {
     e.preventDefault();
 
-    if (profileData.phone && !isValidPhoneNumber(profileData.phone)) {
-      props.showAlert?.('Please enter a valid 10-digit phone number', 'danger');
+    if (profileData.phone && validationRules.phone(profileData.phone)) {
+      props.showAlert?.(validationRules.phone(profileData.phone), 'danger');
       return;
     }
 
@@ -182,8 +182,8 @@ const Settings = (props) => {
   const handleSaveCompany = async (e) => {
     e.preventDefault();
 
-    if (companyData.companyPhone && !isValidPhoneNumber(companyData.companyPhone)) {
-      props.showAlert?.('Please enter a valid 10-digit company phone number', 'danger');
+    if (companyData.companyPhone && validationRules.phone(companyData.companyPhone)) {
+      props.showAlert?.(validationRules.phone(companyData.companyPhone).replace('phone number', 'company phone number'), 'danger');
       return;
     }
 
@@ -540,8 +540,8 @@ const Settings = (props) => {
                       placeholder="+91 9876543210"
                       value={profileData.phone}
                       onChange={handleProfileChange}
-                      maxLength={10}
-                      pattern="[0-9]{10}"
+                      maxLength={16}
+                      pattern="[\+]?[\d\s\-\(\)]*"
                       
                     />
                   </div>
@@ -673,8 +673,8 @@ const Settings = (props) => {
                       placeholder="+91 9876543210"
                       value={companyData.companyPhone}
                       onChange={handleCompanyChange}
-                      maxLength={10}
-                      pattern="[0-9]{10}"
+                      maxLength={16}
+                      pattern="[\+]?[\d\s\-\(\)]*"
                       
                     />
                   </div>

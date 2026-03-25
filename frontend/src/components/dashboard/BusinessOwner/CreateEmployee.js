@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiCall, parseResponse } from '../../../utils/apiClient';
+import validationRules from '../../../utils/validationHelper';
 import '../../../styles/validation.css';
 
 const CreateEmployee = (props) => {
@@ -109,8 +110,9 @@ const CreateEmployee = (props) => {
         // Phone validation
         if (!empDetails.phone.trim()) {
             newErrors.phone = 'Contact number is required';
-        } else if (!/^\d{10}$/.test(empDetails.phone.replace(/\D/g, ''))) {
-            newErrors.phone = 'Please enter a valid 10-digit phone number';
+        } else {
+            const phoneError = validationRules.phone(empDetails.phone);
+            if (phoneError) newErrors.phone = phoneError;
         }
 
         // Birth date validation
@@ -180,8 +182,8 @@ const CreateEmployee = (props) => {
             return false;
         }
 
-        // Phone validation - at least 10 digits
-        if (!/^\d{10}$/.test(empDetails.phone.replace(/\D/g, ''))) {
+        // Phone validation
+        if (validationRules.phone(empDetails.phone)) {
             return false;
         }
 
@@ -326,7 +328,7 @@ const CreateEmployee = (props) => {
         } else {
             // Handle regular text/select inputs
             const nextValue = e.target.name === 'phone'
-                ? e.target.value.replace(/\D/g, '').slice(0, 10)
+                ? e.target.value.replace(/[^\d+\-()\s]/g, '').slice(0, 16)
                 : e.target.value;
             const updatedDetails = { ...empDetails, [e.target.name]: nextValue };
             setEmpDetails(updatedDetails);
@@ -513,13 +515,13 @@ const CreateEmployee = (props) => {
                                 <input
                                     type="tel"
                                     name="phone"
-                                    placeholder="Enter 10-digit phone number"
+                                    placeholder="+91 9876543210"
                                     value={empDetails.phone}
                                     onChange={onChange}
                                     onBlur={() => handleBlur('phone')}
                                     disabled={isSubmitting}
-                                    maxLength={10}
-                                    pattern="[0-9]{10}"
+                                    maxLength={16}
+                                    pattern="[\+]?[\d\s\-\(\)]*"
                                     className={`form-control ${errors.phone && touched.phone ? 'is-invalid' : ''} ${!errors.phone && touched.phone && empDetails.phone ? 'is-valid' : ''}`}
                                     style={{ minHeight: '44px', fontSize: '1rem' }}
                                 />

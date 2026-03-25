@@ -3,8 +3,49 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useRole } from '../../../context/RoleContext';
 import '../../../styles/validation.css';
 
-const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
-const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const isValidPhoneNumber = (value) => {
+  if (!value) return false;
+  const cleanValue = String(value).replace(/[^\d+]/g, '');
+
+  // India: +91 followed by 10 digits, first digit 6,7,8,9
+  const indiaRegex = /^\+91[6789]\d{9}$/;
+
+  // USA/Canada: +1 followed by 10 digits, area code not starting with 0 or 1
+  const usCanadaRegex = /^\+1[2-9]\d{2}\d{6}$/;
+
+  // UK: +44 followed by 10-11 digits
+  // Mobile: +447 followed by 9 digits (11 total)
+  // Landline: +44 followed by 10 digits
+  const ukMobileRegex = /^\+447\d{9}$/;
+  const ukLandlineRegex = /^\+44\d{10}$/;
+
+  // China: +86 followed by 11 digits, mobile starts with 1
+  const chinaMobileRegex = /^\+861\d{10}$/;
+
+  // Germany: +49 followed by 10-11 digits
+  // Mobile: +49 followed by 10-11 digits starting with 15,16,17
+  const germanyMobileRegex = /^\+49(15|16|17)\d{8,9}$/;
+  const germanyLandlineRegex = /^\+49\d{10,11}$/;
+
+  // Australia: +61 followed by 9 digits, mobile starts with 4
+  const australiaMobileRegex = /^\+614\d{8}$/;
+  const australiaLandlineRegex = /^\+61\d{9}$/;
+
+  // Plain 10-digit Indian number (legacy support)
+  const plainIndianRegex = /^[6789]\d{9}$/;
+
+  return indiaRegex.test(cleanValue) ||
+         usCanadaRegex.test(cleanValue) ||
+         ukMobileRegex.test(cleanValue) ||
+         ukLandlineRegex.test(cleanValue) ||
+         chinaMobileRegex.test(cleanValue) ||
+         germanyMobileRegex.test(cleanValue) ||
+         germanyLandlineRegex.test(cleanValue) ||
+         australiaMobileRegex.test(cleanValue) ||
+         australiaLandlineRegex.test(cleanValue) ||
+         plainIndianRegex.test(cleanValue);
+};
+const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
 const EditOrder = (props) => {
     const navigate = useNavigate();

@@ -40,15 +40,54 @@ const validationRules = {
     return '';
   },
 
-  // Phone number validation (10 digits for India)
+  // Phone number validation (supports international formats with country-specific rules)
   phone: (value) => {
     if (!value) return '';
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(value.replace(/\D/g, ''))) {
-      return 'Please enter a valid 10-digit phone number';
+
+    // Remove all non-digit characters except +
+    const cleanValue = value.replace(/[^\d+]/g, '');
+
+    // India: +91 followed by 10 digits, first digit 6,7,8,9
+    const indiaRegex = /^\+91[6789]\d{9}$/;
+
+    // USA/Canada: +1 followed by 10 digits, area code not starting with 0 or 1
+    const usCanadaRegex = /^\+1[2-9]\d{2}\d{6}$/;
+
+    // UK: +44 followed by 10-11 digits
+    // Mobile: +447 followed by 9 digits (11 total)
+    // Landline: +44 followed by 10 digits
+    const ukMobileRegex = /^\+447\d{9}$/;
+    const ukLandlineRegex = /^\+44\d{10}$/;
+
+    // China: +86 followed by 11 digits, mobile starts with 1
+    const chinaMobileRegex = /^\+861\d{10}$/;
+
+    // Germany: +49 followed by 10-11 digits
+    // Mobile: +49 followed by 10-11 digits starting with 15,16,17
+    const germanyMobileRegex = /^\+49(15|16|17)\d{8,9}$/;
+    const germanyLandlineRegex = /^\+49\d{10,11}$/;
+
+    // Australia: +61 followed by 9 digits, mobile starts with 4
+    const australiaMobileRegex = /^\+614\d{8}$/;
+    const australiaLandlineRegex = /^\+61\d{9}$/;
+
+    // Plain 10-digit Indian number (legacy support)
+    const plainIndianRegex = /^[6789]\d{9}$/;
+
+    if (indiaRegex.test(cleanValue) ||
+        usCanadaRegex.test(cleanValue) ||
+        ukMobileRegex.test(cleanValue) ||
+        ukLandlineRegex.test(cleanValue) ||
+        chinaMobileRegex.test(cleanValue) ||
+        germanyMobileRegex.test(cleanValue) ||
+        germanyLandlineRegex.test(cleanValue) ||
+        australiaMobileRegex.test(cleanValue) ||
+        australiaLandlineRegex.test(cleanValue) ||
+        plainIndianRegex.test(cleanValue)) {
+      return '';
     }
-    return '';
-  },
+
+    return 'Please enter a valid phone number with country code (e.g., +91 9876543210 for India, +1 5551234567 for USA)';  },
 
   // Number validation
   number: (value, fieldName = 'This field') => {

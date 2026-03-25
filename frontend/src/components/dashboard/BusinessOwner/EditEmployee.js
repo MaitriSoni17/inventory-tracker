@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
+import validationRules from '../../../utils/validationHelper';
 import '../../../styles/validation.css';
 
-const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
-const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
 const EditEmployee = (props) => {
     const navigate = useNavigate();
@@ -272,8 +272,8 @@ const EditEmployee = (props) => {
             return;
         }
 
-        if (formData.phone && !isValidPhoneNumber(formData.phone)) {
-            props.showAlert('Please enter a valid 10-digit phone number', 'danger');
+        if (formData.phone && validationRules.phone(formData.phone)) {
+            props.showAlert(validationRules.phone(formData.phone), 'danger');
             return;
         }
 
@@ -415,7 +415,7 @@ const EditEmployee = (props) => {
                             <div className="d-flex gap-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="phone" className="form-label fw-semibold mb-2">Phone</label>
-                                    <input type="tel" className="form-control rounded-3 shadow-sm" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} maxLength={10} pattern="[0-9]{10}" />
+                                    <input type="tel" className="form-control rounded-3 shadow-sm" id="phone" placeholder="Enter phone number (+91XXXXXXXXXX)" value={formData.phone} onChange={handleChange} maxLength={16} pattern="[\+]?[\d\s\-\(\)]*" />
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="gender" className="form-label fw-semibold mb-2">Gender</label>

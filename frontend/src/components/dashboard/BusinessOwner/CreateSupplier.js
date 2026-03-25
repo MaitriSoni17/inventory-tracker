@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import validationRules from '../../../utils/validationHelper';
 
 function CreateSupplier(props) {
     const [showPassword, setShowPassword] = useState(false);
@@ -15,11 +16,6 @@ function CreateSupplier(props) {
     const validateEmail = (email) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
-    };
-
-    const validatePhone = (phone) => {
-        const phoneRegex = /^[0-9]{10}$/;
-        return phoneRegex.test(phone.replace(/\D/g, ''));
     };
 
     const validatePassword = (password) => {
@@ -49,8 +45,9 @@ function CreateSupplier(props) {
         }
 
         // Phone validation
-        if (supplierDetails.phone.trim() && !validatePhone(supplierDetails.phone)) {
-            newErrors.phone = "Phone number must be 10 digits";
+        if (supplierDetails.phone.trim()) {
+            const phoneError = validationRules.phone(supplierDetails.phone);
+            if (phoneError) newErrors.phone = phoneError;
         }
 
         // Password validation
@@ -169,7 +166,7 @@ function CreateSupplier(props) {
     const onChange = (e) => {
         e.preventDefault()
         const { name, value } = e.target;
-        const nextValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 10) : value;
+        const nextValue = name === 'phone' ? value.replace(/[^\d+\-()\s]/g, '').slice(0, 16) : value;
         setSupplierDetails({ ...supplierDetails, [name]: nextValue });
         // Clear error for this field when user starts typing
         if (errors[name]) {
@@ -208,7 +205,7 @@ function CreateSupplier(props) {
                             <div className="d-flex gap-4 mb-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="contactNumber" className="form-label fw-semibold mb-2">Contact Number</label>
-                                    <input type="tel" value={supplierDetails.phone} className={`form-control rounded-3 shadow-sm ${errors.phone ? 'is-invalid' : ''}`} id="contactNumber" placeholder="Enter phone number" name='phone' onChange={onChange} maxLength={10} pattern="[0-9]{10}"/>
+                                    <input type="tel" value={supplierDetails.phone} className={`form-control rounded-3 shadow-sm ${errors.phone ? 'is-invalid' : ''}`} id="contactNumber" placeholder="+91 9876543210" name='phone' onChange={onChange} maxLength={16} pattern="[\+]?[\d\s\-\(\)]*"/>
                                     {errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>

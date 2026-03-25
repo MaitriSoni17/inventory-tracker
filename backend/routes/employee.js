@@ -20,7 +20,48 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 
-const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+const isValidPhoneNumber = (value) => {
+  if (!value) return false;
+  const cleanValue = String(value).replace(/[^\d+]/g, '');
+
+  // India: +91 followed by 10 digits, first digit 6,7,8,9
+  const indiaRegex = /^\+91[6789]\d{9}$/;
+
+  // USA/Canada: +1 followed by 10 digits, area code not starting with 0 or 1
+  const usCanadaRegex = /^\+1[2-9]\d{2}\d{6}$/;
+
+  // UK: +44 followed by 10-11 digits
+  // Mobile: +447 followed by 9 digits (11 total)
+  // Landline: +44 followed by 10 digits
+  const ukMobileRegex = /^\+447\d{9}$/;
+  const ukLandlineRegex = /^\+44\d{10}$/;
+
+  // China: +86 followed by 11 digits, mobile starts with 1
+  const chinaMobileRegex = /^\+861\d{10}$/;
+
+  // Germany: +49 followed by 10-11 digits
+  // Mobile: +49 followed by 10-11 digits starting with 15,16,17
+  const germanyMobileRegex = /^\+49(15|16|17)\d{8,9}$/;
+  const germanyLandlineRegex = /^\+49\d{10,11}$/;
+
+  // Australia: +61 followed by 9 digits, mobile starts with 4
+  const australiaMobileRegex = /^\+614\d{8}$/;
+  const australiaLandlineRegex = /^\+61\d{9}$/;
+
+  // Plain 10-digit Indian number (legacy support)
+  const plainIndianRegex = /^[6789]\d{9}$/;
+
+  return indiaRegex.test(cleanValue) ||
+         usCanadaRegex.test(cleanValue) ||
+         ukMobileRegex.test(cleanValue) ||
+         ukLandlineRegex.test(cleanValue) ||
+         chinaMobileRegex.test(cleanValue) ||
+         germanyMobileRegex.test(cleanValue) ||
+         germanyLandlineRegex.test(cleanValue) ||
+         australiaMobileRegex.test(cleanValue) ||
+         australiaLandlineRegex.test(cleanValue) ||
+         plainIndianRegex.test(cleanValue);
+};
 
 // Configure storage (e.g., store files in an 'uploads' directory)
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -506,6 +547,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
         return true;
     })
 ], async (req, res) => {
+    // console.log('Starting employee update for ID:', req.params.id);
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -525,6 +567,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
 
         const { fname, lname, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role, warehouse } = req.body;
 
+        // console.log('Finding employee with ID:', req.params.id);
         const employee = await Employee.findById(req.params.id);
         if (!employee) {
             if (req.file) {
@@ -533,8 +576,9 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
             return res.status(404).json({ error: "Employee not found" });
         }
 
+        // console.log('Employee found, businessowner:', employee.businessowner);
         // Check if employee belongs to this business owner
-        if (employee.businessowner.toString() !== req.user.businessowner.toString() && req.role !== 'businessowner') {
+        if (employee.businessowner && employee.businessowner.toString() !== req.businessowner.toString() && req.role !== 'businessowner') {
             if (req.file) {
                 deleteUploadedFile(path.join(uploadsDir, req.file.filename));
             }
@@ -601,8 +645,9 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
                                     newPermissions[key] = customPerms[key];
                                 }
                             }
-                        } else if (rolePermissionsDoc.customRoles && rolePermissionsDoc.customRoles.has(role)) {
-                            const customRole = rolePermissionsDoc.customRoles.get(role).toObject();
+                        } else if (rolePermissionsDoc.customRoles && rolePermissionsDoc.customRoles.has(role.toLowerCase())) {
+                            const customRoleDoc = rolePermissionsDoc.customRoles.get(role.toLowerCase());
+                            const customRole = customRoleDoc.toObject ? customRoleDoc.toObject() : customRoleDoc;
                             newPermissions = {};
                             for (const key of Object.keys(customRole)) {
                                 if (key.startsWith('can')) {
@@ -632,18 +677,24 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
 
         await employee.save();
 
-        // Send notification
-        const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
-        await notifyBusinessOwnerAboutEmployee(
-            employee.businessowner,
-            employee._id,
-            'updated',
-            employeeName,
-            { employeeId: employee._id, updatedBy: req.role }
-        );
+        console.log('Employee saved, sending notification');
+        // Send notification (don't fail if notification fails)
+        try {
+            const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+            await notifyBusinessOwnerAboutEmployee(
+                employee.businessowner,
+                employee._id,
+                'updated',
+                employeeName,
+                { employeeId: employee._id, updatedBy: req.role }
+            );
+        } catch (notificationErr) {
+            console.error('Notification error:', notificationErr);
+        }
 
         res.json({ employee, success: true });
     } catch (err) {
+        console.error('Error updating employee:', err);
         if (req.file) {
             deleteUploadedFile(path.join(uploadsDir, req.file.filename));
         }
