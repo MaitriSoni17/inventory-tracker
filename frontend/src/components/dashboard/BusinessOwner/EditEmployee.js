@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 import '../../../styles/validation.css';
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+
 const EditEmployee = (props) => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -145,7 +148,7 @@ const EditEmployee = (props) => {
         const { id, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [id]: value
+            [id]: id === 'phone' ? sanitizePhoneInput(value) : value
         }));
     };
 
@@ -266,6 +269,11 @@ const EditEmployee = (props) => {
         // Validation
         if (!formData.fname || !formData.email) {
             props.showAlert('Please fill all required fields', 'danger');
+            return;
+        }
+
+        if (formData.phone && !isValidPhoneNumber(formData.phone)) {
+            props.showAlert('Please enter a valid 10-digit phone number', 'danger');
             return;
         }
 
@@ -407,7 +415,7 @@ const EditEmployee = (props) => {
                             <div className="d-flex gap-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="phone" className="form-label fw-semibold mb-2">Phone</label>
-                                    <input type="number" className="form-control rounded-3 shadow-sm" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} />
+                                    <input type="tel" className="form-control rounded-3 shadow-sm" id="phone" placeholder="Enter phone number" value={formData.phone} onChange={handleChange} maxLength={10} pattern="[0-9]{10}" />
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="gender" className="form-label fw-semibold mb-2">Gender</label>

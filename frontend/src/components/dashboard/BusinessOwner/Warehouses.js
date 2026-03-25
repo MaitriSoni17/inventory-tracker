@@ -4,6 +4,9 @@ import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
 import { CanEditWarehouses, CanDeleteWarehouses, CanCreateWarehouses, CanExportReports } from '../../auth/RoleGuards';
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+
 const Warehouses = (props) => {
     const [warehouses, setWarehouses] = useState([]);
     const [filteredWarehouses, setFilteredWarehouses] = useState([]);
@@ -123,7 +126,7 @@ const Warehouses = (props) => {
         } else {
             setWarehouseForm(prev => ({
                 ...prev,
-                [name]: value
+                [name]: name === 'wContact' ? sanitizePhoneInput(value) : value
             }));
         }
     };
@@ -150,6 +153,11 @@ const Warehouses = (props) => {
         if (!warehouseForm.wName || !warehouseForm.wAddress || 
             !warehouseForm.wContact || !warehouseForm.wEmail) {
             props.showAlert('Please fill in all required fields', 'danger');
+            return;
+        }
+
+        if (!isValidPhoneNumber(warehouseForm.wContact)) {
+            props.showAlert('Contact number must be exactly 10 digits', 'danger');
             return;
         }
 
@@ -195,6 +203,11 @@ const Warehouses = (props) => {
         if (!warehouseForm.wName || !warehouseForm.wAddress || 
             !warehouseForm.wContact || !warehouseForm.wEmail) {
             props.showAlert('Please fill in all required fields', 'danger');
+            return;
+        }
+
+        if (!isValidPhoneNumber(warehouseForm.wContact)) {
+            props.showAlert('Contact number must be exactly 10 digits', 'danger');
             return;
         }
 
@@ -441,7 +454,7 @@ const Warehouses = (props) => {
                                             <div className="col-12">
                                                 <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
                                                 <input type="tel" className="form-control rounded-3 shadow-sm" id="wContact" name="wContact"
-                                                    value={warehouseForm.wContact} onChange={handleInputChange} required />
+                                                    value={warehouseForm.wContact} onChange={handleInputChange} maxLength={10} pattern="[0-9]{10}" required />
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wEmail" className="form-label fw-semibold mb-2">Email *</label>
@@ -515,7 +528,7 @@ const Warehouses = (props) => {
                                             <div className="col-12">
                                                 <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
                                                 <input type="tel" className="form-control rounded-3 shadow-sm" id="wContact" name="wContact"
-                                                    value={warehouseForm.wContact} onChange={handleInputChange} required />
+                                                    value={warehouseForm.wContact} onChange={handleInputChange} maxLength={10} pattern="[0-9]{10}" required />
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wEmail" className="form-label fw-semibold mb-2">Email *</label>

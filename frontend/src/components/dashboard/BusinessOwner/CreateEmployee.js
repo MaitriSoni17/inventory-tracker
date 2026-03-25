@@ -325,7 +325,10 @@ const CreateEmployee = (props) => {
             }
         } else {
             // Handle regular text/select inputs
-            const updatedDetails = { ...empDetails, [e.target.name]: e.target.value };
+            const nextValue = e.target.name === 'phone'
+                ? e.target.value.replace(/\D/g, '').slice(0, 10)
+                : e.target.value;
+            const updatedDetails = { ...empDetails, [e.target.name]: nextValue };
             setEmpDetails(updatedDetails);
 
             // Clear password errors when user modifies password or confirm password
@@ -515,6 +518,8 @@ const CreateEmployee = (props) => {
                                     onChange={onChange}
                                     onBlur={() => handleBlur('phone')}
                                     disabled={isSubmitting}
+                                    maxLength={10}
+                                    pattern="[0-9]{10}"
                                     className={`form-control ${errors.phone && touched.phone ? 'is-invalid' : ''} ${!errors.phone && touched.phone && empDetails.phone ? 'is-valid' : ''}`}
                                     style={{ minHeight: '44px', fontSize: '1rem' }}
                                 />

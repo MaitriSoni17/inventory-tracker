@@ -169,7 +169,8 @@ function CreateSupplier(props) {
     const onChange = (e) => {
         e.preventDefault()
         const { name, value } = e.target;
-        setSupplierDetails({ ...supplierDetails, [name]: value });
+        const nextValue = name === 'phone' ? value.replace(/\D/g, '').slice(0, 10) : value;
+        setSupplierDetails({ ...supplierDetails, [name]: nextValue });
         // Clear error for this field when user starts typing
         if (errors[name]) {
             setErrors({ ...errors, [name]: "" });
@@ -207,7 +208,7 @@ function CreateSupplier(props) {
                             <div className="d-flex gap-4 mb-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="contactNumber" className="form-label fw-semibold mb-2">Contact Number</label>
-                                    <input type="text" value={supplierDetails.phone} className={`form-control rounded-3 shadow-sm ${errors.phone ? 'is-invalid' : ''}`} id="contactNumber" placeholder="Enter phone number" name='phone' onChange={onChange}/>
+                                    <input type="tel" value={supplierDetails.phone} className={`form-control rounded-3 shadow-sm ${errors.phone ? 'is-invalid' : ''}`} id="contactNumber" placeholder="Enter phone number" name='phone' onChange={onChange} maxLength={10} pattern="[0-9]{10}"/>
                                     {errors.phone && <div className="invalid-feedback d-block">{errors.phone}</div>}
                                 </div>
                                 <div style={{ flex: 1 }}>

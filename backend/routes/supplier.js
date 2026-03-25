@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const fetchuser = require('../middleware/fetchuser'); // unified middleware
 const { body, validationResult } = require('express-validator');
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
 // Create an Supplier using: POST "/api/supplier/createsupplier". Business Owner login required
@@ -15,6 +17,12 @@ router.post('/createsupplier', fetchbusinessowner, [
     body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
     body('password', 'Password must be at least 5 characters').isLength({ min: 5 }),
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -114,8 +122,20 @@ router.post('/getallsuppliers', require('../middleware/fetchuser'), async (req, 
 });
 
 // Update Supplier using: PUT "/api/supplier/updatesupplier/:id". Business Owner login required
-router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), async (req, res) => {
+router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), [
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
+], async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
         const { fname, lname, phone, nationality, country, state, city, address, about } = req.body;
 
         const supplier = await Supplier.findById(req.params.id);
@@ -167,8 +187,20 @@ router.delete('/deletesupplier/:id', require('../middleware/fetchbusinessowner')
 });
 
 // Update own profile using: PUT "/api/supplier/updatesupplier". Supplier login required
-router.put('/updatesupplier', fetchuser, async (req, res) => {
+router.put('/updatesupplier', fetchuser, [
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
+], async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
+
         if (req.role !== 'supplier') {
             return res.status(403).json({ error: "Access denied" });
         }

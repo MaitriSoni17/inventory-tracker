@@ -20,6 +20,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+
 // Configure storage (e.g., store files in an 'uploads' directory)
 const uploadsDir = path.join(__dirname, '../uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -56,7 +58,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 router.post('/createemployee', fetchuser, upload.single('image'), [
     body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password must be at least 5 characters').isLength({ min: 5 })
+    body('password', 'Password must be at least 5 characters').isLength({ min: 5 }),
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    })
 ], async (req, res) => {
     // Ensure only business owner and managers (or custom roles with canManageEmployees) can create employees
     if (req.role && !['businessowner', 'manager'].includes(req.role) && !hasPermission(req.user, 'canManageEmployees')) {
@@ -428,8 +436,23 @@ router.post('/getallemployees', fetchuser, async (req, res) => {
 });
 
 // Update Employee Profile (Self-Update) using: PUT "/api/employee/updateemployee". Employee login required
-router.put('/updateemployee', fetchemployee, upload.single('image'), async (req, res) => {
+router.put('/updateemployee', fetchemployee, upload.single('image'), [
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    })
+], async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            if (req.file) {
+                deleteUploadedFile(req.file.path);
+            }
+            return res.status(400).json({ errors: errors.array() });
+        }
+
         const { fname, lname, phone, country, state, city, address } = req.body;
 
         const employee = req.employee;
@@ -475,8 +498,23 @@ router.put('/updateemployee', fetchemployee, upload.single('image'), async (req,
 });
 
 // Update Employee using: PUT "/api/employee/updateemployee/:id". Role-based access control
-router.put('/updateemployee/:id', fetchuser, upload.single('image'), async (req, res) => {
+router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    })
+], async (req, res) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            if (req.file) {
+                deleteUploadedFile(path.join(uploadsDir, req.file.filename));
+            }
+            return res.status(400).json({ errors: errors.array() });
+        }
+
         // Only businessowner, manager, and roles with canManageEmployees can update employees by ID
         if (!['businessowner', 'manager'].includes(req.role) && !hasPermission(req.user, 'canManageEmployees')) {
             if (req.file) {

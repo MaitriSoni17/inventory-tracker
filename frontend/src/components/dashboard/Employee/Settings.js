@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import '../../../styles/settings.css';
 import AccountDeletionModal from '../../common/Modal/AccountDeletionModal';
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+
 const Settings = (props) => {
   const [activeTab, setActiveTab] = useState('profile');
   
@@ -108,7 +111,7 @@ const Settings = (props) => {
     const { id, value } = e.target;
     setProfileData(prev => ({
       ...prev,
-      [id]: value
+      [id]: id === 'phone' ? sanitizePhoneInput(value) : value
     }));
   };
 
@@ -167,6 +170,11 @@ const Settings = (props) => {
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
+
+    if (profileData.phone && !isValidPhoneNumber(profileData.phone)) {
+      props.showAlert?.('Please enter a valid 10-digit phone number', 'danger');
+      return;
+    }
 
     try {
       setSaving(true);
@@ -401,6 +409,8 @@ const Settings = (props) => {
                       placeholder="+91 9876543210"
                       value={profileData.phone}
                       onChange={handleProfileChange}
+                      maxLength={10}
+                      pattern="[0-9]{10}"
                       
                     />
                   </div>

@@ -6,6 +6,8 @@ const jwt = require('jsonwebtoken');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { body, validationResult } = require('express-validator');
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
 // Create a Business Owner using: POST "/api/businessowner/createbusinessowner". No login required
@@ -94,6 +96,12 @@ router.put('/updatebusinessowner', fetchbusinessowner, [
     body('fname', 'Enter a valid name').isLength({ min: 3 }),
     body('email', 'Enter a valid email').isEmail(),
     body('password', 'Password must be at least 5 characters').isLength({ min: 5 }).optional({ checkFalsy: true }),
+    body('phone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });

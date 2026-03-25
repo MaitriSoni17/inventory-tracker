@@ -3,6 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useRole } from '../../../context/RoleContext';
 import '../../../styles/validation.css';
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+const sanitizePhoneInput = (value) => String(value || '').replace(/\D/g, '').slice(0, 10);
+
 const EditOrder = (props) => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -118,7 +121,7 @@ const EditOrder = (props) => {
         const { id, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [id]: value
+            [id]: id === 'cPhone' ? sanitizePhoneInput(value) : value
         }));
     };
 
@@ -186,6 +189,11 @@ const EditOrder = (props) => {
             selectedProducts.length === 0 ||
             !formData.oDate || !formData.dDate || !formData.status || !formData.pAvail || !formData.dStatus) {
             props.showAlert('Please fill all required fields and select at least one product', 'danger');
+            return;
+        }
+
+        if (!isValidPhoneNumber(formData.cPhone)) {
+            props.showAlert('Customer phone number must be exactly 10 digits', 'danger');
             return;
         }
 
@@ -263,7 +271,7 @@ const EditOrder = (props) => {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="cPhone" className="form-label fw-semibold mb-2">Customer Phone</label>
-                                    <input type="number" className="form-control rounded-3 shadow-sm" id="cPhone" placeholder="Enter customer phone" value={formData.cPhone} onChange={handleChange} required />
+                                    <input type="tel" className="form-control rounded-3 shadow-sm" id="cPhone" placeholder="Enter customer phone" value={formData.cPhone} onChange={handleChange} maxLength={10} pattern="[0-9]{10}" required />
                                 </div>
                             </div>
                         </div>

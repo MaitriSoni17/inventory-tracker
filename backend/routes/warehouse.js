@@ -5,6 +5,8 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { hasPermission } = require('../middleware/roleBasedAccess');
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+
 // Create Warehouse — permission-based access
 // NOTE: wManager is a string (manager name) and not a required reference to Employee
 // This solves the circular dependency: you can create warehouse without needing pre-existing employee
@@ -12,7 +14,12 @@ router.post('/createwarehouse', fetchuser, [
     body('wName', 'Enter Warehouse Name').exists(),
     body('wManager', 'Warehouse Manager Name').optional(),
     body('wAddress', 'Enter Warehouse Address').exists(),
-    body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
+    body('wContact').exists().custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit warehouse contact number');
+        }
+        return true;
+    }),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
 ], async (req, res) => {
     // Check permission to create warehouses
@@ -89,7 +96,12 @@ router.put('/updatewarehouse/:id', fetchuser, [
     body('wName', 'Enter Warehouse Name').exists(),
     body('wManager', 'Warehouse Manager Name').optional(),
     body('wAddress', 'Enter Warehouse Address').exists(),
-    body('wContact', 'Enter Warehouse Contact Details').exists().isNumeric(),
+    body('wContact').exists().custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit warehouse contact number');
+        }
+        return true;
+    }),
     body('wEmail', 'Enter Warehouse Email').exists().isEmail(),
 ], async (req, res) => {
     // Check permission to edit warehouses

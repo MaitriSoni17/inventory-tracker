@@ -6,11 +6,18 @@ const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { notifyEmployeesAboutOrder, notifyBusinessOwnerAboutOrderByEmployee, checkAndNotifyLowStock } = require('../utils/notificationHelper');
 
+const isValidPhoneNumber = (value) => /^\d{10}$/.test(String(value || '').replace(/\D/g, ''));
+
 // Create Customer Order — accessible by BusinessOwner or Employee
 router.post('/createcustomerorder', fetchuser, [
     body('cName', 'Enter Customer Name').exists(),
     body('cEmail', 'Enter valid Email').isEmail(),
-    body('cPhone', 'Enter Phone Number').exists().isNumeric(),
+    body('cPhone').exists().custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
     body('cAddress', 'Enter Address').exists(),
     body('products', 'At least one product is required').isArray({ min: 1 }),
     body('products.*.product', 'Product ID is required').exists(),
@@ -207,7 +214,12 @@ router.post('/getpendingorders', fetchuser, async (req, res) => {
 router.put('/updatecustomerorder/:id', fetchuser, [
     body('cName', 'Enter Customer Name').exists(),
     body('cEmail', 'Enter valid Email').isEmail(),
-    body('cPhone', 'Enter Phone Number').exists().isNumeric(),
+    body('cPhone').exists().custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
     body('cAddress', 'Enter Address').exists(),
     body('products', 'At least one product is required').isArray({ min: 1 }),
     body('products.*.product', 'Product ID is required').exists(),
