@@ -32,6 +32,8 @@ import SupplierOrder from './components/dashboard/BusinessOwner/SupplierOrder';
 import AddSupplierOrder from './components/dashboard/BusinessOwner/AddSupplierOrder';
 import EditSupplierOrder from './components/dashboard/BusinessOwner/EditSupplierOrder';
 import Warehouses from './components/dashboard/BusinessOwner/Warehouses';
+import WarehouseDetails from './components/dashboard/BusinessOwner/WarehouseDetails';
+import ProductDetails from './components/dashboard/BusinessOwner/ProductDetails';
 import Settings from './components/dashboard/BusinessOwner/Settings';
 import EmpSettings from './components/dashboard/Employee/Settings';
 import NotificationsPage from './components/common/NotificationsPage';
@@ -178,6 +180,16 @@ function App() {
               <Route path="warehouses" element={
                 <PermissionRouteGuard permission="canViewWarehouses">
                   <Warehouses showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="warehouses/:id" element={
+                <PermissionRouteGuard permission="canViewWarehouses">
+                  <WarehouseDetails showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
+              <Route path="product/:id" element={
+                <PermissionRouteGuard permission="canViewProducts">
+                  <ProductDetails showAlert={showAlert} />
                 </PermissionRouteGuard>
               } />
               {/* Settings - Business Owner only */}

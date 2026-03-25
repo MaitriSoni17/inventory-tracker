@@ -121,7 +121,7 @@ const EditEmployee = (props) => {
                         state: employee.state || '',
                         city: employee.city || '',
                         hireAt: employee.hireAt || '',
-                        warehouse: employee.warehouse || '',
+                        warehouse: (employee.warehouse && employee.warehouse._id) ? employee.warehouse._id : (employee.warehouse || ''),
                         phone: employee.phone || '',
                         address: employee.address || '',
                         about: employee.about || '',
@@ -265,6 +265,10 @@ const EditEmployee = (props) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        const normalizedWarehouse = typeof formData.warehouse === 'object'
+            ? (formData.warehouse?._id || '')
+            : formData.warehouse;
         
         // Validation
         if (!formData.fname || !formData.email) {
@@ -297,7 +301,7 @@ const EditEmployee = (props) => {
                 multipartFormData.append('state', formData.state);
                 multipartFormData.append('city', formData.city);
                 multipartFormData.append('hireAt', formData.hireAt);
-                multipartFormData.append('warehouse', formData.warehouse);
+                multipartFormData.append('warehouse', normalizedWarehouse);
                 multipartFormData.append('phone', formData.phone);
                 multipartFormData.append('address', formData.address);
                 multipartFormData.append('about', formData.about);
@@ -307,7 +311,10 @@ const EditEmployee = (props) => {
                 body = multipartFormData;
             } else {
                 headers['Content-Type'] = 'application/json';
-                body = JSON.stringify(formData);
+                body = JSON.stringify({
+                    ...formData,
+                    warehouse: normalizedWarehouse
+                });
             }
 
             const response = await fetch(`http://localhost:5000/api/employee/updateemployee/${id}`, {

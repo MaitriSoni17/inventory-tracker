@@ -1,6 +1,8 @@
 const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
 const Warehouse = require('../models/Warehouse');
+const Product = require('../models/Products');
+const Employee = require('../models/Employee');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { hasPermission } = require('../middleware/roleBasedAccess');
@@ -126,7 +128,39 @@ router.post('/getwarehouse', fetchuser, async (req, res) => {
             warehouse = await Warehouse.find({ businessowner: req.user.businessowner });
         }
 
-        res.json(warehouse);
+        const warehouseIds = warehouse.map((w) => w._id.toString());
+        const warehouseObjectIds = warehouse.map((w) => w._id);
+
+        const productCounts = await Product.aggregate([
+            { $match: { warehouse: { $exists: true, $ne: [] } } },
+            { $unwind: '$warehouse' },
+            { $match: { warehouse: { $in: warehouseIds } } },
+            { $group: { _id: '$warehouse', totalProductsCount: { $sum: 1 } } }
+        ]);
+
+        const productCountMap = productCounts.reduce((acc, item) => {
+            acc[item._id] = item.totalProductsCount;
+            return acc;
+        }, {});
+
+        const employeeCounts = await Employee.aggregate([
+            { $match: { warehouse: { $in: warehouseObjectIds } } },
+            { $group: { _id: '$warehouse', totalEmployeesCount: { $sum: 1 } } }
+        ]);
+
+        const employeeCountMap = employeeCounts.reduce((acc, item) => {
+            acc[item._id.toString()] = item.totalEmployeesCount;
+            return acc;
+        }, {});
+
+        const warehouseWithCounts = warehouse.map((w) => {
+            const plainWarehouse = w.toObject();
+            plainWarehouse.totalProductsCount = productCountMap[w._id.toString()] || 0;
+            plainWarehouse.totalEmployeesCount = employeeCountMap[w._id.toString()] || 0;
+            return plainWarehouse;
+        });
+
+        res.json(warehouseWithCounts);
     } catch (err) {
         res.status(500).send("Internal Server error occurred");
     }

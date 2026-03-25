@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
@@ -8,10 +9,13 @@ import validationRules from '../../../utils/validationHelper';
 const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
 const Warehouses = (props) => {
+    const navigate = useNavigate();
     const [warehouses, setWarehouses] = useState([]);
     const [filteredWarehouses, setFilteredWarehouses] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterCity, setFilterCity] = useState('');
+    const [filterProductCount, setFilterProductCount] = useState('');
+    const [filterEmployeeCount, setFilterEmployeeCount] = useState('');
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalWarehouses: 0
@@ -43,7 +47,7 @@ const Warehouses = (props) => {
     useEffect(() => {
         filterWarehouses();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [warehouses, searchTerm, filterCity]);
+    }, [warehouses, searchTerm, filterCity, filterProductCount, filterEmployeeCount]);
 
     const fetchManagers = async () => {
         try {
@@ -109,6 +113,28 @@ const Warehouses = (props) => {
 
         if (filterCity) {
             filtered = filtered.filter(warehouse => warehouse.city === filterCity);
+        }
+
+        if (filterProductCount) {
+            filtered = filtered.filter((warehouse) => {
+                const count = Number(warehouse.totalProductsCount || 0);
+                if (filterProductCount === 'zero') return count === 0;
+                if (filterProductCount === 'low') return count >= 1 && count <= 10;
+                if (filterProductCount === 'medium') return count >= 11 && count <= 50;
+                if (filterProductCount === 'high') return count > 50;
+                return true;
+            });
+        }
+
+        if (filterEmployeeCount) {
+            filtered = filtered.filter((warehouse) => {
+                const count = Number(warehouse.totalEmployeesCount || 0);
+                if (filterEmployeeCount === 'zero') return count === 0;
+                if (filterEmployeeCount === 'low') return count >= 1 && count <= 10;
+                if (filterEmployeeCount === 'medium') return count >= 11 && count <= 50;
+                if (filterEmployeeCount === 'high') return count > 50;
+                return true;
+            });
         }
 
         setFilteredWarehouses(filtered);
@@ -288,6 +314,8 @@ const Warehouses = (props) => {
     const handleResetFilters = () => {
         setSearchTerm('');
         setFilterCity('');
+        setFilterProductCount('');
+        setFilterEmployeeCount('');
         setFilteredWarehouses(warehouses);
         props.showAlert('Filters reset successfully', 'info');
     };
@@ -602,6 +630,32 @@ const Warehouses = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
+                        <select
+                            className="shadow border border-2 form-select custom-select-filter pe-5"
+                            value={filterProductCount}
+                            onChange={(e) => setFilterProductCount(e.target.value)}
+                        >
+                            <option value="">All Product Counts</option>
+                            <option value="zero">0 Products</option>
+                            <option value="low">1-10 Products</option>
+                            <option value="medium">11-50 Products</option>
+                            <option value="high">51+ Products</option>
+                        </select>
+                    </div>
+                    <div className="col-auto">
+                        <select
+                            className="shadow border border-2 form-select custom-select-filter pe-5"
+                            value={filterEmployeeCount}
+                            onChange={(e) => setFilterEmployeeCount(e.target.value)}
+                        >
+                            <option value="">All Employee Counts</option>
+                            <option value="zero">0 Employees</option>
+                            <option value="low">1-10 Employees</option>
+                            <option value="medium">11-50 Employees</option>
+                            <option value="high">51+ Employees</option>
+                        </select>
+                    </div>
+                    <div className="col-auto">
                         <button className="shadow border border-2 border-primary px-5 btn btn-custom-purple" onClick={handleResetFilters}>Reset</button>
                     </div>
                 </div>
@@ -618,7 +672,19 @@ const Warehouses = (props) => {
                     <div className="row g-4 mt-5">
                         {filteredWarehouses.map((warehouse) => (
                             <div key={warehouse._id} className="col-12 col-md-4 col-lg-4">
-                                <div className="card warehouse-card h-100">
+                                <div
+                                    className="card warehouse-card h-100"
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => navigate(`/dashboard/warehouses/${warehouse._id}`)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            navigate(`/dashboard/warehouses/${warehouse._id}`);
+                                        }
+                                    }}
+                                    style={{ cursor: 'pointer' }}
+                                >
                                     <div className="card-img-top warehouse-image-container" style={{ height: '200px', backgroundColor: '#f0f0f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <i className="bi bi-building" style={{ fontSize: '3rem', color: '#7B3EBC' }}></i>
                                     </div>
@@ -627,12 +693,12 @@ const Warehouses = (props) => {
                                             <h5 className="card-title">{warehouse.wName}</h5>
                                             <div className='d-flex'>
                                                 <CanEditWarehouses>
-                                                    <button className="btn btn-sm btn-link text-primary" onClick={() => handleEdit(warehouse)} title="Edit">
+                                                    <button className="btn btn-sm btn-link text-primary" onClick={(e) => { e.stopPropagation(); handleEdit(warehouse); }} title="Edit">
                                                         <i className="bi bi-pencil-square fs-5"></i>
                                                     </button>
                                                 </CanEditWarehouses>
                                                 <CanDeleteWarehouses>
-                                                    <button className="btn btn-sm btn-link text-danger" onClick={() => handleDelete(warehouse._id)} title="Delete">
+                                                    <button className="btn btn-sm btn-link text-danger" onClick={(e) => { e.stopPropagation(); handleDelete(warehouse._id); }} title="Delete">
                                                         <i className="bi bi-trash3-fill fs-5"></i>
                                                     </button>
                                                 </CanDeleteWarehouses>
@@ -644,6 +710,8 @@ const Warehouses = (props) => {
                                             <li><i className="bi bi-envelope me-2"></i> {warehouse.wEmail || 'N/A'}</li>
                                             <li><i className="bi bi-telephone me-2"></i> {warehouse.wContact || 'N/A'}</li>
                                             <li><i className="bi bi-building me-2"></i> {warehouse.city || 'N/A'}</li>
+                                            <li><i className="bi bi-people me-2"></i> Total Employees: {warehouse.totalEmployeesCount || 0}</li>
+                                            <li><i className="bi bi-box-seam me-2"></i> Total Products: {warehouse.totalProductsCount || 0}</li>
                                         </ul>
                                     </div>
                                 </div>

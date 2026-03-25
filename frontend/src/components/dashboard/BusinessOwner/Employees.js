@@ -10,6 +10,8 @@ const Employees = (props) => {
     const [filteredEmployees, setFilteredEmployees] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('');
+    const [filterWarehouse, setFilterWarehouse] = useState('');
+    const [filterJoiningDate, setFilterJoiningDate] = useState('');
     const [loading, setLoading] = useState(true);
     const [warehouseMap, setWarehouseMap] = useState({});
     const [customRoles, setCustomRoles] = useState({});
@@ -27,7 +29,7 @@ const Employees = (props) => {
     useEffect(() => {
         filterEmployees();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [employees, searchTerm, filterRole]);
+    }, [employees, searchTerm, filterRole, filterWarehouse, filterJoiningDate, warehouseMap]);
 
     const fetchWarehouses = async () => {
         try {
@@ -100,6 +102,24 @@ const Employees = (props) => {
     const filterEmployees = () => {
         let filtered = employees;
 
+        const getEmployeeWarehouseName = (emp) => {
+            if (!emp.warehouse) return '';
+            if (typeof emp.warehouse === 'string') {
+                return warehouseMap[emp.warehouse] || emp.warehouse;
+            }
+            return emp.warehouse.wName || '';
+        };
+
+        const toLocalDateString = (dateValue) => {
+            if (!dateValue) return '';
+            const date = new Date(dateValue);
+            if (Number.isNaN(date.getTime())) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
         // Search filter
         if (searchTerm) {
             filtered = filtered.filter(emp =>
@@ -113,6 +133,16 @@ const Employees = (props) => {
         // Role filter
         if (filterRole) {
             filtered = filtered.filter(emp => emp.role === filterRole);
+        }
+
+        // Warehouse filter
+        if (filterWarehouse) {
+            filtered = filtered.filter(emp => getEmployeeWarehouseName(emp) === filterWarehouse);
+        }
+
+        // Joining date filter
+        if (filterJoiningDate) {
+            filtered = filtered.filter(emp => toLocalDateString(emp.jDate) === filterJoiningDate);
         }
 
         setFilteredEmployees(filtered);
@@ -178,9 +208,25 @@ const Employees = (props) => {
     const handleResetFilters = () => {
         setSearchTerm('');
         setFilterRole('');
+        setFilterWarehouse('');
+        setFilterJoiningDate('');
         setFilteredEmployees(employees);
         props.showAlert('Filters reset successfully', 'info');
     };
+
+    const getEmployeeWarehouseName = (emp) => {
+        if (!emp.warehouse) return '';
+        if (typeof emp.warehouse === 'string') {
+            return warehouseMap[emp.warehouse] || emp.warehouse;
+        }
+        return emp.warehouse.wName || '';
+    };
+
+    const warehouseFilterOptions = [...new Set(
+        employees
+            .map((emp) => getEmployeeWarehouseName(emp))
+            .filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
 
     const exportToExcel = () => {
         if (filteredEmployees.length === 0) {
@@ -367,6 +413,23 @@ const Employees = (props) => {
                         </select>
                     </div>
                     <div className="col-auto">
+                        <select className="shadow border border-2 pe-4 form-select custom-select-filter" value={filterWarehouse} onChange={(e) => setFilterWarehouse(e.target.value)}>
+                            <option value="">All Warehouses</option>
+                            {warehouseFilterOptions.map((warehouseName) => (
+                                <option key={warehouseName} value={warehouseName}>{warehouseName}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="col-auto">
+                        <input
+                            type="date"
+                            className="shadow border border-2 form-control custom-select-filter"
+                            value={filterJoiningDate}
+                            onChange={(e) => setFilterJoiningDate(e.target.value)}
+                            title="Filter by joining date"
+                        />
+                    </div>
+                    <div className="col-auto">
                         <button className="shadow border border-2 border-primary px-5 btn btn-custom-purple" onClick={handleResetFilters}>Reset</button>
                     </div>
                 </div>
@@ -391,7 +454,7 @@ const Employees = (props) => {
                                     <th scope="col" className="py-2">Phone</th>
                                     <th scope="col" className="py-2">Role</th>
                                     <th scope="col" className="py-2">Warehouse</th>
-                                    <th scope="col" className="py-2">Hire Location</th>
+                                    {/* <th scope="col" className="py-2">Hire Location</th> */}
                                     <th scope="col" className="py-2">Joining Date</th>
                                     <th scope="col" className="py-2">Last Login</th>
                                     {/* <th scope="col" className="py-2">Location</th> */}
@@ -427,7 +490,7 @@ const Employees = (props) => {
                                                 <span className="badge bg-warning rounded-pill px-3 py-2">Unassigned</span>
                                             )}
                                         </td>
-                                        <td>{warehouseMap[emp.hireAt] || emp.hireAt || 'N/A'}</td>
+                                        {/* <td>{warehouseMap[emp.hireAt] || emp.hireAt || 'N/A'}</td> */}
                                         <td>{formatDate(emp.jDate)}</td>
                                         <td>
                                             <small className="text-muted" title={emp.lastLogin ? new Date(emp.lastLogin).toLocaleString('en-IN') : 'Never'}>

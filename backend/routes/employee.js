@@ -566,6 +566,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
         }
 
         const { fname, lname, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role, warehouse } = req.body;
+        const normalizedWarehouse = warehouse && typeof warehouse === 'object' ? warehouse._id : warehouse;
 
         // console.log('Finding employee with ID:', req.params.id);
         const employee = await Employee.findById(req.params.id);
@@ -610,7 +611,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
         if (state) employee.state = state;
         if (city) employee.city = city;
         if (hireAt) employee.hireAt = hireAt;
-        if (warehouse) employee.warehouse = warehouse; // Update warehouse/hire location
+        if (normalizedWarehouse) employee.warehouse = normalizedWarehouse; // Update warehouse/hire location
         if (phone) employee.phone = phone;
         if (address) employee.address = address;
         if (about) employee.about = about;
