@@ -6,7 +6,7 @@ const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
 const Supplier = require('../models/Supplier');
 const RolePermissions = require('../models/RolePermissions');
-const { notifyAboutNewMessage } = require('../utils/notificationHelper');
+const { notifyAboutNewMessage, notifyAboutEditedMessage } = require('../utils/notificationHelper');
 
 /**
  * Helper function to check if user has messaging permission
@@ -518,10 +518,33 @@ router.put('/:messageId', fetchuser, async (req, res) => {
             return res.status(403).json({ error: 'Messages can only be edited within 10 minutes of sending' });
         }
 
-        // Update the message
-        message.content = content.trim();
+        const trimmedContent = content.trim();
+
+        // No-op if content is unchanged; do not mark as edited
+        if (message.content === trimmedContent) {
+            await message.populate([
+                { path: 'sender', select: 'fname lname email _id' },
+                { path: 'recipient', select: 'fname lname email _id' }
+            ]);
+            return res.json({ success: true, message });
+        }
+
+        // Update the message and explicitly mark as edited
+        message.content = trimmedContent;
+        message.isEdited = true;
         message.updatedAt = new Date();
         await message.save();
+
+        const senderName = `${req.user.fname || ''} ${req.user.lname || ''}`.trim() || 'User';
+        await notifyAboutEditedMessage(
+            message.recipient,
+            message.recipientRole,
+            message.sender,
+            message.senderRole,
+            senderName,
+            trimmedContent,
+            req.businessowner
+        );
 
         // Populate sender and recipient details
         await message.populate([
@@ -568,6 +591,11 @@ router.delete('/:messageId', fetchuser, async (req, res) => {
 
         if (!isSender && !isRecipient) {
             return res.status(403).json({ error: 'Not authorized to delete this message' });
+        }
+
+        // Business rule: sender cannot delete message after receiver has seen it.
+        if (isSender && message.isRead) {
+            return res.status(403).json({ error: 'Message cannot be deleted after receiver has seen it' });
         }
 
         if (isSender) {

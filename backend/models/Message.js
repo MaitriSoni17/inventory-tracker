@@ -48,6 +48,10 @@ const MessageSchema = new Schema({
         type: Boolean,
         default: false
     },
+    isEdited: {
+        type: Boolean,
+        default: false
+    },
     readAt: {
         type: Date,
         default: null

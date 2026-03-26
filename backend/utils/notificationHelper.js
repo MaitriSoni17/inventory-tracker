@@ -1246,6 +1246,7 @@ module.exports = {
   notifyManagerAboutNewSubordinate,
   notifyEmployeeAboutRoleChange,
   notifyAboutNewMessage,
+  notifyAboutEditedMessage,
   checkAndNotifyLowStock,
   checkAllProductsLowStock
 };
@@ -1290,6 +1291,48 @@ async function notifyAboutNewMessage(
   } catch (error) {
     // console.error('Error creating message notification:', error);
     // Don't throw - notifications shouldn't block message sending
+    return null;
+  }
+}
+
+/**
+ * Notify user about an edited message
+ * @param {String} recipientId - ID of recipient
+ * @param {String} recipientRole - Role of recipient
+ * @param {String} senderId - ID of sender
+ * @param {String} senderRole - Role of sender
+ * @param {String} senderName - Name of sender
+ * @param {String} messagePreview - Updated message preview text
+ * @param {Object} businessOwnerId - Business owner ID
+ */
+async function notifyAboutEditedMessage(
+  recipientId,
+  recipientRole,
+  senderId,
+  senderRole,
+  senderName,
+  messagePreview,
+  businessOwnerId
+) {
+  try {
+    const notification = new Notification({
+      recipient: recipientId,
+      recipientRole,
+      sender: senderId,
+      senderRole,
+      type: 'message_edited',
+      title: `Message edited by ${senderName}`,
+      message: messagePreview.substring(0, 100),
+      data: {
+        senderId,
+        messagePreview,
+        businessOwnerId
+      }
+    });
+
+    await notification.save();
+    return notification;
+  } catch (error) {
     return null;
   }
 }

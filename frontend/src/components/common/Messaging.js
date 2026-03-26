@@ -110,10 +110,11 @@ const Messaging = () => {
     // Fetch messages when conversation changes
     useEffect(() => {
         if (selectedConversation) {
-            fetchMessages(selectedConversation.userId, selectedConversation.userRole);
-            // Poll for new messages every 10 seconds
+            // Show loader only for initial load when conversation changes.
+            fetchMessages(selectedConversation.userId, selectedConversation.userRole, true);
+            // Poll for new messages every 10 seconds without UI flicker.
             const interval = setInterval(() => {
-                fetchMessages(selectedConversation.userId, selectedConversation.userRole);
+                fetchMessages(selectedConversation.userId, selectedConversation.userRole, false);
             }, 10000);
             return () => clearInterval(interval);
         }
@@ -157,8 +158,10 @@ const Messaging = () => {
         }
     };
 
-    const fetchMessages = async (userId, userRole) => {
-        setLoadingMessages(true);
+    const fetchMessages = async (userId, userRole, showLoader = false) => {
+        if (showLoader) {
+            setLoadingMessages(true);
+        }
         try {
             const response = await fetch(
                 `http://localhost:5000/api/messages/conversation/${userId}/${userRole}`,
@@ -178,7 +181,9 @@ const Messaging = () => {
         } catch (error) {
             // console.error('Error fetching messages:', error);
         } finally {
-            setLoadingMessages(false);
+            if (showLoader) {
+                setLoadingMessages(false);
+            }
         }
     };
 
@@ -954,7 +959,7 @@ const Messaging = () => {
                                             {!isSentByMe && (
                                                 <div className="message-avatar">
                                                     <div className="avatar-circle">
-                                                        {msg.sender?.fname?.charAt(0).toUpperCase()}
+                                                        <i className="bi bi-person-fill"></i>
                                                     </div>
                                                 </div>
                                             )}
@@ -1002,7 +1007,7 @@ const Messaging = () => {
                                                 </div>
                                                 <small className="message-time">
                                                     {formatTime(msg.createdAt)}
-                                                    {msg.updatedAt && msg.updatedAt !== msg.createdAt && (
+                                                    {msg.isEdited === true && (
                                                         <span className="ms-2">(edited)</span>
                                                     )}
                                                     {isSentByMe && canEditMessage(msg.createdAt) && (
@@ -1042,15 +1047,17 @@ const Messaging = () => {
                                                                     <i className="bi bi-pencil me-2"></i>Edit (expired)
                                                                 </div>
                                                             )}
-                                                            <button
-                                                                className="dropdown-item text-danger"
-                                                                onClick={() => {
-                                                                    handleDeleteMessage(msg._id);
-                                                                    setShowMessageMenu(null);
-                                                                }}
-                                                            >
-                                                                <i className="bi bi-trash me-2"></i>Delete
-                                                            </button>
+                                                            {!msg.isRead && (
+                                                                <button
+                                                                    className="dropdown-item text-danger"
+                                                                    onClick={() => {
+                                                                        handleDeleteMessage(msg._id);
+                                                                        setShowMessageMenu(null);
+                                                                    }}
+                                                                >
+                                                                    <i className="bi bi-trash me-2"></i>Delete
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
