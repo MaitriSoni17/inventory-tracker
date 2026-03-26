@@ -42,10 +42,13 @@ const validationRules = {
 
   // Phone number validation (supports international formats with country-specific rules)
   phone: (value) => {
-    if (!value) return '';
+    if (value === null || value === undefined || value === '') return '';
+
+    const stringValue = String(value).trim();
+    if (!stringValue) return '';
 
     // Remove all non-digit characters except +
-    const cleanValue = value.replace(/[^\d+]/g, '');
+    const cleanValue = stringValue.replace(/[^\d+]/g, '');
 
     // India: +91 followed by 10 digits, first digit 6,7,8,9
     const indiaRegex = /^\+91[6789]\d{9}$/;
@@ -179,5 +182,3 @@ const validationRules = {
 };
 
 export default validationRules;
-
-

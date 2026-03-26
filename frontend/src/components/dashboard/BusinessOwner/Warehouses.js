@@ -8,6 +8,27 @@ import validationRules from '../../../utils/validationHelper';
 
 const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
+const getManagerIdFromWarehouse = (warehouse, managerList) => {
+    if (!warehouse) return '';
+
+    const employeeId = typeof warehouse.employee === 'object'
+        ? warehouse.employee?._id
+        : warehouse.employee;
+
+    if (employeeId) {
+        return String(employeeId);
+    }
+
+    const normalizedManagerName = String(warehouse.wManager || '').trim().toLowerCase();
+    if (!normalizedManagerName) return '';
+
+    const matchedManager = managerList.find((manager) =>
+        `${manager.fname} ${manager.lname}`.trim().toLowerCase() === normalizedManagerName
+    );
+
+    return matchedManager?._id || '';
+};
+
 const Warehouses = (props) => {
     const navigate = useNavigate();
     const [warehouses, setWarehouses] = useState([]);
@@ -25,6 +46,7 @@ const Warehouses = (props) => {
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const [managers, setManagers] = useState([]);
+    const [contactError, setContactError] = useState('');
     const [warehouseForm, setWarehouseForm] = useState({
         wName: '',
         wManager: '',
@@ -150,6 +172,11 @@ const Warehouses = (props) => {
                 wManager: selectedManager ? `${selectedManager.fname} ${selectedManager.lname}` : ''
             }));
         } else {
+            if (name === 'wContact') {
+                const sanitizedValue = sanitizePhoneInput(value);
+                setContactError(validationRules.phone(sanitizedValue));
+            }
+
             setWarehouseForm(prev => ({
                 ...prev,
                 [name]: name === 'wContact' ? sanitizePhoneInput(value) : value
@@ -169,6 +196,7 @@ const Warehouses = (props) => {
             state: '',
             country: ''
         });
+        setContactError('');
         setEditingId(null);
     };
 
@@ -191,6 +219,7 @@ const Warehouses = (props) => {
             const submitData = {
                 wName: warehouseForm.wName,
                 wManager: warehouseForm.wManager || '', // Allow empty string now
+                wManagerId: warehouseForm.wManagerId || undefined,
                 wAddress: warehouseForm.wAddress,
                 wContact: warehouseForm.wContact,
                 wEmail: warehouseForm.wEmail,
@@ -241,6 +270,7 @@ const Warehouses = (props) => {
             const submitData = {
                 wName: warehouseForm.wName,
                 wManager: warehouseForm.wManager || '', // Allow empty string now
+                wManagerId: warehouseForm.wManagerId || undefined,
                 wAddress: warehouseForm.wAddress,
                 wContact: warehouseForm.wContact,
                 wEmail: warehouseForm.wEmail,
@@ -296,17 +326,21 @@ const Warehouses = (props) => {
     };
 
     const handleEdit = (warehouse) => {
+        const selectedManagerId = getManagerIdFromWarehouse(warehouse, managers);
+        const sanitizedContact = sanitizePhoneInput(warehouse.wContact);
+
         setWarehouseForm({
             wName: warehouse.wName,
             wManager: warehouse.wManager,
-            wManagerId: '',
+            wManagerId: selectedManagerId,
             wAddress: warehouse.wAddress,
-            wContact: warehouse.wContact,
+            wContact: sanitizedContact,
             wEmail: warehouse.wEmail,
             city: warehouse.city || '',
             state: warehouse.state || '',
             country: warehouse.country || ''
         });
+        setContactError(validationRules.phone(sanitizedContact));
         setEditingId(warehouse._id);
         setShowEditModal(true);
     };
@@ -481,8 +515,9 @@ const Warehouses = (props) => {
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
-                                                <input type="tel" className="form-control rounded-3 shadow-sm" id="wContact" name="wContact"
-                                                    value={warehouseForm.wContact} onChange={handleInputChange} maxLength={10} pattern="[0-9]{10}" required />
+                                                <input type="tel" className={`form-control rounded-3 shadow-sm ${contactError ? 'is-invalid' : ''}`} id="wContact" name="wContact"
+                                                    value={warehouseForm.wContact} onChange={handleInputChange} maxLength={16} pattern="[\+]?[\d\s\-\(\)]*" placeholder="Enter phone number (+91XXXXXXXXXX)" required />
+                                                {contactError && <div className="invalid-feedback">{contactError}</div>}
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wEmail" className="form-label fw-semibold mb-2">Email *</label>
@@ -555,8 +590,9 @@ const Warehouses = (props) => {
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wContact" className="form-label fw-semibold mb-2">Contact Number *</label>
-                                                <input type="tel" className="form-control rounded-3 shadow-sm" id="wContact" name="wContact"
-                                                    value={warehouseForm.wContact} onChange={handleInputChange} maxLength={10} pattern="[0-9]{10}" required />
+                                                <input type="tel" className={`form-control rounded-3 shadow-sm ${contactError ? 'is-invalid' : ''}`} id="wContact" name="wContact"
+                                                    value={warehouseForm.wContact} onChange={handleInputChange} maxLength={16} pattern="[\+]?[\d\s\-\(\)]*" placeholder="Enter phone number (+91XXXXXXXXXX)" required />
+                                                {contactError && <div className="invalid-feedback">{contactError}</div>}
                                             </div>
                                             <div className="col-12">
                                                 <label htmlFor="wEmail" className="form-label fw-semibold mb-2">Email *</label>
@@ -725,4 +761,3 @@ const Warehouses = (props) => {
 }
 
 export default Warehouses
-

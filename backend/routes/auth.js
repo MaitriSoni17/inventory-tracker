@@ -17,27 +17,31 @@ const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 // Login for any user (Business Owner, Employee, Supplier) using: POST "/api/auth/login". No login required
 
 router.post('/login', [
-    body('email', 'Enter a valid email').isEmail(),
-    body('password', 'Password cannot be blank').exists(),
+    body('email', 'Enter a valid email').trim().isEmail(),
+    body('password', 'Password cannot be blank').notEmpty(),
 ], async (req, res) => {
+    const normalizedEmail = String(req.body.email || '').trim().toLowerCase();
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+
+    req.body.email = normalizedEmail;
+    req.body.password = password;
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { email, password } = req.body;
-
     try {
-        let user = await BusinessOwner.findOne({ email });
+        let user = await BusinessOwner.findOne({ email: normalizedEmail });
         let role = 'businessowner';
 
         if (!user) {
-            user = await Employee.findOne({ email });
+            user = await Employee.findOne({ email: normalizedEmail });
             if (user) {
                 role = user.role || 'employee'; // Use employee's actual role (built-in or custom)
             }
         }
 
         if (!user) {
-            user = await Supplier.findOne({ email });
+            user = await Supplier.findOne({ email: normalizedEmail });
             role = 'supplier';
         }
 
@@ -74,7 +78,7 @@ router.post('/login', [
 
         await LoginInfo.create(
             {
-                email,
+                email: normalizedEmail,
                 role
             }
         )
@@ -104,4 +108,3 @@ router.get('/getuser', fetchuser, async (req, res) => {
 });
 
 module.exports = router;
-

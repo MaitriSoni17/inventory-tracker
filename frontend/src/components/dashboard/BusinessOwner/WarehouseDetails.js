@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import validationRules from '../../../utils/validationHelper';
 
 const WarehouseDetails = (props) => {
     const { id } = useParams();
@@ -82,6 +83,11 @@ const WarehouseDetails = (props) => {
         return grouped;
     }, [products]);
 
+    const contactError = useMemo(() => {
+        if (!warehouse?.wContact) return '';
+        return validationRules.phone(warehouse.wContact);
+    }, [warehouse]);
+
     if (loading) {
         return (
             <div className="container-fluid p-4">
@@ -117,7 +123,12 @@ const WarehouseDetails = (props) => {
                         <div className="col-md-6"><strong>Warehouse Name:</strong> {warehouse.wName || 'N/A'}</div>
                         <div className="col-md-6"><strong>Manager:</strong> {warehouse.wManager || 'N/A'}</div>
                         <div className="col-md-6"><strong>Email:</strong> {warehouse.wEmail || 'N/A'}</div>
-                        <div className="col-md-6"><strong>Contact:</strong> {warehouse.wContact || 'N/A'}</div>
+                        <div className="col-md-6">
+                            <strong>Contact:</strong> {warehouse.wContact || 'N/A'}
+                            {contactError && (
+                                <div className="text-danger small mt-1">Invalid contact number format</div>
+                            )}
+                        </div>
                         <div className="col-md-6"><strong>Address:</strong> {warehouse.wAddress || 'N/A'}</div>
                         <div className="col-md-6"><strong>City:</strong> {warehouse.city || 'N/A'}</div>
                         <div className="col-md-6"><strong>State:</strong> {warehouse.state || 'N/A'}</div>

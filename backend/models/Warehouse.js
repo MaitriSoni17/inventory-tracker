@@ -7,7 +7,8 @@ const Warehouse = new Schema({
     wName: { type: String, required: true },
     wManager: { type: String },
     wAddress: { type: String, required: true },
-    wContact: { type: Number, required: true },
+    // Store as string to preserve international prefixes like +91
+    wContact: { type: String, required: true },
     wEmail: { type: String, required: true, unique: true },
     city: { type: String },
     state: { type: String },
