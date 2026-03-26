@@ -66,6 +66,7 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             
             {/* Auth Pages */}
+            {/* Auth Pages */}
             <Route path="/login" element={<Login showAlert={showAlert} />} />
             <Route path="/signup" element={<SignUp showAlert={showAlert} />} />
 
