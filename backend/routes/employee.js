@@ -745,6 +745,36 @@ router.put('/changepassword/:id', fetchbusinessowner, [
     }
 });
 
+// Reset Employee Password using: PUT "/api/employee/resetpassword/:id". Business Owner login required
+router.put('/resetpassword/:id', fetchbusinessowner, [
+    body('newPassword', 'New password must be at least 5 characters').isLength({ min: 5 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const employee = await Employee.findById(req.params.id);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        // Ensure employee belongs to this business owner
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        employee.password = await bcrypt.hash(req.body.newPassword, salt);
+        await employee.save();
+
+        res.json({ success: true, message: "Employee password reset successfully" });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 // Delete Employee using: DELETE "/api/employee/deleteemployee/:id". Role-based access control
 router.delete('/deleteemployee/:id', fetchuser, async (req, res) => {
     // Only businessowner, manager, and roles with canManageEmployees can delete employees

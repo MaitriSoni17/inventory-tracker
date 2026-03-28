@@ -12,6 +12,12 @@ const DeletionRequest = new Schema({
     scheduledDeletionDate: { type: Date }, // Date when deletion will occur (48-72 hours after approval)
     approvalDate: { type: Date },
     rejectionReason: { type: String },
+    cancellationRequested: { type: Boolean, default: false },
+    cancellationStatus: { type: String, enum: ['pending', 'approved', 'rejected', null], default: null },
+    cancellationRequestDate: { type: Date },
+    cancellationApprovalDate: { type: Date },
+    cancellationRejectionDate: { type: Date },
+    cancellationRejectionReason: { type: String },
     notificationsSent: { type: Number, default: 0 }, // Track how many reminders were sent
     createdAt: { type: Date, default: Date.now },
     expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } // Requests expire after 30 days

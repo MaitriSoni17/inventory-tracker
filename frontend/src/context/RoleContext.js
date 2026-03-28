@@ -7,6 +7,7 @@ export const RoleProvider = ({ children }) => {
     const [role, setRole] = useState(null);
     const [userDetails, setUserDetails] = useState(null);
     const [permissions, setPermissions] = useState({});
+    const [deletionRestriction, setDeletionRestriction] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // Helper to extract only permission keys from an object
@@ -49,6 +50,7 @@ export const RoleProvider = ({ children }) => {
             const storedRole = localStorage.getItem('role');
             
             if (!token) {
+                setDeletionRestriction(null);
                 setLoading(false);
                 return;
             }
@@ -75,9 +77,11 @@ export const RoleProvider = ({ children }) => {
                 return;
             }
 
+            let currentRole = storedRole || 'employee';
+
             if (response.ok) {
                 const data = await parseResponse(response);
-                const currentRole = data.role || storedRole || 'employee';
+                currentRole = data.role || storedRole || 'employee';
                 setRole(currentRole);
                 setUserDetails(data);
                 
@@ -93,7 +97,33 @@ export const RoleProvider = ({ children }) => {
                 }
             } else {
                 // Fallback to stored role
-                setRole(storedRole || 'employee');
+                setRole(currentRole);
+            }
+
+            if (currentRole !== 'businessowner') {
+                const deletionStatusResponse = await apiCall('http://localhost:5000/api/deletion/status', {
+                    method: 'GET'
+                });
+
+                if (deletionStatusResponse.ok) {
+                    const deletionStatusData = await parseResponse(deletionStatusResponse);
+                    const requestData = deletionStatusData?.requestData;
+                    const isApproved = deletionStatusData?.hasRequest && requestData?.status === 'approved';
+                    const scheduledDeletionDate = requestData?.scheduledDeletionDate ? new Date(requestData.scheduledDeletionDate) : null;
+                    const isWithinGrace = isApproved && scheduledDeletionDate && scheduledDeletionDate > new Date();
+
+                    if (isWithinGrace) {
+                        setDeletionRestriction({
+                            requestId: requestData._id,
+                            status: requestData.status,
+                            scheduledDeletionDate: requestData.scheduledDeletionDate
+                        });
+                    } else {
+                        setDeletionRestriction(null);
+                    }
+                }
+            } else {
+                setDeletionRestriction(null);
             }
         } catch (error) {
             // console.error('Error fetching user role:', error);
@@ -160,6 +190,7 @@ export const RoleProvider = ({ children }) => {
         setRole(null);
         setUserDetails(null);
         setPermissions({});
+        setDeletionRestriction(null);
     };
 
     return (
@@ -170,6 +201,7 @@ export const RoleProvider = ({ children }) => {
             setUserDetails,
             permissions,
             setPermissions,
+            deletionRestriction,
             loading,
             fetchUserRole,
             fetchPermissions,

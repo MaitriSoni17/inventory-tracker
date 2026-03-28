@@ -588,7 +588,7 @@ async function notifyBusinessOwnerAboutEmployeeLogin(
       notificationType.type,
       notificationType.title,
       notificationType.message,
-      { ...details, loginTime }
+      { ...details, loginTime, employeeId }
     );
   } catch (error) {
   }

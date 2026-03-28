@@ -16,11 +16,12 @@ const NotificationsPage = (props) => {
   const getNavigationPath = (notification) => {
     const { type, data } = notification;
     
-    // Employee related notifications
-    if (type.includes('employee')) {
-      if (data?.employeeId) {
+    // Employee entity notifications (exclude *_by_employee activity notifications)
+    if (type.startsWith('employee')) {
+      const employeeId = data?.employeeId || data?.userId || notification?.sender;
+      if (employeeId) {
         // Navigate to edit employee page for specific employee
-        return `/dashboard/editemployee/${data.employeeId}`;
+        return `/dashboard/editemployee/${employeeId}`;
       }
       // Default to employees list
       return '/dashboard/employee';
@@ -28,9 +29,16 @@ const NotificationsPage = (props) => {
     
     // Product related notifications
     if (type.includes('product')) {
-      if (data?.productId) {
+      const productId =
+        data?.productId ||
+        data?.updatedProductId ||
+        data?.id ||
+        data?._id ||
+        data?.product?._id;
+
+      if (productId) {
         // Navigate to edit product page for specific product
-        return `/dashboard/editproduct/${data.productId}`;
+        return `/dashboard/editproduct/${productId}`;
       }
       // Default to products list
       return '/dashboard/products';

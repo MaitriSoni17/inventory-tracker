@@ -7,6 +7,7 @@ const port = process.env.PORT || 5000
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const { startDeletionProcessor } = require('./utils/deletionProcessor');
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -79,5 +80,7 @@ module.exports = upload;
 
 app.listen(port, () => {
 })
+
+startDeletionProcessor();
 
 

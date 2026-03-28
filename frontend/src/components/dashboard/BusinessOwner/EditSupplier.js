@@ -20,15 +20,32 @@ const EditSupplier = (props) => {
         about: ''
     });
     const [passwordData, setPasswordData] = useState({
-        currentPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
-    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [saving, setSaving] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    const passwordToggleButtonStyle = {
+        position: 'absolute',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 2,
+        width: '32px',
+        height: '32px',
+        minWidth: '32px',
+        padding: 0,
+        margin: 0,
+        border: 'none',
+        background: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer'
+    };
 
     useEffect(() => {
         fetchSupplier();
@@ -112,20 +129,15 @@ const EditSupplier = (props) => {
                 'auth-token': localStorage.getItem('token')
             };
 
-            const dataToSend = {
-                ...formData,
-                password: passwordData.newPassword
-            };
-
-            const res = await fetch(`http://localhost:5000/api/supplier/updatesupplier/${id}`, {
+            const res = await fetch(`http://localhost:5000/api/supplier/resetpassword/${id}`, {
                 method: 'PUT',
                 headers,
-                body: JSON.stringify(dataToSend)
+                body: JSON.stringify({ newPassword: passwordData.newPassword })
             });
 
             if (res.ok) {
                 props.showAlert('Password changed successfully', 'success');
-                setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setPasswordData({ newPassword: '', confirmPassword: '' });
             } else {
                 props.showAlert('Failed to change password', 'danger');
             }
@@ -263,32 +275,10 @@ const EditSupplier = (props) => {
                         </div>
                     </div>
 
-                    {/* Change Password Section */}
+                    {/* Reset Password Section */}
                     <div className="card border-0 shadow-sm mb-4 rounded-4">
                         <div className="card-body p-5">
-                            <h5 className="card-title display-6 mb-4">Change Password</h5>
-                            <div className="mb-4">
-                                <label htmlFor="currentPassword" className="form-label fw-semibold mb-2">Current Password</label>
-                                <div className="position-relative">
-                                    <input
-                                        type={showCurrentPassword ? "text" : "password"}
-                                        className="form-control rounded-3 shadow-sm pe-5"
-                                        id="currentPassword"
-                                        placeholder="Enter current password"
-                                        value={passwordData.currentPassword}
-                                        onChange={handlePasswordChange}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
-                                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                        tabIndex="-1"
-                                        style={{ marginRight: '12px' }}
-                                    >
-                                        <i className={`bi ${showCurrentPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
-                                    </button>
-                                </div>
-                            </div>
+                            <h5 className="card-title display-6 mb-4">Reset Supplier Password</h5>
                             <div className="row">
                                 <div className="col-md-6">
                                     <div className="mb-4">
@@ -304,10 +294,11 @@ const EditSupplier = (props) => {
                                             />
                                             <button
                                                 type="button"
-                                                className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
+                                                className="password-toggle-btn"
                                                 onClick={() => setShowNewPassword(!showNewPassword)}
                                                 tabIndex="-1"
-                                                style={{ marginRight: '12px' }}
+                                                style={passwordToggleButtonStyle}
+                                                aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
                                             >
                                                 <i className={`bi ${showNewPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
                                             </button>
@@ -329,10 +320,11 @@ const EditSupplier = (props) => {
                                             />
                                             <button
                                                 type="button"
-                                                className="btn position-absolute end-0 top-50 translate-middle-y border-0 bg-transparent"
+                                                className="password-toggle-btn"
                                                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                                                 tabIndex="-1"
-                                                style={{ marginRight: '12px' }}
+                                                style={passwordToggleButtonStyle}
+                                                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                                             >
                                                 <i className={`bi ${showConfirmPassword ? "bi-eye-fill" : "bi-eye-slash-fill"} text-secondary`}></i>
                                             </button>
@@ -347,7 +339,7 @@ const EditSupplier = (props) => {
                                     onClick={handleChangePassword}
                                     disabled={saving}
                                 >
-                                    {saving ? 'Changing Password...' : 'Change Password'}
+                                    {saving ? 'Resetting Password...' : 'Reset Password'}
                                 </button>
                             </div>
                         </div>

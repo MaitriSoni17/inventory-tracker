@@ -8,6 +8,8 @@ import Features from './components/landing/Features';
 import About from './components/landing/About';
 import Contact from './components/landing/Contact';
 import Login from './components/auth/Login';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
 import SignUp from './components/auth/SignUp';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import SideBar from './components/common/SideBar';
@@ -45,6 +47,7 @@ import { RoleProvider } from './context/RoleContext';
 import { PermissionRouteGuard, RoleRouteGuard } from './components/auth/RouteGuard';
 import AccessDenied from './components/common/AccessDenied';
 import DashboardGuard from './components/auth/DashboardGuard';
+import DeletionRestriction from './components/common/DeletionRestriction';
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -67,6 +70,8 @@ function App() {
             
             {/* Auth Pages */}
             <Route path="/login" element={<Login showAlert={showAlert} />} />
+            <Route path="/forgot-password" element={<ForgotPassword showAlert={showAlert} />} />
+            <Route path="/reset-password" element={<ResetPassword showAlert={showAlert} />} />
             <Route path="/signup" element={<SignUp showAlert={showAlert} />} />
 
             <Route path="/dashboard" element={
@@ -241,6 +246,9 @@ function App() {
                   <SupplierSettings showAlert={showAlert} />
                 </RoleRouteGuard>
               } />
+
+              {/* Deletion grace hold for approved employee/supplier deletion requests */}
+              <Route path="deletion-hold" element={<DeletionRestriction showAlert={showAlert} />} />
 
               {/* Catch-all for unmatched dashboard routes */}
               <Route path="*" element={<AccessDenied message="The page you're looking for doesn't exist or you don't have permission to access it." />} />

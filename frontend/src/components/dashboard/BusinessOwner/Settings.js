@@ -45,6 +45,13 @@ const Settings = (props) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [confirmEmail, setConfirmEmail] = useState('');
+  const [ackCascade, setAckCascade] = useState(false);
+  const [ackNoRecovery, setAckNoRecovery] = useState(false);
+  const [deletionImpact, setDeletionImpact] = useState(null);
+  const [impactLoading, setImpactLoading] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -262,6 +269,12 @@ const Settings = (props) => {
   const handleDeleteAccountClick = async () => {
     setShowDeleteModal(true);
     setDeleteConfirmation('');
+    setDeleteReason('');
+    setDeletePassword('');
+    setConfirmEmail('');
+    setAckCascade(false);
+    setAckNoRecovery(false);
+    setDeletionImpact(null);
     
     // Check if there's an existing deletion request
     try {
@@ -285,8 +298,24 @@ const Settings = (props) => {
           );
         }
       }
+
+      setImpactLoading(true);
+      const impactRes = await fetch('http://localhost:5000/api/businessowner/deletion-impact', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'auth-token': token
+        }
+      });
+
+      if (impactRes.ok) {
+        const impactData = await impactRes.json();
+        setDeletionImpact(impactData.impact || null);
+      }
     } catch (error) {
       // console.error('Error checking deletion status:', error);
+    } finally {
+      setImpactLoading(false);
     }
   };
 
@@ -295,6 +324,26 @@ const Settings = (props) => {
     
     if (deleteConfirmation !== confirmationText) {
       props.showAlert?.(`Please type "${confirmationText}" to confirm`, 'warning');
+      return;
+    }
+
+    if (!deletePassword) {
+      props.showAlert?.('Please enter your current password to continue.', 'warning');
+      return;
+    }
+
+    if (deleteReason.trim().length < 15) {
+      props.showAlert?.('Please provide a reason with at least 15 characters.', 'warning');
+      return;
+    }
+
+    if (confirmEmail.trim().toLowerCase() !== profileData.email.trim().toLowerCase()) {
+      props.showAlert?.('Email confirmation does not match your account email.', 'warning');
+      return;
+    }
+
+    if (!ackCascade || !ackNoRecovery) {
+      props.showAlert?.('Please acknowledge all warnings before continuing.', 'warning');
       return;
     }
 
@@ -318,7 +367,15 @@ const Settings = (props) => {
 
       const res = await fetch('http://localhost:5000/api/businessowner/delete', {
         method: 'POST',
-        headers
+        headers,
+        body: JSON.stringify({
+          currentPassword: deletePassword,
+          confirmationText: deleteConfirmation,
+          reason: deleteReason,
+          acknowledgeCascade: ackCascade,
+          acknowledgeNoRecovery: ackNoRecovery,
+          expectedEmail: confirmEmail
+        })
       });
 
       // console.log('Delete response status:', res.status);
@@ -1021,6 +1078,21 @@ const Settings = (props) => {
               </div>
 
               <div className="delete-info-box">
+                <p><strong>Deletion Impact Preview</strong></p>
+                {impactLoading && <p>Calculating affected records...</p>}
+                {!impactLoading && deletionImpact && (
+                  <ul>
+                    <li>Employees: {deletionImpact.employees}</li>
+                    <li>Suppliers: {deletionImpact.suppliers}</li>
+                    <li>Products: {deletionImpact.products}</li>
+                    <li>Categories: {deletionImpact.categories}</li>
+                    <li>Orders: {deletionImpact.orders}</li>
+                    <li>Warehouses: {deletionImpact.warehouses}</li>
+                  </ul>
+                )}
+              </div>
+
+              <div className="delete-info-box">
                 <p>
                   <strong>Note:</strong> If you already have a pending deletion request, 
                   you can cancel it using the "Cancel Deletion Request" button below.
@@ -1028,6 +1100,40 @@ const Settings = (props) => {
               </div>
 
               <div className="delete-confirmation-section">
+                <p className="confirmation-instruction">
+                  Confirm your email by typing <strong>{profileData.email || 'your email'}</strong>:
+                </p>
+                <input
+                  type="email"
+                  className="form-control delete-confirmation-input"
+                  placeholder="Type your email"
+                  value={confirmEmail}
+                  onChange={(e) => setConfirmEmail(e.target.value)}
+                />
+
+                <p className="confirmation-instruction mt-3">
+                  Enter your current password:
+                </p>
+                <input
+                  type="password"
+                  className="form-control delete-confirmation-input"
+                  placeholder="Current password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                />
+
+                <p className="confirmation-instruction mt-3">
+                  Provide deletion reason (minimum 15 characters):
+                </p>
+                <textarea
+                  className="form-control delete-confirmation-input"
+                  placeholder="Write your reason"
+                  value={deleteReason}
+                  onChange={(e) => setDeleteReason(e.target.value)}
+                  rows="3"
+                />
+                <small className="text-muted">{deleteReason.length}/15 minimum</small>
+
                 <p className="confirmation-instruction">
                   To confirm, type <strong>"DELETE MY ACCOUNT"</strong> below:
                 </p>
@@ -1041,6 +1147,31 @@ const Settings = (props) => {
                 <small className="text-muted">
                   Entered: {deleteConfirmation.length}/18
                 </small>
+
+                <div className="form-check mt-3">
+                  <input
+                    type="checkbox"
+                    className="delete-ack-checkbox"
+                    id="ackCascade"
+                    checked={ackCascade}
+                    onChange={(e) => setAckCascade(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="ackCascade">
+                    I understand all related business records and associated accounts will be removed.
+                  </label>
+                </div>
+                <div className="form-check mt-2">
+                  <input
+                    type="checkbox"
+                    className="delete-ack-checkbox"
+                    id="ackNoRecovery"
+                    checked={ackNoRecovery}
+                    onChange={(e) => setAckNoRecovery(e.target.checked)}
+                  />
+                  <label className="form-check-label" htmlFor="ackNoRecovery">
+                    I understand this deletion cannot be recovered after the 7-day grace period.
+                  </label>
+                </div>
               </div>
             </div>
             <div className="modal-footer">

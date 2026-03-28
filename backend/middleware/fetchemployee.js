@@ -1,5 +1,6 @@
 var jwt = require('jsonwebtoken');
 const Employee = require('../models/Employee');
+const DeletionRequest = require('../models/DeletionRequest');
 const JWT_SECRET = process.env.JWT_SECRET || "ThisisaSecretKey";
 
 const fetchemployee = async (req, res, next) => {
@@ -18,6 +19,22 @@ const fetchemployee = async (req, res, next) => {
         req.user = employee; // Also set req.user for consistency with other middleware
         // Use the employee's actual role from the database
         req.role = employee.role || 'employee';
+
+        const activeApprovedDeletion = await DeletionRequest.findOne({
+            userId: employee._id,
+            status: 'approved',
+            scheduledDeletionDate: { $gt: new Date() }
+        }).select('_id status scheduledDeletionDate');
+
+        if (activeApprovedDeletion) {
+            return res.status(403).json({
+                success: false,
+                error: 'Your account is scheduled for deletion. Only deletion cancellation is available during the grace period.',
+                code: 'ACCOUNT_DELETION_RESTRICTED',
+                requestId: activeApprovedDeletion._id,
+                scheduledDeletionDate: activeApprovedDeletion.scheduledDeletionDate
+            });
+        }
         
         next();
 

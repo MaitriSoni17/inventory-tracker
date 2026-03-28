@@ -2,7 +2,19 @@ const jwt = require('jsonwebtoken');
 const BusinessOwner = require('../models/BusinessOwner');
 const Employee = require('../models/Employee');
 const Supplier = require('../models/Supplier');
+const DeletionRequest = require('../models/DeletionRequest');
 const JWT_SECRET = process.env.JWT_SECRET || "ThisisaSecretKey";
+
+const isAllowedDuringDeletionGrace = (req) => {
+    const normalizedPath = String(req.path || '');
+    if (req.baseUrl === '/api/deletion' && req.method === 'GET' && normalizedPath === '/status') {
+        return true;
+    }
+    if (req.baseUrl === '/api/deletion' && req.method === 'DELETE' && /^\/request\/[a-f\d]{24}$/i.test(normalizedPath)) {
+        return true;
+    }
+    return false;
+};
 
 const fetchUser = async (req, res, next) => {
     const token = req.header('auth-token');
@@ -44,6 +56,27 @@ const fetchUser = async (req, res, next) => {
         }
         else {
             return res.status(401).send({ error: "Invalid role" });
+        }
+
+        const isEmployeeTypeRole = req.role && req.role !== 'businessowner' && req.role !== 'supplier';
+        const shouldRestrictByDeletion = req.role === 'supplier' || isEmployeeTypeRole;
+
+        if (shouldRestrictByDeletion) {
+            const activeApprovedDeletion = await DeletionRequest.findOne({
+                userId: req.user._id,
+                status: 'approved',
+                scheduledDeletionDate: { $gt: new Date() }
+            }).select('_id status scheduledDeletionDate');
+
+            if (activeApprovedDeletion && !isAllowedDuringDeletionGrace(req)) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Your account is scheduled for deletion. Only deletion cancellation is available during the grace period.',
+                    code: 'ACCOUNT_DELETION_RESTRICTED',
+                    requestId: activeApprovedDeletion._id,
+                    scheduledDeletionDate: activeApprovedDeletion.scheduledDeletionDate
+                });
+            }
         }
 
         next();

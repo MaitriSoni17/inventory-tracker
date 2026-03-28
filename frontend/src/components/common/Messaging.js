@@ -1103,7 +1103,7 @@ const Messaging = () => {
                                                     setSelectedMessageIds([]);
                                                 }}
                                             />
-                                            <span>Bulk</span>
+                                            <span>Select</span>
                                         </label>
                                     )}
                                 </div>

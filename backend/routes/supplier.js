@@ -302,6 +302,36 @@ router.put('/changepassword', fetchuser, async (req, res) => {
     }
 });
 
+// Reset supplier password using: PUT "/api/supplier/resetpassword/:id". Business Owner login required
+router.put('/resetpassword/:id', fetchbusinessowner, [
+    body('newPassword', 'New password must be at least 6 characters').isLength({ min: 6 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        const supplier = await Supplier.findById(req.params.id);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Ensure supplier belongs to this business owner
+        if (supplier.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        supplier.password = await bcrypt.hash(req.body.newPassword, salt);
+        await supplier.save();
+
+        res.json({ success: true, message: "Supplier password reset successfully" });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
 // Deactivate account using: POST "/api/supplier/deactivate". Supplier login required
 router.post('/deactivate', fetchuser, async (req, res) => {
     try {

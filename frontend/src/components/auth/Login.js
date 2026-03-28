@@ -44,6 +44,17 @@ function Login(props) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (isSubmitting) {
+            return;
+        }
+
+        const normalizedEmail = credentials.email.trim().toLowerCase();
+        const normalizedPassword = credentials.password;
+
+        if (normalizedEmail !== credentials.email) {
+            setCredentials((prev) => ({ ...prev, email: normalizedEmail }));
+        }
         
         if (!validateForm()) {
             props.showAlert("Please fix the errors in the form", "danger");
@@ -57,11 +68,11 @@ function Login(props) {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ email: credentials.email, password: credentials.password })
+                body: JSON.stringify({ email: normalizedEmail, password: normalizedPassword })
             });
             const json = await response.json();
 
-            if (json.success) {
+            if (response.ok && json.success) {
                 localStorage.setItem('token', json.authtoken);
                 localStorage.setItem('role', json.role);
                 localStorage.setItem('userId', json.userId || '');
@@ -72,7 +83,9 @@ function Login(props) {
                 history("/dashboard");
             }
             else {
-                props.showAlert("Invalid Email or Password", "danger")
+                const apiError = json?.error || json?.message;
+                const validationError = Array.isArray(json?.errors) ? json.errors[0]?.msg : null;
+                props.showAlert(apiError || validationError || "Invalid Email or Password", "danger")
             }
         } catch (error) {
             props.showAlert("Connection error. Please try again.", "danger");
@@ -189,7 +202,7 @@ function Login(props) {
                             </div>
 
                             <div className="forgot-password-link">
-                                <Link to="/" className="link">Forgot Password?</Link>
+                                <Link to="/forgot-password" className="link">Forgot Password?</Link>
                             </div>
 
                             <button type="submit" className="login-button" disabled={isSubmitting}>

@@ -63,10 +63,8 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
 
       const data = await response.json();
       if (data.success) {
-        showAlert?.('Previous deletion request cancelled. You can now submit a new one.', 'success');
-        setExistingRequest(null);
-        setStep(1);
-        setReason('');
+        showAlert?.(data.message || 'Cancellation request submitted successfully.', 'success');
+        await checkExistingRequest();
       } else {
         showAlert?.(data.message || 'Failed to cancel deletion request', 'danger');
       }
@@ -308,7 +306,13 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
               <p>Your Business Owner is reviewing your request. Please wait for their decision.</p>
             )}
             {existingRequest.status === 'approved' && (
-              <p>Your request has been approved. Your account will be disconnected on the scheduled date. You can still cancel this request before that date.</p>
+              <p>Your request has been approved. Your account will be disconnected on the scheduled date. You can request cancellation, but access is restored only if your Business Owner approves it.</p>
+            )}
+            {existingRequest.cancellationRequested && existingRequest.cancellationStatus === 'pending' && (
+              <p>Your cancellation request is pending Business Owner approval. Your current deletion process remains active until they approve.</p>
+            )}
+            {existingRequest.cancellationStatus === 'rejected' && (
+              <p>Your cancellation request was rejected. The deletion process continues as scheduled.</p>
             )}
             {existingRequest.status === 'rejected' && (
               <p>Your deletion request was rejected. You can submit a new request if you'd like.</p>
@@ -331,9 +335,11 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
               <button 
                 className="btn btn-danger"
                 onClick={handleCancelExistingRequest}
-                disabled={loading}
+                disabled={loading || (existingRequest.cancellationRequested && existingRequest.cancellationStatus === 'pending')}
               >
-                {loading ? 'Cancelling...' : 'Cancel This Request'}
+                {existingRequest.cancellationRequested && existingRequest.cancellationStatus === 'pending'
+                  ? 'Cancellation Approval Pending'
+                  : (loading ? 'Submitting...' : 'Request Cancellation')}
               </button>
             )}
             <button 

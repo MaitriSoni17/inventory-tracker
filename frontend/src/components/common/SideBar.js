@@ -7,7 +7,7 @@ import Chatbot from './Chatbot';
 import { useRole } from '../../context/RoleContext';
 
 const SideBar = () => {
-    const { role, logout, hasPermission } = useRole();
+    const { role, logout, hasPermission, deletionRestriction } = useRole();
     const storedRole = localStorage.getItem('role');
     const currentRole = role || storedRole;
     let location = useLocation();
@@ -52,6 +52,7 @@ const SideBar = () => {
     const isEmployee = currentRole && currentRole !== 'businessowner' && currentRole !== 'supplier';
     const isBusinessOwner = currentRole === 'businessowner';
     const isSupplier = currentRole === 'supplier';
+    const isDeletionRestricted = Boolean(deletionRestriction) && (isEmployee || isSupplier);
 
     // Permission-based access checks (using actual permissions from RoleContext)
     const canViewCategories = hasPermission('canViewCategories');
@@ -85,91 +86,97 @@ const SideBar = () => {
                     </div>
                     <div className="list-group list-group-flush my-3">
                         
-                        {canViewDashboard && (
+                        {!isDeletionRestricted && canViewDashboard && (
                         <Link to="/dashboard" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard" ? "active" : ""}`}>
                             <i className="fas fa-th-large me-2"></i>Dashboard
                         </Link>
                         )}
+
+                        {isDeletionRestricted && (
+                            <Link to="/dashboard/deletion-hold" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/deletion-hold" ? "active" : ""}`}>
+                                <i className="bi bi-shield-exclamation me-2"></i>Deletion Hold
+                            </Link>
+                        )}
                         
                         {/* Categories - Based on canViewCategories permission */}
-                        {canViewCategories && (
+                        {!isDeletionRestricted && canViewCategories && (
                             <Link to="/dashboard/category" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/category" ? "active" : ""}`}>
                                 <i className="fas fa-cube me-2"></i>Categories
                             </Link>
                         )}
                         
                         {/* Products - Based on canViewProducts permission */}
-                        {canViewProducts && (
+                        {!isDeletionRestricted && canViewProducts && (
                             <Link to="/dashboard/products" className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/products" || location.pathname === "/dashboard/addproduct" || location.pathname.startsWith("/dashboard/editproduct/")) ? "active" : ""}`}>
                                 <i className="fas fa-box me-2"></i>Products
                             </Link>
                         )}
                         
                         {/* Orders - Based on canViewOrders permission or supplier role */}
-                        {(canViewOrders || isSupplier) && (
+                        {!isDeletionRestricted && (canViewOrders || isSupplier) && (
                             <Link to={(isEmployee || isBusinessOwner)  ? "/dashboard/orders" : (isSupplier ? "/dashboard/suppliersorders" : "/")} className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/orders" || location.pathname === "/dashboard/addorder" || location.pathname.startsWith("/dashboard/editorder/") || location.pathname === "/dashboard/suppliersorders") ? "active" : ""}`}>
                                 <i className="bi bi-cart me-2"></i>Orders
                             </Link>
                         )}
                         
                         {/* Employees - Based on canViewEmployees permission */}
-                        {canViewEmployees && (
+                        {!isDeletionRestricted && canViewEmployees && (
                             <Link to="/dashboard/employee" className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/createemployee" || location.pathname === "/dashboard/employee" || location.pathname.startsWith("/dashboard/editemployee/")) ? "active" : ""}`}>
                                 <i className="bi bi-people me-2"></i>Employees
                             </Link>
                         )}
                         
                         {/* Suppliers - Only BusinessOwner */}
-                        {isBusinessOwner && (
+                        {!isDeletionRestricted && isBusinessOwner && (
                             <Link to="/dashboard/suppliers" className={`list-group-item list-group-item-action bg-transparent second-text ${(location.pathname === "/dashboard/suppliers" || location.pathname === "/dashboard/createsupplier" || location.pathname.startsWith("/dashboard/editsupplier/") || location.pathname.startsWith("/dashboard/supplierordes/") || location.pathname.startsWith("/dashboard/addsupplierorder/") || location.pathname.startsWith("/dashboard/editsupplierorder/")) ? "active" : ""}`}>
                                 <i className="fas fa-truck me-2"></i>Suppliers
                             </Link>
                         )}
                         
                         {/* Warehouses - Based on canViewWarehouses permission */}
-                        {canViewWarehouses && (
+                        {!isDeletionRestricted && canViewWarehouses && (
                             <Link to="/dashboard/warehouses" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/warehouses" ? "active" : ""}`}>
                                 <i className="fas fa-warehouse me-2"></i>Warehouses
                             </Link>
                         )}
                         
                         {/* Permissions - Only BusinessOwner */}
-                        {isBusinessOwner && (
+                        {!isDeletionRestricted && isBusinessOwner && (
                             <Link to="/dashboard/permissions" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/permissions" ? "active" : ""}`}>
                                 <i className="fas fa-shield-alt me-2"></i>Permissions
                             </Link>
                         )}
                         
                         {/* Salary Management - Only BusinessOwner */}
-                        {isBusinessOwner && (
+                        {!isDeletionRestricted && isBusinessOwner && (
                             <Link to="/dashboard/salary" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/salary" ? "active" : ""}`}>
                                 <i className="fas fa-money-bill-wave me-2"></i>Salary Management
                             </Link>
                         )}
                         
                         {/* Notifications - Based on canViewNotifications permission */}
-                        {canViewNotifications && (
+                        {!isDeletionRestricted && canViewNotifications && (
                             <Link to="/dashboard/notifications" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/notifications" ? "active" : ""}`}>
                                 <i className="fas fa-bell me-2"></i>Notifications
                             </Link>
                         )}
                         
                         {/* Messages - Based on canViewMessages permission */}
-                        {canViewMessages && (
+                        {!isDeletionRestricted && canViewMessages && (
                             <Link to="/dashboard/messages" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/messages" ? "active" : ""}`}>
                                 <i className="bi bi-chat-dots me-2"></i>Messages
                             </Link>
                         )}
                         
                         {/* Reports - Based on canExportReports permission */}
-                        {canExportReports && (
+                        {!isDeletionRestricted && canExportReports && (
                             <Link to="/dashboard/reports" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/reports" ? "active" : ""}`}>
                                 <i className="fas fa-chart-bar me-2"></i>Reports
                             </Link>
                         )}
                         
                         {/* Settings */}
-                        <Link to={isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" || location.pathname === "/dashboard/suppliersettings" ? "active" : ""}`}>
+                        <Link to={isDeletionRestricted ? "/dashboard/deletion-hold" : isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" || location.pathname === "/dashboard/suppliersettings" || location.pathname === "/dashboard/deletion-hold" ? "active" : ""}`}>
                             <i className="fas fa-cog me-2"></i>Settings
                         </Link>
                         
@@ -214,7 +221,7 @@ const SideBar = () => {
                                         {showUserMenu && (
                                             <div className="user-dropdown-menu">
                                                 <Link 
-                                                    to={isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} 
+                                                    to={isDeletionRestricted ? "/dashboard/deletion-hold" : isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} 
                                                     className="dropdown-item"
                                                     onClick={() => setShowUserMenu(false)}
                                                 >

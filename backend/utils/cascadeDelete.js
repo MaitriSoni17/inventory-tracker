@@ -14,6 +14,56 @@ const SupplierOrders = require('../models/SupplierOrders');
 const Notification = require('../models/Notification');
 const DeletionRequest = require('../models/DeletionRequest');
 
+const getBusinessOwnerDeletionImpact = async (businessOwnerId) => {
+    const [
+        employees,
+        suppliers,
+        products,
+        categories,
+        orders,
+        warehouses,
+        customerOrders,
+        supplierOrders,
+        notifications,
+        deletionRequests
+    ] = await Promise.all([
+        Employee.countDocuments({ businessowner: businessOwnerId }),
+        Supplier.countDocuments({ businessowner: businessOwnerId }),
+        Products.countDocuments({ businessowner: businessOwnerId }),
+        Category.countDocuments({ businessowner: businessOwnerId }),
+        Orders.countDocuments({ businessowner: businessOwnerId }),
+        Warehouse.countDocuments({ businessowner: businessOwnerId }),
+        CustomerOrders.countDocuments({ businessowner: businessOwnerId }),
+        SupplierOrders.countDocuments({ businessowner: businessOwnerId }),
+        Notification.countDocuments({
+            $or: [
+                { recipient: businessOwnerId },
+                { sender: businessOwnerId }
+            ]
+        }),
+        DeletionRequest.countDocuments({
+            $or: [
+                { userId: businessOwnerId },
+                { creatorId: businessOwnerId }
+            ]
+        })
+    ]);
+
+    return {
+        employees,
+        suppliers,
+        products,
+        categories,
+        orders,
+        warehouses,
+        customerOrders,
+        supplierOrders,
+        notifications,
+        deletionRequests,
+        generatedAt: new Date()
+    };
+};
+
 /**
  * Cascade delete all data associated with a Business Owner
  * @param {String} businessOwnerId - The Business Owner's user ID
@@ -142,4 +192,4 @@ const cascadeDeleteBusinessOwner = async (businessOwnerId) => {
     }
 };
 
-module.exports = { cascadeDeleteBusinessOwner };
+module.exports = { cascadeDeleteBusinessOwner, getBusinessOwnerDeletionImpact };

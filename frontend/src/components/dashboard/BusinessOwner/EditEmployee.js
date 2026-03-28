@@ -33,7 +33,6 @@ const EditEmployee = (props) => {
         currentImage: null
     });
     const [passwordData, setPasswordData] = useState({
-        oldPassword: '',
         newPassword: '',
         confirmPassword: ''
     });
@@ -41,6 +40,25 @@ const EditEmployee = (props) => {
     const [warehouses, setWarehouses] = useState([]);
     const [loading, setLoading] = useState(true);
     const [customRoles, setCustomRoles] = useState({});
+
+    const passwordToggleButtonStyle = {
+        position: 'absolute',
+        right: '12px',
+        top: '50%',
+        transform: 'translateY(-50%)',
+        zIndex: 2,
+        width: '32px',
+        height: '32px',
+        minWidth: '32px',
+        padding: 0,
+        margin: 0,
+        border: 'none',
+        background: 'transparent',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer'
+    };
 
     useEffect(() => {
         fetchWarehouses();
@@ -170,10 +188,6 @@ const EditEmployee = (props) => {
     const validatePasswords = () => {
         const errors = {};
 
-        if (!passwordData.oldPassword.trim()) {
-            errors.oldPassword = 'Current password is required';
-        }
-
         if (!passwordData.newPassword.trim()) {
             errors.newPassword = 'New password is required';
         } else if (passwordData.newPassword.length < 5) {
@@ -198,14 +212,13 @@ const EditEmployee = (props) => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/employee/changepassword/${id}`, {
+            const response = await fetch(`http://localhost:5000/api/employee/resetpassword/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'auth-token': localStorage.getItem('token')
                 },
                 body: JSON.stringify({
-                    oldPassword: passwordData.oldPassword,
                     newPassword: passwordData.newPassword
                 })
             });
@@ -215,7 +228,6 @@ const EditEmployee = (props) => {
             if (response.ok) {
                 props.showAlert('Password changed successfully', 'success');
                 setPasswordData({
-                    oldPassword: '',
                     newPassword: '',
                     confirmPassword: ''
                 });
@@ -528,10 +540,10 @@ const EditEmployee = (props) => {
                         </div>
                     </div>
 
-                    {/* Change Password Card */}
+                    {/* Reset Password Card */}
                     <div className="card border-0 shadow-sm mb-4 rounded-4">
                         <div className="card-body p-5">
-                            <h5 className="card-title display-6 mb-4">Change Password</h5>
+                            <h5 className="card-title display-6 mb-4">Reset Employee Password</h5>
                             {Object.keys(passwordErrors).length > 0 && (
                                 <div className="alert alert-danger alert-dismissible fade show mb-4 rounded-3" role="alert">
                                     <h6 className="fw-semibold mb-3">Please fix the following errors:</h6>
@@ -542,31 +554,6 @@ const EditEmployee = (props) => {
                                     </ul>
                                 </div>
                             )}
-                            <div className="d-flex gap-4 mb-4">
-                                <div style={{ flex: 1 }}>
-                                    <label htmlFor="oldPassword" className="form-label fw-semibold mb-2">Current Password</label>
-                                    <div className="position-relative">
-                                        <input 
-                                            type={showPassword ? 'text' : 'password'} 
-                                            className={`form-control rounded-3 shadow-sm ${passwordErrors.oldPassword ? 'is-invalid' : ''}`} 
-                                            id="oldPassword" 
-                                            placeholder="Enter current password" 
-                                            name="oldPassword"
-                                            value={passwordData.oldPassword} 
-                                            onChange={handlePasswordChange}
-                                        />
-                                        <button 
-                                            type="button" 
-                                            className="btn btn-sm position-absolute end-0 top-50 translate-middle-y border-0"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            style={{ zIndex: 10 }}
-                                        >
-                                            <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
-                                        </button>
-                                    </div>
-                                    {passwordErrors.oldPassword && <div className="error-message">{passwordErrors.oldPassword}</div>}
-                                </div>
-                            </div>
                             <div className="d-flex gap-4 mb-4">
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="newPassword" className="form-label fw-semibold mb-2">New Password</label>
@@ -582,9 +569,10 @@ const EditEmployee = (props) => {
                                         />
                                         <button 
                                             type="button" 
-                                            className="btn btn-sm position-absolute end-0 top-50 translate-middle-y border-0"
+                                            className="password-toggle-btn"
                                             onClick={() => setShowPassword(!showPassword)}
-                                            style={{ zIndex: 10 }}
+                                            style={passwordToggleButtonStyle}
+                                            aria-label={showPassword ? 'Hide new password' : 'Show new password'}
                                         >
                                             <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                         </button>
@@ -605,9 +593,10 @@ const EditEmployee = (props) => {
                                         />
                                         <button 
                                             type="button" 
-                                            className="btn btn-sm position-absolute end-0 top-50 translate-middle-y border-0"
+                                            className="password-toggle-btn"
                                             onClick={() => setShowCPassword(!showCPassword)}
-                                            style={{ zIndex: 10 }}
+                                            style={passwordToggleButtonStyle}
+                                            aria-label={showCPassword ? 'Hide confirm password' : 'Show confirm password'}
                                         >
                                             <i className={`bi ${showCPassword ? 'bi-eye-slash' : 'bi-eye'}`}></i>
                                         </button>
@@ -616,7 +605,7 @@ const EditEmployee = (props) => {
                                 </div>
                             </div>
                             <button type="button" className="btn btn-outline-primary btn-md rounded-3 px-4" onClick={handleChangePassword}>
-                                Change Password
+                                Reset Password
                             </button>
                         </div>
                     </div>

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { body, validationResult } = require('express-validator');
+const { getBusinessOwnerDeletionImpact } = require('../utils/cascadeDelete');
 
 const isValidPhoneNumber = (value) => {
   if (!value) return false;
@@ -182,6 +183,15 @@ router.post('/deactivate', fetchbusinessowner, async (req, res) => {
 // This endpoint now redirects to the new deletion request workflow
 router.post('/delete', fetchbusinessowner, async (req, res) => {
     try {
+        const {
+            currentPassword,
+            confirmationText,
+            reason,
+            acknowledgeCascade,
+            acknowledgeNoRecovery,
+            expectedEmail
+        } = req.body || {};
+
         // console.log('Delete account request received');
         // console.log('req.businessowner:', req.businessowner ? { _id: req.businessowner._id, email: req.businessowner.email } : 'null');
         
@@ -198,6 +208,31 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
 
         const businessOwnerId = req.businessowner._id;
         const businessOwnerEmail = req.businessowner.email;
+
+        if (!currentPassword || typeof currentPassword !== 'string') {
+            return res.status(400).json({ success: false, error: 'Current password is required to continue.' });
+        }
+
+        const passwordMatch = await bcrypt.compare(currentPassword, req.businessowner.password);
+        if (!passwordMatch) {
+            return res.status(400).json({ success: false, error: 'Current password is incorrect.' });
+        }
+
+        if (confirmationText !== 'DELETE MY ACCOUNT') {
+            return res.status(400).json({ success: false, error: 'Please type DELETE MY ACCOUNT exactly to confirm deletion.' });
+        }
+
+        if (!reason || String(reason).trim().length < 15) {
+            return res.status(400).json({ success: false, error: 'Please provide a deletion reason with at least 15 characters.' });
+        }
+
+        if (!acknowledgeCascade || !acknowledgeNoRecovery) {
+            return res.status(400).json({ success: false, error: 'Please acknowledge all deletion warnings before continuing.' });
+        }
+
+        if (expectedEmail && String(expectedEmail).trim().toLowerCase() !== String(businessOwnerEmail).trim().toLowerCase()) {
+            return res.status(400).json({ success: false, error: 'Email confirmation does not match your account email.' });
+        }
         
         // Validate email exists
         if (!businessOwnerEmail) {
@@ -223,11 +258,17 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
         }
 
         // Create deletion request for business owner
+        const scheduledDate = new Date();
+        scheduledDate.setDate(scheduledDate.getDate() + 7);
+
         const deletionRequest = new DeletionRequest({
             userId: businessOwnerId,
             userEmail: businessOwnerEmail,
             userRole: 'businessowner',
-            reason: 'Business owner initiated account deletion'
+            status: 'approved',
+            approvalDate: new Date(),
+            scheduledDeletionDate: scheduledDate,
+            reason: String(reason).trim()
         });
 
         // console.log('Saving deletion request:', {
@@ -241,8 +282,9 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
 
         res.json({
             success: true,
-            message: 'Your account deletion has been scheduled. You have 7 days to cancel this request.',
-            requestId: deletionRequest._id
+            message: 'Your account deletion has been scheduled and will execute in 7 days unless you cancel it before then.',
+            requestId: deletionRequest._id,
+            scheduledDeletionDate: scheduledDate
         });
     } catch (err) {
         // console.error('Delete account error:', err);
@@ -252,6 +294,16 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
             details: err.message,
             stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
         });
+    }
+});
+
+// Get deletion impact summary using: GET "/api/businessowner/deletion-impact". Login required
+router.get('/deletion-impact', fetchbusinessowner, async (req, res) => {
+    try {
+        const impact = await getBusinessOwnerDeletionImpact(req.businessowner._id);
+        res.json({ success: true, impact });
+    } catch (err) {
+        res.status(500).json({ success: false, error: 'Failed to calculate deletion impact.' });
     }
 });
 
@@ -270,7 +322,7 @@ router.post('/cancel-deletion', fetchbusinessowner, async (req, res) => {
         });
 
         if (!deletionRequest) {
-            return res.status(404).json({
+            return res.json({
                 success: false,
                 message: 'No active deletion request found to cancel.'
             });

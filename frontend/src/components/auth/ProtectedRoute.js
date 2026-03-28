@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useRole } from '../../context/RoleContext';
 
 /**
@@ -6,7 +6,8 @@ import { useRole } from '../../context/RoleContext';
  * If not, redirects to login page
  */
 const ProtectedRoute = ({ children }) => {
-    const { role, loading } = useRole();
+    const { role, loading, deletionRestriction } = useRole();
+    const location = useLocation();
     const token = localStorage.getItem('token');
 
     if (loading) {
@@ -22,6 +23,19 @@ const ProtectedRoute = ({ children }) => {
     // If no token or role, redirect to login
     if (!token || !role) {
         return <Navigate to="/login" replace />;
+    }
+
+    const isEmployeeTypeRole = role && role !== 'businessowner' && role !== 'supplier';
+    const isRestrictedRole = role === 'supplier' || isEmployeeTypeRole;
+    const isDeletionRestricted = Boolean(deletionRestriction) && isRestrictedRole;
+    const isOnDeletionHoldPage = location.pathname === '/dashboard/deletion-hold';
+
+    if (isDeletionRestricted && !isOnDeletionHoldPage) {
+        return <Navigate to="/dashboard/deletion-hold" replace />;
+    }
+
+    if (!isDeletionRestricted && isOnDeletionHoldPage) {
+        return <Navigate to="/dashboard" replace />;
     }
 
     return children;

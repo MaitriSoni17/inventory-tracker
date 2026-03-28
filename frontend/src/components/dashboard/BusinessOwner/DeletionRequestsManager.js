@@ -79,6 +79,8 @@ const DeletionRequestsManager = ({ showAlert }) => {
   const handleApprove = async () => {
     if (!selectedRequest) return;
 
+    const isCancellationRequest = selectedRequest.cancellationRequested && selectedRequest.cancellationStatus === 'pending';
+
     setActionLoading(true);
     try {
       const response = await fetch(`http://localhost:5000/api/deletion/approve/${selectedRequest._id}`, {
@@ -91,7 +93,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
 
       const data = await response.json();
       if (data.success) {
-        showAlert?.('Deletion request approved successfully', 'success');
+        showAlert?.(data.message || (isCancellationRequest ? 'Cancellation request approved successfully' : 'Deletion request approved successfully'), 'success');
         setShowModal(false);
         fetchDeletionRequests();
       } else {
@@ -108,6 +110,8 @@ const DeletionRequestsManager = ({ showAlert }) => {
   const handleReject = async () => {
     if (!selectedRequest) return;
 
+    const isCancellationRequest = selectedRequest.cancellationRequested && selectedRequest.cancellationStatus === 'pending';
+
     setActionLoading(true);
     try {
       const response = await fetch(`http://localhost:5000/api/deletion/reject/${selectedRequest._id}`, {
@@ -121,7 +125,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
 
       const data = await response.json();
       if (data.success) {
-        showAlert?.('Deletion request rejected successfully', 'success');
+        showAlert?.(data.message || (isCancellationRequest ? 'Cancellation request rejected successfully' : 'Deletion request rejected successfully'), 'success');
         setShowModal(false);
         fetchDeletionRequests();
       } else {
@@ -157,11 +161,13 @@ const DeletionRequestsManager = ({ showAlert }) => {
   };
 
   const getApprovalModal = () => {
+    const isCancellationRequest = selectedRequest?.cancellationRequested && selectedRequest?.cancellationStatus === 'pending';
+
     return (
       <CenteredModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={`Review Deletion Request`}
+        title={isCancellationRequest ? 'Review Cancellation Request' : 'Review Deletion Request'}
         buttons={[
           {
             label: actionLoading ? 'Processing...' : 'Approve',
@@ -199,11 +205,22 @@ const DeletionRequestsManager = ({ showAlert }) => {
             </div>
 
             <div className="review-section">
-              <h5>Reason for Deletion</h5>
+              <h5>{isCancellationRequest ? 'Original Deletion Reason' : 'Reason for Deletion'}</h5>
               <p className="reason-text">{selectedRequest.reason || 'No reason provided'}</p>
             </div>
 
-            {selectedRequest.status === 'pending' && (
+            {isCancellationRequest && (
+              <div className="review-section data-preservation-info">
+                <h5>
+                  <i className="bi bi-arrow-counterclockwise me-2"></i>Cancellation Request
+                </h5>
+                <p>
+                  This user has asked to cancel their approved deletion request. Approving this action restores access; rejecting it keeps the deletion schedule active.
+                </p>
+              </div>
+            )}
+
+            {!isCancellationRequest && selectedRequest.status === 'pending' && (
               <>
                 <div className="review-section data-preservation-info">
                   <h5>
@@ -259,6 +276,24 @@ const DeletionRequestsManager = ({ showAlert }) => {
                 </div>
               </>
             )}
+
+            {isCancellationRequest && (
+              <div className="review-section">
+                <label htmlFor="rejectionReason" className="form-label">
+                  Rejection Reason (if rejecting cancellation)
+                </label>
+                <textarea
+                  id="rejectionReason"
+                  className="form-control"
+                  placeholder="Explain why you are rejecting this cancellation request (optional)"
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  rows="3"
+                  maxLength="500"
+                />
+                <small>{rejectionReason.length}/500 characters</small>
+              </div>
+            )}
           </div>
         )}
       </CenteredModal>
@@ -292,8 +327,9 @@ const DeletionRequestsManager = ({ showAlert }) => {
           <ul className="info-list">
             <li><strong>Step 1:</strong> Employee/Supplier requests account deletion with a reason</li>
             <li><strong>Step 2:</strong> You review the request and approve or reject it</li>
-            <li><strong>Step 3:</strong> If approved, the user gets a 72-hour grace period to cancel</li>
+            <li><strong>Step 3:</strong> If approved, the user gets a 72-hour grace period to request cancellation</li>
             <li><strong>Step 4:</strong> After 72 hours, their account is automatically disconnected from your business and data is archived</li>
+            <li><strong>Note:</strong> Cancellation requests from users also require your approval before access is restored</li>
             <li><strong>Data Safety:</strong> No data is ever lost - all information is preserved for compliance and audit purposes</li>
           </ul>
         </div>
@@ -317,7 +353,9 @@ const DeletionRequestsManager = ({ showAlert }) => {
                   </span>
                 </div>
                 <div className="header-right">
-                  {getStatusBadge(request.status)}
+                  {request.cancellationRequested && request.cancellationStatus === 'pending'
+                    ? <span className="badge badge-warning">Cancellation Pending Approval</span>
+                    : getStatusBadge(request.status)}
                 </div>
               </div>
 
@@ -336,14 +374,14 @@ const DeletionRequestsManager = ({ showAlert }) => {
                 </div>
               </div>
 
-              {request.status === 'pending' && (
+              {(request.status === 'pending' || (request.cancellationRequested && request.cancellationStatus === 'pending')) && (
                 <div className="card-footer">
                   <button
                     className="btn btn-sm btn-success"
                     onClick={() => handleApproveClick(request)}
                   >
                     <i className="bi bi-check-circle me-2"></i>
-                    Review & Approve
+                    {request.cancellationRequested && request.cancellationStatus === 'pending' ? 'Review Cancellation Request' : 'Review & Approve'}
                   </button>
                 </div>
               )}

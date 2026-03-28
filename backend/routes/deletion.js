@@ -32,16 +32,18 @@ router.post('/request', fetchuser, async (req, res) => {
     try {
         const { reason } = req.body;
         const userRole = req.role;
+        // req.role may contain custom employee roles; map them to canonical account type.
+        const canonicalRole = userRole === 'businessowner' || userRole === 'supplier' ? userRole : 'employee';
         const userId = req.user._id;
 
         // Get user creator (Business Owner) for employees and suppliers
         let creatorId = null;
         let userData = null;
-        if (userRole === 'employee') {
+        if (canonicalRole === 'employee') {
             const employee = await Employee.findById(userId);
             userData = employee;
             creatorId = employee?.businessowner;
-        } else if (userRole === 'supplier') {
+        } else if (canonicalRole === 'supplier') {
             const supplier = await Supplier.findById(userId);
             userData = supplier;
             creatorId = supplier?.businessowner;
@@ -64,7 +66,7 @@ router.post('/request', fetchuser, async (req, res) => {
         const deletionRequest = new DeletionRequest({
             userId: userId,
             userEmail: req.user.email,
-            userRole: userRole,
+            userRole: canonicalRole,
             creatorId: creatorId,
             reason: reason || 'No reason provided'
         });
@@ -72,22 +74,22 @@ router.post('/request', fetchuser, async (req, res) => {
         await deletionRequest.save();
 
         // Send notification to Business Owner if employee/supplier
-        if (creatorId && (userRole === 'employee' || userRole === 'supplier')) {
-            const notificationType = userRole === 'employee' ? 'employee_deletion_requested' : 'supplier_deletion_requested';
+        if (creatorId && (canonicalRole === 'employee' || canonicalRole === 'supplier')) {
+            const notificationType = canonicalRole === 'employee' ? 'employee_deletion_requested' : 'supplier_deletion_requested';
             const userDisplayName = userData?.fname ? `${userData.fname} ${userData.lname || ''}`.trim() : req.user.email;
-            const roleLabel = userRole === 'employee' ? 'Employee' : 'Supplier';
+            const roleLabel = canonicalRole === 'employee' ? 'Employee' : 'Supplier';
 
             await createNotification(
                 creatorId,
                 'BusinessOwner',
                 userId,
-                userRole.charAt(0).toUpperCase() + userRole.slice(1),
+                canonicalRole.charAt(0).toUpperCase() + canonicalRole.slice(1),
                 notificationType,
                 `${roleLabel} Account Deletion Request`,
-                `${userDisplayName} has requested to delete their ${userRole} account. Action required: Approve or Reject within 7 days.`,
+                `${userDisplayName} has requested to delete their ${canonicalRole} account. Action required: Approve or Reject within 7 days.`,
                 {
                     deletionRequestId: deletionRequest._id,
-                    userRole: userRole,
+                    userRole: canonicalRole,
                     userName: userDisplayName,
                     userEmail: req.user.email,
                     reason: reason || 'No reason provided'
@@ -97,9 +99,9 @@ router.post('/request', fetchuser, async (req, res) => {
 
         res.json({
             success: true,
-            message: userRole === 'businessowner'
+            message: canonicalRole === 'businessowner'
                 ? 'Your account deletion has been scheduled. You have 7 days to cancel this request. After that, all your business data will be permanently deleted.'
-                : 'Your account deletion request has been sent to your ' + (userRole === 'employee' ? 'manager/Business Owner' : 'Business Owner') + ' for approval.',
+                : 'Your account deletion request has been sent to your ' + (canonicalRole === 'employee' ? 'manager/Business Owner' : 'Business Owner') + ' for approval.',
             requestId: deletionRequest._id
         });
     } catch (err) {
@@ -123,10 +125,60 @@ router.delete('/request/:requestId', fetchuser, async (req, res) => {
             return res.status(403).json({ success: false, error: "Access denied" });
         }
 
-        if (deletionRequest.status !== 'pending') {
+        const canCancelPending = deletionRequest.status === 'pending';
+        const canCancelApprovedWithinGrace =
+            deletionRequest.status === 'approved' &&
+            deletionRequest.scheduledDeletionDate &&
+            new Date(deletionRequest.scheduledDeletionDate) > new Date();
+
+        if (!canCancelPending && !canCancelApprovedWithinGrace) {
             return res.status(400).json({
                 success: false,
                 message: 'Cannot cancel a ' + deletionRequest.status + ' deletion request'
+            });
+        }
+
+        const isEmployeeTypeRole = req.role && req.role !== 'businessowner' && req.role !== 'supplier';
+        const requiresOwnerApproval = req.role === 'supplier' || isEmployeeTypeRole;
+
+        if (requiresOwnerApproval) {
+            if (deletionRequest.cancellationRequested && deletionRequest.cancellationStatus === 'pending') {
+                return res.status(400).json({
+                    success: false,
+                    message: 'A cancellation approval request is already pending with your Business Owner.'
+                });
+            }
+
+            deletionRequest.cancellationRequested = true;
+            deletionRequest.cancellationStatus = 'pending';
+            deletionRequest.cancellationRequestDate = new Date();
+            await deletionRequest.save();
+
+            const notificationType = deletionRequest.userRole === 'employee'
+                ? 'employee_deletion_cancellation_requested'
+                : 'supplier_deletion_cancellation_requested';
+            const roleLabel = deletionRequest.userRole === 'employee' ? 'Employee' : 'Supplier';
+
+            await createNotification(
+                deletionRequest.creatorId,
+                'BusinessOwner',
+                req.user._id,
+                deletionRequest.userRole.charAt(0).toUpperCase() + deletionRequest.userRole.slice(1),
+                notificationType,
+                `${roleLabel} Deletion Cancellation Request`,
+                `${req.user.email} requested to cancel their account deletion request. Please approve or reject this cancellation request.`,
+                {
+                    deletionRequestId: deletionRequest._id,
+                    userRole: deletionRequest.userRole,
+                    userEmail: deletionRequest.userEmail,
+                    originalDeletionStatus: deletionRequest.status,
+                    scheduledDeletionDate: deletionRequest.scheduledDeletionDate
+                }
+            );
+
+            return res.json({
+                success: true,
+                message: 'Cancellation request sent to your Business Owner. Access will be restored only after owner approval.'
             });
         }
 
@@ -155,7 +207,10 @@ router.get('/pending-requests', fetchuser, async (req, res) => {
 
         const pendingRequests = await DeletionRequest.find({
             creatorId: businessOwnerId,
-            status: 'pending'
+            $or: [
+                { status: 'pending' },
+                { cancellationRequested: true, cancellationStatus: 'pending' }
+            ]
         }).populate('userId', 'email fname lname');
 
         res.json({
@@ -185,6 +240,36 @@ router.put('/approve/:requestId', fetchuser, async (req, res) => {
         // Verify the business owner owns this deletion request
         if (deletionRequest.creatorId.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, error: "Access denied" });
+        }
+
+        if (deletionRequest.cancellationRequested && deletionRequest.cancellationStatus === 'pending') {
+            deletionRequest.status = 'cancelled';
+            deletionRequest.cancellationRequested = false;
+            deletionRequest.cancellationStatus = 'approved';
+            deletionRequest.cancellationApprovalDate = new Date();
+            deletionRequest.scheduledDeletionDate = null;
+            await deletionRequest.save();
+
+            const notificationType = deletionRequest.userRole === 'employee'
+                ? 'employee_deletion_cancellation_approved'
+                : 'supplier_deletion_cancellation_approved';
+            await createNotification(
+                deletionRequest.userId,
+                deletionRequest.userRole.charAt(0).toUpperCase() + deletionRequest.userRole.slice(1),
+                req.user._id,
+                'BusinessOwner',
+                notificationType,
+                'Deletion Cancellation Approved',
+                'Your Business Owner approved your cancellation request. Your account access has been restored.',
+                {
+                    deletionRequestId: deletionRequest._id
+                }
+            );
+
+            return res.json({
+                success: true,
+                message: 'Cancellation approved. User account access has been restored.'
+            });
         }
 
         if (deletionRequest.status !== 'pending') {
@@ -260,6 +345,36 @@ router.put('/reject/:requestId', fetchuser, async (req, res) => {
             return res.status(403).json({ success: false, error: "Access denied" });
         }
 
+        if (deletionRequest.cancellationRequested && deletionRequest.cancellationStatus === 'pending') {
+            deletionRequest.cancellationRequested = false;
+            deletionRequest.cancellationStatus = 'rejected';
+            deletionRequest.cancellationRejectionDate = new Date();
+            deletionRequest.cancellationRejectionReason = rejectionReason || 'No reason provided';
+            await deletionRequest.save();
+
+            const notificationType = deletionRequest.userRole === 'employee'
+                ? 'employee_deletion_cancellation_rejected'
+                : 'supplier_deletion_cancellation_rejected';
+            await createNotification(
+                deletionRequest.userId,
+                deletionRequest.userRole.charAt(0).toUpperCase() + deletionRequest.userRole.slice(1),
+                req.user._id,
+                'BusinessOwner',
+                notificationType,
+                'Deletion Cancellation Rejected',
+                `Your cancellation request was rejected by your Business Owner. Reason: ${rejectionReason || 'No reason provided'}`,
+                {
+                    deletionRequestId: deletionRequest._id,
+                    rejectionReason: rejectionReason || 'No reason provided'
+                }
+            );
+
+            return res.json({
+                success: true,
+                message: 'Cancellation request rejected. Deletion process remains active.'
+            });
+        }
+
         if (deletionRequest.status !== 'pending') {
             return res.status(400).json({
                 success: false,
@@ -319,6 +434,12 @@ router.get('/status', fetchuser, async (req, res) => {
             requestData: {
                 _id: deletionRequest._id,
                 status: deletionRequest.status,
+                cancellationRequested: deletionRequest.cancellationRequested,
+                cancellationStatus: deletionRequest.cancellationStatus,
+                cancellationRequestDate: deletionRequest.cancellationRequestDate,
+                cancellationApprovalDate: deletionRequest.cancellationApprovalDate,
+                cancellationRejectionDate: deletionRequest.cancellationRejectionDate,
+                cancellationRejectionReason: deletionRequest.cancellationRejectionReason,
                 requestDate: deletionRequest.requestDate,
                 scheduledDeletionDate: deletionRequest.scheduledDeletionDate,
                 approvalDate: deletionRequest.approvalDate,
