@@ -11,7 +11,12 @@ const Messaging = () => {
     const [loading, setLoading] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
+    const [bulkDeleting, setBulkDeleting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [chatSearchTerm, setChatSearchTerm] = useState('');
+    const [debouncedChatSearchTerm, setDebouncedChatSearchTerm] = useState('');
+    const [bulkMode, setBulkMode] = useState(false);
+    const [selectedMessageIds, setSelectedMessageIds] = useState([]);
     const [currentUserId, setCurrentUserId] = useState(null);
     const [currentUserRole, setCurrentUserRole] = useState(null);
     const [employees, setEmployees] = useState([]);
@@ -31,6 +36,7 @@ const Messaging = () => {
     const [supplierBusinessOwner, setSupplierBusinessOwner] = useState(null);
     const messagesEndRef = useRef(null);
     const messageMenuRef = useRef(null);
+    const lastConversationKeyRef = useRef('');
     const token = localStorage.getItem('token');
 
     // Get current user ID and role
@@ -107,18 +113,42 @@ const Messaging = () => {
         }
     }, [role]);
 
-    // Fetch messages when conversation changes
+    // Debounce in-chat search to prevent jarring reloads while typing.
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setDebouncedChatSearchTerm(chatSearchTerm);
+        }, 250);
+
+        return () => clearTimeout(timeout);
+    }, [chatSearchTerm]);
+
+    // Fetch messages when conversation changes or when search settles.
     useEffect(() => {
         if (selectedConversation) {
-            // Show loader only for initial load when conversation changes.
-            fetchMessages(selectedConversation.userId, selectedConversation.userRole, true);
+            const conversationKey = `${selectedConversation.userId}-${selectedConversation.userRole}`;
+            const showLoader = lastConversationKeyRef.current !== conversationKey;
+
+            // Only show full loader on conversation switch, not on in-chat search.
+            fetchMessages(
+                selectedConversation.userId,
+                selectedConversation.userRole,
+                showLoader,
+                debouncedChatSearchTerm
+            );
+            lastConversationKeyRef.current = conversationKey;
+
             // Poll for new messages every 10 seconds without UI flicker.
             const interval = setInterval(() => {
-                fetchMessages(selectedConversation.userId, selectedConversation.userRole, false);
+                fetchMessages(
+                    selectedConversation.userId,
+                    selectedConversation.userRole,
+                    false,
+                    debouncedChatSearchTerm
+                );
             }, 10000);
             return () => clearInterval(interval);
         }
-    }, [selectedConversation]);
+    }, [selectedConversation, debouncedChatSearchTerm]);
 
     // Auto scroll to latest message
     useEffect(() => {
@@ -158,13 +188,19 @@ const Messaging = () => {
         }
     };
 
-    const fetchMessages = async (userId, userRole, showLoader = false) => {
+    const fetchMessages = async (userId, userRole, showLoader = false, search = '') => {
         if (showLoader) {
             setLoadingMessages(true);
         }
         try {
+            const queryParams = new URLSearchParams();
+            if (search.trim()) {
+                queryParams.append('search', search.trim());
+            }
+
+            const queryString = queryParams.toString();
             const response = await fetch(
-                `http://localhost:5000/api/messages/conversation/${userId}/${userRole}`,
+                `http://localhost:5000/api/messages/conversation/${userId}/${userRole}${queryString ? `?${queryString}` : ''}`,
                 {
                     method: 'GET',
                     headers: {
@@ -213,8 +249,12 @@ const Messaging = () => {
             });
 
             if (response.ok) {
-                const data = await response.json();
-                setMessages([...messages, data.message]);
+                await fetchMessages(
+                    selectedConversation.userId,
+                    selectedConversation.userRole,
+                    false,
+                    chatSearchTerm
+                );
                 setNewMessage('');
                 // Update conversation list
                 fetchConversations();
@@ -395,6 +435,7 @@ const Messaging = () => {
 
     // Handle employee selection
     const handleSelectEmployee = (employee) => {
+        setChatSearchTerm('');
         setSelectedConversation({
             userId: employee._id,
             userRole: 'Employee',
@@ -406,6 +447,7 @@ const Messaging = () => {
 
     // Handle supplier selection
     const handleSelectSupplier = (supplier) => {
+        setChatSearchTerm('');
         setSelectedConversation({
             userId: supplier._id,
             userRole: 'Supplier',
@@ -472,6 +514,99 @@ const Messaging = () => {
         return `${user.fname || ''} ${user.lname || ''}`.trim() || user.email;
     };
 
+    const isSentByCurrentUser = (msg) => {
+        const userId = currentUserId || localStorage.getItem('userId');
+        const senderId = msg.sender?._id || msg.sender;
+        return Boolean(userId && senderId && String(senderId) === String(userId));
+    };
+
+    const isMessageDeletable = (msg) => {
+        if (!hasPermission('canDeleteMessages')) return false;
+        const isSentByMe = isSentByCurrentUser(msg);
+        return isSentByMe ? !msg.isRead : true;
+    };
+
+    const toggleBulkSelection = (messageId) => {
+        setSelectedMessageIds((prev) => {
+            if (prev.includes(messageId)) {
+                return prev.filter((id) => id !== messageId);
+            }
+            return [...prev, messageId];
+        });
+    };
+
+    const toggleSelectAllVisible = () => {
+        const deletableIds = messages.filter(isMessageDeletable).map((msg) => msg._id);
+        const allSelected = deletableIds.length > 0 && deletableIds.every((id) => selectedMessageIds.includes(id));
+
+        if (allSelected) {
+            setSelectedMessageIds([]);
+        } else {
+            setSelectedMessageIds(deletableIds);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!hasPermission('canDeleteMessages')) {
+            alert('You do not have permission to delete messages');
+            return;
+        }
+
+        if (selectedMessageIds.length === 0) {
+            alert('Select at least one message');
+            return;
+        }
+
+        if (!window.confirm(`Delete ${selectedMessageIds.length} selected message(s)?`)) return;
+
+        setBulkDeleting(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/messages/bulk', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': token
+                },
+                body: JSON.stringify({ messageIds: selectedMessageIds })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                await fetchMessages(
+                    selectedConversation.userId,
+                    selectedConversation.userRole,
+                    false,
+                    chatSearchTerm
+                );
+                setSelectedMessageIds([]);
+                fetchConversations();
+
+                if (data.failedCount > 0) {
+                    alert(`${data.deletedCount} message(s) deleted. ${data.failedCount} could not be deleted.`);
+                }
+            } else {
+                const error = await response.json();
+                alert(error.error || 'Error deleting selected messages');
+            }
+        } catch (error) {
+            alert('Error deleting selected messages');
+        } finally {
+            setBulkDeleting(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!selectedConversation) return;
+        setBulkMode(false);
+        setSelectedMessageIds([]);
+    }, [selectedConversation?.userId, selectedConversation?.userRole]);
+
+    useEffect(() => {
+        if (selectedMessageIds.length === 0) return;
+        const visibleIds = new Set(messages.map((msg) => msg._id));
+        setSelectedMessageIds((prev) => prev.filter((id) => visibleIds.has(id)));
+    }, [messages]);
+
     if (!hasPermission('canViewMessages')) {
         return (
             <div className="messaging-container">
@@ -535,6 +670,7 @@ const Messaging = () => {
                                     // Suppliers can only message their business owner
                                     if (currentUserRole === 'supplier') {
                                         if (supplierBusinessOwner) {
+                                            setChatSearchTerm('');
                                             setSelectedConversation({
                                                 userId: supplierBusinessOwner._id,
                                                 userRole: 'BusinessOwner',
@@ -663,6 +799,7 @@ const Messaging = () => {
                                             <button
                                                 className="list-group-item list-group-item-action text-start"
                                                 onClick={() => {
+                                                    setChatSearchTerm('');
                                                     setSelectedConversation({
                                                         userId: myBusinessOwner._id,
                                                         userRole: 'BusinessOwner',
@@ -720,6 +857,7 @@ const Messaging = () => {
                                                         key={col._id}
                                                         className="list-group-item list-group-item-action text-start"
                                                         onClick={() => {
+                                                            setChatSearchTerm('');
                                                             setSelectedConversation({
                                                                 userId: col._id,
                                                                 userRole: 'Employee',
@@ -856,10 +994,14 @@ const Messaging = () => {
 
                     <div className="conversations-list">
                         {loading ? (
-                            <div className="text-center py-4">
-                                <div className="spinner-border text-primary" role="status">
-                                    <span className="visually-hidden">Loading...</span>
-                                </div>
+                            <div className="soft-loading-list py-3" aria-label="Loading conversations">
+                                {[1, 2, 3].map((item) => (
+                                    <div key={item} className="conversation-loading-item">
+                                        <div className="soft-loading-line title"></div>
+                                        <div className="soft-loading-line preview"></div>
+                                        <div className="soft-loading-line time"></div>
+                                    </div>
+                                ))}
                             </div>
                         ) : filteredConversations.length === 0 ? (
                             <div className="no-conversations text-center py-4">
@@ -875,7 +1017,10 @@ const Messaging = () => {
                                             ? 'active'
                                             : ''
                                     }`}
-                                    onClick={() => setSelectedConversation(conv)}
+                                    onClick={() => {
+                                        setChatSearchTerm('');
+                                        setSelectedConversation(conv);
+                                    }}
                                 >
                                     <div className="conversation-header">
                                         <h6 className="mb-1">
@@ -910,42 +1055,109 @@ const Messaging = () => {
                         <>
                             {/* Chat Header */}
                             <div className="chat-header">
-                                <h5 className="mb-0">
-                                    {getUserDisplayName(
-                                        selectedConversation.userDetails,
-                                        selectedConversation.userRole
+                                <div className="chat-header-main">
+                                    <h5 className="mb-0">
+                                        {getUserDisplayName(
+                                            selectedConversation.userDetails,
+                                            selectedConversation.userRole
+                                        )}
+                                    </h5>
+                                    <small className="text-muted d-block">
+                                        {selectedConversation.userRole === 'Employee'
+                                            ? `(${selectedConversation.userDetails?.role || 'Employee'})`
+                                            : selectedConversation.userRole}
+                                    </small>
+                                </div>
+                                <div className="chat-header-actions">
+                                    <div className="chat-search-wrapper">
+                                        <i className="bi bi-search chat-search-icon"></i>
+                                        <input
+                                            type="text"
+                                            className="chat-search-input"
+                                            placeholder="Search in this chat..."
+                                            value={chatSearchTerm}
+                                            onChange={(e) => setChatSearchTerm(e.target.value)}
+                                        />
+                                        {chatSearchTerm && (
+                                            <button
+                                                type="button"
+                                                className="chat-search-clear"
+                                                onClick={() => setChatSearchTerm('')}
+                                                aria-label="Clear chat search"
+                                            >
+                                                <i className="bi bi-x-lg"></i>
+                                            </button>
+                                        )}
+                                    </div>
+                                    {hasPermission('canDeleteMessages') && (
+                                        <label className="bulk-toggle-check" title="Enable bulk selection">
+                                            <input
+                                                type="checkbox"
+                                                checked={bulkMode}
+                                                onChange={(e) => {
+                                                    const enabled = e.target.checked;
+                                                    setShowMessageMenu(null);
+                                                    setEditingMessageId(null);
+                                                    setEditingContent('');
+                                                    setBulkMode(enabled);
+                                                    setSelectedMessageIds([]);
+                                                }}
+                                            />
+                                            <span>Bulk</span>
+                                        </label>
                                     )}
-                                </h5>
-                                <small className="text-muted d-block">
-                                    {selectedConversation.userRole === 'Employee'
-                                        ? `(${selectedConversation.userDetails?.role || 'Employee'})`
-                                        : selectedConversation.userRole}
-                                </small>
+                                </div>
                             </div>
+
+                            {bulkMode && (
+                                <div className="bulk-actions-bar">
+                                    <span className="bulk-selected-count">
+                                        {selectedMessageIds.length} selected
+                                    </span>
+                                    <div className="bulk-actions-buttons">
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-light"
+                                            onClick={toggleSelectAllVisible}
+                                        >
+                                            {messages.filter(isMessageDeletable).length > 0 &&
+                                            messages.filter(isMessageDeletable).every((msg) => selectedMessageIds.includes(msg._id))
+                                                ? 'Clear All'
+                                                : 'Select All Deletable'}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-danger"
+                                            onClick={handleBulkDelete}
+                                            disabled={selectedMessageIds.length === 0 || bulkDeleting}
+                                        >
+                                            {bulkDeleting ? 'Deleting...' : 'Delete Selected'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Messages Area */}
                             <div className="messages-area">
                                 {loadingMessages ? (
-                                    <div className="text-center py-4">
-                                        <div className="spinner-border text-primary" role="status">
-                                            <span className="visually-hidden">Loading...</span>
-                                        </div>
+                                    <div className="soft-loading-messages" aria-label="Loading messages">
+                                        <div className="soft-chat-bubble left"></div>
+                                        <div className="soft-chat-bubble left short"></div>
+                                        <div className="soft-chat-bubble right"></div>
+                                        <p className="soft-loading-caption">Loading messages...</p>
                                     </div>
                                 ) : messages.length === 0 ? (
                                     <div className="no-messages text-center py-4">
-                                        <p>No messages yet. Start a conversation!</p>
+                                        <p>
+                                            {chatSearchTerm
+                                                ? `No messages found for "${chatSearchTerm}"`
+                                                : 'No messages yet. Start a conversation!'}
+                                        </p>
                                     </div>
                                 ) : (
                                     messages.map((msg) => {
-                                        // Use currentUserId or fallback to localStorage
-                                        const userId = currentUserId || localStorage.getItem('userId');
-                                        
-                                        // Handle both cases: sender as object or as string ID
-                                        const senderId = msg.sender?._id || msg.sender;
-                                        
-                                        // Compare as strings
-                                        const isSentByMe = userId && senderId && 
-                                                         String(senderId) === String(userId);
+                                        const isSentByMe = isSentByCurrentUser(msg);
+                                        const canDeleteThisMessage = isMessageDeletable(msg);
                                         
                                         // Check if editing this message
                                         const isEditing = editingMessageId === msg._id;
@@ -953,7 +1165,7 @@ const Messaging = () => {
                                         return (
                                         <div
                                             key={msg._id}
-                                            className={`message-item ${isSentByMe ? 'sent' : 'received'}`}
+                                            className={`message-item ${isSentByMe ? 'sent' : 'received'} ${bulkMode ? 'bulk-mode' : ''}`}
                                             ref={showMessageMenu === msg._id ? messageMenuRef : null}
                                         >
                                             {!isSentByMe && (
@@ -971,8 +1183,8 @@ const Messaging = () => {
                                                 )}
                                                 <div 
                                                     className="message-bubble"
-                                                    onClick={() => isSentByMe && hasPermission('canDeleteMessages') && setShowMessageMenu(msg._id)}
-                                                    style={{ cursor: isSentByMe && hasPermission('canDeleteMessages') ? 'pointer' : 'default' }}
+                                                    onClick={() => isSentByMe && hasPermission('canDeleteMessages') && !bulkMode && setShowMessageMenu(msg._id)}
+                                                    style={{ cursor: isSentByMe && hasPermission('canDeleteMessages') && !bulkMode ? 'pointer' : 'default' }}
                                                 >
                                                     {isEditing ? (
                                                         <div className="edit-message-form">
@@ -1020,7 +1232,17 @@ const Messaging = () => {
                                                     )}
                                                 </small>
                                             </div>
-                                            {isSentByMe && hasPermission('canDeleteMessages') && (
+                                            {bulkMode && hasPermission('canDeleteMessages') && (
+                                                <label className={`bulk-message-checkbox ${!canDeleteThisMessage ? 'disabled' : ''}`} title={canDeleteThisMessage ? 'Select message' : 'This message cannot be deleted'}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedMessageIds.includes(msg._id)}
+                                                        disabled={!canDeleteThisMessage}
+                                                        onChange={() => toggleBulkSelection(msg._id)}
+                                                    />
+                                                </label>
+                                            )}
+                                            {isSentByMe && hasPermission('canDeleteMessages') && !bulkMode && (
                                                 <div className="message-menu-wrapper">
                                                     <button
                                                         className="btn btn-sm btn-link text-muted p-0"
@@ -1083,7 +1305,7 @@ const Messaging = () => {
                                     <button
                                         type="submit"
                                         disabled={!newMessage.trim() || sending}
-                                        className="btn btn-primary"
+                                        className="btn btn-primary me-5"
                                     >
                                         {sending ? (
                                             <>

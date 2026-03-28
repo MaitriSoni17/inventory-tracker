@@ -8,6 +8,8 @@ const Supplier = require('../models/Supplier');
 const RolePermissions = require('../models/RolePermissions');
 const { notifyAboutNewMessage, notifyAboutEditedMessage } = require('../utils/notificationHelper');
 
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Helper function to check if user has messaging permission
  */
@@ -150,6 +152,7 @@ router.get('/contacts', fetchuser, async (req, res) => {
 router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
     try {
         const { userId, userRole } = req.params;
+        const searchTerm = (req.query.search || '').trim();
         const currentUserId = req.user._id;
         // Map all employee types (employee, manager, supervisor) to 'Employee' role
         const currentUserRole = req.role === 'businessowner' ? 'BusinessOwner' : 
@@ -182,8 +185,7 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
             }
         }
 
-        // Get messages between two users
-        let messages = await Message.find({
+        const messageQuery = {
             $or: [
                 { sender: currentUserId, recipient: userId, senderRole: currentUserRole, recipientRole: userRole },
                 { sender: userId, recipient: currentUserId, senderRole: userRole, recipientRole: currentUserRole }
@@ -191,7 +193,14 @@ router.get('/conversation/:userId/:userRole', fetchuser, async (req, res) => {
             businessowner: req.businessowner,
             deletedBySender: false,
             deletedByRecipient: false
-        })
+        };
+
+        if (searchTerm) {
+            messageQuery.content = { $regex: escapeRegExp(searchTerm), $options: 'i' };
+        }
+
+        // Get messages between two users
+        let messages = await Message.find(messageQuery)
         .populate({
             path: 'sender',
             select: 'fname lname email _id'
@@ -560,6 +569,96 @@ router.put('/:messageId', fetchuser, async (req, res) => {
 });
 
 // ==================== DELETE ROUTES ====================
+
+/**
+ * Bulk delete messages
+ * DELETE /api/messages/bulk
+ */
+router.delete('/bulk', fetchuser, async (req, res) => {
+    try {
+        const { messageIds } = req.body;
+
+        if (!Array.isArray(messageIds) || messageIds.length === 0) {
+            return res.status(400).json({ error: 'messageIds must be a non-empty array' });
+        }
+
+        // Check permission
+        const hasPermission = await hasMessagingPermission(
+            req.user._id,
+            req.role,
+            req.businessowner,
+            'canDeleteMessages'
+        );
+
+        if (!hasPermission) {
+            return res.status(403).json({ error: 'You do not have permission to delete messages' });
+        }
+
+        const uniqueMessageIds = [...new Set(messageIds.filter(Boolean))];
+        const idRegex = /^[a-fA-F0-9]{24}$/;
+        const invalidId = uniqueMessageIds.find((id) => !idRegex.test(String(id)));
+
+        if (invalidId) {
+            return res.status(400).json({ error: 'One or more message IDs are invalid' });
+        }
+
+        const messages = await Message.find({
+            _id: { $in: uniqueMessageIds },
+            businessowner: req.businessowner
+        });
+
+        const deletedIds = [];
+        const failed = [];
+
+        for (const message of messages) {
+            const isSender = message.sender.toString() === req.user._id.toString();
+            const isRecipient = message.recipient.toString() === req.user._id.toString();
+
+            if (!isSender && !isRecipient) {
+                failed.push({ messageId: message._id, reason: 'Not authorized to delete this message' });
+                continue;
+            }
+
+            // Business rule: sender cannot delete message after receiver has seen it.
+            if (isSender && message.isRead) {
+                failed.push({ messageId: message._id, reason: 'Message cannot be deleted after receiver has seen it' });
+                continue;
+            }
+
+            if (isSender) {
+                message.deletedBySender = true;
+            } else {
+                message.deletedByRecipient = true;
+            }
+
+            if (message.deletedBySender && message.deletedByRecipient) {
+                await Message.deleteOne({ _id: message._id });
+            } else {
+                await message.save();
+            }
+
+            deletedIds.push(message._id);
+        }
+
+        // Report IDs that were not found in current business scope.
+        const foundIdSet = new Set(messages.map((msg) => msg._id.toString()));
+        for (const id of uniqueMessageIds) {
+            if (!foundIdSet.has(id.toString())) {
+                failed.push({ messageId: id, reason: 'Message not found' });
+            }
+        }
+
+        res.json({
+            success: true,
+            deletedCount: deletedIds.length,
+            deletedIds,
+            failedCount: failed.length,
+            failed
+        });
+    } catch (error) {
+        res.status(500).json({ error: 'Error deleting messages in bulk' });
+    }
+});
 
 /**
  * Delete message (soft delete for sender)
