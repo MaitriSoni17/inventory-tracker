@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import '../../../styles/permissions.css';
 
 const PermissionManager = (props) => {
@@ -34,6 +34,16 @@ const PermissionManager = (props) => {
     const [employeeSearchTerm, setEmployeeSearchTerm] = useState('');
     const [loadingEmployees, setLoadingEmployees] = useState(false);
     const [savingEmployee, setSavingEmployee] = useState(false);
+    const [productCategories, setProductCategories] = useState([]);
+    const [loadingProductCategories, setLoadingProductCategories] = useState(false);
+    const [employeeCategoryAccess, setEmployeeCategoryAccess] = useState(null);
+    const [roleCategorySaveState, setRoleCategorySaveState] = useState('idle'); // idle | saving | saved | error
+    const [employeeCategorySaveState, setEmployeeCategorySaveState] = useState('idle'); // idle | saving | saved | error
+    const [openCategoryDropdowns, setOpenCategoryDropdowns] = useState({ role: false, employee: false });
+    const roleCategorySaveTimerRef = useRef(null);
+    const employeeCategorySaveTimerRef = useRef(null);
+    const roleCategoryDropdownRef = useRef(null);
+    const employeeCategoryDropdownRef = useRef(null);
 
     // Notification preferences state
     const [notificationPreferences, setNotificationPreferences] = useState({
@@ -198,6 +208,30 @@ const PermissionManager = (props) => {
             setLoadingEmployees(false);
         }
     }, [props]);
+
+    // Fetch categories for employee category-based product access
+    const fetchProductCategories = useCallback(async () => {
+        setLoadingProductCategories(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setProductCategories(Array.isArray(data) ? data : []);
+            } else {
+                setProductCategories([]);
+            }
+        } catch (error) {
+            setProductCategories([]);
+        } finally {
+            setLoadingProductCategories(false);
+        }
+    }, []);
 
     // Fetch notification preferences
     const fetchNotificationPreferences = useCallback(async () => {
@@ -493,11 +527,15 @@ const PermissionManager = (props) => {
         fetchPermissionGroups();
         fetchPermissions();
         fetchCustomRoles();
-    }, [fetchPermissionGroups, fetchPermissions, fetchCustomRoles]);
+        fetchProductCategories();
+    }, [fetchPermissionGroups, fetchPermissions, fetchCustomRoles, fetchProductCategories]);
 
     useEffect(() => {
-        if (mainTab === 'individual') {
+        if (mainTab === 'role-based') {
+            fetchProductCategories();
+        } else if (mainTab === 'individual') {
             fetchEmployees();
+            fetchProductCategories();
         } else if (mainTab === 'notifications') {
             fetchNotificationPreferences();
         } else if (mainTab === 'supplier-permissions') {
@@ -505,7 +543,153 @@ const PermissionManager = (props) => {
         } else if (mainTab === 'report-download') {
             fetchReportDownloadPerms();
         }
-    }, [mainTab, fetchEmployees, fetchNotificationPreferences, fetchSuppliers, fetchReportDownloadPerms]);
+    }, [mainTab, fetchEmployees, fetchProductCategories, fetchNotificationPreferences, fetchSuppliers, fetchReportDownloadPerms]);
+
+    useEffect(() => {
+        return () => {
+            if (roleCategorySaveTimerRef.current) {
+                clearTimeout(roleCategorySaveTimerRef.current);
+            }
+            if (employeeCategorySaveTimerRef.current) {
+                clearTimeout(employeeCategorySaveTimerRef.current);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        const handleOutsideClick = (event) => {
+            if (roleCategoryDropdownRef.current && !roleCategoryDropdownRef.current.contains(event.target)) {
+                setOpenCategoryDropdowns(prev => ({ ...prev, role: false }));
+            }
+            if (employeeCategoryDropdownRef.current && !employeeCategoryDropdownRef.current.contains(event.target)) {
+                setOpenCategoryDropdowns(prev => ({ ...prev, employee: false }));
+            }
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => document.removeEventListener('mousedown', handleOutsideClick);
+    }, []);
+
+    const getRoleCategoryAccess = (roleKey) => {
+        const rolePerms = permissions?.[roleKey] || {};
+        if (!Array.isArray(rolePerms.allowedProductCategories)) {
+            return null;
+        }
+        return [...new Set(rolePerms.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
+    };
+
+    const getAllCategoryIds = () => [...new Set(productCategories.map((cat) => String(cat?._id || '').trim()).filter(Boolean))];
+
+    const getCategoryDropdownSummary = (selectedIds) => {
+        if (!Array.isArray(selectedIds)) return 'Use role defaults';
+        if (selectedIds.length === 0) return 'Select categories';
+
+        const selectedNames = selectedIds
+            .map((id) => {
+                const found = productCategories.find((cat) => String(cat?._id) === String(id));
+                return found?.cName || found?.name || found?.categoryName;
+            })
+            .filter(Boolean);
+
+        if (selectedNames.length === 0) return `${selectedIds.length} selected`;
+        if (selectedNames.length <= 2) return selectedNames.join(', ');
+        return `${selectedIds.length} categories selected`;
+    };
+
+    const persistRoleCategoryAccess = async (roleKey, nextCategories) => {
+        const rolePerms = permissions?.[roleKey] || {};
+        const nextRolePerms = {
+            ...rolePerms,
+            allowedProductCategories: Array.isArray(nextCategories) ? nextCategories : undefined
+        };
+
+        try {
+            const response = await fetch('http://localhost:5000/api/permissions/update', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ role: roleKey, permissions: nextRolePerms })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                props.showAlert(data.error || 'Error updating role category access', 'danger');
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            props.showAlert('Error updating role category access', 'danger');
+            return false;
+        }
+    };
+
+    const scheduleRoleCategorySave = (roleKey, nextCategories) => {
+        if (roleCategorySaveTimerRef.current) {
+            clearTimeout(roleCategorySaveTimerRef.current);
+        }
+
+        setRoleCategorySaveState('saving');
+        roleCategorySaveTimerRef.current = setTimeout(async () => {
+            const ok = await persistRoleCategoryAccess(roleKey, nextCategories);
+            setRoleCategorySaveState(ok ? 'saved' : 'error');
+            setTimeout(() => setRoleCategorySaveState('idle'), 1000);
+        }, 280);
+    };
+
+    const applyRoleCategoryAccessLocally = (roleKey, nextCategories) => {
+        setPermissions(prev => ({
+            ...prev,
+            [roleKey]: {
+                ...prev[roleKey],
+                allowedProductCategories: Array.isArray(nextCategories) ? nextCategories : undefined
+            }
+        }));
+    };
+
+    const handleRoleCategoryRestrictionToggle = async () => {
+        const currentCategories = getRoleCategoryAccess(activeRole);
+        const nextCategories = Array.isArray(currentCategories) ? null : [];
+        applyRoleCategoryAccessLocally(activeRole, nextCategories);
+        scheduleRoleCategorySave(activeRole, nextCategories);
+        if (Array.isArray(currentCategories)) {
+            setOpenCategoryDropdowns(prev => ({ ...prev, role: false }));
+        }
+    };
+
+    const handleRoleCategoryToggle = async (categoryId) => {
+        const currentCategories = getRoleCategoryAccess(activeRole);
+        if (!Array.isArray(currentCategories)) return;
+
+        const normalizedCategoryId = String(categoryId);
+        const exists = currentCategories.includes(normalizedCategoryId);
+        const nextCategories = exists
+            ? currentCategories.filter((id) => id !== normalizedCategoryId)
+            : [...currentCategories, normalizedCategoryId];
+
+        applyRoleCategoryAccessLocally(activeRole, nextCategories);
+        scheduleRoleCategorySave(activeRole, nextCategories);
+    };
+
+    const handleRoleCategorySelectAll = () => {
+        const currentCategories = getRoleCategoryAccess(activeRole);
+        if (!Array.isArray(currentCategories)) return;
+
+        const nextCategories = getAllCategoryIds();
+        applyRoleCategoryAccessLocally(activeRole, nextCategories);
+        scheduleRoleCategorySave(activeRole, nextCategories);
+    };
+
+    const handleRoleCategoryClear = () => {
+        const currentCategories = getRoleCategoryAccess(activeRole);
+        if (!Array.isArray(currentCategories)) return;
+
+        const nextCategories = [];
+        applyRoleCategoryAccessLocally(activeRole, nextCategories);
+        scheduleRoleCategorySave(activeRole, nextCategories);
+    };
 
     // Save notification preferences
     const saveNotificationPreferences = async () => {
@@ -539,6 +723,7 @@ const PermissionManager = (props) => {
     const handleEmployeeSelect = async (employee) => {
         setSelectedEmployee(employee);
         setEmployeePermissions(employee.permissions || {});
+        setEmployeeCategoryAccess(Array.isArray(employee.allowedProductCategories) ? employee.allowedProductCategories : null);
     };
 
     // Toggle role-based permission
@@ -728,6 +913,97 @@ const PermissionManager = (props) => {
         }
     };
 
+    const persistEmployeeCategoryAccess = async (nextCategories) => {
+        if (!selectedEmployee) return;
+
+        try {
+            const response = await fetch(`http://localhost:5000/api/permissions/employee/${selectedEmployee._id}/product-categories`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                },
+                body: JSON.stringify({ allowedProductCategories: nextCategories })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                props.showAlert(data.error || 'Error updating product category access', 'danger');
+                return false;
+            }
+
+            const savedCategories = Array.isArray(data.employee?.allowedProductCategories)
+                ? data.employee.allowedProductCategories
+                : null;
+
+            setEmployeeCategoryAccess(savedCategories);
+            setSelectedEmployee(prev => prev ? { ...prev, allowedProductCategories: savedCategories } : prev);
+            setEmployees(prev => prev.map(emp =>
+                emp._id === selectedEmployee._id
+                    ? { ...emp, allowedProductCategories: savedCategories }
+                    : emp
+            ));
+            return true;
+        } catch (error) {
+            props.showAlert('Error updating product category access', 'danger');
+            return false;
+        }
+    };
+
+    const scheduleEmployeeCategorySave = (nextCategories) => {
+        if (employeeCategorySaveTimerRef.current) {
+            clearTimeout(employeeCategorySaveTimerRef.current);
+        }
+
+        setEmployeeCategorySaveState('saving');
+        employeeCategorySaveTimerRef.current = setTimeout(async () => {
+            const ok = await persistEmployeeCategoryAccess(nextCategories);
+            setEmployeeCategorySaveState(ok ? 'saved' : 'error');
+            setTimeout(() => setEmployeeCategorySaveState('idle'), 1000);
+        }, 280);
+    };
+
+    const handleCategoryRestrictionToggle = async () => {
+        if (!selectedEmployee) return;
+
+        const currentlyRestricted = Array.isArray(employeeCategoryAccess);
+        const nextCategories = currentlyRestricted ? null : [];
+        setEmployeeCategoryAccess(nextCategories);
+        scheduleEmployeeCategorySave(nextCategories);
+        if (currentlyRestricted) {
+            setOpenCategoryDropdowns(prev => ({ ...prev, employee: false }));
+        }
+    };
+
+    const handleEmployeeCategoryToggle = async (categoryId) => {
+        if (!selectedEmployee || !Array.isArray(employeeCategoryAccess)) return;
+
+        const categoryKey = String(categoryId);
+        const exists = employeeCategoryAccess.includes(categoryKey);
+        const nextCategories = exists
+            ? employeeCategoryAccess.filter((id) => id !== categoryKey)
+            : [...employeeCategoryAccess, categoryKey];
+
+        setEmployeeCategoryAccess(nextCategories);
+        scheduleEmployeeCategorySave(nextCategories);
+    };
+
+    const handleEmployeeCategorySelectAll = () => {
+        if (!selectedEmployee || !Array.isArray(employeeCategoryAccess)) return;
+
+        const nextCategories = getAllCategoryIds();
+        setEmployeeCategoryAccess(nextCategories);
+        scheduleEmployeeCategorySave(nextCategories);
+    };
+
+    const handleEmployeeCategoryClear = () => {
+        if (!selectedEmployee || !Array.isArray(employeeCategoryAccess)) return;
+
+        const nextCategories = [];
+        setEmployeeCategoryAccess(nextCategories);
+        scheduleEmployeeCategorySave(nextCategories);
+    };
+
     // Toggle all permissions in a group for a role
     const handleGroupToggle = async (role, groupId, enable) => {
         const group = permissionGroups.find(g => g.id === groupId);
@@ -859,11 +1135,17 @@ const PermissionManager = (props) => {
             if (response.ok) {
                 const data = await response.json();
                 setEmployeePermissions(data.employee.permissions);
+                setEmployeeCategoryAccess(Array.isArray(data.employee.allowedProductCategories) ? data.employee.allowedProductCategories : null);
                 setSelectedEmployee({ ...data.employee, hasCustomPermissions: false });
                 // Update employee in list - reset hasCustomPermissions flag
                 setEmployees(prev => prev.map(emp => 
                     emp._id === selectedEmployee._id 
-                        ? { ...emp, permissions: data.employee.permissions, hasCustomPermissions: false }
+                        ? {
+                            ...emp,
+                            permissions: data.employee.permissions,
+                            hasCustomPermissions: false,
+                            allowedProductCategories: data.employee.allowedProductCategories
+                          }
                         : emp
                 ));
                 props.showAlert(data.message, 'success');
@@ -1241,6 +1523,86 @@ const PermissionManager = (props) => {
                         </div>
 
                         <div className="permissions-grid">
+                            <div className="permission-category" style={{ marginBottom: '18px' }}>
+                                <div className="category-header">
+                                    <div className="category-title">
+                                        <i className="fas fa-tags me-2"></i>
+                                        Product Category Access (Role Default)
+                                    </div>
+                                </div>
+                                <div className="category-permissions" style={{ paddingTop: '8px' }}>
+                                    <div className="permission-item" style={{ marginBottom: '10px' }}>
+                                        <label className="permission-toggle">
+                                            <input
+                                                type="checkbox"
+                                                checked={Array.isArray(getRoleCategoryAccess(activeRole))}
+                                                onChange={handleRoleCategoryRestrictionToggle}
+                                                disabled={saving}
+                                            />
+                                            <span className="toggle-slider"></span>
+                                        </label>
+                                        <span className="permission-label">
+                                            Restrict this role to selected product categories
+                                        </span>
+                                    </div>
+
+                                    {Array.isArray(getRoleCategoryAccess(activeRole)) && (
+                                        <div>
+                                            {loadingProductCategories ? (
+                                                <small className="text-muted">Loading categories...</small>
+                                            ) : productCategories.length === 0 ? (
+                                                <small className="text-muted">No categories available yet.</small>
+                                            ) : (
+                                                <div className="category-multi-select" ref={roleCategoryDropdownRef}>
+                                                    <button
+                                                        type="button"
+                                                        className="category-dropdown-trigger"
+                                                        onClick={() => setOpenCategoryDropdowns(prev => ({ ...prev, role: !prev.role }))}
+                                                        disabled={saving}
+                                                    >
+                                                        <span>{getCategoryDropdownSummary(getRoleCategoryAccess(activeRole))}</span>
+                                                        <i className={`fas fa-chevron-${openCategoryDropdowns.role ? 'up' : 'down'}`}></i>
+                                                    </button>
+
+                                                    {openCategoryDropdowns.role && (
+                                                        <div className="category-dropdown-panel">
+                                                            <div className="category-dropdown-actions">
+                                                                <button type="button" onClick={handleRoleCategorySelectAll} disabled={saving}>Select all</button>
+                                                                <button type="button" onClick={handleRoleCategoryClear} disabled={saving}>Clear</button>
+                                                            </div>
+                                                            <div className="category-dropdown-list">
+                                                                {productCategories.map((cat) => {
+                                                                    const catId = String(cat._id);
+                                                                    const checked = getRoleCategoryAccess(activeRole)?.includes(catId) || false;
+                                                                    const categoryLabel = cat?.cName || cat?.name || cat?.categoryName || 'Unnamed category';
+                                                                    return (
+                                                                        <label key={catId} className="category-dropdown-option">
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                checked={checked}
+                                                                                onChange={() => handleRoleCategoryToggle(catId)}
+                                                                                disabled={saving}
+                                                                            />
+                                                                            <span>{categoryLabel}</span>
+                                                                        </label>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            <small className="text-muted d-block mt-2">
+                                                This applies to employees of this role unless they have individual category overrides.
+                                            </small>
+                                            <small className="text-muted d-block mt-1">
+                                                {roleCategorySaveState === '' && ''}
+                                            </small>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             {getFilteredGroups(searchTerm).length === 0 ? (
                                 <div className="empty-state">
                                     <i className="fas fa-search"></i>
@@ -1452,6 +1814,88 @@ const PermissionManager = (props) => {
                                 </div>
 
                                 <div className="permissions-grid">
+                                    <div className="permission-category" style={{ marginBottom: '18px' }}>
+                                        <div className="category-header">
+                                            <div className="category-title">
+                                                <i className="fas fa-tags me-2"></i>
+                                                Product Category Access
+                                            </div>
+                                        </div>
+                                        <div className="category-permissions" style={{ paddingTop: '8px' }}>
+                                            <div className="permission-item" style={{ marginBottom: '10px' }}>
+                                                <label className="permission-toggle">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={Array.isArray(employeeCategoryAccess)}
+                                                        onChange={handleCategoryRestrictionToggle}
+                                                        disabled={savingEmployee}
+                                                    />
+                                                    <span className="toggle-slider"></span>
+                                                </label>
+                                                <span className="permission-label">
+                                                    Restrict product access by category
+                                                </span>
+                                            </div>
+
+                                            {Array.isArray(employeeCategoryAccess) && (
+                                                <div>
+                                                    {loadingProductCategories ? (
+                                                        <small className="text-muted">Loading categories...</small>
+                                                    ) : productCategories.length === 0 ? (
+                                                        <small className="text-muted">No categories available yet.</small>
+                                                    ) : (
+                                                        <div className="category-multi-select" ref={employeeCategoryDropdownRef}>
+                                                            <button
+                                                                type="button"
+                                                                className="category-dropdown-trigger"
+                                                                onClick={() => setOpenCategoryDropdowns(prev => ({ ...prev, employee: !prev.employee }))}
+                                                                disabled={savingEmployee}
+                                                            >
+                                                                <span>{getCategoryDropdownSummary(employeeCategoryAccess)}</span>
+                                                                <i className={`fas fa-chevron-${openCategoryDropdowns.employee ? 'up' : 'down'}`}></i>
+                                                            </button>
+
+                                                            {openCategoryDropdowns.employee && (
+                                                                <div className="category-dropdown-panel">
+                                                                    <div className="category-dropdown-actions">
+                                                                        <button type="button" onClick={handleEmployeeCategorySelectAll} disabled={savingEmployee}>Select all</button>
+                                                                        <button type="button" onClick={handleEmployeeCategoryClear} disabled={savingEmployee}>Clear</button>
+                                                                    </div>
+                                                                    <div className="category-dropdown-list">
+                                                                        {productCategories.map((cat) => {
+                                                                            const categoryId = String(cat._id);
+                                                                            const checked = employeeCategoryAccess.includes(categoryId);
+                                                                            const categoryLabel = cat?.cName || cat?.name || cat?.categoryName || 'Unnamed category';
+                                                                            return (
+                                                                                <label key={categoryId} className="category-dropdown-option">
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        checked={checked}
+                                                                                        onChange={() => handleEmployeeCategoryToggle(categoryId)}
+                                                                                        disabled={savingEmployee}
+                                                                                    />
+                                                                                    <span>{categoryLabel}</span>
+                                                                                </label>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    <small className="text-muted d-block mt-2">
+                                                        When enabled, this employee can only view and manage products in selected categories.
+                                                    </small>
+                                                    <small className="text-muted d-block mt-1">
+                                                        {employeeCategorySaveState === 'saving' && 'Saving category changes...'}
+                                                        {employeeCategorySaveState === 'saved' && 'Saved'}
+                                                        {employeeCategorySaveState === 'error' && 'Could not save changes'}
+                                                    </small>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
                                     {permissionGroups.map(group => (
                                         <div className="permission-category" key={group.id}>
                                             <div 

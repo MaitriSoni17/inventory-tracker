@@ -2,6 +2,7 @@ const express = require('express');
 const fetchuser = require('../middleware/fetchuser');
 const Product = require('../models/Products');
 const Employee = require('../models/Employee');
+const RolePermissions = require('../models/RolePermissions');
 const Category = require('../models/Category');
 const Warehouse = require('../models/Warehouse');
 const { body, validationResult } = require('express-validator');
@@ -50,6 +51,39 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
+const isAllowedCategoryForEmployee = (allowedCategories, categoryId) => {
+    if (!Array.isArray(allowedCategories)) return true;
+    const normalizedCategory = String(categoryId || '').trim();
+    if (!normalizedCategory) return false;
+    return allowedCategories.map((id) => String(id)).includes(normalizedCategory);
+};
+
+const getEffectiveAllowedProductCategories = async (employee) => {
+    if (!employee) return undefined;
+
+    if (employee.hasCustomCategoryAccess === true) {
+        if (!Array.isArray(employee.allowedProductCategories)) return undefined;
+        return [...new Set(employee.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
+    }
+
+    const rolePermissions = await RolePermissions.findOne({ businessowner: employee.businessowner });
+    if (!rolePermissions) {
+        if (!Array.isArray(employee.allowedProductCategories)) return undefined;
+        return [...new Set(employee.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
+    }
+
+    let rolePerms;
+    if (['manager', 'supervisor', 'employee'].includes(employee.role)) {
+        rolePerms = rolePermissions[employee.role];
+    } else if (rolePermissions.customRoles && rolePermissions.customRoles.has(employee.role)) {
+        rolePerms = rolePermissions.customRoles.get(employee.role);
+    }
+
+    const rolePermObj = rolePerms && rolePerms.toObject ? rolePerms.toObject() : rolePerms;
+    if (!Array.isArray(rolePermObj?.allowedProductCategories)) return undefined;
+    return [...new Set(rolePermObj.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
+};
+
 // Create Product — accessible by users with canCreateProducts permission
 router.post('/createproduct', fetchuser, upload.array('images', 10), [
     body('name').exists().trim().notEmpty().withMessage('Enter Product Name'),
@@ -72,6 +106,14 @@ router.post('/createproduct', fetchuser, upload.array('images', 10), [
     const { name, category, price, totalProducts, warehouse, brand, mDate, eDate, desc } = req.body;
 
     try {
+        const allowedCategories = req.role === 'businessowner'
+            ? undefined
+            : await getEffectiveAllowedProductCategories(req.user);
+
+        if (req.role !== 'businessowner' && !isAllowedCategoryForEmployee(allowedCategories, category)) {
+            return res.status(403).json({ error: 'You do not have access to this product category' });
+        }
+
         // Normalize warehouse value - handle string, JSON-encoded array, or array
         let normalizedWarehouse = [];
         if (warehouse) {
@@ -211,7 +253,12 @@ router.post('/getproduct', fetchuser, async (req, res) => {
                 const businessOwnerId = req.businessowner || (emp && emp.businessowner);
                 
                 if (businessOwnerId) {
-                    products = await Product.find({ businessowner: businessOwnerId });
+                    const query = { businessowner: businessOwnerId };
+                    const allowedCategories = await getEffectiveAllowedProductCategories(req.user);
+                    if (Array.isArray(allowedCategories)) {
+                        query.category = { $in: allowedCategories };
+                    }
+                    products = await Product.find(query);
                 } else {
                     products = [];
                 }
@@ -276,6 +323,18 @@ router.put('/updateproduct/:id', fetchuser, upload.array('images', 10), [
     try {
         let product = await Product.findById(req.params.id);
         if (!product) return res.status(404).send("Not Found");
+
+        const allowedCategories = req.role === 'businessowner'
+            ? undefined
+            : await getEffectiveAllowedProductCategories(req.user);
+
+        if (req.role !== 'businessowner' && !isAllowedCategoryForEmployee(allowedCategories, product.category)) {
+            return res.status(403).json({ error: 'You do not have access to this product category' });
+        }
+
+        if (req.role !== 'businessowner' && !isAllowedCategoryForEmployee(allowedCategories, category)) {
+            return res.status(403).json({ error: 'You do not have access to this product category' });
+        }
 
         // Check if user can edit this product
         // Business owners can edit any product, employees can edit their own or others' if they have canEditOthersWork
@@ -446,6 +505,14 @@ router.delete('/deleteproduct/:id', fetchuser, async (req, res) => {
     try {
         const product = await Product.findById(req.params.id);
         if (!product) return res.status(404).send("Product not found");
+
+        const allowedCategories = req.role === 'businessowner'
+            ? undefined
+            : await getEffectiveAllowedProductCategories(req.user);
+
+        if (req.role !== 'businessowner' && !isAllowedCategoryForEmployee(allowedCategories, product.category)) {
+            return res.status(403).json({ error: 'You do not have access to this product category' });
+        }
 
         // Check if user can delete this specific product based on hierarchy
         const canDelete = await canDeleteItem(req.user, product.employee);

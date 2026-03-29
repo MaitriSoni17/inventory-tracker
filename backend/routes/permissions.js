@@ -7,6 +7,14 @@ const fetchuser = require('../middleware/fetchuser');
 // Built-in roles that cannot be removed or renamed
 const BUILT_IN_ROLES = ['manager', 'supervisor', 'employee'];
 
+const getNormalizedAllowedCategories = (rawPerms) => {
+    const source = rawPerms && rawPerms.toObject ? rawPerms.toObject() : rawPerms;
+    if (!Array.isArray(source?.allowedProductCategories)) {
+        return undefined;
+    }
+    return [...new Set(source.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
+};
+
 /**
  * Helper: check if a role is built-in
  */
@@ -33,7 +41,7 @@ const permissionsMatchRole = (employeePerms, rolePerms) => {
     
     for (const key of allKeys) {
         // Skip non-permission fields
-        if (key.startsWith('$') || key === '_id') continue;
+        if (!key.startsWith('can') || key.startsWith('$') || key === '_id') continue;
         
         const empVal = empPerms[key];
         const roleVal = rolPerms[key];
@@ -186,6 +194,25 @@ router.put('/update', fetchuser, async (req, res) => {
             },
             { $set: { permissions: permissionsToUpdate } }
         );
+
+        const updatedRolePerms = isBuiltInRole(role)
+            ? rolePermissions[role]
+            : rolePermissions.customRoles.get(role.toLowerCase());
+        const allowedCategories = getNormalizedAllowedCategories(updatedRolePerms);
+        const categoryFilter = {
+            businessowner: req.user._id,
+            role: role,
+            $or: [
+                { hasCustomCategoryAccess: false },
+                { hasCustomCategoryAccess: { $exists: false } }
+            ]
+        };
+
+        if (Array.isArray(allowedCategories)) {
+            await Employee.updateMany(categoryFilter, { $set: { allowedProductCategories: allowedCategories } });
+        } else {
+            await Employee.updateMany(categoryFilter, { $unset: { allowedProductCategories: 1 } });
+        }
         
         // console.log(`Updated ${updateResult.modifiedCount} employees with new ${role} permissions`);
 
@@ -310,15 +337,24 @@ router.put('/reset', fetchuser, async (req, res) => {
             // Update all employees with built-in roles
             await Employee.updateMany(
                 { businessowner: req.user._id, role: 'manager' },
-                { $set: { permissions: rolePermissions.manager } }
+                {
+                    $set: { permissions: rolePermissions.manager, hasCustomCategoryAccess: false },
+                    $unset: { allowedProductCategories: 1 }
+                }
             );
             await Employee.updateMany(
                 { businessowner: req.user._id, role: 'supervisor' },
-                { $set: { permissions: rolePermissions.supervisor } }
+                {
+                    $set: { permissions: rolePermissions.supervisor, hasCustomCategoryAccess: false },
+                    $unset: { allowedProductCategories: 1 }
+                }
             );
             await Employee.updateMany(
                 { businessowner: req.user._id, role: 'employee' },
-                { $set: { permissions: rolePermissions.employee } }
+                {
+                    $set: { permissions: rolePermissions.employee, hasCustomCategoryAccess: false },
+                    $unset: { allowedProductCategories: 1 }
+                }
             );
 
             // Also reset custom roles to their defaults (employee-level)
@@ -329,7 +365,10 @@ router.put('/reset', fetchuser, async (req, res) => {
                     rolePermissions.customRoles.set(key, updated);
                     await Employee.updateMany(
                         { businessowner: req.user._id, role: key },
-                        { $set: { permissions: defaultPerms } }
+                        {
+                            $set: { permissions: defaultPerms, hasCustomCategoryAccess: false },
+                            $unset: { allowedProductCategories: 1 }
+                        }
                     );
                 }
             }
@@ -340,7 +379,10 @@ router.put('/reset', fetchuser, async (req, res) => {
             // Update employees of that role
             await Employee.updateMany(
                 { businessowner: req.user._id, role: role },
-                { $set: { permissions: rolePermissions[role] } }
+                {
+                    $set: { permissions: rolePermissions[role], hasCustomCategoryAccess: false },
+                    $unset: { allowedProductCategories: 1 }
+                }
             );
         } else {
             // Reset custom role to employee defaults
@@ -355,7 +397,10 @@ router.put('/reset', fetchuser, async (req, res) => {
             
             await Employee.updateMany(
                 { businessowner: req.user._id, role: roleKey },
-                { $set: { permissions: defaultPerms } }
+                {
+                    $set: { permissions: defaultPerms, hasCustomCategoryAccess: false },
+                    $unset: { allowedProductCategories: 1 }
+                }
             );
         }
 
@@ -523,7 +568,7 @@ router.get('/employees', fetchuser, async (req, res) => {
         }
 
         const employees = await Employee.find({ businessowner: req.user._id })
-            .select('fname lname email role permissions department image isActive hasCustomPermissions')
+            .select('fname lname email role permissions department image isActive hasCustomPermissions allowedProductCategories hasCustomCategoryAccess')
             .sort({ role: 1, fname: 1 });
 
         res.json({
@@ -712,9 +757,16 @@ router.put('/employee/:id/reset', fetchuser, async (req, res) => {
         // Update employee with role defaults and reset custom flag
         const updatedEmployee = await Employee.findByIdAndUpdate(
             req.params.id,
-            { $set: { permissions: defaultPermissions, hasCustomPermissions: false } },
+            {
+                $set: {
+                    permissions: defaultPermissions,
+                    hasCustomPermissions: false,
+                    hasCustomCategoryAccess: false,
+                    allowedProductCategories: undefined
+                }
+            },
             { new: true }
-        ).select('fname lname email role permissions hasCustomPermissions');
+        ).select('fname lname email role permissions hasCustomPermissions allowedProductCategories hasCustomCategoryAccess');
 
         res.json({
             success: true,
@@ -724,6 +776,52 @@ router.put('/employee/:id/reset', fetchuser, async (req, res) => {
     } catch (err) {
         // console.error('Error resetting employee permissions:', err);
         res.status(500).json({ error: "Internal Server error occurred", details: err.message });
+    }
+});
+
+/**
+ * Update category-based product access for an individual employee
+ * PUT /api/permissions/employee/:id/product-categories
+ */
+router.put('/employee/:id/product-categories', fetchuser, async (req, res) => {
+    try {
+        if (req.role !== 'businessowner') {
+            return res.status(403).json({ error: "Only Business Owner can manage permissions" });
+        }
+
+        const { allowedProductCategories } = req.body;
+
+        let updateOperation;
+        if (allowedProductCategories === null || allowedProductCategories === undefined) {
+            updateOperation = { $unset: { allowedProductCategories: 1 } };
+        } else if (Array.isArray(allowedProductCategories)) {
+            const normalized = [...new Set(
+                allowedProductCategories
+                    .map((id) => String(id || '').trim())
+                    .filter(Boolean)
+            )];
+            updateOperation = { $set: { allowedProductCategories: normalized } };
+        } else {
+            return res.status(400).json({ error: 'allowedProductCategories must be an array or null' });
+        }
+
+        const employee = await Employee.findOneAndUpdate(
+            { _id: req.params.id, businessowner: req.user._id },
+            { ...updateOperation, $set: { ...(updateOperation.$set || {}), hasCustomCategoryAccess: true } },
+            { new: true }
+        ).select('fname lname email role permissions hasCustomPermissions allowedProductCategories hasCustomCategoryAccess');
+
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        return res.json({
+            success: true,
+            message: `Product category access updated for ${employee.fname} ${employee.lname || ''}`,
+            employee
+        });
+    } catch (err) {
+        return res.status(500).json({ error: "Internal Server error occurred", details: err.message });
     }
 });
 
@@ -848,7 +946,6 @@ router.get('/groups', fetchuser, async (req, res) => {
             groups: permissionGroups
         });
     } catch (err) {
-        // console.error('Error getting permission groups:', err);
         res.status(500).json({ error: "Internal Server error occurred" });
     }
 });
@@ -916,6 +1013,21 @@ router.put('/sync-all', fetchuser, async (req, res) => {
                 { $set: { permissions: permissionsToSync } }
             );
 
+            const allowedCategories = getNormalizedAllowedCategories(rawPerms);
+            const categoryFilter = {
+                businessowner: req.user._id,
+                role: role,
+                $or: [
+                    { hasCustomCategoryAccess: false },
+                    { hasCustomCategoryAccess: { $exists: false } }
+                ]
+            };
+            if (Array.isArray(allowedCategories)) {
+                await Employee.updateMany(categoryFilter, { $set: { allowedProductCategories: allowedCategories } });
+            } else {
+                await Employee.updateMany(categoryFilter, { $unset: { allowedProductCategories: 1 } });
+            }
+
             results[role].synced = syncResult.modifiedCount;
 
             // Count skipped (those with custom permissions)
@@ -949,6 +1061,21 @@ router.put('/sync-all', fetchuser, async (req, res) => {
                     },
                     { $set: { permissions: permissionsToSync } }
                 );
+
+                const allowedCategories = getNormalizedAllowedCategories(rawPerms);
+                const categoryFilter = {
+                    businessowner: req.user._id,
+                    role: roleKey,
+                    $or: [
+                        { hasCustomCategoryAccess: false },
+                        { hasCustomCategoryAccess: { $exists: false } }
+                    ]
+                };
+                if (Array.isArray(allowedCategories)) {
+                    await Employee.updateMany(categoryFilter, { $set: { allowedProductCategories: allowedCategories } });
+                } else {
+                    await Employee.updateMany(categoryFilter, { $unset: { allowedProductCategories: 1 } });
+                }
 
                 const customCount = await Employee.countDocuments({
                     businessowner: req.user._id,

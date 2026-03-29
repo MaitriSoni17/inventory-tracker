@@ -102,6 +102,10 @@ const Employee = new Schema({
         canViewDashboard: { type: Boolean, default: true }
     },
     hasCustomPermissions: { type: Boolean, default: false },
+    // Optional category restriction for product access.
+    // Undefined means unrestricted product-category access.
+    allowedProductCategories: [{ type: String }],
+    hasCustomCategoryAccess: { type: Boolean, default: false },
     tokenVersion: { type: Number, default: 0 },
     mustChangePassword: { type: Boolean, default: false },
     lastLogin: { type: Date },

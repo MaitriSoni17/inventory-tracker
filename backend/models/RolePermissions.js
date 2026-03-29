@@ -72,7 +72,9 @@ const RolePermissionsSchema = new Schema({
         canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
-        canViewDashboard: { type: Boolean, default: true }
+        canViewDashboard: { type: Boolean, default: true },
+        // Category restriction for product access (undefined => unrestricted)
+        allowedProductCategories: { type: [String], default: undefined }
     },
     // Supervisor permissions
     supervisor: {
@@ -133,7 +135,9 @@ const RolePermissionsSchema = new Schema({
         canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
-        canViewDashboard: { type: Boolean, default: true }
+        canViewDashboard: { type: Boolean, default: true },
+        // Category restriction for product access (undefined => unrestricted)
+        allowedProductCategories: { type: [String], default: undefined }
     },
     // Employee permissions
     employee: {
@@ -194,7 +198,9 @@ const RolePermissionsSchema = new Schema({
         canMessageColleagues: { type: Boolean, default: true },
 
         // Dashboard
-        canViewDashboard: { type: Boolean, default: true }
+        canViewDashboard: { type: Boolean, default: true },
+        // Category restriction for product access (undefined => unrestricted)
+        allowedProductCategories: { type: [String], default: undefined }
     },
     // Custom roles defined by the business owner
     // Each key is a custom role name (lowercase), value is an object with permissions + metadata
@@ -242,7 +248,9 @@ const RolePermissionsSchema = new Schema({
             canDeleteMessages: { type: Boolean, default: true },
             canMessageSuppliers: { type: Boolean, default: true },
             canMessageColleagues: { type: Boolean, default: true },
-            canViewDashboard: { type: Boolean, default: true }
+            canViewDashboard: { type: Boolean, default: true },
+            // Category restriction for product access (undefined => unrestricted)
+            allowedProductCategories: { type: [String], default: undefined }
         }, { _id: false }),
         default: new Map()
     },

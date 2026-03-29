@@ -268,11 +268,15 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
         // Get permissions from business owner's role permissions or use defaults
         let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: businessOwnerId });
         let employeePermissions;
+        let roleAllowedCategories;
         
         if (rolePermissionsDoc) {
             // Check built-in roles first
             if (['manager', 'supervisor', 'employee'].includes(role) && rolePermissionsDoc[role]) {
                 const customPerms = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+                roleAllowedCategories = Array.isArray(customPerms.allowedProductCategories)
+                    ? [...new Set(customPerms.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))]
+                    : undefined;
                 delete customPerms._id;
                 delete customPerms.$__;
                 delete customPerms.$isNew;
@@ -281,6 +285,9 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
             // Check custom roles
             else if (rolePermissionsDoc.customRoles && rolePermissionsDoc.customRoles.has(role)) {
                 const customRole = rolePermissionsDoc.customRoles.get(role).toObject();
+                roleAllowedCategories = Array.isArray(customRole.allowedProductCategories)
+                    ? [...new Set(customRole.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))]
+                    : undefined;
                 employeePermissions = {};
                 for (const key of Object.keys(customRole)) {
                     if (key.startsWith('can')) {
@@ -296,6 +303,10 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
         }
 
         employeeData.permissions = employeePermissions;
+        if (Array.isArray(roleAllowedCategories)) {
+            employeeData.allowedProductCategories = roleAllowedCategories;
+        }
+        employeeData.hasCustomCategoryAccess = false;
 
         employee = await Employee.create(employeeData);
 
@@ -708,6 +719,33 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
                     }
                     
                     employee.permissions = newPermissions;
+                }
+
+                // If employee doesn't have custom category access, follow new role's category defaults
+                if (!employee.hasCustomCategoryAccess) {
+                    let rolePermissionsDoc = await RolePermissions.findOne({ businessowner: employee.businessowner });
+                    let nextAllowedCategories;
+
+                    if (rolePermissionsDoc) {
+                        if (builtInRoles.includes(role) && rolePermissionsDoc[role]) {
+                            const roleObj = rolePermissionsDoc[role].toObject ? rolePermissionsDoc[role].toObject() : rolePermissionsDoc[role];
+                            nextAllowedCategories = Array.isArray(roleObj.allowedProductCategories)
+                                ? [...new Set(roleObj.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))]
+                                : undefined;
+                        } else if (rolePermissionsDoc.customRoles && rolePermissionsDoc.customRoles.has(role.toLowerCase())) {
+                            const customRoleDoc = rolePermissionsDoc.customRoles.get(role.toLowerCase());
+                            const customRole = customRoleDoc.toObject ? customRoleDoc.toObject() : customRoleDoc;
+                            nextAllowedCategories = Array.isArray(customRole.allowedProductCategories)
+                                ? [...new Set(customRole.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))]
+                                : undefined;
+                        }
+                    }
+
+                    if (Array.isArray(nextAllowedCategories)) {
+                        employee.allowedProductCategories = nextAllowedCategories;
+                    } else {
+                        employee.allowedProductCategories = undefined;
+                    }
                 }
             }
         }
