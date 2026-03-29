@@ -171,7 +171,7 @@ const SideBar = () => {
                         {/* Reports - Based on canExportReports permission */}
                         {!isDeletionRestricted && canExportReports && (
                             <Link to="/dashboard/reports" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/reports" ? "active" : ""}`}>
-                                <i className="fas fa-chart-bar me-2"></i>Reports
+                                <i className="fas fa-chart-line me-2"></i>Reports
                             </Link>
                         )}
                         

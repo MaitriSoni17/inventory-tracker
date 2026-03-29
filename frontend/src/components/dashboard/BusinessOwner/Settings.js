@@ -52,6 +52,8 @@ const Settings = (props) => {
   const [ackNoRecovery, setAckNoRecovery] = useState(false);
   const [deletionImpact, setDeletionImpact] = useState(null);
   const [impactLoading, setImpactLoading] = useState(false);
+  const [hasActiveDeletion, setHasActiveDeletion] = useState(false);
+  const [activeDeletionRequest, setActiveDeletionRequest] = useState(null);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -275,11 +277,14 @@ const Settings = (props) => {
     setAckCascade(false);
     setAckNoRecovery(false);
     setDeletionImpact(null);
+    setHasActiveDeletion(false);
+    setActiveDeletionRequest(null);
     
     // Check if there's an existing deletion request
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
+      let activeDeletionExists = false;
 
       const response = await fetch('http://localhost:5000/api/businessowner/deletion-status', {
         method: 'GET',
@@ -292,25 +297,33 @@ const Settings = (props) => {
       if (response.ok) {
         const data = await response.json();
         if (data.hasActiveDeletion) {
+          activeDeletionExists = true;
+          setHasActiveDeletion(true);
+          setActiveDeletionRequest(data.deletionRequest || null);
           props.showAlert?.(
             'You have an active deletion request. You can cancel it using the "Cancel Deletion Request" button.',
             'info'
           );
+        } else {
+          setHasActiveDeletion(false);
+          setActiveDeletionRequest(null);
         }
       }
 
-      setImpactLoading(true);
-      const impactRes = await fetch('http://localhost:5000/api/businessowner/deletion-impact', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'auth-token': token
-        }
-      });
+      if (!activeDeletionExists) {
+        setImpactLoading(true);
+        const impactRes = await fetch('http://localhost:5000/api/businessowner/deletion-impact', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'auth-token': token
+          }
+        });
 
-      if (impactRes.ok) {
-        const impactData = await impactRes.json();
-        setDeletionImpact(impactData.impact || null);
+        if (impactRes.ok) {
+          const impactData = await impactRes.json();
+          setDeletionImpact(impactData.impact || null);
+        }
       }
     } catch (error) {
       // console.error('Error checking deletion status:', error);
@@ -321,6 +334,11 @@ const Settings = (props) => {
 
   const handleDeleteAccount = async () => {
     const confirmationText = 'DELETE MY ACCOUNT';
+
+    if (hasActiveDeletion) {
+      props.showAlert?.('An active deletion request already exists. Cancel it first to create a new one.', 'warning');
+      return;
+    }
     
     if (deleteConfirmation !== confirmationText) {
       props.showAlert?.(`Please type "${confirmationText}" to confirm`, 'warning');
@@ -381,13 +399,14 @@ const Settings = (props) => {
       // console.log('Delete response status:', res.status);
       
       if (res.ok) {
+        const data = await res.json();
         props.showAlert?.('Account deletion has been scheduled. You have 7 days to cancel this request.', 'success');
-        // Logout and redirect to login
-        setTimeout(() => {
-          localStorage.removeItem('token');
-          localStorage.removeItem('role');
-          window.location.href = '/';
-        }, 1500);
+        setHasActiveDeletion(true);
+        setActiveDeletionRequest({
+          id: data.requestId,
+          status: 'approved',
+          scheduledDeletionDate: data.scheduledDeletionDate
+        });
       } else {
         const errorData = await res.json();
         // console.error('Delete error response:', errorData);
@@ -433,6 +452,8 @@ const Settings = (props) => {
         props.showAlert?.(data.message, 'success');
         // Reset the form
         setDeleteConfirmation('');
+        setHasActiveDeletion(false);
+        setActiveDeletionRequest(null);
         setShowDeleteModal(false);
       } else {
         const errorData = await res.json();
@@ -494,6 +515,13 @@ const Settings = (props) => {
       </div>
     );
   }
+
+  const canSubmitDelete =
+    !saving &&
+    !hasActiveDeletion &&
+    deleteConfirmation === 'DELETE MY ACCOUNT' &&
+    ackCascade &&
+    ackNoRecovery;
 
 
   return (
@@ -1060,142 +1088,158 @@ const Settings = (props) => {
               </button>
             </div>
             <div className="modal-body">
-              <div className="delete-warning">
-                <i className="bi bi-exclamation-triangle-fill"></i>
-                <p className="warning-text">
-                  <strong>This action cannot be undone!</strong>
-                </p>
-              </div>
-              
-              <div className="delete-consequences">
-                <h4>When you delete your account:</h4>
-                <ul>
-                  <li>All your data will be permanently deleted</li>
-                  <li>Your account cannot be recovered</li>
-                  <li>All associated records will be removed</li>
-                  <li>You will be immediately logged out</li>
-                </ul>
-              </div>
-
-              <div className="delete-info-box">
-                <p><strong>Deletion Impact Preview</strong></p>
-                {impactLoading && <p>Calculating affected records...</p>}
-                {!impactLoading && deletionImpact && (
-                  <ul>
-                    <li>Employees: {deletionImpact.employees}</li>
-                    <li>Suppliers: {deletionImpact.suppliers}</li>
-                    <li>Products: {deletionImpact.products}</li>
-                    <li>Categories: {deletionImpact.categories}</li>
-                    <li>Orders: {deletionImpact.orders}</li>
-                    <li>Warehouses: {deletionImpact.warehouses}</li>
-                  </ul>
-                )}
-              </div>
-
-              <div className="delete-info-box">
-                <p>
-                  <strong>Note:</strong> If you already have a pending deletion request, 
-                  you can cancel it using the "Cancel Deletion Request" button below.
-                </p>
-              </div>
-
-              <div className="delete-confirmation-section">
-                <p className="confirmation-instruction">
-                  Confirm your email by typing <strong>{profileData.email || 'your email'}</strong>:
-                </p>
-                <input
-                  type="email"
-                  className="form-control delete-confirmation-input"
-                  placeholder="Type your email"
-                  value={confirmEmail}
-                  onChange={(e) => setConfirmEmail(e.target.value)}
-                />
-
-                <p className="confirmation-instruction mt-3">
-                  Enter your current password:
-                </p>
-                <input
-                  type="password"
-                  className="form-control delete-confirmation-input"
-                  placeholder="Current password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                />
-
-                <p className="confirmation-instruction mt-3">
-                  Provide deletion reason (minimum 15 characters):
-                </p>
-                <textarea
-                  className="form-control delete-confirmation-input"
-                  placeholder="Write your reason"
-                  value={deleteReason}
-                  onChange={(e) => setDeleteReason(e.target.value)}
-                  rows="3"
-                />
-                <small className="text-muted">{deleteReason.length}/15 minimum</small>
-
-                <p className="confirmation-instruction">
-                  To confirm, type <strong>"DELETE MY ACCOUNT"</strong> below:
-                </p>
-                <input
-                  type="text"
-                  className="form-control delete-confirmation-input"
-                  placeholder="Type DELETE MY ACCOUNT"
-                  value={deleteConfirmation}
-                  onChange={(e) => setDeleteConfirmation(e.target.value)}
-                />
-                <small className="text-muted">
-                  Entered: {deleteConfirmation.length}/18
-                </small>
-
-                <div className="form-check mt-3">
-                  <input
-                    type="checkbox"
-                    className="delete-ack-checkbox"
-                    id="ackCascade"
-                    checked={ackCascade}
-                    onChange={(e) => setAckCascade(e.target.checked)}
-                  />
-                  <label className="form-check-label" htmlFor="ackCascade">
-                    I understand all related business records and associated accounts will be removed.
-                  </label>
+              {hasActiveDeletion ? (
+                <div className="delete-info-box">
+                  <p>
+                    <strong>You already have an active deletion request.</strong>
+                  </p>
+                  <p className="mb-0">
+                    Status: {activeDeletionRequest?.status || 'approved'}
+                  </p>
+                  {activeDeletionRequest?.scheduledDeletionDate && (
+                    <p className="mb-0">
+                      Scheduled Deletion: {new Date(activeDeletionRequest.scheduledDeletionDate).toLocaleString()}
+                    </p>
+                  )}
                 </div>
-                <div className="form-check mt-2">
-                  <input
-                    type="checkbox"
-                    className="delete-ack-checkbox"
-                    id="ackNoRecovery"
-                    checked={ackNoRecovery}
-                    onChange={(e) => setAckNoRecovery(e.target.checked)}
-                  />
-                  <label className="form-check-label" htmlFor="ackNoRecovery">
-                    I understand this deletion cannot be recovered after the 7-day grace period.
-                  </label>
-                </div>
-              </div>
+              ) : (
+                <>
+                  <div className="delete-warning">
+                    <i className="bi bi-exclamation-triangle-fill"></i>
+                    <p className="warning-text">
+                      <strong>This action cannot be undone!</strong>
+                    </p>
+                  </div>
+                  
+                  <div className="delete-consequences">
+                    <h4>When you delete your account:</h4>
+                    <ul>
+                      <li>All your data will be permanently deleted</li>
+                      <li>Your account cannot be recovered</li>
+                      <li>All associated records will be removed</li>
+                      <li>You will be immediately logged out</li>
+                    </ul>
+                  </div>
+
+                  <div className="delete-info-box">
+                    <p><strong>Deletion Impact Preview</strong></p>
+                    {impactLoading && <p>Calculating affected records...</p>}
+                    {!impactLoading && deletionImpact && (
+                      <ul>
+                        <li>Employees: {deletionImpact.employees}</li>
+                        <li>Suppliers: {deletionImpact.suppliers}</li>
+                        <li>Products: {deletionImpact.products}</li>
+                        <li>Categories: {deletionImpact.categories}</li>
+                        <li>Orders: {deletionImpact.orders}</li>
+                        <li>Warehouses: {deletionImpact.warehouses}</li>
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className="delete-confirmation-section">
+                    <p className="confirmation-instruction">
+                      Confirm your email by typing <strong>{profileData.email || 'your email'}</strong>:
+                    </p>
+                    <input
+                      type="email"
+                      className="form-control delete-confirmation-input"
+                      placeholder="Type your email"
+                      value={confirmEmail}
+                      onChange={(e) => setConfirmEmail(e.target.value)}
+                    />
+
+                    <p className="confirmation-instruction mt-3">
+                      Enter your current password:
+                    </p>
+                    <input
+                      type="password"
+                      className="form-control delete-confirmation-input"
+                      placeholder="Current password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                    />
+
+                    <p className="confirmation-instruction mt-3">
+                      Provide deletion reason (minimum 15 characters):
+                    </p>
+                    <textarea
+                      className="form-control delete-confirmation-input"
+                      placeholder="Write your reason"
+                      value={deleteReason}
+                      onChange={(e) => setDeleteReason(e.target.value)}
+                      rows="3"
+                    />
+                    <small className="text-muted">{deleteReason.length}/15 minimum</small>
+
+                    <p className="confirmation-instruction">
+                      To confirm, type <strong>"DELETE MY ACCOUNT"</strong> below:
+                    </p>
+                    <input
+                      type="text"
+                      className="form-control delete-confirmation-input"
+                      placeholder="Type DELETE MY ACCOUNT"
+                      value={deleteConfirmation}
+                      onChange={(e) => setDeleteConfirmation(e.target.value)}
+                    />
+                    <small className="text-muted">
+                      Entered: {deleteConfirmation.length}/18
+                    </small>
+
+                    <div className="form-check mt-3">
+                      <input
+                        type="checkbox"
+                        className="delete-ack-checkbox"
+                        id="ackCascade"
+                        checked={ackCascade}
+                        onChange={(e) => setAckCascade(e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor="ackCascade">
+                        I understand all related business records and associated accounts will be removed.
+                      </label>
+                    </div>
+                    <div className="form-check mt-2">
+                      <input
+                        type="checkbox"
+                        className="delete-ack-checkbox"
+                        id="ackNoRecovery"
+                        checked={ackNoRecovery}
+                        onChange={(e) => setAckNoRecovery(e.target.checked)}
+                      />
+                      <label className="form-check-label" htmlFor="ackNoRecovery">
+                        I understand this deletion cannot be recovered after the 7-day grace period.
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="modal-footer">
-              <button
-                className="btn-cancel"
-                onClick={() => setShowDeleteModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="btn-warning-action"
-                onClick={handleCancelDeletion}
-                disabled={saving}
-                title="Click to cancel your existing deletion request"
-              >
-                {saving ? 'Processing...' : 'Cancel Deletion Request'}
-              </button>
-              <button
-                className="btn-danger-action"
-                onClick={handleDeleteAccount}
-                disabled={saving || deleteConfirmation !== 'DELETE MY ACCOUNT'}
-              >
-                {saving ? 'Deleting Account...' : 'Permanently Delete Account'}
-              </button>
+              {hasActiveDeletion ? (
+                <button
+                  className="btn-warning-action"
+                  onClick={handleCancelDeletion}
+                  disabled={saving}
+                  title="Click to cancel your existing deletion request"
+                >
+                  {saving ? 'Processing...' : 'Cancel Deletion Request'}
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="btn-cancel"
+                    onClick={() => setShowDeleteModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="btn-danger-action"
+                    onClick={handleDeleteAccount}
+                    disabled={!canSubmitDelete}
+                  >
+                    {saving ? 'Deleting Account...' : 'Permanently Delete Account'}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>

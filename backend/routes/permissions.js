@@ -802,7 +802,7 @@ router.get('/groups', fetchuser, async (req, res) => {
             {
                 id: 'analytics',
                 name: 'Analytics & Reports',
-                icon: 'fas fa-chart-bar',
+                icon: 'fas fa-chart-line',
                 description: 'Control access to analytics and reporting features',
                 permissions: [
                     { key: 'canViewAnalytics', label: 'View Analytics', description: 'Can view dashboard analytics' },

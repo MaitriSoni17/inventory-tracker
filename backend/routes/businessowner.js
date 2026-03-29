@@ -1,5 +1,8 @@
 const express = require('express');
 const BusinessOwner = require('../models/BusinessOwner');
+const Employee = require('../models/Employee');
+const Supplier = require('../models/Supplier');
+const Notification = require('../models/Notification');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -51,6 +54,25 @@ const isValidPhoneNumber = (value) => {
 };
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
+
+const createNotification = async (recipientId, recipientRole, senderId, senderRole, type, title, message, data = {}) => {
+    try {
+        const notification = new Notification({
+            recipient: recipientId,
+            recipientRole,
+            sender: senderId,
+            senderRole,
+            type,
+            title,
+            message,
+            data
+        });
+        await notification.save();
+        return notification;
+    } catch (err) {
+        return null;
+    }
+};
 
 // Create a Business Owner using: POST "/api/businessowner/createbusinessowner". No login required
 router.post('/createbusinessowner', [
@@ -192,14 +214,10 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
             expectedEmail
         } = req.body || {};
 
-        // console.log('Delete account request received');
-        // console.log('req.businessowner:', req.businessowner ? { _id: req.businessowner._id, email: req.businessowner.email } : 'null');
-        
         const DeletionRequest = require('../models/DeletionRequest');
-        
+
         // Validate businessowner is properly authenticated
         if (!req.businessowner || !req.businessowner._id) {
-            // console.error('No businessowner in request');
             return res.status(400).json({
                 success: false,
                 error: 'Invalid authentication. Please login again.'
@@ -271,23 +289,61 @@ router.post('/delete', fetchbusinessowner, async (req, res) => {
             reason: String(reason).trim()
         });
 
-        // console.log('Saving deletion request:', {
-        //     userId: deletionRequest.userId,
-        //     userEmail: deletionRequest.userEmail,
-        //     userRole: deletionRequest.userRole
-        // });
-
         await deletionRequest.save();
-        // console.log('Deletion request saved successfully:', deletionRequest._id);
+
+        // Notify all linked employees and suppliers that owner deletion was initiated.
+        const [employees, suppliers] = await Promise.all([
+            Employee.find({ businessowner: businessOwnerId }).select('_id email'),
+            Supplier.find({ businessowner: businessOwnerId }).select('_id email')
+        ]);
+
+        const notificationTasks = [
+            ...employees.map((employee) => createNotification(
+                employee._id,
+                'Employee',
+                businessOwnerId,
+                'BusinessOwner',
+                'message',
+                'Business Owner Deletion Scheduled',
+                'Business Owner account deletion has been scheduled in 7 days. Please complete pending work and coordinate any required handover.',
+                {
+                    deletionRequestId: deletionRequest._id,
+                    scheduledDeletionDate: scheduledDate,
+                    ownerEmail: businessOwnerEmail,
+                    recipientRole: 'employee'
+                }
+            )),
+            ...suppliers.map((supplier) => createNotification(
+                supplier._id,
+                'Supplier',
+                businessOwnerId,
+                'BusinessOwner',
+                'message',
+                'Business Owner Deletion Scheduled',
+                'Business Owner account deletion has been scheduled in 7 days. Please review open supplier orders and complete pending coordination.',
+                {
+                    deletionRequestId: deletionRequest._id,
+                    scheduledDeletionDate: scheduledDate,
+                    ownerEmail: businessOwnerEmail,
+                    recipientRole: 'supplier'
+                }
+            ))
+        ];
+
+        const createdNotifications = await Promise.all(notificationTasks);
+        const notificationsSent = createdNotifications.filter(Boolean).length;
+
+        deletionRequest.notificationsSent = notificationsSent;
+        await deletionRequest.save();
 
         res.json({
             success: true,
             message: 'Your account deletion has been scheduled and will execute in 7 days unless you cancel it before then.',
             requestId: deletionRequest._id,
-            scheduledDeletionDate: scheduledDate
+            scheduledDeletionDate: scheduledDate,
+            notificationsSent
         });
     } catch (err) {
-        // console.error('Delete account error:', err);
         res.status(500).json({ 
             success: false,
             error: "Internal Server error occurred", 
@@ -328,11 +384,52 @@ router.post('/cancel-deletion', fetchbusinessowner, async (req, res) => {
             });
         }
 
+        // Notify all linked employees and suppliers that owner deletion was cancelled.
+        const [employees, suppliers] = await Promise.all([
+            Employee.find({ businessowner: businessOwnerId }).select('_id email'),
+            Supplier.find({ businessowner: businessOwnerId }).select('_id email')
+        ]);
+
+        const notificationTasks = [
+            ...employees.map((employee) => createNotification(
+                employee._id,
+                'Employee',
+                businessOwnerId,
+                'BusinessOwner',
+                'message',
+                'Business Owner Deletion Cancelled',
+                'Business Owner has cancelled the account deletion request. Business operations will continue as normal.',
+                {
+                    deletionRequestId: deletionRequest._id,
+                    ownerEmail: req.businessowner.email,
+                    recipientRole: 'employee'
+                }
+            )),
+            ...suppliers.map((supplier) => createNotification(
+                supplier._id,
+                'Supplier',
+                businessOwnerId,
+                'BusinessOwner',
+                'message',
+                'Business Owner Deletion Cancelled',
+                'Business Owner has cancelled the account deletion request. Business operations will continue as normal.',
+                {
+                    deletionRequestId: deletionRequest._id,
+                    ownerEmail: req.businessowner.email,
+                    recipientRole: 'supplier'
+                }
+            ))
+        ];
+
+        const createdNotifications = await Promise.all(notificationTasks);
+        const notificationsSent = createdNotifications.filter(Boolean).length;
+
         // console.log('Deletion request cancelled:', deletionRequest._id);
 
         res.json({
             success: true,
-            message: 'Your deletion request has been cancelled successfully.'
+            message: 'Your deletion request has been cancelled successfully.',
+            notificationsSent
         });
     } catch (err) {
         // console.error('Cancel deletion error:', err);
