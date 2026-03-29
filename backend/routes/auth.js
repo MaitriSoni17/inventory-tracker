@@ -92,7 +92,16 @@ router.post('/login', [
             });
         }
 
-        const token = jwt.sign({ id: user._id, role }, JWT_SECRET);
+        // Business owner can reactivate their account by logging in again.
+        let reactivated = false;
+        if (role === 'businessowner' && user.active === false) {
+            user.active = true;
+            await user.save();
+            reactivated = true;
+        }
+
+        const tokenVersion = Number.isInteger(user.tokenVersion) ? user.tokenVersion : 0;
+        const token = jwt.sign({ id: user._id, role, tokenVersion }, JWT_SECRET);
         const loginTime = new Date();
 
         // Update lastLogin timestamp — check if user is an employee-type role (not businessowner or supplier)
@@ -125,7 +134,14 @@ router.post('/login', [
             }
         )
 
-        res.json({ success: true, authtoken: token, role: role, userId: user._id.toString() });
+        res.json({
+            success: true,
+            authtoken: token,
+            role: role,
+            userId: user._id.toString(),
+            reactivated,
+            mustChangePassword: Boolean(user.mustChangePassword)
+        });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
     }

@@ -216,6 +216,11 @@ const Settings = (props) => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
+    if (!passwordData.currentPassword) {
+      props.showAlert?.('Current password is required', 'warning');
+      return;
+    }
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       props.showAlert?.('Passwords do not match', 'warning');
       return;
@@ -233,30 +238,29 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const dataToSend = {
-        fname: profileData.fname,
-        lname: profileData.lname,
-        email: profileData.email,
-        password: passwordData.newPassword,
-        phone: profileData.phone,
-        country: profileData.country,
-        state: profileData.state,
-        city: profileData.city,
-        address: profileData.address
-      };
-
-      const res = await fetch('http://localhost:5000/api/employee/updateemployee', {
+      const res = await fetch('http://localhost:5000/api/employee/changepassword', {
         method: 'PUT',
         headers,
-        body: JSON.stringify(dataToSend)
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword
+        })
       });
 
       if (res.ok) {
-        props.showAlert?.('Password changed successfully', 'success');
+        localStorage.removeItem('forcePasswordChange');
+        props.showAlert?.('Password changed successfully. Please login again.', 'success');
         setShowPasswordModal(false);
         setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('userId');
+          window.location.href = '/login';
+        }, 900);
       } else {
-        props.showAlert?.('Failed to change password', 'danger');
+        const errorData = await res.json();
+        props.showAlert?.(errorData.error || errorData.errors?.[0]?.msg || 'Failed to change password', 'danger');
       }
     } catch (error) {
       props.showAlert?.('Error changing password', 'danger');

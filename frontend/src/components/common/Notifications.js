@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/notifications.css';
+import { apiCall, parseResponse } from '../../utils/apiClient';
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -10,16 +11,23 @@ const Notifications = () => {
   // Fetch unread count
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/notifications/unreadcount', {
+      const response = await apiCall('http://localhost:5000/api/notifications/unreadcount', {
         method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'auth-token': token
+          'Content-Type': 'application/json'
         }
       });
 
+      if (response.isUnauthorized || response.isDeactivated) {
+        setUnreadCount(0);
+        if (response.shouldRedirect && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return;
+      }
+
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseResponse(response);
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {

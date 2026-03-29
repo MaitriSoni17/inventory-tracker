@@ -29,6 +29,7 @@ export const apiCall = async (url, options = {}) => {
             localStorage.removeItem('token');
             localStorage.removeItem('role');
             localStorage.removeItem('userId');
+            localStorage.removeItem('forcePasswordChange');
 
             // Return error response for handling in component
             // Components can handle this and show alert before redirect
@@ -39,6 +40,32 @@ export const apiCall = async (url, options = {}) => {
                 isUnauthorized: true,
                 shouldRedirect: true
             };
+        }
+
+        // Handle 403 deactivated-account response globally
+        if (response.status === 403) {
+            let errorData = null;
+            try {
+                errorData = await response.clone().json();
+            } catch (parseError) {
+                // Ignore parse errors for non-JSON responses
+            }
+
+            if (errorData?.code === 'ACCOUNT_DEACTIVATED') {
+                localStorage.removeItem('token');
+                localStorage.removeItem('role');
+                localStorage.removeItem('userId');
+                localStorage.removeItem('forcePasswordChange');
+
+                return {
+                    ok: false,
+                    status: 403,
+                    error: errorData.error || 'Account is deactivated. Please login again.',
+                    code: 'ACCOUNT_DEACTIVATED',
+                    isDeactivated: true,
+                    shouldRedirect: true
+                };
+            }
         }
 
         // For other responses, return them as-is

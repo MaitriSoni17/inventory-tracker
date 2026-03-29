@@ -191,13 +191,40 @@ router.put('/updatebusinessowner', fetchbusinessowner, [
 });
 
 // Deactivate Account using: POST "/api/businessowner/deactivate". Login required
-router.post('/deactivate', fetchbusinessowner, async (req, res) => {
+router.post('/deactivate', fetchbusinessowner, [
+    body('currentPassword', 'Current password is required').isString().notEmpty(),
+    body('confirmationText', 'Please type DEACTIVATE MY ACCOUNT exactly').equals('DEACTIVATE MY ACCOUNT')
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({
+            success: false,
+            error: errors.array()[0].msg
+        });
+    }
+
     try {
         const userId = req.businessowner._id;
+        const { currentPassword } = req.body;
+
+        if (req.businessowner.active === false) {
+            return res.status(400).json({ success: false, error: 'Account is already deactivated' });
+        }
+
+        const passwordMatch = await bcrypt.compare(currentPassword, req.businessowner.password);
+        if (!passwordMatch) {
+            return res.status(400).json({ success: false, error: 'Current password is incorrect' });
+        }
+
         await BusinessOwner.findByIdAndUpdate(userId, { active: false });
-        res.json({ success: true, message: "Account deactivated successfully" });
+
+        res.json({
+            success: true,
+            message: 'Account deactivated successfully. Please login again to reactivate your account.',
+            requiresRelogin: true
+        });
     } catch (err) {
-        res.status(500).json({ error: "Internal Server error occurred" });
+        res.status(500).json({ success: false, error: 'Internal Server error occurred' });
     }
 });
 

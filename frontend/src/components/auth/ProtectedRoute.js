@@ -26,6 +26,14 @@ const ProtectedRoute = ({ children }) => {
     }
 
     const isEmployeeTypeRole = role && role !== 'businessowner' && role !== 'supplier';
+    const mustChangePassword = localStorage.getItem('forcePasswordChange') === 'true';
+    const requiredSettingsPath = role === 'supplier' ? '/dashboard/suppliersettings' : '/dashboard/empsettings';
+    const isOnRequiredSettingsPath = location.pathname === requiredSettingsPath;
+
+    if (mustChangePassword && role !== 'businessowner' && !isOnRequiredSettingsPath) {
+        return <Navigate to={requiredSettingsPath} replace />;
+    }
+
     const isRestrictedRole = role === 'supplier' || isEmployeeTypeRole;
     const isDeletionRestricted = Boolean(deletionRestriction) && isRestrictedRole;
     const isOnDeletionHoldPage = location.pathname === '/dashboard/deletion-hold';

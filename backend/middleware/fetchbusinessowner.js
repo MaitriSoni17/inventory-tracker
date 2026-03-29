@@ -39,6 +39,14 @@ const fetchbusinessowner = async (req, res, next) => {
                 error: "Business owner not found" 
             });
         }
+
+        if (businessowner.active === false) {
+            return res.status(403).json({
+                success: false,
+                error: "Business Owner account is deactivated",
+                code: "ACCOUNT_DEACTIVATED"
+            });
+        }
         
         // console.log('Business owner found:', { 
         //     _id: businessowner._id.toString(), 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import '../../../styles/settings.css';
 import DeletionRequestsManager from './DeletionRequestsManager';
 import validationRules from '../../../utils/validationHelper';
+import { apiCall, parseResponse } from '../../../utils/apiClient';
 
 const sanitizePhoneInput = (value) => String(value || '').replace(/[^\d+]/g, '').slice(0, 16);
 
@@ -44,6 +45,9 @@ const Settings = (props) => {
   const [saving, setSaving] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivatePassword, setDeactivatePassword] = useState('');
+  const [deactivateConfirmation, setDeactivateConfirmation] = useState('');
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
@@ -74,13 +78,21 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/getbusinessowner', {
+      const res = await apiCall('http://localhost:5000/api/businessowner/getbusinessowner', {
         method: 'POST',
         headers
       });
 
+      if (res.isUnauthorized || res.isDeactivated) {
+        props.showAlert?.('Session ended. Please login again.', 'warning');
+        if (res.shouldRedirect && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return;
+      }
+
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseResponse(res);
         setProfileData({
           fname: data.fname || '',
           lname: data.lname || '',
@@ -468,11 +480,15 @@ const Settings = (props) => {
   };
 
   const handleDeactivateAccount = async () => {
-    const confirmed = window.confirm(
-      'Are you sure you want to deactivate your account? You can reactivate it by logging in again.'
-    );
-    
-    if (!confirmed) return;
+    if (!deactivatePassword) {
+      props.showAlert?.('Current password is required', 'warning');
+      return;
+    }
+
+    if (deactivateConfirmation !== 'DEACTIVATE MY ACCOUNT') {
+      props.showAlert?.('Please type DEACTIVATE MY ACCOUNT exactly', 'warning');
+      return;
+    }
 
     try {
       setSaving(true);
@@ -483,11 +499,18 @@ const Settings = (props) => {
 
       const res = await fetch('http://localhost:5000/api/businessowner/deactivate', {
         method: 'POST',
-        headers
+        headers,
+        body: JSON.stringify({
+          currentPassword: deactivatePassword,
+          confirmationText: deactivateConfirmation
+        })
       });
 
       if (res.ok) {
         props.showAlert?.('Account deactivated successfully', 'success');
+        setShowDeactivateModal(false);
+        setDeactivatePassword('');
+        setDeactivateConfirmation('');
         // Logout user after deactivation
         setTimeout(() => {
           localStorage.removeItem('token');
@@ -496,7 +519,7 @@ const Settings = (props) => {
         }, 1500);
       } else {
         const errorData = await res.json();
-        props.showAlert?.('Failed to deactivate account: ' + (errorData.message || 'Unknown error'), 'danger');
+        props.showAlert?.('Failed to deactivate account: ' + (errorData.error || errorData.message || 'Unknown error'), 'danger');
       }
     } catch (error) {
       props.showAlert?.('Error deactivating account', 'danger');
@@ -504,6 +527,11 @@ const Settings = (props) => {
       setSaving(false);
     }
   };
+
+  const canSubmitDeactivate =
+    !saving &&
+    deactivatePassword.length > 0 &&
+    deactivateConfirmation === 'DEACTIVATE MY ACCOUNT';
 
   if (loading) {
     return (
@@ -883,7 +911,7 @@ const Settings = (props) => {
                   </div>
                   <button
                     className="btn-action warning"
-                    onClick={handleDeactivateAccount}
+                    onClick={() => setShowDeactivateModal(true)}
                     disabled={saving}
                   >
                     {saving ? 'Processing...' : 'Deactivate'}
@@ -1240,6 +1268,87 @@ const Settings = (props) => {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deactivate Account Modal */}
+      {showDeactivateModal && (
+        <div className="settings-modal-overlay">
+          <div className="settings-modal delete-modal">
+            <div className="modal-header delete-header">
+              <h2>Deactivate Account</h2>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  if (saving) return;
+                  setShowDeactivateModal(false);
+                  setDeactivatePassword('');
+                  setDeactivateConfirmation('');
+                }}
+              >
+                <i className="bi bi-x"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="delete-warning">
+                <i className="bi bi-exclamation-triangle-fill"></i>
+                <p className="warning-text">
+                  <strong>Deactivation will sign you out immediately.</strong>
+                </p>
+              </div>
+
+              <div className="delete-consequences">
+                <h4>What happens next:</h4>
+                <ul>
+                  <li>Your current session will be ended</li>
+                  <li>Business owner dashboard access will be blocked while deactivated</li>
+                  <li>You can reactivate your account by logging in again with your credentials</li>
+                </ul>
+              </div>
+
+              <div className="delete-confirmation-section">
+                <p className="confirmation-instruction mt-3">Enter your current password:</p>
+                <input
+                  type="password"
+                  className="form-control delete-confirmation-input"
+                  placeholder="Current password"
+                  value={deactivatePassword}
+                  onChange={(e) => setDeactivatePassword(e.target.value)}
+                />
+
+                <p className="confirmation-instruction mt-3">
+                  To confirm, type <strong>"DEACTIVATE MY ACCOUNT"</strong> below:
+                </p>
+                <input
+                  type="text"
+                  className="form-control delete-confirmation-input"
+                  placeholder="Type DEACTIVATE MY ACCOUNT"
+                  value={deactivateConfirmation}
+                  onChange={(e) => setDeactivateConfirmation(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="btn-cancel"
+                onClick={() => {
+                  if (saving) return;
+                  setShowDeactivateModal(false);
+                  setDeactivatePassword('');
+                  setDeactivateConfirmation('');
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn-warning-action"
+                onClick={handleDeactivateAccount}
+                disabled={!canSubmitDeactivate}
+              >
+                {saving ? 'Deactivating...' : 'Deactivate Account'}
+              </button>
             </div>
           </div>
         </div>

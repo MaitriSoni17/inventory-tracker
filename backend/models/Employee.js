@@ -102,6 +102,8 @@ const Employee = new Schema({
         canViewDashboard: { type: Boolean, default: true }
     },
     hasCustomPermissions: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0 },
+    mustChangePassword: { type: Boolean, default: false },
     lastLogin: { type: Date },
     isActive: { type: Boolean, default: true },
     createdAt: { type: Date, default: Date.now },

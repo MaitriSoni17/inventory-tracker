@@ -30,6 +30,13 @@ const fetchUser = async (req, res, next) => {
             if (!owner) {
                 return res.status(401).send({ error: "Business Owner not found" });
             }
+            if (owner.active === false) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Business Owner account is deactivated',
+                    code: 'ACCOUNT_DEACTIVATED'
+                });
+            }
             req.user = owner;
             req.role = 'businessowner';
             req.businessowner = owner._id; // Set businessowner for data isolation
@@ -38,6 +45,10 @@ const fetchUser = async (req, res, next) => {
             const employee = await Employee.findById(data.id);
             if (!employee) {
                 return res.status(401).send({ error: "Employee not found" });
+            }
+            const currentTokenVersion = Number.isInteger(employee.tokenVersion) ? employee.tokenVersion : 0;
+            if (!Number.isInteger(data.tokenVersion) || data.tokenVersion !== currentTokenVersion) {
+                return res.status(401).send({ error: "Session expired. Please login again." });
             }
             req.user = employee;
             req.employee = employee; // For backward compatibility
@@ -49,6 +60,10 @@ const fetchUser = async (req, res, next) => {
             const supplier = await Supplier.findById(data.id);
             if (!supplier) {
                 return res.status(401).send({ error: "Supplier not found" });
+            }
+            const currentTokenVersion = Number.isInteger(supplier.tokenVersion) ? supplier.tokenVersion : 0;
+            if (!Number.isInteger(data.tokenVersion) || data.tokenVersion !== currentTokenVersion) {
+                return res.status(401).send({ error: "Session expired. Please login again." });
             }
             req.user = supplier;
             req.role = 'supplier';

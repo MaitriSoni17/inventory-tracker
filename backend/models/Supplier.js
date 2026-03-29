@@ -28,6 +28,8 @@ const Supplier = new Schema({
     image: { type: String },
     isActive: { type: Boolean, default: true },
     role: { type: String, default: 'supplier' },
+    tokenVersion: { type: Number, default: 0 },
+    mustChangePassword: { type: Boolean, default: false },
     lastLogin: { type: Date },
     // Supplier permissions (controlled by Business Owner)
     canExportReports: { type: Boolean, default: false },

@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css';
 import { BusinessOwnerOnly } from '../../auth/RoleGuards';
+import StatusActionConfirmModal from '../../common/Modal/StatusActionConfirmModal';
 import { generateIndividualSupplierReportPDF } from '../../../utils/individualReportHelper';
 
 const Suppliers = (props) => {
@@ -16,6 +17,8 @@ const Suppliers = (props) => {
         totalSuppliers: 0
     });
     const [cities, setCities] = useState([]);
+    const [statusModal, setStatusModal] = useState({ isOpen: false, actionType: 'deactivate', supplier: null });
+    const [statusActionLoading, setStatusActionLoading] = useState(false);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -102,28 +105,47 @@ const Suppliers = (props) => {
         }
     };
 
-    const handleReactivate = async (id, name) => {
-        if (window.confirm(`Are you sure you want to reactivate ${name}?`)) {
-            try {
-                const response = await fetch(`http://localhost:5000/api/supplier/reactivate/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
-                    }
-                });
+    const openStatusModal = (actionType, supplier) => {
+        setStatusModal({ isOpen: true, actionType, supplier });
+    };
 
-                if (response.ok) {
-                    props.showAlert(`${name} has been reactivated successfully`, 'success');
-                    // Update the supplier's active status in the list
-                    setSuppliers(suppliers.map(sup => sup._id === id ? { ...sup, isActive: true } : sup));
-                } else {
-                    const errorData = await response.json();
-                    props.showAlert(errorData.error || 'Failed to reactivate supplier', 'danger');
+    const closeStatusModal = () => {
+        if (statusActionLoading) return;
+        setStatusModal({ isOpen: false, actionType: 'deactivate', supplier: null });
+    };
+
+    const handleConfirmStatusAction = async () => {
+        if (!statusModal.supplier) return;
+
+        const { actionType, supplier } = statusModal;
+        const fullName = `${supplier.fname} ${supplier.lname || ''}`.trim();
+        const endpoint = actionType === 'reactivate'
+            ? `http://localhost:5000/api/supplier/reactivate/${supplier._id}`
+            : `http://localhost:5000/api/supplier/deactivate/${supplier._id}`;
+
+        try {
+            setStatusActionLoading(true);
+            const response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
                 }
-            } catch (error) {
-                props.showAlert('Error reactivating supplier: ' + error.message, 'danger');
+            });
+
+            if (response.ok) {
+                const isActive = actionType === 'reactivate';
+                props.showAlert(`${fullName} has been ${isActive ? 'reactivated' : 'deactivated'} successfully`, 'success');
+                setSuppliers(suppliers.map(sup => sup._id === supplier._id ? { ...sup, isActive } : sup));
+                setStatusModal({ isOpen: false, actionType: 'deactivate', supplier: null });
+            } else {
+                const errorData = await response.json();
+                props.showAlert(errorData.error || `Failed to ${actionType} supplier`, 'danger');
             }
+        } catch (error) {
+            props.showAlert(`Error ${actionType}ing supplier: ${error.message}`, 'danger');
+        } finally {
+            setStatusActionLoading(false);
         }
     };
 
@@ -384,11 +406,15 @@ const Suppliers = (props) => {
                                                         <i className="bi bi-pencil"></i>
                                                     </Link>
                                                 ) : null}
-                                                {sup.isActive === false ? (
-                                                    <button className="btn btn-sm btn-warning me-2" onClick={() => handleReactivate(sup._id, `${sup.fname} ${sup.lname || ''}`)} title="Reactivate Account">
+                                                {sup.isActive !== false ? (
+                                                    <button className="btn btn-sm btn-warning me-2" onClick={() => openStatusModal('deactivate', sup)} title="Deactivate Account">
+                                                        <i className="bi bi-person-x"></i>
+                                                    </button>
+                                                ) : (
+                                                    <button className="btn btn-sm btn-warning me-2" onClick={() => openStatusModal('reactivate', sup)} title="Reactivate Account">
                                                         <i className="bi bi-arrow-counterclockwise"></i>
                                                     </button>
-                                                ) : null}
+                                                )}
                                                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(sup._id)} title="Delete">
                                                     <i className="bi bi-trash"></i>
                                                 </button>
@@ -402,6 +428,16 @@ const Suppliers = (props) => {
                 </div>
 
             </div>
+
+            <StatusActionConfirmModal
+                isOpen={statusModal.isOpen}
+                onClose={closeStatusModal}
+                actionType={statusModal.actionType}
+                entityType="Supplier"
+                entityName={statusModal.supplier ? `${statusModal.supplier.fname} ${statusModal.supplier.lname || ''}`.trim() : ''}
+                onConfirm={handleConfirmStatusAction}
+                loading={statusActionLoading}
+            />
         </>
     )
 }

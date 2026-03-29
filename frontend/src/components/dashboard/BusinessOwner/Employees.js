@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import '../../../styles/dashboard-elegant.css'
-import { CanManageEmployees, CanEditEmployees, CanExportReports } from '../../../components/auth/RoleGuards';
+import { CanManageEmployees, CanEditEmployees, CanExportReports, BusinessOwnerOnly } from '../../../components/auth/RoleGuards';
+import StatusActionConfirmModal from '../../../components/common/Modal/StatusActionConfirmModal';
 import { generateIndividualEmployeeReportPDF } from '../../../utils/individualReportHelper';
 const Employees = (props) => {
     const [employees, setEmployees] = useState([]);
@@ -19,6 +20,8 @@ const Employees = (props) => {
         totalEmployees: 0,
         activeEmployees: 0
     });
+    const [statusModal, setStatusModal] = useState({ isOpen: false, actionType: 'deactivate', employee: null });
+    const [statusActionLoading, setStatusActionLoading] = useState(false);
 
     useEffect(() => {
         fetchWarehouses();
@@ -171,28 +174,47 @@ const Employees = (props) => {
         }
     };
 
-    const handleReactivate = async (id, name) => {
-        if (window.confirm(`Are you sure you want to reactivate ${name}?`)) {
-            try {
-                const response = await fetch(`http://localhost:5000/api/employee/reactivate/${id}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
-                    }
-                });
+    const openStatusModal = (actionType, employee) => {
+        setStatusModal({ isOpen: true, actionType, employee });
+    };
 
-                if (response.ok) {
-                    props.showAlert(`${name} has been reactivated successfully`, 'success');
-                    // Update the employee's active status in the list
-                    setEmployees(employees.map(emp => emp._id === id ? { ...emp, isActive: true } : emp));
-                } else {
-                    const errorData = await response.json();
-                    props.showAlert(errorData.error || 'Failed to reactivate employee', 'danger');
+    const closeStatusModal = () => {
+        if (statusActionLoading) return;
+        setStatusModal({ isOpen: false, actionType: 'deactivate', employee: null });
+    };
+
+    const handleConfirmStatusAction = async () => {
+        if (!statusModal.employee) return;
+
+        const { actionType, employee } = statusModal;
+        const fullName = `${employee.fname} ${employee.lname || ''}`.trim();
+        const endpoint = actionType === 'reactivate'
+            ? `http://localhost:5000/api/employee/reactivate/${employee._id}`
+            : `http://localhost:5000/api/employee/deactivate/${employee._id}`;
+
+        try {
+            setStatusActionLoading(true);
+            const response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
                 }
-            } catch (error) {
-                props.showAlert('Error reactivating employee: ' + error.message, 'danger');
+            });
+
+            if (response.ok) {
+                const isActive = actionType === 'reactivate';
+                props.showAlert(`${fullName} has been ${isActive ? 'reactivated' : 'deactivated'} successfully`, 'success');
+                setEmployees(employees.map(emp => emp._id === employee._id ? { ...emp, isActive } : emp));
+                setStatusModal({ isOpen: false, actionType: 'deactivate', employee: null });
+            } else {
+                const errorData = await response.json();
+                props.showAlert(errorData.error || `Failed to ${actionType} employee`, 'danger');
             }
+        } catch (error) {
+            props.showAlert(`Error ${actionType}ing employee: ${error.message}`, 'danger');
+        } finally {
+            setStatusActionLoading(false);
         }
     };
 
@@ -541,11 +563,17 @@ const Employees = (props) => {
                                                         <i className="bi bi-pencil"></i>
                                                     </Link>
                                                 ) : null}
-                                                {emp.isActive === false ? (
-                                                    <button className="btn btn-sm btn-warning me-2" onClick={() => handleReactivate(emp._id, `${emp.fname} ${emp.lname || ''}`)} title="Reactivate Account">
-                                                        <i className="bi bi-arrow-counterclockwise"></i>
-                                                    </button>
-                                                ) : null}
+                                                <BusinessOwnerOnly>
+                                                    {emp.isActive !== false ? (
+                                                        <button className="btn btn-sm btn-warning me-2" onClick={() => openStatusModal('deactivate', emp)} title="Deactivate Account">
+                                                            <i className="bi bi-person-x"></i>
+                                                        </button>
+                                                    ) : (
+                                                        <button className="btn btn-sm btn-warning me-2" onClick={() => openStatusModal('reactivate', emp)} title="Reactivate Account">
+                                                            <i className="bi bi-arrow-counterclockwise"></i>
+                                                        </button>
+                                                    )}
+                                                </BusinessOwnerOnly>
                                                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(emp._id)} title="Delete">
                                                     <i className="bi bi-trash"></i>
                                                 </button>
@@ -559,6 +587,16 @@ const Employees = (props) => {
                 </div>
 
             </div>
+
+            <StatusActionConfirmModal
+                isOpen={statusModal.isOpen}
+                onClose={closeStatusModal}
+                actionType={statusModal.actionType}
+                entityType="Employee"
+                entityName={statusModal.employee ? `${statusModal.employee.fname} ${statusModal.employee.lname || ''}`.trim() : ''}
+                onConfirm={handleConfirmStatusAction}
+                loading={statusActionLoading}
+            />
         </>
     )
 }

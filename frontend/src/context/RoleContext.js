@@ -73,6 +73,24 @@ export const RoleProvider = ({ children }) => {
             // Check if response is unauthorized (401)
             if (response.isUnauthorized) {
                 setRole(null);
+                setUserDetails(null);
+                setPermissions({});
+                if (response.shouldRedirect && window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
+                setLoading(false);
+                return;
+            }
+
+            // Check if account was deactivated (403)
+            if (response.isDeactivated) {
+                setRole(null);
+                setUserDetails(null);
+                setPermissions({});
+                setDeletionRestriction(null);
+                if (response.shouldRedirect && window.location.pathname !== '/login') {
+                    window.location.href = '/login';
+                }
                 setLoading(false);
                 return;
             }
@@ -187,6 +205,7 @@ export const RoleProvider = ({ children }) => {
         localStorage.removeItem('token');
         localStorage.removeItem('role');
         localStorage.removeItem('userId');
+        localStorage.removeItem('forcePasswordChange');
         setRole(null);
         setUserDetails(null);
         setPermissions({});

@@ -15,6 +15,10 @@ const fetchemployee = async (req, res, next) => {
         if (!employee) {
             return res.status(401).send({ error: "Employee not found" });
         }
+        const currentTokenVersion = Number.isInteger(employee.tokenVersion) ? employee.tokenVersion : 0;
+        if (!Number.isInteger(data.tokenVersion) || data.tokenVersion !== currentTokenVersion) {
+            return res.status(401).send({ error: "Session expired. Please login again" });
+        }
         req.employee = employee;
         req.user = employee; // Also set req.user for consistency with other middleware
         // Use the employee's actual role from the database

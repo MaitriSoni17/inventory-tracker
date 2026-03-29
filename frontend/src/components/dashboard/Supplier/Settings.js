@@ -284,13 +284,20 @@ const Settings = (props) => {
       });
 
       if (res.ok) {
-        props.showAlert?.('Password changed successfully', 'success');
+        localStorage.removeItem('forcePasswordChange');
+        props.showAlert?.('Password changed successfully. Please login again.', 'success');
         setShowPasswordModal(false);
         setPasswordData({
           currentPassword: '',
           newPassword: '',
           confirmPassword: ''
         });
+        setTimeout(() => {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          localStorage.removeItem('userId');
+          window.location.href = '/login';
+        }, 900);
       } else {
         const errorData = await res.json();
         props.showAlert?.('Failed to change password: ' + (errorData.message || 'Unknown error'), 'danger');

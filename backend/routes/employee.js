@@ -327,7 +327,7 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
             }
         }
 
-        const authToken = jwt.sign({ id: employee._id, role: employee.role }, JWT_SECRET);
+        const authToken = jwt.sign({ id: employee._id, role: employee.role, tokenVersion: employee.tokenVersion || 0 }, JWT_SECRET);
         res.json({ authToken, success: true, employee: { _id: employee._id, role: employee.role, fname: employee.fname, email: employee.email } });
     } catch (err) {
         // Delete file on internal error
@@ -704,6 +704,43 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
 });
 
 // Change Employee Password using: PUT "/api/employee/changepassword/:id". Business Owner login required
+router.put('/changepassword', fetchuser, [
+    body('currentPassword', 'Current password is required').exists(),
+    body('newPassword', 'New password must be at least 6 characters').isLength({ min: 6 })
+], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    try {
+        if (req.role === 'businessowner' || req.role === 'supplier') {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        const employee = await Employee.findById(req.user._id);
+        if (!employee) {
+            return res.status(404).json({ error: "Employee not found" });
+        }
+
+        const passwordCompare = await bcrypt.compare(req.body.currentPassword, employee.password);
+        if (!passwordCompare) {
+            return res.status(400).json({ error: "Current password is incorrect" });
+        }
+
+        const salt = await bcrypt.genSalt(10);
+        employee.password = await bcrypt.hash(req.body.newPassword, salt);
+        employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+        employee.mustChangePassword = false;
+        await employee.save();
+
+        res.json({ success: true, message: "Password changed successfully. Please login again." });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Change Employee Password using: PUT "/api/employee/changepassword/:id". Business Owner login required
 router.put('/changepassword/:id', fetchbusinessowner, [
     body('oldPassword', 'Old password is required').exists(),
     body('newPassword', 'New password must be at least 5 characters').isLength({ min: 5 })
@@ -736,6 +773,8 @@ router.put('/changepassword/:id', fetchbusinessowner, [
 
         // Update password
         employee.password = newSecPass;
+        employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+        employee.mustChangePassword = true;
         await employee.save();
 
         res.json({ success: true, message: "Password changed successfully" });
@@ -767,6 +806,8 @@ router.put('/resetpassword/:id', fetchbusinessowner, [
 
         const salt = await bcrypt.genSalt(10);
         employee.password = await bcrypt.hash(req.body.newPassword, salt);
+        employee.tokenVersion = (employee.tokenVersion || 0) + 1;
+        employee.mustChangePassword = true;
         await employee.save();
 
         res.json({ success: true, message: "Employee password reset successfully" });
@@ -929,6 +970,47 @@ router.put('/deactivateemployee', fetchuser, async (req, res) => {
         }
 
         res.json({ success: true, message: "Account deactivated successfully" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Internal server error occurred" });
+    }
+});
+
+// Deactivate an employee account by business owner: PUT "/api/employee/deactivate/:employeeId"
+router.put('/deactivate/:employeeId', fetchbusinessowner, async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+
+        const employee = await Employee.findById(employeeId);
+        if (!employee) {
+            return res.status(404).json({ success: false, error: "Employee not found" });
+        }
+
+        // Verify the employee belongs to this business owner
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ success: false, error: "Access denied" });
+        }
+
+        if (employee.isActive === false) {
+            return res.status(400).json({ success: false, error: "Employee account is already inactive" });
+        }
+
+        employee.isActive = false;
+        await employee.save();
+
+        // Notify business owner about deactivation
+        try {
+            await notifyBusinessOwnerAboutEmployee(
+                employee.businessowner,
+                employee._id,
+                'deactivated',
+                `${employee.fname} ${employee.lname || ''}`,
+                { employeeId: employee._id, action: 'deactivated_by_owner' }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
+        res.json({ success: true, message: "Employee account deactivated successfully" });
     } catch (err) {
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }

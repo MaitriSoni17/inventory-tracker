@@ -76,10 +76,19 @@ function Login(props) {
                 localStorage.setItem('token', json.authtoken);
                 localStorage.setItem('role', json.role);
                 localStorage.setItem('userId', json.userId || '');
+                if (json.mustChangePassword === true && json.role !== 'businessowner') {
+                    localStorage.setItem('forcePasswordChange', 'true');
+                } else {
+                    localStorage.removeItem('forcePasswordChange');
+                }
                 // Update role in context immediately and fetch full user data
                 setRole(json.role);
                 await fetchUserRole();
-                props.showAlert("Logged in Successfully", "success")
+                if (json.reactivated === true) {
+                    props.showAlert("Your account has been reactivated and you are logged in successfully", "success");
+                } else {
+                    props.showAlert("Logged in Successfully", "success");
+                }
                 history("/dashboard");
             }
             else {
