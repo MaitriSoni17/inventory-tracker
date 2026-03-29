@@ -8,6 +8,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 // const fetchbusinessowner = require('../middleware/fetchbusinessowner');
+const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 const { body, validationResult } = require('express-validator');
 const { notifyBusinessOwnerAboutEmployeeLogin, notifyBusinessOwnerAboutSupplierLogin } = require('../utils/notificationHelper');
 const { sendPasswordResetEmail, isMailConfigured } = require('../utils/mailer');
@@ -144,6 +145,97 @@ router.post('/login', [
         });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Start employee impersonation: POST "/api/auth/impersonate/employee/:employeeId". Business Owner login required
+router.post('/impersonate/employee/:employeeId', fetchbusinessowner, async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+
+        const employee = await Employee.findById(employeeId);
+        if (!employee) {
+            return res.status(404).json({ success: false, error: 'Employee not found' });
+        }
+
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ success: false, error: 'Access denied' });
+        }
+
+        const tokenVersion = Number.isInteger(employee.tokenVersion) ? employee.tokenVersion : 0;
+        const impersonationToken = jwt.sign(
+            {
+                id: employee._id,
+                role: employee.role || 'employee',
+                tokenVersion,
+                isImpersonation: true,
+                impersonatedBy: req.businessowner._id,
+                impersonatorRole: 'businessowner'
+            },
+            JWT_SECRET,
+            { expiresIn: '2h' }
+        );
+
+        await LoginInfo.create({
+            email: req.businessowner.email,
+            role: 'impersonation_start'
+        });
+
+        return res.json({
+            success: true,
+            authtoken: impersonationToken,
+            role: employee.role || 'employee',
+            userId: employee._id.toString(),
+            isImpersonation: true,
+            impersonatedEmployee: {
+                _id: employee._id,
+                name: `${employee.fname || ''} ${employee.lname || ''}`.trim() || employee.email,
+                email: employee.email
+            }
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: 'Internal Server error occurred' });
+    }
+});
+
+// Stop impersonation: POST "/api/auth/stop-impersonation". Impersonated session token required
+router.post('/stop-impersonation', async (req, res) => {
+    try {
+        const token = req.header('auth-token');
+        if (!token) {
+            return res.status(401).json({ success: false, error: 'Please authenticate using a valid token' });
+        }
+
+        const data = jwt.verify(token, JWT_SECRET);
+        if (!data.isImpersonation || !data.impersonatedBy) {
+            return res.status(400).json({ success: false, error: 'No active impersonation session found' });
+        }
+
+        const businessowner = await BusinessOwner.findById(data.impersonatedBy);
+        if (!businessowner) {
+            return res.status(404).json({ success: false, error: 'Business owner not found' });
+        }
+
+        if (businessowner.active === false) {
+            return res.status(403).json({ success: false, error: 'Business owner account is deactivated' });
+        }
+
+        const ownerToken = jwt.sign({ id: businessowner._id, role: 'businessowner' }, JWT_SECRET);
+
+        await LoginInfo.create({
+            email: businessowner.email,
+            role: 'impersonation_stop'
+        });
+
+        return res.json({
+            success: true,
+            authtoken: ownerToken,
+            role: 'businessowner',
+            userId: businessowner._id.toString(),
+            isImpersonation: false
+        });
+    } catch (err) {
+        return res.status(401).json({ success: false, error: 'Invalid token' });
     }
 });
 

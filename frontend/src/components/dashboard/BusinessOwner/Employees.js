@@ -408,6 +408,50 @@ const Employees = (props) => {
         }
     };
 
+    const handleImpersonateEmployee = async (employee) => {
+        if (!window.confirm(`Impersonate ${employee.fname} ${employee.lname || ''}? You can switch back anytime.`)) {
+            return;
+        }
+
+        try {
+            const currentToken = localStorage.getItem('token');
+            const currentRole = localStorage.getItem('role');
+            const currentUserId = localStorage.getItem('userId');
+
+            const response = await fetch(`http://localhost:5000/api/auth/impersonate/employee/${employee._id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': currentToken
+                }
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                props.showAlert(data.error || 'Failed to start impersonation', 'danger');
+                return;
+            }
+
+            sessionStorage.setItem('impersonationBackup', JSON.stringify({
+                token: currentToken,
+                role: currentRole,
+                userId: currentUserId
+            }));
+
+            localStorage.setItem('token', data.authtoken);
+            localStorage.setItem('role', data.role);
+            localStorage.setItem('userId', data.userId || '');
+            localStorage.setItem('isImpersonating', 'true');
+            localStorage.setItem('impersonatedEmployeeName', data.impersonatedEmployee?.name || employee.fname);
+            localStorage.removeItem('forcePasswordChange');
+
+            props.showAlert(`Now impersonating ${data.impersonatedEmployee?.name || employee.fname}`, 'warning');
+            window.location.href = '/dashboard';
+        } catch (error) {
+            props.showAlert('Error starting impersonation', 'danger');
+        }
+    };
+
     return (
         <>
             <div className="container-fluid p-4">
@@ -563,6 +607,13 @@ const Employees = (props) => {
                                                         <i className="bi bi-pencil"></i>
                                                     </Link>
                                                 ) : null}
+                                                <BusinessOwnerOnly>
+                                                    {emp.isActive !== false ? (
+                                                        <button className="btn btn-sm btn-dark me-2" onClick={() => handleImpersonateEmployee(emp)} title="Impersonate Employee">
+                                                            <i className="bi bi-person-badge"></i>
+                                                        </button>
+                                                    ) : null}
+                                                </BusinessOwnerOnly>
                                                 <BusinessOwnerOnly>
                                                     {emp.isActive !== false ? (
                                                         <button className="btn btn-sm btn-warning me-2" onClick={() => openStatusModal('deactivate', emp)} title="Deactivate Account">

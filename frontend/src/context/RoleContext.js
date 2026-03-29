@@ -206,6 +206,9 @@ export const RoleProvider = ({ children }) => {
         localStorage.removeItem('role');
         localStorage.removeItem('userId');
         localStorage.removeItem('forcePasswordChange');
+        localStorage.removeItem('isImpersonating');
+        localStorage.removeItem('impersonatedEmployeeName');
+        sessionStorage.removeItem('impersonationBackup');
         setRole(null);
         setUserDetails(null);
         setPermissions({});

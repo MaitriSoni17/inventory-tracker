@@ -30,6 +30,9 @@ export const apiCall = async (url, options = {}) => {
             localStorage.removeItem('role');
             localStorage.removeItem('userId');
             localStorage.removeItem('forcePasswordChange');
+            localStorage.removeItem('isImpersonating');
+            localStorage.removeItem('impersonatedEmployeeName');
+            sessionStorage.removeItem('impersonationBackup');
 
             // Return error response for handling in component
             // Components can handle this and show alert before redirect
@@ -56,6 +59,9 @@ export const apiCall = async (url, options = {}) => {
                 localStorage.removeItem('role');
                 localStorage.removeItem('userId');
                 localStorage.removeItem('forcePasswordChange');
+                localStorage.removeItem('isImpersonating');
+                localStorage.removeItem('impersonatedEmployeeName');
+                sessionStorage.removeItem('impersonationBackup');
 
                 return {
                     ok: false,

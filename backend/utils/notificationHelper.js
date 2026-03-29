@@ -220,6 +220,62 @@ async function notifyBusinessOwnerAboutSupplier(
 }
 
 /**
+ * Notify Business Owner when an employee password is changed/reset
+ */
+async function notifyBusinessOwnerAboutEmployeePasswordChange(
+  businessOwnerId,
+  employeeId,
+  employeeName,
+  changedByRole = 'employee',
+  details = {}
+) {
+  const isOwnerAction = changedByRole === 'businessowner';
+  const title = isOwnerAction ? 'Employee Password Reset' : 'Employee Password Changed';
+  const message = isOwnerAction
+    ? `Password for employee ${employeeName} was reset by Business Owner.`
+    : `Employee ${employeeName} changed their account password.`;
+
+  await createNotification(
+    businessOwnerId,
+    'BusinessOwner',
+    employeeId,
+    isOwnerAction ? 'BusinessOwner' : 'Employee',
+    'employee_password_changed',
+    title,
+    message,
+    { ...details, changedByRole }
+  );
+}
+
+/**
+ * Notify Business Owner when a supplier password is changed/reset
+ */
+async function notifyBusinessOwnerAboutSupplierPasswordChange(
+  businessOwnerId,
+  supplierId,
+  supplierName,
+  changedByRole = 'supplier',
+  details = {}
+) {
+  const isOwnerAction = changedByRole === 'businessowner';
+  const title = isOwnerAction ? 'Supplier Password Reset' : 'Supplier Password Changed';
+  const message = isOwnerAction
+    ? `Password for supplier ${supplierName} was reset by Business Owner.`
+    : `Supplier ${supplierName} changed their account password.`;
+
+  await createNotification(
+    businessOwnerId,
+    'BusinessOwner',
+    supplierId,
+    isOwnerAction ? 'BusinessOwner' : 'Supplier',
+    'supplier_password_changed',
+    title,
+    message,
+    { ...details, changedByRole }
+  );
+}
+
+/**
  * Notify employees about product changes
  */
 async function notifyEmployeesAboutProduct(
@@ -1272,6 +1328,8 @@ module.exports = {
   createNotification,
   notifyBusinessOwnerAboutEmployee,
   notifyBusinessOwnerAboutSupplier,
+  notifyBusinessOwnerAboutEmployeePasswordChange,
+  notifyBusinessOwnerAboutSupplierPasswordChange,
   notifyEmployeesAboutProduct,
   notifyEmployeesAboutOrder,
   notifyEmployeesAboutCategory,

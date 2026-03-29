@@ -122,6 +122,41 @@ router.put('/markallasread', fetchuser, async (req, res) => {
   }
 });
 
+// Mark selected notifications as read
+// PUT /api/notifications/bulk/markasread
+router.put('/bulk/markasread', fetchuser, async (req, res) => {
+  try {
+    const { notificationIds } = req.body;
+    const userId = req.user._id;
+    const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
+                            req.role === 'supplier' ? 'Supplier' : 'Employee';
+
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({ error: 'notificationIds must be a non-empty array' });
+    }
+
+    const uniqueIds = [...new Set(notificationIds)];
+
+    const result = await Notification.updateMany(
+      {
+        _id: { $in: uniqueIds },
+        recipient: userId,
+        recipientRole: capitalizedRole,
+        isRead: false
+      },
+      { isRead: true }
+    );
+
+    res.json({
+      message: 'Selected notifications marked as read',
+      matchedCount: result.matchedCount || 0,
+      modifiedCount: result.modifiedCount || 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error marking selected notifications as read' });
+  }
+});
+
 // Delete a notification
 // DELETE /api/notifications/deletenotification/:id
 router.delete('/deletenotification/:id', fetchuser, async (req, res) => {
@@ -166,6 +201,36 @@ router.delete('/deleteallnotifications', fetchuser, async (req, res) => {
   } catch (error) {
     // console.error('Error deleting all notifications:', error);
     res.status(500).json({ error: 'Error deleting all notifications' });
+  }
+});
+
+// Delete selected notifications for current user
+// DELETE /api/notifications/bulk/delete
+router.delete('/bulk/delete', fetchuser, async (req, res) => {
+  try {
+    const { notificationIds } = req.body;
+    const userId = req.user._id;
+    const capitalizedRole = req.role === 'businessowner' ? 'BusinessOwner' : 
+                            req.role === 'supplier' ? 'Supplier' : 'Employee';
+
+    if (!Array.isArray(notificationIds) || notificationIds.length === 0) {
+      return res.status(400).json({ error: 'notificationIds must be a non-empty array' });
+    }
+
+    const uniqueIds = [...new Set(notificationIds)];
+
+    const result = await Notification.deleteMany({
+      _id: { $in: uniqueIds },
+      recipient: userId,
+      recipientRole: capitalizedRole
+    });
+
+    res.json({
+      message: 'Selected notifications deleted successfully',
+      deletedCount: result.deletedCount || 0
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error deleting selected notifications' });
   }
 });
 

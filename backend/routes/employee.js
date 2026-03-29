@@ -12,7 +12,8 @@ const {
   notifyBusinessOwnerAboutEmployee,
   notifyAllManagers,
   notifyManagerAboutNewSubordinate,
-  notifyEmployeeAboutRoleChange
+    notifyEmployeeAboutRoleChange,
+    notifyBusinessOwnerAboutEmployeePasswordChange
 } = require('../utils/notificationHelper');
 const { requireEmployeeManagement, hasPermission, getSubordinates, getAllTeamMembers } = require('../middleware/roleBasedAccess');
 // --- Import and Configure Multer ---
@@ -734,6 +735,19 @@ router.put('/changepassword', fetchuser, [
         employee.mustChangePassword = false;
         await employee.save();
 
+        try {
+            const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+            await notifyBusinessOwnerAboutEmployeePasswordChange(
+                employee.businessowner,
+                employee._id,
+                employeeName,
+                'employee',
+                { employeeId: employee._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
         res.json({ success: true, message: "Password changed successfully. Please login again." });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
@@ -777,6 +791,19 @@ router.put('/changepassword/:id', fetchbusinessowner, [
         employee.mustChangePassword = true;
         await employee.save();
 
+        try {
+            const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+            await notifyBusinessOwnerAboutEmployeePasswordChange(
+                employee.businessowner,
+                employee._id,
+                employeeName,
+                'businessowner',
+                { employeeId: employee._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
         res.json({ success: true, message: "Password changed successfully" });
     } catch (err) {
 
@@ -809,6 +836,19 @@ router.put('/resetpassword/:id', fetchbusinessowner, [
         employee.tokenVersion = (employee.tokenVersion || 0) + 1;
         employee.mustChangePassword = true;
         await employee.save();
+
+        try {
+            const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
+            await notifyBusinessOwnerAboutEmployeePasswordChange(
+                employee.businessowner,
+                employee._id,
+                employeeName,
+                'businessowner',
+                { employeeId: employee._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
 
         res.json({ success: true, message: "Employee password reset successfully" });
     } catch (err) {

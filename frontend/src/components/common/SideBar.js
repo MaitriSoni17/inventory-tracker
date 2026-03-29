@@ -14,6 +14,8 @@ const SideBar = () => {
     const navigate = useNavigate();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const isImpersonating = localStorage.getItem('isImpersonating') === 'true';
+    const impersonatedEmployeeName = localStorage.getItem('impersonatedEmployeeName') || 'employee';
 
     // Handle logout
     const handleLogout = () => {
@@ -64,6 +66,50 @@ const SideBar = () => {
     const canViewMessages = hasPermission('canViewMessages');
     const canExportReports = hasPermission('canExportReports');
     const canViewDashboard = hasPermission('canViewDashboard');
+
+    const handleStopImpersonation = async () => {
+        try {
+            const response = await fetch('http://localhost:5000/api/auth/stop-impersonation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'auth-token': localStorage.getItem('token')
+                }
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                const backupRaw = sessionStorage.getItem('impersonationBackup');
+                if (backupRaw) {
+                    const backup = JSON.parse(backupRaw);
+                    if (backup?.token && backup?.role) {
+                        localStorage.setItem('token', backup.token);
+                        localStorage.setItem('role', backup.role);
+                        localStorage.setItem('userId', backup.userId || '');
+                        localStorage.removeItem('isImpersonating');
+                        localStorage.removeItem('impersonatedEmployeeName');
+                        sessionStorage.removeItem('impersonationBackup');
+                        navigate('/dashboard/employee');
+                        return;
+                    }
+                }
+                logout();
+                navigate('/login');
+                return;
+            }
+
+            localStorage.setItem('token', data.authtoken);
+            localStorage.setItem('role', data.role);
+            localStorage.setItem('userId', data.userId || '');
+            localStorage.removeItem('isImpersonating');
+            localStorage.removeItem('impersonatedEmployeeName');
+            sessionStorage.removeItem('impersonationBackup');
+            navigate('/dashboard/employee');
+        } catch (error) {
+            logout();
+            navigate('/login');
+        }
+    };
 
     return (
         <>
@@ -204,6 +250,18 @@ const SideBar = () => {
                             </button>
                             <h2 className="fs-2 m-0 d-none d-md-block flex-grow-1">Dashboard</h2>
                             <div className="d-flex align-items-center gap-3 ms-auto">
+                                {isImpersonating && (
+                                    <div className="badge bg-warning text-dark px-3 py-2 d-flex align-items-center gap-2">
+                                        <span>Impersonating {impersonatedEmployeeName}</span>
+                                        <button
+                                            type="button"
+                                            className="btn btn-sm btn-dark"
+                                            onClick={handleStopImpersonation}
+                                        >
+                                            Return to Owner
+                                        </button>
+                                    </div>
+                                )}
                                 <li className="nav-item d-flex align-items-center">
                                     <Notifications />
                                 </li>

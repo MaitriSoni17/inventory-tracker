@@ -8,6 +8,7 @@ const NotificationsPage = (props) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all'); // 'all', 'unread', 'read'
+  const [selectedNotificationIds, setSelectedNotificationIds] = useState([]);
 
   const token = localStorage.getItem('token');
   const userRole = localStorage.getItem('role');
@@ -76,8 +77,9 @@ const NotificationsPage = (props) => {
     
     // Supplier related notifications (not orders)
     if (type.includes('supplier') && !type.includes('order')) {
-      if (data?.supplierId) {
-        return `/dashboard/editsupplier/${data.supplierId}`;
+      const supplierId = data?.supplierId || data?.userId || notification?.sender;
+      if (supplierId) {
+        return `/dashboard/editsupplier/${supplierId}`;
       }
       return '/dashboard/suppliers';
     }
@@ -140,7 +142,7 @@ const NotificationsPage = (props) => {
     const navigableTypes = [
       'employee_created', 'employee_updated', 'employee_deleted', 'employee_deactivated',
       'employee_login', 'employee_deletion_requested', 'employee_deletion_approved',
-      'employee_deletion_rejected', 'employee_role_updated',
+      'employee_deletion_rejected', 'employee_role_updated', 'employee_password_changed',
       'product_created', 'product_updated', 'product_deleted',
       'product_created_by_employee', 'product_updated_by_employee', 'product_deleted_by_employee',
       'order_created', 'order_updated', 'order_deleted',
@@ -152,6 +154,7 @@ const NotificationsPage = (props) => {
       'supplier_order_deleted_by_employee', 'supplier_order_status_updated',
       'supplier_order_payment_status_updated', 'supplier_deletion_requested',
       'supplier_deletion_approved', 'supplier_deletion_rejected', 'supplier_login',
+      'supplier_password_changed',
       'chat_message', 'chat_permission_granted', 'chat_permission_revoked', 'message',
       'salary_due_alert', 'supplier_order_delivery_alert', 'product_low_stock_alert',
       'customer_order_delivery_alert', 'supplier_order_supply_alert'
@@ -174,6 +177,7 @@ const NotificationsPage = (props) => {
       if (response.ok) {
         const data = await response.json();
         setNotifications(data);
+        setSelectedNotificationIds((prev) => prev.filter((id) => data.some((n) => n._id === id)));
         fetchUnreadCount();
       }
     } catch (error) {
@@ -219,6 +223,7 @@ const NotificationsPage = (props) => {
             notif._id === notificationId ? { ...notif, isRead: true } : notif
           )
         );
+        setSelectedNotificationIds((prev) => prev.filter((id) => id !== notificationId));
         fetchUnreadCount();
       }
     } catch (error) {
@@ -241,6 +246,7 @@ const NotificationsPage = (props) => {
         setNotifications(
           notifications.map((notif) => ({ ...notif, isRead: true }))
         );
+        setSelectedNotificationIds([]);
         setUnreadCount(0);
         props.showAlert?.('All notifications marked as read', 'success');
       }
@@ -266,6 +272,7 @@ const NotificationsPage = (props) => {
         setNotifications(
           notifications.filter((notif) => notif._id !== notificationId)
         );
+        setSelectedNotificationIds((prev) => prev.filter((id) => id !== notificationId));
         fetchUnreadCount();
         props.showAlert?.('Notification deleted', 'success');
       }
@@ -289,6 +296,7 @@ const NotificationsPage = (props) => {
 
         if (response.ok) {
           setNotifications([]);
+          setSelectedNotificationIds([]);
           setUnreadCount(0);
           props.showAlert?.('All notifications deleted', 'success');
         }
@@ -310,6 +318,101 @@ const NotificationsPage = (props) => {
     return notifications;
   };
 
+  const toggleNotificationSelection = (notificationId) => {
+    setSelectedNotificationIds((prev) =>
+      prev.includes(notificationId)
+        ? prev.filter((id) => id !== notificationId)
+        : [...prev, notificationId]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedNotificationIds([]);
+  };
+
+  const toggleSelectAllFiltered = () => {
+    const filteredIds = filteredNotifications.map((n) => n._id);
+    const allSelected = filteredIds.length > 0 && filteredIds.every((id) => selectedNotificationIds.includes(id));
+
+    if (allSelected) {
+      setSelectedNotificationIds((prev) => prev.filter((id) => !filteredIds.includes(id)));
+    } else {
+      setSelectedNotificationIds((prev) => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
+  const bulkMarkSelectedAsRead = async () => {
+    if (selectedNotificationIds.length === 0) {
+      props.showAlert?.('Please select notifications first', 'warning');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/notifications/bulk/markasread', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'auth-token': token
+        },
+        body: JSON.stringify({ notificationIds: selectedNotificationIds })
+      });
+
+      if (response.ok) {
+        setNotifications((prev) =>
+          prev.map((notif) =>
+            selectedNotificationIds.includes(notif._id) ? { ...notif, isRead: true } : notif
+          )
+        );
+        setSelectedNotificationIds([]);
+        fetchUnreadCount();
+        props.showAlert?.('Selected notifications marked as read', 'success');
+      } else {
+        props.showAlert?.('Failed to mark selected notifications', 'danger');
+      }
+    } catch (error) {
+      props.showAlert?.('Error marking selected notifications', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const bulkDeleteSelected = async () => {
+    if (selectedNotificationIds.length === 0) {
+      props.showAlert?.('Please select notifications first', 'warning');
+      return;
+    }
+
+    if (!window.confirm(`Delete ${selectedNotificationIds.length} selected notification(s)?`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/notifications/bulk/delete', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'auth-token': token
+        },
+        body: JSON.stringify({ notificationIds: selectedNotificationIds })
+      });
+
+      if (response.ok) {
+        setNotifications((prev) => prev.filter((notif) => !selectedNotificationIds.includes(notif._id)));
+        setSelectedNotificationIds([]);
+        fetchUnreadCount();
+        props.showAlert?.('Selected notifications deleted', 'success');
+      } else {
+        props.showAlert?.('Failed to delete selected notifications', 'danger');
+      }
+    } catch (error) {
+      props.showAlert?.('Error deleting selected notifications', 'danger');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Get notification icon
   const getNotificationIcon = (type) => {
     const icons = {
@@ -317,6 +420,7 @@ const NotificationsPage = (props) => {
       employee_updated: 'bi-person-check-fill',
       employee_deleted: 'bi-person-x-fill',
       employee_deactivated: 'bi-person-slash',
+      employee_password_changed: 'bi-key-fill',
       product_created: 'bi-box-fill',
       product_updated: 'bi-box-seam',
       product_deleted: 'bi-box-slash',
@@ -326,6 +430,7 @@ const NotificationsPage = (props) => {
       category_created: 'bi-tag-fill',
       category_updated: 'bi-tag',
       category_deleted: 'bi-tag-slash',
+      supplier_password_changed: 'bi-key-fill',
       message: 'bi-chat-left-text-fill'
     };
     return icons[type] || 'bi-bell-fill';
@@ -365,6 +470,11 @@ const NotificationsPage = (props) => {
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredNotifications = getFilteredNotifications();
+  const selectedCount = selectedNotificationIds.length;
+  const filteredNotificationIds = filteredNotifications.map((notification) => notification._id);
+  const isAllFilteredSelected =
+    filteredNotificationIds.length > 0 &&
+    filteredNotificationIds.every((id) => selectedNotificationIds.includes(id));
 
   return (
     <div className="notifications-page">
@@ -409,7 +519,7 @@ const NotificationsPage = (props) => {
           <div className="action-buttons">
             {unreadCount > 0 && (
               <button 
-                className="action-btn mark-read w-100 me-3"
+                className="action-btn mark-read"
                 onClick={markAllAsRead}
                 disabled={loading}
               >
@@ -418,7 +528,7 @@ const NotificationsPage = (props) => {
             )}
             {notifications.length > 0 && (
               <button 
-                className="action-btn delete-all w-100"
+                className="action-btn delete-all"
                 onClick={deleteAllNotifications}
                 disabled={loading}
               >
@@ -427,6 +537,47 @@ const NotificationsPage = (props) => {
             )}
           </div>
         </div>
+
+        {notifications.length > 0 && (
+          <div className="bulk-operations-section">
+            <div className="bulk-left">
+              <label className="bulk-select-all">
+                <input
+                  type="checkbox"
+                  checked={isAllFilteredSelected}
+                  onChange={toggleSelectAllFiltered}
+                  disabled={loading || filteredNotifications.length === 0}
+                />
+                <span>Select all in current filter</span>
+              </label>
+              {selectedCount > 0 && (
+                <span className="bulk-selected-count">{selectedCount} selected</span>
+              )}
+            </div>
+
+            <div className="bulk-actions">
+              <button
+                className="action-btn mark-read"
+                onClick={bulkMarkSelectedAsRead}
+                disabled={loading || selectedCount === 0}
+              >
+                <i className="bi bi-check2-square"></i> Mark Selected Read
+              </button>
+              <button
+                className="action-btn delete-all"
+                onClick={bulkDeleteSelected}
+                disabled={loading || selectedCount === 0}
+              >
+                <i className="bi bi-trash3"></i> Delete Selected
+              </button>
+              {selectedCount > 0 && (
+                <button className="action-btn" onClick={clearSelection} disabled={loading}>
+                  <i className="bi bi-x-circle"></i> Clear Selection
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -453,6 +604,15 @@ const NotificationsPage = (props) => {
                 key={notification._id}
                 className={`notification-card ${!notification.isRead ? 'unread' : ''} ${isNavigable(notification) ? 'clickable' : ''}`}
               >
+                <div className="notification-select">
+                  <input
+                    type="checkbox"
+                    checked={selectedNotificationIds.includes(notification._id)}
+                    onChange={() => toggleNotificationSelection(notification._id)}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label="Select notification"
+                  />
+                </div>
                 <div 
                   className="notification-clickable-area"
                   onClick={() => isNavigable(notification) && handleNotificationClick(notification)}

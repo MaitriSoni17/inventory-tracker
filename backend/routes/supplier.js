@@ -5,7 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fetchuser = require('../middleware/fetchuser'); // unified middleware
 const { body, validationResult } = require('express-validator');
-const { notifyBusinessOwnerAboutSupplier } = require('../utils/notificationHelper');
+const { notifyBusinessOwnerAboutSupplier, notifyBusinessOwnerAboutSupplierPasswordChange } = require('../utils/notificationHelper');
 
 const isValidPhoneNumber = (value) => {
   if (!value) return false;
@@ -307,6 +307,19 @@ router.put('/changepassword', fetchuser, [
         supplier.mustChangePassword = false;
         await supplier.save();
 
+        try {
+            const supplierName = `${supplier.fname} ${supplier.lname || ''}`.trim();
+            await notifyBusinessOwnerAboutSupplierPasswordChange(
+                supplier.businessowner,
+                supplier._id,
+                supplierName,
+                'supplier',
+                { supplierId: supplier._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
         res.json({ success: true, message: "Password changed successfully" });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
@@ -338,6 +351,19 @@ router.put('/resetpassword/:id', fetchbusinessowner, [
         supplier.tokenVersion = (supplier.tokenVersion || 0) + 1;
         supplier.mustChangePassword = true;
         await supplier.save();
+
+        try {
+            const supplierName = `${supplier.fname} ${supplier.lname || ''}`.trim();
+            await notifyBusinessOwnerAboutSupplierPasswordChange(
+                supplier.businessowner,
+                supplier._id,
+                supplierName,
+                'businessowner',
+                { supplierId: supplier._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
 
         res.json({ success: true, message: "Supplier password reset successfully" });
     } catch (err) {
