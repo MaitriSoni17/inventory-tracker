@@ -49,15 +49,18 @@ const getBusinessOwnerDeletionImpact = async (businessOwnerId) => {
         })
     ]);
 
+    const totalOrders = orders + customerOrders + supplierOrders;
+
     return {
         employees,
         suppliers,
         products,
         categories,
         orders,
-        warehouses,
         customerOrders,
         supplierOrders,
+        totalOrders,
+        warehouses,
         notifications,
         deletionRequests,
         generatedAt: new Date()

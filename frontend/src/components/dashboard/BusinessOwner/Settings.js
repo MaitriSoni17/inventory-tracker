@@ -1130,7 +1130,7 @@ const Settings = (props) => {
                         <li>Suppliers: {deletionImpact.suppliers}</li>
                         <li>Products: {deletionImpact.products}</li>
                         <li>Categories: {deletionImpact.categories}</li>
-                        <li>Orders: {deletionImpact.orders}</li>
+                        <li>Orders: {deletionImpact.totalOrders ?? ((deletionImpact.orders || 0) + (deletionImpact.customerOrders || 0) + (deletionImpact.supplierOrders || 0))}</li>
                         <li>Warehouses: {deletionImpact.warehouses}</li>
                       </ul>
                     )}
