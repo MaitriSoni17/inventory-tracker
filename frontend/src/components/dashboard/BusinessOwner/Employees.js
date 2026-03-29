@@ -6,7 +6,9 @@ import '../../../styles/dashboard-elegant.css'
 import { CanManageEmployees, CanEditEmployees, CanExportReports, BusinessOwnerOnly } from '../../../components/auth/RoleGuards';
 import StatusActionConfirmModal from '../../../components/common/Modal/StatusActionConfirmModal';
 import { generateIndividualEmployeeReportPDF } from '../../../utils/individualReportHelper';
+import { useRole } from '../../../context/RoleContext';
 const Employees = (props) => {
+    const { hasPermission } = useRole();
     const [employees, setEmployees] = useState([]);
     const [filteredEmployees, setFilteredEmployees] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,6 +24,7 @@ const Employees = (props) => {
     });
     const [statusModal, setStatusModal] = useState({ isOpen: false, actionType: 'deactivate', employee: null });
     const [statusActionLoading, setStatusActionLoading] = useState(false);
+    const canDownloadEmployeeReports = hasPermission('canExportReports') && hasPermission('canDownloadEmployeeReport');
 
     useEffect(() => {
         fetchWarehouses();
@@ -393,6 +396,11 @@ const Employees = (props) => {
     };
 
     const downloadIndividualEmployeeReport = async (employee) => {
+        if (!canDownloadEmployeeReports) {
+            props.showAlert('You do not have permission to export reports. Please contact your Business Owner to enable this feature.', 'warning');
+            return;
+        }
+
         try {
             const success = await generateIndividualEmployeeReportPDF(employee, formatDate, (phone) => {
                 if (!phone) return 'N/A';
@@ -599,9 +607,11 @@ const Employees = (props) => {
                                         </td>
                                         <CanEditEmployees>
                                             <td className='d-flex'>
-                                                <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualEmployeeReport(emp)} title="Download Report">
-                                                    <i className="bi bi-download"></i>
-                                                </button>
+                                                {canDownloadEmployeeReports && (
+                                                    <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualEmployeeReport(emp)} title="Download Report">
+                                                        <i className="bi bi-download"></i>
+                                                    </button>
+                                                )}
                                                 {emp.isActive !== false ? (
                                                     <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">
                                                         <i className="bi bi-pencil"></i>

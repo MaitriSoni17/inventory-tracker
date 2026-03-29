@@ -7,7 +7,7 @@ import Chatbot from './Chatbot';
 import { useRole } from '../../context/RoleContext';
 
 const SideBar = () => {
-    const { role, logout, hasPermission, deletionRestriction } = useRole();
+    const { role, logout, hasPermission, deletionRestriction, fetchUserRole } = useRole();
     const storedRole = localStorage.getItem('role');
     const currentRole = role || storedRole;
     let location = useLocation();
@@ -89,7 +89,8 @@ const SideBar = () => {
                         localStorage.removeItem('isImpersonating');
                         localStorage.removeItem('impersonatedEmployeeName');
                         sessionStorage.removeItem('impersonationBackup');
-                        navigate('/dashboard/employee');
+                        await fetchUserRole();
+                        navigate('/dashboard', { replace: true });
                         return;
                     }
                 }
@@ -104,7 +105,8 @@ const SideBar = () => {
             localStorage.removeItem('isImpersonating');
             localStorage.removeItem('impersonatedEmployeeName');
             sessionStorage.removeItem('impersonationBackup');
-            navigate('/dashboard/employee');
+            await fetchUserRole();
+            navigate('/dashboard', { replace: true });
         } catch (error) {
             logout();
             navigate('/login');

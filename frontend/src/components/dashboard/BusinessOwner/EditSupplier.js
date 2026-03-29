@@ -157,6 +157,12 @@ const EditSupplier = (props) => {
             return;
         }
 
+        const emailValidationError = validationRules.email(formData.email);
+        if (emailValidationError) {
+            props.showAlert(emailValidationError, 'danger');
+            return;
+        }
+
         if (formData.phone && validationRules.phone(formData.phone)) {
             props.showAlert(validationRules.phone(formData.phone), 'danger');
             return;
@@ -228,7 +234,7 @@ const EditSupplier = (props) => {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="email" className="form-label fw-semibold mb-2">Email *</label>
-                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required disabled />
+                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required />
                                 </div>
                             </div>
                             <div className="d-flex gap-4 mb-4">

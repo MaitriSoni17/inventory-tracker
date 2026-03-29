@@ -1,5 +1,7 @@
 const express = require('express');
 const Supplier = require('../models/Supplier');
+const Employee = require('../models/Employee');
+const BusinessOwner = require('../models/BusinessOwner');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -52,6 +54,33 @@ const isValidPhoneNumber = (value) => {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
+const findEmailConflict = async (email, currentAccount = {}) => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+        return null;
+    }
+
+    const [owner, employee, supplier] = await Promise.all([
+        BusinessOwner.findOne({ email: normalizedEmail }).select('_id').lean(),
+        Employee.findOne({ email: normalizedEmail }).select('_id').lean(),
+        Supplier.findOne({ email: normalizedEmail }).select('_id').lean()
+    ]);
+
+    if (owner && !(currentAccount.type === 'businessowner' && owner._id.toString() === currentAccount.id)) {
+        return 'business owner';
+    }
+    if (employee && !(currentAccount.type === 'employee' && employee._id.toString() === currentAccount.id)) {
+        return 'employee';
+    }
+    if (supplier && !(currentAccount.type === 'supplier' && supplier._id.toString() === currentAccount.id)) {
+        return 'supplier';
+    }
+
+    return null;
+};
+
 // Create an Supplier using: POST "/api/supplier/createsupplier". Business Owner login required
 const fetchbusinessowner = require('../middleware/fetchbusinessowner');
 
@@ -72,8 +101,9 @@ router.post('/createsupplier', fetchbusinessowner, [
     }
 
     try {
-        let supplier = await Supplier.findOne({ email: req.body.email });
-        if (supplier) {
+        const normalizedEmail = normalizeEmail(req.body.email);
+        let supplierConflict = await findEmailConflict(normalizedEmail);
+        if (supplierConflict) {
             return res.status(400).json({ error: "Sorry, a user with this email already exists" });
         }
 
@@ -84,7 +114,7 @@ router.post('/createsupplier', fetchbusinessowner, [
             businessowner: req.businessowner._id,
             fname: req.body.fname,
             lname: req.body.lname,
-            email: req.body.email,
+            email: normalizedEmail,
             password: secPass,
             ...(req.body.jDate && { jDate: req.body.jDate }),
             nationality: req.body.nationality,
@@ -165,6 +195,7 @@ router.post('/getallsuppliers', require('../middleware/fetchuser'), async (req, 
 
 // Update Supplier using: PUT "/api/supplier/updatesupplier/:id". Business Owner login required
 router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), [
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Enter a valid email'),
     body('phone').optional({ checkFalsy: true }).custom((value) => {
         if (!isValidPhoneNumber(value)) {
             throw new Error('Enter a valid 10-digit phone number');
@@ -178,7 +209,7 @@ router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), [
             return res.status(400).json({ errors: errors.array() });
         }
 
-        const { fname, lname, phone, nationality, country, state, city, address, about } = req.body;
+        const { fname, lname, email, phone, nationality, country, state, city, address, about } = req.body;
 
         const supplier = await Supplier.findById(req.params.id);
         if (!supplier) {
@@ -193,6 +224,16 @@ router.put('/updatesupplier/:id', require('../middleware/fetchbusinessowner'), [
         // Update fields
         if (fname) supplier.fname = fname;
         if (lname) supplier.lname = lname;
+        if (email) {
+            const normalizedEmail = normalizeEmail(email);
+            if (normalizedEmail !== supplier.email) {
+                const emailConflict = await findEmailConflict(normalizedEmail, { type: 'supplier', id: supplier._id.toString() });
+                if (emailConflict) {
+                    return res.status(400).json({ error: 'Sorry, a user with this email already exists' });
+                }
+            }
+            supplier.email = normalizedEmail;
+        }
         if (phone) supplier.phone = phone;
         if (nationality) supplier.nationality = nationality;
         if (country) supplier.country = country;
@@ -230,6 +271,7 @@ router.delete('/deletesupplier/:id', require('../middleware/fetchbusinessowner')
 
 // Update own profile using: PUT "/api/supplier/updatesupplier". Supplier login required
 router.put('/updatesupplier', fetchuser, [
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Enter a valid email'),
     body('phone').optional({ checkFalsy: true }).custom((value) => {
         if (!isValidPhoneNumber(value)) {
             throw new Error('Enter a valid 10-digit phone number');
@@ -258,7 +300,16 @@ router.put('/updatesupplier', fetchuser, [
         if (fname) supplier.fname = fname;
         if (lname) supplier.lname = lname;
         if (phone) supplier.phone = phone;
-        if (email) supplier.email = email;
+        if (email) {
+            const normalizedEmail = normalizeEmail(email);
+            if (normalizedEmail !== supplier.email) {
+                const emailConflict = await findEmailConflict(normalizedEmail, { type: 'supplier', id: supplier._id.toString() });
+                if (emailConflict) {
+                    return res.status(400).json({ error: 'Sorry, a user with this email already exists' });
+                }
+            }
+            supplier.email = normalizedEmail;
+        }
         if (country) supplier.country = country;
         if (state) supplier.state = state;
         if (city) supplier.city = city;

@@ -288,6 +288,12 @@ const EditEmployee = (props) => {
             return;
         }
 
+        const emailValidationError = validationRules.email(formData.email);
+        if (emailValidationError) {
+            props.showAlert(emailValidationError, 'danger');
+            return;
+        }
+
         if (formData.phone && validationRules.phone(formData.phone)) {
             props.showAlert(validationRules.phone(formData.phone), 'danger');
             return;
@@ -341,7 +347,7 @@ const EditEmployee = (props) => {
                 props.showAlert('Employee updated successfully', 'success');
                 navigate('/dashboard/employee');
             } else {
-                props.showAlert(data.errors?.[0]?.msg || 'Failed to update employee', 'danger');
+                props.showAlert(data.error || data.errors?.[0]?.msg || 'Failed to update employee', 'danger');
             }
         } catch (error) {
             props.showAlert('Error updating employee', 'danger');
@@ -428,7 +434,7 @@ const EditEmployee = (props) => {
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <label htmlFor="email" className="form-label fw-semibold mb-2">Email *</label>
-                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required disabled />
+                                    <input type="email" className="form-control rounded-3 shadow-sm" id="email" placeholder="Enter email" value={formData.email} onChange={handleChange} required />
                                 </div>
                             </div>
                             <div className="d-flex gap-4">

@@ -1,5 +1,7 @@
 const express = require('express');
 const Employee = require('../models/Employee');
+const Supplier = require('../models/Supplier');
+const BusinessOwner = require('../models/BusinessOwner');
 const RolePermissions = require('../models/RolePermissions');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
@@ -95,6 +97,33 @@ const upload = multer({ storage: storage });
 
 const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
 
+const normalizeEmail = (email) => String(email || '').trim().toLowerCase();
+
+const findEmailConflict = async (email, currentAccount = {}) => {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) {
+        return null;
+    }
+
+    const [owner, employee, supplier] = await Promise.all([
+        BusinessOwner.findOne({ email: normalizedEmail }).select('_id').lean(),
+        Employee.findOne({ email: normalizedEmail }).select('_id').lean(),
+        Supplier.findOne({ email: normalizedEmail }).select('_id').lean()
+    ]);
+
+    if (owner && !(currentAccount.type === 'businessowner' && owner._id.toString() === currentAccount.id)) {
+        return 'business owner';
+    }
+    if (employee && !(currentAccount.type === 'employee' && employee._id.toString() === currentAccount.id)) {
+        return 'employee';
+    }
+    if (supplier && !(currentAccount.type === 'supplier' && supplier._id.toString() === currentAccount.id)) {
+        return 'supplier';
+    }
+
+    return null;
+};
+
 // Create an Employee using: POST "/api/employee/createemployee". 
 // Business Owner and Manager can create employees
 router.post('/createemployee', fetchuser, upload.single('image'), [
@@ -127,8 +156,9 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
     }
 
     try {
-        let employee = await Employee.findOne({ email: req.body.email });
-        if (employee) {
+        const normalizedEmail = normalizeEmail(req.body.email);
+        let employeeConflict = await findEmailConflict(normalizedEmail);
+        if (employeeConflict) {
             // Delete file if user already exists
             if (req.file) {
                 deleteUploadedFile(path.join(uploadsDir, req.file.filename));
@@ -214,7 +244,7 @@ router.post('/createemployee', fetchuser, upload.single('image'), [
             businessowner: businessOwnerId,
             fname: req.body.fname,
             lname: req.body.lname,
-            email: req.body.email,
+            email: normalizedEmail,
             password: secPass,
             birthDate: req.body.birthDate,
             gender: req.body.gender,
@@ -541,6 +571,7 @@ router.put('/updateemployee', fetchemployee, upload.single('image'), [
 
 // Update Employee using: PUT "/api/employee/updateemployee/:id". Role-based access control
 router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
+    body('email').optional({ checkFalsy: true }).isEmail().withMessage('Enter a valid email'),
     body('phone').optional({ checkFalsy: true }).custom((value) => {
         if (!isValidPhoneNumber(value)) {
             throw new Error('Enter a valid 10-digit phone number');
@@ -566,7 +597,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
             return res.status(403).json({ error: "You do not have permission to update employees" });
         }
 
-        const { fname, lname, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role, warehouse } = req.body;
+        const { fname, lname, email, birthDate, gender, jDate, nationality, country, state, city, hireAt, phone, address, about, role, warehouse } = req.body;
         const normalizedWarehouse = warehouse && typeof warehouse === 'object' ? warehouse._id : warehouse;
 
         // console.log('Finding employee with ID:', req.params.id);
@@ -604,6 +635,19 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
         // Update fields
         if (fname) employee.fname = fname;
         if (lname) employee.lname = lname;
+        if (email) {
+            const normalizedEmail = normalizeEmail(email);
+            if (normalizedEmail !== employee.email) {
+                const emailConflict = await findEmailConflict(normalizedEmail, { type: 'employee', id: employee._id.toString() });
+                if (emailConflict) {
+                    if (req.file) {
+                        deleteUploadedFile(path.join(uploadsDir, req.file.filename));
+                    }
+                    return res.status(400).json({ error: 'Sorry, a user with this email already exists' });
+                }
+            }
+            employee.email = normalizedEmail;
+        }
         if (birthDate) employee.birthDate = birthDate;
         if (gender) employee.gender = gender;
         if (jDate) employee.jDate = jDate;
