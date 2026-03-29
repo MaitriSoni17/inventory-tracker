@@ -915,7 +915,61 @@ router.put('/deactivateemployee', fetchuser, async (req, res) => {
         employee.isActive = false;
         await employee.save();
 
+        // Notify business owner about employee deactivation
+        try {
+            await notifyBusinessOwnerAboutEmployee(
+                employee.businessowner,
+                employee._id,
+                'deactivated',
+                `${employee.fname} ${employee.lname || ''}`,
+                { employeeId: employee._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
         res.json({ success: true, message: "Account deactivated successfully" });
+    } catch (err) {
+        res.status(500).json({ success: false, error: "Internal server error occurred" });
+    }
+});
+
+// Reactivate an employee account: PUT "/api/employee/reactivate/:employeeId"
+router.put('/reactivate/:employeeId', fetchbusinessowner, async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+
+        const employee = await Employee.findById(employeeId);
+        if (!employee) {
+            return res.status(404).json({ success: false, error: "Employee not found" });
+        }
+
+        // Verify the employee belongs to this business owner
+        if (employee.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ success: false, error: "Access denied" });
+        }
+
+        if (employee.isActive === true) {
+            return res.status(400).json({ success: false, error: "Employee account is already active" });
+        }
+
+        employee.isActive = true;
+        await employee.save();
+
+        // Notify business owner about reactivation
+        try {
+            await notifyBusinessOwnerAboutEmployee(
+                employee.businessowner,
+                employee._id,
+                'updated',
+                `${employee.fname} ${employee.lname || ''}`,
+                { employeeId: employee._id, action: 'reactivated' }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
+        res.json({ success: true, message: "Employee account reactivated successfully" });
     } catch (err) {
         res.status(500).json({ success: false, error: "Internal server error occurred" });
     }

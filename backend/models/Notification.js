@@ -67,6 +67,7 @@ const NotificationSchema = new Schema({
       'supplier_deletion_cancellation_requested',
       'supplier_deletion_cancellation_approved',
       'supplier_deletion_cancellation_rejected',
+      'supplier_deactivated',
       'supplier_login',
       'chat_message',
       'chat_permission_granted',

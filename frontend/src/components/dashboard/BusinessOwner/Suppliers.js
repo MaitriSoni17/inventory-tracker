@@ -102,6 +102,31 @@ const Suppliers = (props) => {
         }
     };
 
+    const handleReactivate = async (id, name) => {
+        if (window.confirm(`Are you sure you want to reactivate ${name}?`)) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/supplier/reactivate/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+
+                if (response.ok) {
+                    props.showAlert(`${name} has been reactivated successfully`, 'success');
+                    // Update the supplier's active status in the list
+                    setSuppliers(suppliers.map(sup => sup._id === id ? { ...sup, isActive: true } : sup));
+                } else {
+                    const errorData = await response.json();
+                    props.showAlert(errorData.error || 'Failed to reactivate supplier', 'danger');
+                }
+            } catch (error) {
+                props.showAlert('Error reactivating supplier: ' + error.message, 'danger');
+            }
+        }
+    };
+
     const downloadIndividualSupplierReport = async (supplier) => {
         try {
             const success = await generateIndividualSupplierReportPDF(supplier);
@@ -317,6 +342,7 @@ const Suppliers = (props) => {
                                     <th scope="col" className="py-2">City</th>
                                     <th scope="col" className="py-2">Country</th>
                                     <th scope="col" className="py-2">Last Login</th>
+                                    <th scope="col" className="py-2">Status</th>
                                     <th scope="col" className="py-2">Actions</th>
                                 </tr>
                             </thead>
@@ -334,6 +360,17 @@ const Suppliers = (props) => {
                                                 {formatLastLogin(sup.lastLogin)}
                                             </small>
                                         </td>
+                                        <td>
+                                            {sup.isActive !== false ? (
+                                                <span className="badge bg-success rounded-pill px-3 py-2">
+                                                    <i className="bi bi-check-circle me-1"></i>Active
+                                                </span>
+                                            ) : (
+                                                <span className="badge bg-danger rounded-pill px-3 py-2">
+                                                    <i className="bi bi-x-circle me-1"></i>Inactive
+                                                </span>
+                                            )}
+                                        </td>
                                         <td className='d-flex'>
                                             <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualSupplierReport(sup)} title="Download Report">
                                                 <i className="bi bi-download"></i>
@@ -342,9 +379,16 @@ const Suppliers = (props) => {
                                                 <i className="bi bi-box-seam"></i>
                                             </Link>
                                             <BusinessOwnerOnly>
-                                                <Link to={`/dashboard/editsupplier/${sup._id}`} className="btn btn-sm btn-info me-2" title="Edit">
-                                                    <i className="bi bi-pencil"></i>
-                                                </Link>
+                                                {sup.isActive !== false ? (
+                                                    <Link to={`/dashboard/editsupplier/${sup._id}`} className="btn btn-sm btn-info me-2" title="Edit">
+                                                        <i className="bi bi-pencil"></i>
+                                                    </Link>
+                                                ) : null}
+                                                {sup.isActive === false ? (
+                                                    <button className="btn btn-sm btn-warning me-2" onClick={() => handleReactivate(sup._id, `${sup.fname} ${sup.lname || ''}`)} title="Reactivate Account">
+                                                        <i className="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                ) : null}
                                                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(sup._id)} title="Delete">
                                                     <i className="bi bi-trash"></i>
                                                 </button>

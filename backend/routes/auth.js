@@ -80,6 +80,18 @@ router.post('/login', [
         const passwordCompare = await bcrypt.compare(password, user.password);
         if (!passwordCompare) return res.status(400).json({ error: "Please try to login with correct credentials" });
 
+        // Check if employee or supplier is deactivated
+        if (role !== 'businessowner' && user.isActive === false) {
+            return res.status(403).json({ 
+                success: false,
+                error: "Your account has been deactivated by your business owner.",
+                code: "ACCOUNT_DEACTIVATED",
+                message: "Please contact your business owner to reactivate your account.",
+                userEmail: user.email,
+                userRole: role
+            });
+        }
+
         const token = jwt.sign({ id: user._id, role }, JWT_SECRET);
         const loginTime = new Date();
 

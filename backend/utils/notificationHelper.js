@@ -172,6 +172,54 @@ async function notifyBusinessOwnerAboutEmployee(
 }
 
 /**
+ * Notify Business Owner about supplier changes
+ */
+async function notifyBusinessOwnerAboutSupplier(
+  businessOwnerId,
+  supplierId,
+  action,
+  supplierName,
+  details = {}
+) {
+  const notificationTypes = {
+    created: {
+      type: 'supplier_created',
+      title: 'New Supplier Added',
+      message: `Supplier ${supplierName} has been added to your network.`
+    },
+    updated: {
+      type: 'supplier_updated',
+      title: 'Supplier Profile Updated',
+      message: `Supplier ${supplierName}'s profile has been updated.`
+    },
+    deleted: {
+      type: 'supplier_deleted',
+      title: 'Supplier Removed',
+      message: `Supplier ${supplierName} has been removed from your network.`
+    },
+    deactivated: {
+      type: 'supplier_deactivated',
+      title: 'Supplier Deactivated',
+      message: `Supplier ${supplierName}'s account has been deactivated.`
+    }
+  };
+
+  const notification = notificationTypes[action];
+  if (notification) {
+    await createNotification(
+      businessOwnerId,
+      'BusinessOwner',
+      supplierId,
+      'Supplier',
+      notification.type,
+      notification.title,
+      notification.message,
+      details
+    );
+  }
+}
+
+/**
  * Notify employees about product changes
  */
 async function notifyEmployeesAboutProduct(
@@ -1223,6 +1271,7 @@ async function checkAllProductsLowStock(businessOwnerId) {
 module.exports = {
   createNotification,
   notifyBusinessOwnerAboutEmployee,
+  notifyBusinessOwnerAboutSupplier,
   notifyEmployeesAboutProduct,
   notifyEmployeesAboutOrder,
   notifyEmployeesAboutCategory,

@@ -83,9 +83,17 @@ function Login(props) {
                 history("/dashboard");
             }
             else {
-                const apiError = json?.error || json?.message;
-                const validationError = Array.isArray(json?.errors) ? json.errors[0]?.msg : null;
-                props.showAlert(apiError || validationError || "Invalid Email or Password", "danger")
+                // Handle specific error codes
+                if (json?.code === 'ACCOUNT_DEACTIVATED') {
+                    props.showAlert(
+                        `Your ${json.userRole} account has been deactivated. Please contact your Business Owner to reactivate it.`,
+                        "warning"
+                    );
+                } else {
+                    const apiError = json?.error || json?.message;
+                    const validationError = Array.isArray(json?.errors) ? json.errors[0]?.msg : null;
+                    props.showAlert(apiError || validationError || "Invalid Email or Password", "danger")
+                }
             }
         } catch (error) {
             props.showAlert("Connection error. Please try again.", "danger");

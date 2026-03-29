@@ -171,6 +171,31 @@ const Employees = (props) => {
         }
     };
 
+    const handleReactivate = async (id, name) => {
+        if (window.confirm(`Are you sure you want to reactivate ${name}?`)) {
+            try {
+                const response = await fetch(`http://localhost:5000/api/employee/reactivate/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'auth-token': localStorage.getItem('token')
+                    }
+                });
+
+                if (response.ok) {
+                    props.showAlert(`${name} has been reactivated successfully`, 'success');
+                    // Update the employee's active status in the list
+                    setEmployees(employees.map(emp => emp._id === id ? { ...emp, isActive: true } : emp));
+                } else {
+                    const errorData = await response.json();
+                    props.showAlert(errorData.error || 'Failed to reactivate employee', 'danger');
+                }
+            } catch (error) {
+                props.showAlert('Error reactivating employee: ' + error.message, 'danger');
+            }
+        }
+    };
+
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
@@ -454,10 +479,9 @@ const Employees = (props) => {
                                     <th scope="col" className="py-2">Phone</th>
                                     <th scope="col" className="py-2">Role</th>
                                     <th scope="col" className="py-2">Warehouse</th>
-                                    {/* <th scope="col" className="py-2">Hire Location</th> */}
                                     <th scope="col" className="py-2">Joining Date</th>
                                     <th scope="col" className="py-2">Last Login</th>
-                                    {/* <th scope="col" className="py-2">Location</th> */}
+                                    <th scope="col" className="py-2">Status</th>
                                     <CanEditEmployees><th scope="col" className="py-2">Actions</th></CanEditEmployees>
                                 </tr>
                             </thead>
@@ -490,22 +514,38 @@ const Employees = (props) => {
                                                 <span className="badge bg-warning rounded-pill px-3 py-2">Unassigned</span>
                                             )}
                                         </td>
-                                        {/* <td>{warehouseMap[emp.hireAt] || emp.hireAt || 'N/A'}</td> */}
                                         <td>{formatDate(emp.jDate)}</td>
                                         <td>
                                             <small className="text-muted" title={emp.lastLogin ? new Date(emp.lastLogin).toLocaleString('en-IN') : 'Never'}>
                                                 {formatLastLogin(emp.lastLogin)}
                                             </small>
                                         </td>
-                                        {/* <td>{emp.city || ''}{emp.city && emp.country ? ', ' : ''}{emp.country || ''}</td> */}
+                                        <td>
+                                            {emp.isActive !== false ? (
+                                                <span className="badge bg-success rounded-pill px-3 py-2">
+                                                    <i className="bi bi-check-circle me-1"></i>Active
+                                                </span>
+                                            ) : (
+                                                <span className="badge bg-danger rounded-pill px-3 py-2">
+                                                    <i className="bi bi-x-circle me-1"></i>Inactive
+                                                </span>
+                                            )}
+                                        </td>
                                         <CanEditEmployees>
                                             <td className='d-flex'>
                                                 <button className="btn btn-sm btn-success me-2" onClick={() => downloadIndividualEmployeeReport(emp)} title="Download Report">
                                                     <i className="bi bi-download"></i>
                                                 </button>
-                                                <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">
-                                                    <i className="bi bi-pencil"></i>
-                                                </Link>
+                                                {emp.isActive !== false ? (
+                                                    <Link to={`/dashboard/editemployee/${emp._id}`} className="btn btn-sm btn-info me-2" title="Edit">
+                                                        <i className="bi bi-pencil"></i>
+                                                    </Link>
+                                                ) : null}
+                                                {emp.isActive === false ? (
+                                                    <button className="btn btn-sm btn-warning me-2" onClick={() => handleReactivate(emp._id, `${emp.fname} ${emp.lname || ''}`)} title="Reactivate Account">
+                                                        <i className="bi bi-arrow-counterclockwise"></i>
+                                                    </button>
+                                                ) : null}
                                                 <button className="btn btn-sm btn-danger" onClick={() => handleDelete(emp._id)} title="Delete">
                                                     <i className="bi bi-trash"></i>
                                                 </button>

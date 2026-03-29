@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fetchuser = require('../middleware/fetchuser'); // unified middleware
 const { body, validationResult } = require('express-validator');
+const { notifyBusinessOwnerAboutSupplier } = require('../utils/notificationHelper');
 
 const isValidPhoneNumber = (value) => {
   if (!value) return false;
@@ -347,7 +348,61 @@ router.post('/deactivate', fetchuser, async (req, res) => {
         supplier.isActive = false;
         await supplier.save();
 
+        // Notify business owner about supplier deactivation
+        try {
+            await notifyBusinessOwnerAboutSupplier(
+                supplier.businessowner,
+                supplier._id,
+                'deactivated',
+                supplier.fname,
+                { supplierId: supplier._id }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
         res.json({ success: true, message: "Account deactivated successfully" });
+    } catch (err) {
+        res.status(500).json({ error: "Internal Server error occurred" });
+    }
+});
+
+// Reactivate a supplier account: PUT "/api/supplier/reactivate/:supplierId"
+router.put('/reactivate/:supplierId', require('../middleware/fetchbusinessowner'), async (req, res) => {
+    try {
+        const { supplierId } = req.params;
+
+        const supplier = await Supplier.findById(supplierId);
+        if (!supplier) {
+            return res.status(404).json({ error: "Supplier not found" });
+        }
+
+        // Verify the supplier belongs to this business owner
+        if (supplier.businessowner.toString() !== req.businessowner._id.toString()) {
+            return res.status(403).json({ error: "Access denied" });
+        }
+
+        if (supplier.isActive === true) {
+            return res.status(400).json({ error: "Supplier account is already active" });
+        }
+
+        supplier.isActive = true;
+        await supplier.save();
+
+        // Notify business owner about reactivation
+        try {
+            await notifyBusinessOwnerAboutSupplier(
+                supplier.businessowner,
+                supplier._id,
+                'updated',
+                supplier.fname,
+                { supplierId: supplier._id, action: 'reactivated' }
+            );
+        } catch (notifError) {
+            // Continue even if notification fails
+        }
+
+        res.json({ success: true, message: "Supplier account reactivated successfully" });
     } catch (err) {
         res.status(500).json({ error: "Internal Server error occurred" });
     }
