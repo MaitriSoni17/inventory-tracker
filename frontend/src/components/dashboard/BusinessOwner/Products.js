@@ -6,6 +6,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { CanCreateProducts, CanDeleteProducts, CanEditProducts, CanExportReports } from '../../auth/RoleGuards';
 import { generateIndividualProductReportPDF } from '../../../utils/individualReportHelper';
+import { apiCall } from '../../../utils/apiClient';
 
 const Products = (props) => {
 
@@ -30,14 +31,16 @@ const Products = (props) => {
         // Fetch categories data
         const fetchCategories = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                const response = await apiCall('/api/category/getcategory', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
+                        'Content-Type': 'application/json'
                     }
                 });
                 if (!response.ok) {
+                    if (response.status === 429) {
+                        props.showAlert('Too many requests while loading categories. Please wait a few seconds and retry.', 'warning');
+                    }
                     return;
                 }
                 const categoryList = await response.json();
@@ -53,14 +56,16 @@ const Products = (props) => {
         // Fetch warehouses data
         const fetchWarehouses = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                const response = await apiCall('/api/warehouse/getwarehouse', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
+                        'Content-Type': 'application/json'
                     }
                 });
                 if (!response.ok) {
+                    if (response.status === 429) {
+                        props.showAlert('Too many requests while loading warehouses. Please wait a few seconds and retry.', 'warning');
+                    }
                     return;
                 }
                 const warehouseList = await response.json();
@@ -82,14 +87,18 @@ const Products = (props) => {
         // For demonstration, we'll use static data
         const fetchProducts = async () => {
             try {
-                const response = await fetch("http://localhost:5000/api/products/getproduct", {
+                const response = await apiCall('/api/products/getproduct', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'auth-token': localStorage.getItem('token')
+                        'Content-Type': 'application/json'
                     }
                 });
                 if (!response.ok) {
+                    if (response.status === 429) {
+                        props.showAlert('Too many requests while loading products. Please wait a few seconds and retry.', 'warning');
+                        setLoading(false);
+                        return;
+                    }
                     props.showAlert(`Failed to fetch products (Status ${response.status})`, "danger");
                     setLoading(false);
                     return;

@@ -2,9 +2,22 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+const isLocalRequest = (req) => {
+  const ip = String(req.ip || req.connection?.remoteAddress || '');
+  const forwardedFor = String(req.headers['x-forwarded-for'] || '');
+  const source = `${ip},${forwardedFor}`;
+  return source.includes('127.0.0.1') || source.includes('::1') || source.includes('localhost');
+};
+
 // Security headers via helmet
 function securityHeaders(app) {
-  app.use(helmet());
+  app.use(helmet({
+    // Frontend runs on a different origin in development (3000 -> 5000)
+    // and needs to load /uploads image assets.
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+  }));
   
   // Additional custom security headers
   app.use((req, res, next) => {
@@ -38,11 +51,16 @@ function corsConfig() {
 // Rate limiting - general API limit
 const generalLimiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || (isDevelopment ? 1000 : 100),
   message: 'Too many requests from this IP, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => req.user?.role === 'admin' // Don't rate limit admins
+  skip: (req) => {
+    if (req.user?.role === 'admin') return true;
+    if (req.path === '/health') return true;
+    if (isDevelopment && isLocalRequest(req)) return true;
+    return false;
+  }
 });
 
 // Stricter limit for auth endpoints (login, signup)
