@@ -1,0 +1,16 @@
+{
+  "testEnvironment": "node",
+  "coveragePathIgnorePatterns": ["/node_modules/", "/uploads/", "/logs/"],
+  "collectCoverageFrom": [
+    "**/*.js",
+    "!node_modules/**",
+    "!coverage/**",
+    "!logs/**",
+    "!uploads/**",
+    "!**/index.js"
+  ],
+  "testMatch": ["**/__tests__/**/*.test.js", "**/?(*.)+(spec|test).js"],
+  "verbose": true,
+  "testTimeout": 10000,
+  "setupFilesAfterEnv": ["<rootDir>/jest.setup.js"]
+}

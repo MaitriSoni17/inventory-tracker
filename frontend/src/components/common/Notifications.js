@@ -11,12 +11,17 @@ const Notifications = () => {
   // Fetch unread count
   const fetchUnreadCount = async () => {
     try {
-      const response = await apiCall('http://localhost:5000/api/notifications/unreadcount', {
+      const response = await apiCall('/api/notifications/unreadcount', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         }
       });
+
+      if (response.isNetworkError) {
+        setUnreadCount(0);
+        return;
+      }
 
       if (response.isUnauthorized || response.isDeactivated) {
         setUnreadCount(0);

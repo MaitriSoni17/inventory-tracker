@@ -19,10 +19,15 @@ Thumbs.db
 # Node (if any at root)
 node_modules/
 
-# Environment
-.env
-.env.local
-.env.*.local
+# Environment (never commit real secrets)
+**/.env
+**/.env.*
+**/.env.local
+**/.env.*.local
+
+# Allow safe templates to be committed
+!**/.env.example
+!**/.env*.example
 
 # Lock files (optional - remove if you want to track)
 # package-lock.json

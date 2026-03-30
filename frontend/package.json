@@ -27,6 +27,7 @@
     "react-icons-kit": "^2.0.0",
     "react-router-dom": "^7.9.4",
     "react-scripts": "5.0.1",
+    "recharts": "^3.8.1",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5"
   },
@@ -54,8 +55,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "baseline-browser-mapping": "^2.9.11"
   }
 }

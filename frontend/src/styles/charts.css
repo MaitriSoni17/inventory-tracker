@@ -1,0 +1,72 @@
+/* Chart Tooltip Styles */
+.custom-tooltip {
+  background: white;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  animation: tooltipSlideIn 0.2s ease;
+}
+
+@keyframes tooltipSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.custom-tooltip p {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+/* Recharts overrides for better styling */
+.recharts-wrapper {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.recharts-cartesian-axis-tick {
+  font-size: 12px;
+}
+
+.recharts-cartesian-axis-tick text {
+  fill: #666;
+}
+
+.recharts-default-legend {
+  padding-top: 1rem !important;
+}
+
+.recharts-legend-wrapper {
+  padding-top: 1rem !important;
+}
+
+.recharts-legend-item {
+  padding-right: 1.5rem;
+}
+
+.recharts-legend-item-text {
+  color: #666 !important;
+  font-size: 0.9rem !important;
+}
+
+/* Responsive chart sizing */
+@media (max-width: 768px) {
+  .custom-tooltip {
+    font-size: 0.85rem;
+    padding: 0.6rem;
+  }
+
+  .recharts-cartesian-axis-tick {
+    font-size: 10px;
+  }
+
+  .recharts-legend-item {
+    padding-right: 1rem;
+  }
+}

@@ -3,9 +3,33 @@
  * Automatically handles unauthorized responses and redirects to login
  */
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
+const BACKEND_RETRY_COOLDOWN_MS = 15000;
+let backendUnavailableUntil = 0;
+
+const buildApiUrl = (url) => {
+    if (/^https?:\/\//i.test(url)) {
+        return url;
+    }
+
+    const normalizedPath = url.startsWith('/') ? url : `/${url}`;
+    return `${API_BASE_URL}${normalizedPath}`;
+};
+
 export const apiCall = async (url, options = {}) => {
     try {
+        // Avoid flooding repeated failed requests while backend is offline.
+        if (Date.now() < backendUnavailableUntil) {
+            return {
+                ok: false,
+                status: 0,
+                isNetworkError: true,
+                error: 'Backend is temporarily unreachable. Please try again shortly.'
+            };
+        }
+
         const token = localStorage.getItem('token');
+        const requestUrl = buildApiUrl(url);
         
         // Prepare headers
         const headers = {
@@ -18,7 +42,7 @@ export const apiCall = async (url, options = {}) => {
         }
 
         // Make the fetch call
-        const response = await fetch(url, {
+        const response = await fetch(requestUrl, {
             ...options,
             headers
         });
@@ -78,8 +102,13 @@ export const apiCall = async (url, options = {}) => {
         return response;
 
     } catch (error) {
-        // console.error('API call error:', error);
-        throw error;
+        backendUnavailableUntil = Date.now() + BACKEND_RETRY_COOLDOWN_MS;
+        return {
+            ok: false,
+            status: 0,
+            isNetworkError: true,
+            error: error?.message || 'Network error while contacting backend.'
+        };
     }
 };
 

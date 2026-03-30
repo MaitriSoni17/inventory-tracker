@@ -761,7 +761,7 @@ router.put('/updateemployee/:id', fetchuser, upload.single('image'), [
 
         await employee.save();
 
-        console.log('Employee saved, sending notification');
+        // console.log('Employee saved, sending notification');
         // Send notification (don't fail if notification fails)
         try {
             const employeeName = `${employee.fname} ${employee.lname || ''}`.trim();

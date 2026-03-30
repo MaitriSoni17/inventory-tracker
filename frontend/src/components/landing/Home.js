@@ -62,11 +62,6 @@ function Home() {
             <p>Get intelligent insights and recommendations powered by advanced AI.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon"><i className="bi bi-graph-up"></i></div>
-            <h3>Smart Analytics</h3>
-            <p>Make data-driven decisions with comprehensive reports and forecasting.</p>
-          </div>
-          <div className="feature-card">
             <div className="feature-icon"><i className="bi bi-shield-check"></i></div>
             <h3>Enterprise Security</h3>
             <p>Your data is protected with bank-level encryption and compliance.</p>
@@ -148,7 +143,7 @@ function Home() {
             <p className="price">₹3,999<span>/month</span></p>
             <ul>
               <li>✓ Unlimited items</li>
-              <li>✓ Advanced analytics</li>
+              <li>✓ Advanced reports</li>
               <li>✓ AI chatbot</li>
               <li>✓ Priority support</li>
             </ul>

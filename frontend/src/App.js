@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 // Import enhanced responsive styles first
 import './styles/enhanced-responsive.css';
+import './styles/charts.css';
 import './App.css';
 import Home from './components/landing/Home';
 import Features from './components/landing/Features';

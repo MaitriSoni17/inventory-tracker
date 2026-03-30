@@ -287,7 +287,7 @@ const Chatbot = () => {
                 <i className="fas fa-robot me-2"></i>AI Assistant
               </h3>
               <p className="chatbot-subtitle">
-                {userRole === 'businessowner' ? 'Business Intelligence' :
+                {userRole === 'businessowner' ? 'Operations Assistant' :
                  userRole === 'employee' ? 'Task Helper' :
                  userRole === 'supplier' ? 'Supply Manager' : 'Always here to help'}
               </p>

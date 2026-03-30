@@ -1,18 +1,32 @@
 require('dotenv').config();
+
+// Validate environment variables before anything else
+const { validateEnv } = require('./config/envValidation');
+validateEnv();
+
 const connectToMongo = require('./db');
 connectToMongo();
-const express = require('express')
-const app = express()
-const port = process.env.PORT || 5000
+const express = require('express');
+const app = express();
+const port = process.env.PORT || 5000;
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { startDeletionProcessor } = require('./utils/deletionProcessor');
+const { logger, requestLogger } = require('./config/logger');
+const { securityHeaders, corsConfig, generalLimiter, authLimiter } = require('./config/security');
+const { errorHandler, asyncHandler } = require('./config/errorHandler');
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Ensure logs directory exists
+const logsDir = path.join(__dirname, 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
 }
 
 // Configure multer for file uploads
@@ -37,14 +51,32 @@ const fileFilter = (req, file, cb) => {
 
 const upload = multer({ storage, fileFilter, limits: { fileSize: 5 * 1024 * 1024 } });
 
-const cors = require('cors');
-app.use(cors());
+// ============= MIDDLEWARE SETUP =============
+
+// Security headers first
+securityHeaders(app);
+
+// CORS - after security headers
+app.use(corsConfig());
+
+// Request logging
+app.use(requestLogger);
+
+// Rate limiting - general limit for all routes
+app.use(generalLimiter);
+
+// Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded files statically
 app.use('/uploads', express.static(uploadsDir));
-app.use('/api/auth', require('./routes/auth'));
+
+// ============= API ROUTES =============
+// Auth routes have stricter rate limiting
+app.use('/api/auth', authLimiter, require('./routes/auth'));
+
+// Main API routes
 app.use('/api/products', require('./routes/products'));
 app.use('/api/businessowner', require('./routes/businessowner'));
 app.use('/api/employee', require('./routes/employee'));
@@ -63,23 +95,51 @@ app.use('/api/reports', require('./routes/reports'));
 app.use('/api/salary', require('./routes/salary'));
 app.use('/api/salarypayment', require('./routes/salarypayment'));
 
-// Global error handler middleware
-app.use((err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal Server Error';
-  res.status(statusCode).json({
-    success: false,
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+// ============= ERROR HANDLER =============
+// Global error handler - must be last
+app.use(errorHandler);
 
 // Export upload middleware for routes
 app.upload = upload;
 module.exports = upload;
 
-app.listen(port, () => {
-})
+// ============= SERVER STARTUP =============
+const server = app.listen(port, () => {
+  logger.info(`🚀 Server running on port ${port} in ${process.env.NODE_ENV} mode`);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  logger.error('Unhandled Promise Rejection', { error: err });
+  server.close(() => {
+    process.exit(1);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception', { error: err });
+  process.exit(1);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+});
 
 startDeletionProcessor();
 

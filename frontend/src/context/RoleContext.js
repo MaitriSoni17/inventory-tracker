@@ -28,7 +28,7 @@ export const RoleProvider = ({ children }) => {
             const token = localStorage.getItem('token');
             if (!token) return;
 
-            const response = await apiCall('http://localhost:5000/api/permissions/my-permissions', {
+            const response = await apiCall('/api/permissions/my-permissions', {
                 method: 'POST'
             });
 
@@ -58,12 +58,12 @@ export const RoleProvider = ({ children }) => {
             // Determine which endpoint to call based on stored role
             let endpoint = '';
             if (storedRole === 'businessowner') {
-                endpoint = 'http://localhost:5000/api/businessowner/getbusinessowner';
+                endpoint = '/api/businessowner/getbusinessowner';
             } else if (storedRole === 'supplier') {
-                endpoint = 'http://localhost:5000/api/supplier/getsupplier';
+                endpoint = '/api/supplier/getsupplier';
             } else {
                 // Default to employee for all employee types (employee, supervisor, manager)
-                endpoint = 'http://localhost:5000/api/employee/getemployee';
+                endpoint = '/api/employee/getemployee';
             }
 
             const response = await apiCall(endpoint, {
@@ -78,6 +78,13 @@ export const RoleProvider = ({ children }) => {
                 if (response.shouldRedirect && window.location.pathname !== '/login') {
                     window.location.href = '/login';
                 }
+                setLoading(false);
+                return;
+            }
+
+            // Keep current state when backend is temporarily unavailable.
+            if (response.isNetworkError) {
+                setRole(storedRole || 'employee');
                 setLoading(false);
                 return;
             }
@@ -119,7 +126,7 @@ export const RoleProvider = ({ children }) => {
             }
 
             if (currentRole !== 'businessowner') {
-                const deletionStatusResponse = await apiCall('http://localhost:5000/api/deletion/status', {
+                const deletionStatusResponse = await apiCall('/api/deletion/status', {
                     method: 'GET'
                 });
 

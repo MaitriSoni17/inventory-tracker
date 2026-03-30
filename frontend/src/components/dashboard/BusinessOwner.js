@@ -14,6 +14,7 @@ import {
     Filler
 } from 'chart.js';
 import '../../styles/dashboard-elegant.css';
+import { apiCall, parseResponse } from '../../utils/apiClient';
 
 ChartJS.register(
     LineElement,
@@ -84,35 +85,34 @@ const BusinessOwner = (props) => {
     const fetchAllData = async () => {
         try {
             const headers = {
-                'Content-Type': 'application/json',
-                'auth-token': localStorage.getItem('token')
+                'Content-Type': 'application/json'
             };
 
             // Fetch all data in parallel using Promise.all
             const [ordersRes, productsRes, warehousesRes, employeesRes] = await Promise.all([
-                fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+                apiCall('/api/customerorders/getcustomerorder', {
                     method: 'POST',
                     headers
                 }),
-                fetch('http://localhost:5000/api/products/getproduct', {
+                apiCall('/api/products/getproduct', {
                     method: 'POST',
                     headers
                 }),
-                fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                apiCall('/api/warehouse/getwarehouse', {
                     method: 'POST',
                     headers
                 }),
-                fetch('http://localhost:5000/api/employee/getallemployees', {
+                apiCall('/api/employee/getallemployees', {
                     method: 'POST',
                     headers
                 })
             ]);
 
             const [ordersData, productsData, warehousesData, employeesData] = await Promise.all([
-                ordersRes.ok ? ordersRes.json() : [],
-                productsRes.ok ? productsRes.json() : [],
-                warehousesRes.ok ? warehousesRes.json() : [],
-                employeesRes.ok ? employeesRes.json() : []
+                ordersRes.ok ? parseResponse(ordersRes) : [],
+                productsRes.ok ? parseResponse(productsRes) : [],
+                warehousesRes.ok ? parseResponse(warehousesRes) : [],
+                employeesRes.ok ? parseResponse(employeesRes) : []
             ]);
 
             setOrders(ordersData);
@@ -136,7 +136,7 @@ const BusinessOwner = (props) => {
             setLoading(false);
 
             // Check low stock alerts in the background (non-blocking)
-            fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+            apiCall('/api/notifications/check-low-stock-alerts', {
                 method: 'POST',
                 headers
             }).catch(() => {});
