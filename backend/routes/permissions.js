@@ -15,6 +15,24 @@ const getNormalizedAllowedCategories = (rawPerms) => {
     return [...new Set(source.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
 };
 
+const getRoleDefaultCategoryFilter = (businessowner, role) => ({
+    businessowner,
+    role,
+    $or: [
+        { hasCustomCategoryAccess: false },
+        { hasCustomCategoryAccess: { $exists: false } },
+        // Legacy safeguard: earlier saves could leave this flag true while still using role defaults.
+        {
+            hasCustomCategoryAccess: true,
+            $or: [
+                { allowedProductCategories: { $size: 0 } },
+                { allowedProductCategories: { $exists: false } },
+                { allowedProductCategories: null }
+            ]
+        }
+    ]
+});
+
 /**
  * Helper: check if a role is built-in
  */
@@ -199,14 +217,7 @@ router.put('/update', fetchuser, async (req, res) => {
             ? rolePermissions[role]
             : rolePermissions.customRoles.get(role.toLowerCase());
         const allowedCategories = getNormalizedAllowedCategories(updatedRolePerms);
-        const categoryFilter = {
-            businessowner: req.user._id,
-            role: role,
-            $or: [
-                { hasCustomCategoryAccess: false },
-                { hasCustomCategoryAccess: { $exists: false } }
-            ]
-        };
+        const categoryFilter = getRoleDefaultCategoryFilter(req.user._id, role);
 
         if (Array.isArray(allowedCategories)) {
             await Employee.updateMany(categoryFilter, { $set: { allowedProductCategories: allowedCategories } });
@@ -805,9 +816,17 @@ router.put('/employee/:id/product-categories', fetchuser, async (req, res) => {
             return res.status(400).json({ error: 'allowedProductCategories must be an array or null' });
         }
 
+        const isCustomCategoryAccess = Array.isArray(allowedProductCategories);
+
         const employee = await Employee.findOneAndUpdate(
             { _id: req.params.id, businessowner: req.user._id },
-            { ...updateOperation, $set: { ...(updateOperation.$set || {}), hasCustomCategoryAccess: true } },
+            {
+                ...updateOperation,
+                $set: {
+                    ...(updateOperation.$set || {}),
+                    hasCustomCategoryAccess: isCustomCategoryAccess
+                }
+            },
             { new: true }
         ).select('fname lname email role permissions hasCustomPermissions allowedProductCategories hasCustomCategoryAccess');
 
@@ -1014,14 +1033,7 @@ router.put('/sync-all', fetchuser, async (req, res) => {
             );
 
             const allowedCategories = getNormalizedAllowedCategories(rawPerms);
-            const categoryFilter = {
-                businessowner: req.user._id,
-                role: role,
-                $or: [
-                    { hasCustomCategoryAccess: false },
-                    { hasCustomCategoryAccess: { $exists: false } }
-                ]
-            };
+            const categoryFilter = getRoleDefaultCategoryFilter(req.user._id, role);
             if (Array.isArray(allowedCategories)) {
                 await Employee.updateMany(categoryFilter, { $set: { allowedProductCategories: allowedCategories } });
             } else {
@@ -1063,14 +1075,7 @@ router.put('/sync-all', fetchuser, async (req, res) => {
                 );
 
                 const allowedCategories = getNormalizedAllowedCategories(rawPerms);
-                const categoryFilter = {
-                    businessowner: req.user._id,
-                    role: roleKey,
-                    $or: [
-                        { hasCustomCategoryAccess: false },
-                        { hasCustomCategoryAccess: { $exists: false } }
-                    ]
-                };
+                const categoryFilter = getRoleDefaultCategoryFilter(req.user._id, roleKey);
                 if (Array.isArray(allowedCategories)) {
                     await Employee.updateMany(categoryFilter, { $set: { allowedProductCategories: allowedCategories } });
                 } else {

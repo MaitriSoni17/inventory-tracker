@@ -578,7 +578,27 @@ const PermissionManager = (props) => {
         return [...new Set(rolePerms.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))];
     };
 
+    const normalizeCategoryIds = (value) => {
+        if (!Array.isArray(value)) return null;
+        return [...new Set(value.map((id) => String(id || '').trim()).filter(Boolean))];
+    };
+
     const getAllCategoryIds = () => [...new Set(productCategories.map((cat) => String(cat?._id || '').trim()).filter(Boolean))];
+
+    const isEmptyCustomCategoryOverride = (employeeLike) => {
+        if (!employeeLike?.hasCustomCategoryAccess) return false;
+        const normalized = normalizeCategoryIds(employeeLike.allowedProductCategories);
+        return Array.isArray(normalized) && normalized.length === 0;
+    };
+
+    const getEffectiveEmployeeCategories = (employeeLike, explicitCategories) => {
+        if (!employeeLike) return null;
+        const normalizedExplicit = normalizeCategoryIds(explicitCategories);
+        if (employeeLike.hasCustomCategoryAccess) {
+            return normalizedExplicit;
+        }
+        return getRoleCategoryAccess(employeeLike.role);
+    };
 
     const getCategoryDropdownSummary = (selectedIds) => {
         if (!Array.isArray(selectedIds)) return 'Use role defaults';
@@ -640,13 +660,41 @@ const PermissionManager = (props) => {
     };
 
     const applyRoleCategoryAccessLocally = (roleKey, nextCategories) => {
+        const normalizedNext = normalizeCategoryIds(nextCategories);
+
         setPermissions(prev => ({
             ...prev,
             [roleKey]: {
                 ...prev[roleKey],
-                allowedProductCategories: Array.isArray(nextCategories) ? nextCategories : undefined
+                allowedProductCategories: Array.isArray(normalizedNext) ? normalizedNext : undefined
             }
         }));
+
+        setEmployees(prev => prev.map(emp => {
+            const followsRoleDefaults = !emp.hasCustomCategoryAccess || isEmptyCustomCategoryOverride(emp);
+            if (emp.role !== roleKey || !followsRoleDefaults) return emp;
+            return {
+                ...emp,
+                allowedProductCategories: Array.isArray(normalizedNext) ? normalizedNext : undefined
+            };
+        }));
+
+        setSelectedEmployee(prev => {
+            const followsRoleDefaults = !prev?.hasCustomCategoryAccess || isEmptyCustomCategoryOverride(prev);
+            if (!prev || prev.role !== roleKey || !followsRoleDefaults) return prev;
+            return {
+                ...prev,
+                allowedProductCategories: Array.isArray(normalizedNext) ? normalizedNext : undefined
+            };
+        });
+
+        if (
+            selectedEmployee &&
+            selectedEmployee.role === roleKey &&
+            (!selectedEmployee.hasCustomCategoryAccess || isEmptyCustomCategoryOverride(selectedEmployee))
+        ) {
+            setEmployeeCategoryAccess(Array.isArray(normalizedNext) ? normalizedNext : null);
+        }
     };
 
     const handleRoleCategoryRestrictionToggle = async () => {
@@ -723,7 +771,7 @@ const PermissionManager = (props) => {
     const handleEmployeeSelect = async (employee) => {
         setSelectedEmployee(employee);
         setEmployeePermissions(employee.permissions || {});
-        setEmployeeCategoryAccess(Array.isArray(employee.allowedProductCategories) ? employee.allowedProductCategories : null);
+        setEmployeeCategoryAccess(getEffectiveEmployeeCategories(employee, employee.allowedProductCategories));
     };
 
     // Toggle role-based permission
@@ -933,14 +981,22 @@ const PermissionManager = (props) => {
             }
 
             const savedCategories = Array.isArray(data.employee?.allowedProductCategories)
-                ? data.employee.allowedProductCategories
+                ? normalizeCategoryIds(data.employee.allowedProductCategories)
                 : null;
+            const hasCustomCategoryAccess = Boolean(data.employee?.hasCustomCategoryAccess);
+            const effectiveCategories = hasCustomCategoryAccess
+                ? savedCategories
+                : getRoleCategoryAccess(data.employee?.role || selectedEmployee.role);
 
-            setEmployeeCategoryAccess(savedCategories);
-            setSelectedEmployee(prev => prev ? { ...prev, allowedProductCategories: savedCategories } : prev);
+            setEmployeeCategoryAccess(effectiveCategories);
+            setSelectedEmployee(prev => prev ? {
+                ...prev,
+                allowedProductCategories: savedCategories,
+                hasCustomCategoryAccess
+            } : prev);
             setEmployees(prev => prev.map(emp =>
                 emp._id === selectedEmployee._id
-                    ? { ...emp, allowedProductCategories: savedCategories }
+                    ? { ...emp, allowedProductCategories: savedCategories, hasCustomCategoryAccess }
                     : emp
             ));
             return true;
@@ -967,7 +1023,8 @@ const PermissionManager = (props) => {
         if (!selectedEmployee) return;
 
         const currentlyRestricted = Array.isArray(employeeCategoryAccess);
-        const nextCategories = currentlyRestricted ? null : [];
+        const roleDefaultCategories = getRoleCategoryAccess(selectedEmployee.role) || [];
+        const nextCategories = currentlyRestricted ? null : roleDefaultCategories;
         setEmployeeCategoryAccess(nextCategories);
         scheduleEmployeeCategorySave(nextCategories);
         if (currentlyRestricted) {
