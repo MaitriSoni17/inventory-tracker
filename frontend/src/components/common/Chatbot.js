@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import axios from 'axios';
 import '../../styles/chatbot.css';
 
 /**
- * Parse markdown-like formatting from bot responses into React elements
+ * Memoized message content renderer
  */
-const parseFormattedText = (text) => {
+const MessageContent = memo(({ text }) => {
   if (!text) return null;
 
-  // Split by newlines and process each line
   const lines = text.split('\n');
   const elements = [];
 
@@ -17,10 +16,8 @@ const parseFormattedText = (text) => {
       elements.push(<br key={`br-${lineIdx}`} />);
     }
 
-    // Process inline formatting: **bold**, *italic*, emojis
     const parts = line.split(/(\*\*[^*]+\*\*)/g);
     const processedParts = parts.map((part, partIdx) => {
-      // Bold text
       const boldMatch = part.match(/^\*\*(.+)\*\*$/);
       if (boldMatch) {
         return <strong key={`b-${lineIdx}-${partIdx}`}>{boldMatch[1]}</strong>;
@@ -28,20 +25,12 @@ const parseFormattedText = (text) => {
       return <span key={`t-${lineIdx}-${partIdx}`}>{part}</span>;
     });
 
-    // Detect list items (•, -, numbered)
     const trimmed = line.trim();
     if (trimmed.startsWith('• ') || trimmed.startsWith('- ') || trimmed.startsWith('· ')) {
       elements.push(
         <div key={`li-${lineIdx}`} className="chat-list-item">
           <span className="chat-bullet">•</span>
-          <span>{processedParts.map((p, i) => {
-            // Remove the leading bullet from the text
-            if (i === 0 && typeof p.props?.children === 'string') {
-              const txt = p.props.children.replace(/^[•\-·]\s*/, '');
-              return <span key={`fix-${i}`}>{txt}</span>;
-            }
-            return p;
-          })}</span>
+          <span>{processedParts}</span>
         </div>
       );
     } else if (/^\d+\.\s/.test(trimmed)) {
@@ -49,13 +38,7 @@ const parseFormattedText = (text) => {
       elements.push(
         <div key={`nl-${lineIdx}`} className="chat-list-item numbered">
           <span className="chat-number">{numMatch[1]}.</span>
-          <span>{processedParts.map((p, i) => {
-            if (i === 0 && typeof p.props?.children === 'string') {
-              const txt = p.props.children.replace(/^\d+\.\s*/, '');
-              return <span key={`fix-${i}`}>{txt}</span>;
-            }
-            return p;
-          })}</span>
+          <span>{processedParts}</span>
         </div>
       );
     } else if (trimmed.length > 0) {
@@ -63,36 +46,47 @@ const parseFormattedText = (text) => {
     }
   });
 
-  return elements;
+  return <>{elements}</>;
+});
+
+MessageContent.displayName = 'MessageContent';
+
+/**
+ * Parse markdown-like formatting (cached version)
+ */
+const parseFormattedText = (text) => {
+  if (!text) return <MessageContent text="" />;
+  return <MessageContent text={text} />;
 };
 
 /**
- * Get quick action suggestions based on user role
+ * Quick actions lookup (memoized)
  */
+const QUICK_ACTIONS_MAP = {
+  businessowner: [
+    { label: '📊 Dashboard', text: 'Show my dashboard overview' },
+    { label: '📦 Stock', text: 'Show inventory status' },
+    { label: '⚠️ Low Stock', text: 'Show low stock alerts' },
+    { label: '📋 Orders', text: 'Show order status' },
+    { label: '💰 Revenue', text: 'Revenue summary' },
+    { label: '👥 Team', text: 'Show employees' },
+  ],
+  employee: [
+    { label: '📋 My Tasks', text: 'Show my dashboard' },
+    { label: '🚨 Urgent', text: 'Show urgent tasks' },
+    { label: '📦 My Orders', text: 'Show my orders' },
+    { label: '💰 Salary', text: 'My salary payments' },
+  ],
+  supplier: [
+    { label: '📦 My Orders', text: 'Show my orders' },
+    { label: '⏳ Pending', text: 'Show pending orders' },
+    { label: '💰 Revenue', text: 'My total order value' },
+    { label: '📊 Overview', text: 'Show dashboard' },
+  ],
+};
+
 const getQuickActions = (role) => {
-  const actions = {
-    businessowner: [
-      { label: '📊 Dashboard', text: 'Show my dashboard overview' },
-      { label: '📦 Stock', text: 'Show inventory status' },
-      { label: '⚠️ Low Stock', text: 'Show low stock alerts' },
-      { label: '📋 Orders', text: 'Show order status' },
-      { label: '💰 Revenue', text: 'Revenue summary' },
-      { label: '👥 Team', text: 'Show employees' },
-    ],
-    employee: [
-      { label: '📋 My Tasks', text: 'Show my dashboard' },
-      { label: '🚨 Urgent', text: 'Show urgent tasks' },
-      { label: '📦 My Orders', text: 'Show my orders' },
-      { label: '💰 Salary', text: 'My salary payments' },
-    ],
-    supplier: [
-      { label: '📦 My Orders', text: 'Show my orders' },
-      { label: '⏳ Pending', text: 'Show pending orders' },
-      { label: '💰 Revenue', text: 'My total order value' },
-      { label: '📊 Overview', text: 'Show dashboard' },
-    ],
-  };
-  return actions[role] || actions.businessowner;
+  return QUICK_ACTIONS_MAP[role] || QUICK_ACTIONS_MAP.businessowner;
 };
 
 /**
@@ -106,6 +100,48 @@ const getWelcomeMessage = (role) => {
   };
   return messages[role] || messages.businessowner;
 };
+
+/**
+ * Memoized chat message component to prevent re-renders
+ */
+const ChatMessage = memo(({ msg, onQuickAction, isLoading, formatTime, userRole }) => {
+  if (msg.sender === 'suggestions') {
+    return (
+      <div className="suggestions-row">
+        {msg.suggestions.map((s, i) => (
+          <button
+            key={i}
+            className="suggestion-chip"
+            onClick={() => onQuickAction(s.text)}
+            disabled={isLoading}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`message ${msg.sender} ${msg.isError ? 'error' : ''}`}>
+      <div className="message-content">
+        {msg.sender === 'bot' && (
+          <div className="message-avatar bot-avatar">
+            <i className="fas fa-robot"></i>
+          </div>
+        )}
+        <div className="message-bubble">
+          <div className="message-text">
+            {msg.sender === 'bot' ? parseFormattedText(msg.text) : msg.text}
+          </div>
+          <span className="message-time">{formatTime(msg.timestamp)}</span>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+ChatMessage.displayName = 'ChatMessage';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -231,10 +267,6 @@ const Chatbot = () => {
     sendMessage(inputMessage);
   };
 
-  const handleQuickAction = (text) => {
-    sendMessage(text);
-  };
-
   const handleClearChat = () => {
     setMessages([
       {
@@ -260,7 +292,11 @@ const Chatbot = () => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const quickActions = getQuickActions(userRole);
+  const quickActions = useMemo(() => getQuickActions(userRole), [userRole]);
+
+  const handleQuickActionClick = useCallback((text) => {
+    sendMessage(text);
+  }, [sendMessage]);
 
   return (
     <>
@@ -316,46 +352,16 @@ const Chatbot = () => {
           {!isMinimized && (
             <>
               <div className="chatbot-messages">
-                {messages.map((msg) => {
-                  // Render suggestion chips
-                  if (msg.sender === 'suggestions') {
-                    return (
-                      <div key={msg.id} className="suggestions-row">
-                        {msg.suggestions.map((s, i) => (
-                          <button
-                            key={i}
-                            className="suggestion-chip"
-                            onClick={() => handleQuickAction(s.text)}
-                            disabled={isLoading}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div 
-                      key={msg.id} 
-                      className={`message ${msg.sender} ${msg.isError ? 'error' : ''}`}
-                    >
-                      <div className="message-content">
-                        {msg.sender === 'bot' && (
-                          <div className="message-avatar bot-avatar">
-                            <i className="fas fa-robot"></i>
-                          </div>
-                        )}
-                        <div className="message-bubble">
-                          <div className="message-text">
-                            {msg.sender === 'bot' ? parseFormattedText(msg.text) : msg.text}
-                          </div>
-                          <span className="message-time">{formatTime(msg.timestamp)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {messages.map((msg) => (
+                  <ChatMessage 
+                    key={msg.id}
+                    msg={msg}
+                    onQuickAction={handleQuickActionClick}
+                    isLoading={isLoading}
+                    formatTime={formatTime}
+                    userRole={userRole}
+                  />
+                ))}
 
                 {/* Quick Actions on first load */}
                 {showQuickActions && messages.length <= 1 && (
@@ -366,7 +372,7 @@ const Chatbot = () => {
                         <button
                           key={i}
                           className="quick-action-btn"
-                          onClick={() => handleQuickAction(action.text)}
+                          onClick={() => handleQuickActionClick(action.text)}
                           disabled={isLoading}
                         >
                           {action.label}

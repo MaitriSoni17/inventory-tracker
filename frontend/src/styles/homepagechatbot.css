@@ -173,6 +173,7 @@
   align-items: flex-end;
   gap: 0.5rem;
   max-width: 80%;
+  min-width: 0;
 }
 
 .message.user .message-content {
@@ -189,8 +190,19 @@
   padding: 0.75rem 1rem;
   border-radius: 10px;
   word-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+  max-width: 100%;
+  min-width: 0;
   line-height: 1.5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.message-text span,
+.message-text strong {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .message.user .message-text {

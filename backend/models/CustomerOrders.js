@@ -37,5 +37,13 @@ const CustomerOrders = new Schema({
     pendingReason: { type: String, default: '' },
 });
 
+// Performance indexes for chatbot and common queries
+CustomerOrders.index({ businessowner: 1 });
+CustomerOrders.index({ businessowner: 1, status: 1 });
+CustomerOrders.index({ businessowner: 1, oDate: -1 });
+CustomerOrders.index({ employee: 1 });
+CustomerOrders.index({ status: 1 });
+CustomerOrders.index({ dDate: 1 });
+
 module.exports = mongoose.model('CustomerOrders', CustomerOrders);
 

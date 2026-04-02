@@ -5,6 +5,8 @@ const Warehouse = require('../models/Warehouse');
 const Supplier = require('../models/Supplier');
 const Employee = require('../models/Employee');
 const BusinessOwner = require('../models/BusinessOwner');
+const ChatHistory = require('../models/ChatHistory');
+const chatbotCache = require('./chatbotCache');
 const axios = require('axios');
 const { Groq } = require('groq-sdk');
 
@@ -36,7 +38,7 @@ const getConversationHistory = (userId) => {
   return conversationHistory.get(userId) || [];
 };
 
-const addToConversationHistory = (userId, role, content) => {
+const addToConversationHistory = async (userId, role, content) => {
   if (!conversationHistory.has(userId)) {
     conversationHistory.set(userId, []);
   }
@@ -45,6 +47,18 @@ const addToConversationHistory = (userId, role, content) => {
   if (history.length > MAX_HISTORY) {
     history.splice(0, history.length - MAX_HISTORY);
   }
+  
+  // Save to database for persistence
+  try {
+    await ChatHistory.create({
+      user: userId,
+      role: role === 'user' ? 'user' : 'assistant',
+      message: content,
+      sender: role,
+      timestamp: new Date()
+    });
+  } catch (e) { /* Ignore DB errors */ }
+  
   // Clean up conversations older than 1 hour
   const oneHourAgo = Date.now() - 60 * 60 * 1000;
   conversationHistory.forEach((val, key) => {
@@ -53,6 +67,9 @@ const addToConversationHistory = (userId, role, content) => {
     }
   });
 };
+
+// Start cache cleanup on module load
+chatbotCache.startCleanup();
 
 /**
  * Resolve the businessowner ID for any role
@@ -69,153 +86,222 @@ const resolveBusinessOwnerId = async (userId, role) => {
 
 /**
  * Get context based on user role and fetch relevant data
+ * OPTIMIZED: Uses aggregation pipelines and caching
  */
 const getContextForRole = async (userId, role) => {
   try {
     let context = {};
     if (!userId) return context;
 
+    // Check cache first
+    const cached = chatbotCache.get(userId, role);
+    if (cached) return cached;
+
     if (role === 'businessowner') {
-      context.products = await Product.countDocuments({ businessowner: userId });
-      context.totalOrders = await CustomerOrders.countDocuments({ businessowner: userId });
-      context.pendingOrders = await CustomerOrders.countDocuments({
-        businessowner: userId,
-        status: { $in: ['Pending', 'Processing'] }
-      });
-      context.completedOrders = await CustomerOrders.countDocuments({
-        businessowner: userId,
-        status: 'Delivered'
-      });
-      context.warehouses = await Warehouse.countDocuments({ businessowner: userId });
-      context.suppliers = await Supplier.countDocuments({ businessowner: userId });
-      context.employees = await Employee.countDocuments({ businessowner: userId });
-
-      // Employee details
-      const employeesList = await Employee.find({ businessowner: userId })
-        .select('fname lname email phone hireAt jDate role salary')
-        .limit(15);
-      context.employeesList = employeesList;
-
-      // Low stock products
-      const lowStockProducts = await Product.find({
-        businessowner: userId,
-        totalProducts: { $lt: 10 }
-      }).select('name totalProducts category price').limit(10);
-      context.lowStockProducts = lowStockProducts;
-
-      // Recent orders
-      const recentOrders = await CustomerOrders.find({ businessowner: userId })
-        .sort({ oDate: -1 })
-        .select('cName pName amount oDate status dStatus products')
-        .limit(8);
-      context.recentOrders = recentOrders;
-
-      // Revenue calculation
-      const revenueData = await CustomerOrders.aggregate([
-        { $match: { businessowner: toObjectId(userId) } },
-        { $group: { _id: null, totalRevenue: { $sum: '$amount' }, avgOrderValue: { $avg: '$amount' } } }
+      // Use single aggregation pipeline for most data
+      const [stats, products, orders, warehouses, suppliers, employees, lowStock] = await Promise.all([
+        // Get all counts and revenue in one aggregation
+        CustomerOrders.aggregate([
+          { $match: { businessowner: toObjectId(userId) } },
+          {
+            $facet: {
+              stats: [
+                {
+                  $group: {
+                    _id: null,
+                    totalOrders: { $sum: 1 },
+                    totalRevenue: { $sum: '$amount' },
+                    avgOrderValue: { $avg: '$amount' }
+                  }
+                }
+              ],
+              byStatus: [
+                {
+                  $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                  }
+                }
+              ],
+              topProducts: [
+                {
+                  $group: {
+                    _id: '$pName',
+                    totalSold: { $sum: 1 },
+                    totalRevenue: { $sum: '$amount' }
+                  }
+                },
+                { $sort: { totalSold: -1 } },
+                { $limit: 5 }
+              ],
+              recentOrders: [
+                { $sort: { oDate: -1 } },
+                { $limit: 8 },
+                { $project: { cName: 1, pName: 1, amount: 1, oDate: 1, status: 1, dStatus: 1, products: 1 } }
+              ]
+            }
+          }
+        ]),
+        Product.countDocuments({ businessowner: userId }),
+        Warehouse.countDocuments({ businessowner: userId }),
+        Supplier.countDocuments({ businessowner: userId }),
+        Employee.find({ businessowner: userId }).select('fname lname email phone hireAt jDate role salary').limit(15),
+        Product.find({ businessowner: userId, totalProducts: { $lt: 10 } }).select('name totalProducts category price').limit(10)
       ]);
-      if (revenueData.length > 0) {
-        context.totalRevenue = revenueData[0].totalRevenue;
-        context.avgOrderValue = Math.round(revenueData[0].avgOrderValue * 100) / 100;
+
+      // Extract aggregation results
+      context.products = products;
+      context.warehouses = warehouses;
+      context.suppliers = suppliers;
+      context.employeesList = employees;
+      context.lowStockProducts = lowStock;
+
+      if (stats[0]?.stats?.length > 0) {
+        const orderStats = stats[0].stats[0];
+        context.totalOrders = orderStats.totalOrders;
+        context.totalRevenue = orderStats.totalRevenue;
+        context.avgOrderValue = Math.round(orderStats.avgOrderValue * 100) / 100;
+        
+        // Count pending and completed from byStatus
+        context.pendingOrders = stats[0].byStatus.find(s => s._id === 'Pending')?.count || 0;
+        context.completedOrders = stats[0].byStatus.find(s => s._id === 'Delivered')?.count || 0;
+        context.orderStatusBreakdown = stats[0].byStatus;
+        context.topProducts = stats[0].topProducts;
+        context.recentOrders = stats[0].recentOrders;
       }
 
-      // Orders by status breakdown
-      const statusBreakdown = await CustomerOrders.aggregate([
-        { $match: { businessowner: toObjectId(userId) } },
-        { $group: { _id: '$status', count: { $sum: 1 } } }
-      ]);
-      context.orderStatusBreakdown = statusBreakdown;
-
-      // Top selling products
-      const topProducts = await CustomerOrders.aggregate([
-        { $match: { businessowner: toObjectId(userId) } },
-        { $group: { _id: '$pName', totalSold: { $sum: 1 }, totalRevenue: { $sum: '$amount' } } },
-        { $sort: { totalSold: -1 } },
-        { $limit: 5 }
-      ]);
-      context.topProducts = topProducts;
-
-      // Salary data
+      // Get salary and supplier order stats
       try {
-        const SalaryPayment = require('../models/SalaryPayment');
-        const salaryStats = await SalaryPayment.aggregate([
-          { $match: { businessowner: toObjectId(userId) } },
-          { $group: { _id: null, totalPaid: { $sum: '$amount' }, paymentCount: { $sum: 1 } } }
+        const [salaryData, supplierOrderStats] = await Promise.all([
+          SalaryPayment.aggregate([
+            { $match: { businessowner: toObjectId(userId) } },
+            {
+              $facet: {
+                stats: [
+                  {
+                    $group: {
+                      _id: null,
+                      totalPaid: { $sum: '$amount' },
+                      paymentCount: { $sum: 1 }
+                    }
+                  }
+                ],
+                recent: [
+                  { $sort: { paymentDate: -1 } },
+                  { $limit: 5 },
+                  {
+                    $lookup: {
+                      from: 'employees',
+                      localField: 'employee',
+                      foreignField: '_id',
+                      as: 'employee'
+                    }
+                  },
+                  { $unwind: { path: '$employee', preserveNullAndEmptyArrays: true } },
+                  { $project: { amount: 1, paymentDate: 1, status: 1, 'employee.fname': 1, 'employee.lname': 1 } }
+                ]
+              }
+            }
+          ]),
+          SupplierOrders.aggregate([
+            { $match: { businessowner: toObjectId(userId) } },
+            {
+              $group: {
+                _id: '$status',
+                count: { $sum: 1 },
+                totalValue: { $sum: { $multiply: ['$ounits', '$amount'] } }
+              }
+            }
+          ])
         ]);
-        if (salaryStats.length > 0) {
-          context.totalSalaryPaid = salaryStats[0].totalPaid;
-          context.salaryPaymentCount = salaryStats[0].paymentCount;
+
+        if (salaryData[0]?.stats?.length > 0) {
+          context.totalSalaryPaid = salaryData[0].stats[0].totalPaid;
+          context.salaryPaymentCount = salaryData[0].stats[0].paymentCount;
+          context.recentSalaryPayments = salaryData[0].recent;
         }
-        const recentPayments = await SalaryPayment.find({ businessowner: userId })
-          .sort({ paymentDate: -1 })
-          .populate('employee', 'fname lname')
-          .limit(5);
-        context.recentSalaryPayments = recentPayments;
+        context.supplierOrderStats = supplierOrderStats;
       } catch (e) { /* salary model may not exist */ }
 
-      // Supplier orders
-      try {
-        const SupplierOrders = require('../models/SupplierOrders');
-        const supplierOrderStats = await SupplierOrders.aggregate([
-          { $match: { businessowner: toObjectId(userId) } },
-          { $group: { _id: '$status', count: { $sum: 1 }, totalValue: { $sum: { $multiply: ['$ounits', '$amount'] } } } }
-        ]);
-        context.supplierOrderStats = supplierOrderStats;
-      } catch (e) { /* ignore */ }
-
     } else if (role === 'employee') {
-      // Resolve business owner ID so employees see all data they have access to
       const boId = await resolveBusinessOwnerId(userId, role);
       const scopeFilter = boId ? { businessowner: boId } : { employee: userId };
 
-      context.totalProducts = await Product.countDocuments(scopeFilter);
+      // Use aggregations for employee data
+      const [orderStats, products, lowStock, employee] = await Promise.all([
+        CustomerOrders.aggregate([
+          { $match: scopeFilter },
+          {
+            $facet: {
+              counts: [
+                {
+                  $group: {
+                    _id: null,
+                    totalOrders: { $sum: 1 },
+                    assignedOrders: {
+                      $sum: { $cond: [{ $eq: ['$employee', toObjectId(userId)] }, 1, 0] }
+                    }
+                  }
+                }
+              ],
+              byStatus: [
+                {
+                  $group: {
+                    _id: '$status',
+                    count: { $sum: 1 }
+                  }
+                }
+              ],
+              urgent: [
+                {
+                  $match: {
+                    status: { $in: ['Pending', 'Processing'] },
+                    dDate: { $lte: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), $gte: new Date() }
+                  }
+                },
+                { $limit: 5 },
+                { $project: { pName: 1, cName: 1, dDate: 1, status: 1, products: 1 } }
+              ],
+              overdue: [
+                {
+                  $match: {
+                    status: { $in: ['Pending', 'Processing'] },
+                    dDate: { $lt: new Date() }
+                  }
+                },
+                { $limit: 5 },
+                { $project: { pName: 1, cName: 1, dDate: 1, products: 1 } }
+              ],
+              recent: [
+                { $sort: { oDate: -1 } },
+                { $limit: 8 },
+                { $project: { pName: 1, cName: 1, status: 1, dStatus: 1, oDate: 1, dDate: 1, amount: 1, products: 1 } }
+              ]
+            }
+          }
+        ]),
+        Product.countDocuments(scopeFilter),
+        Product.find({ ...scopeFilter, totalProducts: { $lt: 10 } }).select('name totalProducts category price').limit(10),
+        Employee.findById(userId).select('fname lname role jDate salary businessowner')
+      ]);
+
+      if (orderStats[0]) {
+        if (orderStats[0].counts?.length > 0) {
+          const counts = orderStats[0].counts[0];
+          context.totalOrders = counts.totalOrders;
+          context.assignedOrders = await CustomerOrders.countDocuments({ employee: userId, ...scopeFilter });
+        }
+        context.pendingTasks = orderStats[0].byStatus.find(s => s._id === 'Pending')?.count || 0;
+        context.completedTasks = orderStats[0].byStatus.find(s => s._id === 'Delivered')?.count || 0;
+        context.urgentOrders = orderStats[0].urgent;
+        context.overdueOrders = orderStats[0].overdue;
+        context.assignedOrdersList = orderStats[0].recent;
+      }
+
+      context.totalProducts = products;
       context.assignedProducts = await Product.countDocuments({ employee: userId });
-      context.totalOrders = await CustomerOrders.countDocuments(scopeFilter);
-      context.assignedOrders = await CustomerOrders.countDocuments({ employee: userId });
-      context.pendingTasks = await CustomerOrders.countDocuments({
-        ...scopeFilter,
-        status: { $in: ['Pending', 'Processing'] }
-      });
-      context.completedTasks = await CustomerOrders.countDocuments({
-        ...scopeFilter,
-        status: 'Delivered'
-      });
+      context.lowStockProducts = lowStock;
 
-      // Recent orders within the business scope
-      const assignedOrders = await CustomerOrders.find(scopeFilter)
-        .select('pName cName status dStatus oDate dDate amount products')
-        .sort({ oDate: -1 })
-        .limit(8);
-      context.assignedOrdersList = assignedOrders;
-
-      // Low stock products
-      const lowStockProducts = await Product.find({
-        ...scopeFilter,
-        totalProducts: { $lt: 10 }
-      }).select('name totalProducts category price').limit(10);
-      context.lowStockProducts = lowStockProducts;
-
-      // Urgent orders (deadline within 3 days)
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-      const urgentOrders = await CustomerOrders.find({
-        ...scopeFilter,
-        status: { $in: ['Pending', 'Processing'] },
-        dDate: { $lte: threeDaysFromNow, $gte: new Date() }
-      }).select('pName cName dDate status products').limit(5);
-      context.urgentOrders = urgentOrders;
-
-      // Overdue orders
-      const overdueOrders = await CustomerOrders.find({
-        ...scopeFilter,
-        status: { $in: ['Pending', 'Processing'] },
-        dDate: { $lt: new Date() }
-      }).select('pName cName dDate products').limit(5);
-      context.overdueOrders = overdueOrders;
-
-      // Employee profile info
-      const employee = await Employee.findById(userId).select('fname lname role jDate salary businessowner');
       if (employee) {
         context.employeeName = `${employee.fname} ${employee.lname || ''}`.trim();
         context.employeeRole = employee.role || 'employee';
@@ -223,56 +309,69 @@ const getContextForRole = async (userId, role) => {
         context.businessOwnerId = employee.businessowner;
       }
 
-      // Salary payments for this employee
+      // Get salary payments
       try {
         const SalaryPayment = require('../models/SalaryPayment');
-        const myPayments = await SalaryPayment.find({ employee: userId })
-          .sort({ paymentDate: -1 }).limit(5);
-        context.mySalaryPayments = myPayments;
+        context.mySalaryPayments = await SalaryPayment.find({ employee: userId }).sort({ paymentDate: -1 }).limit(5);
       } catch (e) { /* ignore */ }
 
     } else if (role === 'supplier') {
       const SupplierOrders = require('../models/SupplierOrders');
-      context.totalOrders = await SupplierOrders.countDocuments({ supplier: userId });
-      context.pendingOrders = await SupplierOrders.countDocuments({
-        supplier: userId,
-        status: 'Pending'
-      });
-      context.deliveredOrders = await SupplierOrders.countDocuments({
-        supplier: userId,
-        status: 'Delivered'
-      });
-      context.cancelledOrders = await SupplierOrders.countDocuments({
-        supplier: userId,
-        status: 'Cancelled'
-      });
-
-      // Supplier order details (model fields: pName, ounits, amount, status, oDate, dDate)
-      const supplierOrders = await SupplierOrders.find({ supplier: userId })
-        .select('pName ounits amount status oDate dDate')
-        .sort({ oDate: -1 })
-        .limit(8);
-      context.recentSupplierOrders = supplierOrders;
-
-      // Revenue stats for supplier
-      const supplierRevenue = await SupplierOrders.aggregate([
-        { $match: { supplier: toObjectId(userId) } },
-        { $group: { _id: null, totalValue: { $sum: { $multiply: ['$ounits', '$amount'] } } } }
+      const [stats, supplier] = await Promise.all([
+        SupplierOrders.aggregate([
+          { $match: { supplier: toObjectId(userId) } },
+          {
+            $facet: {
+              counts: [
+                {
+                  $group: {
+                    _id: null,
+                    totalOrders: { $sum: 1 },
+                    pendingOrders: {
+                      $sum: { $cond: [{ $eq: ['$status', 'Pending'] }, 1, 0] }
+                    },
+                    deliveredOrders: {
+                      $sum: { $cond: [{ $eq: ['$status', 'Delivered'] }, 1, 0] }
+                    },
+                    cancelledOrders: {
+                      $sum: { $cond: [{ $eq: ['$status', 'Cancelled'] }, 1, 0] }
+                    },
+                    totalValue: { $sum: { $multiply: ['$ounits', '$amount'] } }
+                  }
+                }
+              ],
+              recent: [
+                { $sort: { oDate: -1 } },
+                { $limit: 8 },
+                { $project: { pName: 1, ounits: 1, amount: 1, status: 1, oDate: 1, dDate: 1 } }
+              ]
+            }
+          }
+        ]),
+        Supplier.findById(userId).select('fname lname email phone companyName')
       ]);
-      if (supplierRevenue.length > 0) {
-        context.totalOrderValue = supplierRevenue[0].totalValue;
-      }
 
-      // Supplier profile (model uses fname/lname, not sname)
-      const supplier = await Supplier.findById(userId).select('fname lname email phone companyName');
+      if (stats[0]?.counts?.length > 0) {
+        const counts = stats[0].counts[0];
+        context.totalOrders = counts.totalOrders;
+        context.pendingOrders = counts.pendingOrders;
+        context.deliveredOrders = counts.deliveredOrders;
+        context.cancelledOrders = counts.cancelledOrders;
+        context.totalOrderValue = counts.totalValue;
+      }
+      context.recentSupplierOrders = stats[0]?.recent || [];
+
       if (supplier) {
         context.supplierName = `${supplier.fname} ${supplier.lname || ''}`.trim();
         context.supplierCompany = supplier.companyName;
       }
     }
 
+    // Cache the result
+    chatbotCache.set(userId, role, context);
     return context;
   } catch (error) {
+    console.error('Error in getContextForRole:', error);
     return {};
   }
 };
@@ -506,22 +605,31 @@ const handleSpecificEntityQuery = async (userMessage, role, userId) => {
   const boId = await resolveBusinessOwnerId(userId, role);
   const dataOwnerId = boId || userId;
 
-  // Detect product-specific queries
-  if ((message.includes('product') || message.includes('item')) &&
-    (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about') || message.includes('search'))) {
-    let productName = null;
+  // Detect product-specific queries (high priority over generic dashboard/overview)
+  const isProductQuery = (message.includes('product') || message.includes('item')) &&
+    (message.includes('tell') ||
+      message.includes('show') ||
+      message.includes('detail') ||
+      message.includes('info') ||
+      message.includes('about') ||
+      message.includes('search') ||
+      message.includes('stock') ||
+      message.includes('availability') ||
+      message.includes('price') ||
+      message.includes('overview') ||
+      message.includes('status'));
 
-    let match = userMessage.match(/(?:product|item)\s+(?:named\s+)?["']?([^"'.!?]+)["']?/i);
-    if (match && match[1]) productName = match[1].trim();
-
-    if (!productName) {
-      match = userMessage.match(/(?:tell me about|show me|search for|details? (?:on|for|about))\s+(?:(?:the\s+)?product\s+)?["']?([^"'.!?]+)["']?/i);
-      if (match && match[1]) productName = match[1].trim();
-    }
+  if (isProductQuery) {
+    const productName = extractProductSearchTerm(userMessage);
 
     if (productName && (role === 'businessowner' || role === 'employee')) {
-      const products = await searchProducts(productName, dataOwnerId);
+      const products = await searchProducts(productName, dataOwnerId, 10);
       if (products.length > 0) {
+        const bestProduct = findBestProductMatch(products, productName);
+        // If user asks singular details, prefer concise single-product response
+        if (!message.includes('all products') && !message.includes('list products')) {
+          return formatSingleProductDetailsResponse(bestProduct || products[0]);
+        }
         return formatProductDetailsResponse(products);
       }
       return `No products found matching "${productName}".\n\nTry:\n• Check the spelling\n• Search by category or brand\n• Use a partial name`;
@@ -581,6 +689,78 @@ const handleSpecificEntityQuery = async (userMessage, role, userId) => {
   }
 
   return null;
+};
+
+/**
+ * Normalize extracted search term by removing intent filler words
+ */
+const sanitizeSearchTerm = (raw) => {
+  if (!raw) return null;
+
+  let term = raw
+    .replace(/[\n\r\t]/g, ' ')
+    .replace(/["'`]+/g, '')
+    .replace(/[.,!?;:]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Remove trailing/leading helper words that are not entity names
+  term = term
+    .replace(/\b(details?|detail|info|information|overview|status|stock|stocks|products?|items?)\b\s*$/i, '')
+    .replace(/^\b(the|a|an|my|our)\b\s+/i, '')
+    .trim();
+
+  return term || null;
+};
+
+/**
+ * Extract product search term from natural language queries
+ */
+const extractProductSearchTerm = (userMessage) => {
+  if (!userMessage) return null;
+
+  const patterns = [
+    // quoted product/item name
+    /\b(?:product|products|item|items)\b\s*(?:named|called)?\s*["']([^"']+)["']/i,
+    // "overview/details on X products"
+    /\b(?:overview|details?|info|status|stock|stocks)\b\s+(?:on|for|of|about)\s+([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:products?|items?)\b/i,
+    // "X products details"
+    /\b([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:products?|items?)\b\s+\b(?:details?|info|status|stock|stocks|overview)\b/i,
+    // "product X" or "item X"
+    /\b(?:product|products|item|items)\b\s+(?:named|called|for|about|of)?\s*([a-z0-9][a-z0-9\s_-]*)/i,
+    // compact product number mention like product1
+    /\b(product\s*\d+)\b/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = userMessage.match(pattern);
+    if (match && match[1]) {
+      const cleaned = sanitizeSearchTerm(match[1]);
+      if (cleaned) return cleaned;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Pick best matching product from search result
+ */
+const findBestProductMatch = (products, searchTerm) => {
+  if (!products?.length) return null;
+  const normalize = (v) => (v || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const term = normalize(searchTerm);
+
+  const exact = products.find((p) => normalize(p.name) === term);
+  if (exact) return exact;
+
+  const startsWith = products.find((p) => normalize(p.name).startsWith(term));
+  if (startsWith) return startsWith;
+
+  const contains = products.find((p) => normalize(p.name).includes(term));
+  if (contains) return contains;
+
+  return products[0];
 };
 
 /**
@@ -653,6 +833,27 @@ const formatProductDetailsResponse = (products) => {
     }
     response += `\n`;
   });
+
+  return response;
+};
+
+/**
+ * Format a single product response for specific-product questions
+ */
+const formatSingleProductDetailsResponse = (product) => {
+  if (!product) return null;
+  const details = getProductDetails(product);
+
+  let response = `📦 **${details.name}**\n\n`;
+  response += `• Category: **${details.category}**\n`;
+  response += `• Stock: **${details.stock} units** ${details.stock < 10 ? '⚠️ Low Stock' : '✅ In Stock'}\n`;
+  response += `• Price: **₹${details.price}**\n`;
+  response += `• Brand: **${details.brand || 'N/A'}**\n`;
+  response += `• Warehouses: **${details.warehouses.join(', ')}**\n`;
+
+  if (details.description !== 'No description available') {
+    response += `• Description: ${details.description}\n`;
+  }
 
   return response;
 };
@@ -779,21 +980,40 @@ const generateGroqResponse = async (userMessage, role, context, userId) => {
 /**
  * Search for specific products by name
  */
-const searchProducts = async (productName, businessownerId) => {
+const searchProducts = async (productName, businessownerId, limit = 5) => {
   try {
     const escapedName = productName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const Category = require('../models/Category');
+    const matchedCategories = await Category.find({
+      businessowner: businessownerId,
+      cName: { $regex: escapedName, $options: 'i' }
+    }).select('_id cName').lean();
+
+    const categoryIds = matchedCategories.map((c) => c._id.toString());
+    const categoryNames = matchedCategories.map((c) => c.cName).filter(Boolean);
+
+    const categoryFilter = [];
+    if (categoryIds.length > 0) {
+      categoryFilter.push({ category: { $in: categoryIds } });
+    }
+    if (categoryNames.length > 0) {
+      categoryFilter.push({ category: { $in: categoryNames } });
+    }
+
     const products = await Product.find({
       businessowner: businessownerId,
       $or: [
         { name: { $regex: escapedName, $options: 'i' } },
         { desc: { $regex: escapedName, $options: 'i' } },
-        { brand: { $regex: escapedName, $options: 'i' } }
+        { brand: { $regex: escapedName, $options: 'i' } },
+        { category: { $regex: escapedName, $options: 'i' } },
+        ...categoryFilter
       ]
-    }).select('name category price totalProducts brand mDate eDate desc warehouse').limit(5);
+    }).select('name category price totalProducts brand mDate eDate desc warehouse').limit(limit);
 
     // Resolve category and warehouse names for display
     if (products.length > 0) {
-      const Category = require('../models/Category');
       const catIds = [...new Set(products.map(p => p.category).filter(Boolean))];
       const whIds = [...new Set(products.flatMap(p => Array.isArray(p.warehouse) ? p.warehouse : (p.warehouse ? [p.warehouse] : [])).filter(Boolean))];
 

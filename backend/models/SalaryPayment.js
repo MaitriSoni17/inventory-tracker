@@ -23,4 +23,10 @@ const SalaryPayment = new Schema({
     updatedAt: { type: Date, default: Date.now }
 });
 
+// Performance indexes for chatbot and common queries
+SalaryPayment.index({ businessowner: 1 });
+SalaryPayment.index({ employee: 1 });
+SalaryPayment.index({ businessowner: 1, paymentDate: -1 });
+SalaryPayment.index({ paymentDate: -1 });
+
 module.exports = mongoose.model('SalaryPayment', SalaryPayment);

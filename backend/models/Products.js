@@ -17,5 +17,11 @@ const Product = new Schema({
     images: [{ type: String }],
 });
 
+// Performance indexes for chatbot and common queries
+Product.index({ businessowner: 1 });
+Product.index({ businessowner: 1, totalProducts: 1 });
+Product.index({ businessowner: 1, category: 1 });
+Product.index({ totalProducts: 1 });
+
 module.exports = mongoose.model('Product', Product);
 

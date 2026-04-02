@@ -369,7 +369,7 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-content">
-              <h3 className="chatbot-title">
+              <h3 className="chatbot-title text-white">
                 <i className="fas fa-robot me-2"></i>Inline Tracker
               </h3>
               <p className="chatbot-subtitle">Your inventory assistant</p>

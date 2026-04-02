@@ -19,5 +19,13 @@ const SupplierOrders = new Schema({
     desc: { type: String },
 });
 
+// Performance indexes for chatbot and common queries
+SupplierOrders.index({ businessowner: 1 });
+SupplierOrders.index({ supplier: 1 });
+SupplierOrders.index({ supplier: 1, status: 1 });
+SupplierOrders.index({ businessowner: 1, status: 1 });
+SupplierOrders.index({ status: 1 });
+SupplierOrders.index({ oDate: -1 });
+
 module.exports = mongoose.model('SupplierOrders', SupplierOrders);
 
