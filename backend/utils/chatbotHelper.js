@@ -91,7 +91,7 @@ const resolveBusinessOwnerId = async (userId, role) => {
 const getContextForRole = async (userId, role) => {
   try {
     let context = {};
-    if (!userId) return context;
+    if (!userId || !mongoose.Types.ObjectId.isValid(userId)) return context;
 
     // Check cache first
     const cached = chatbotCache.get(userId, role);
@@ -576,6 +576,35 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
     // Add user message to conversation history
     addToConversationHistory(userId, 'user', userMessage);
 
+    // Prioritize specific entity/product queries before generic coaching/model responses.
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context);
+    if (entityResponse) {
+      addToConversationHistory(userId, 'assistant', entityResponse);
+      return entityResponse;
+    }
+
+    // Prioritize channel-specific marketing advice for business owners.
+    const normalizedMessage = (userMessage || '').toLowerCase().trim();
+    if (role === 'businessowner' && isChannelMarketingQuery(normalizedMessage)) {
+      const channelResponse = getChannelMarketingResponse(context || {}, normalizedMessage);
+      addToConversationHistory(userId, 'assistant', channelResponse);
+      return channelResponse;
+    }
+
+    // Prioritize general marketing advice for business owners.
+    if (role === 'businessowner' && isMarketingIdeasQuery(normalizedMessage)) {
+      const marketingResponse = getMarketingIdeasResponse(context || {}, normalizedMessage);
+      addToConversationHistory(userId, 'assistant', marketingResponse);
+      return marketingResponse;
+    }
+
+    // Always prioritize targeted business coaching for business owners.
+    if (role === 'businessowner' && isBusinessImprovementQuery(normalizedMessage)) {
+      const coachingResponse = getBusinessImprovementResponse(context || {}, normalizedMessage);
+      addToConversationHistory(userId, 'assistant', coachingResponse);
+      return coachingResponse;
+    }
+
     let response;
 
     // Try Groq API first if available
@@ -598,12 +627,60 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
 /**
  * Handle specific entity queries (product details, order details, etc.)
  */
-const handleSpecificEntityQuery = async (userMessage, role, userId) => {
+const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}) => {
   const message = userMessage.toLowerCase().trim();
 
   // Resolve the business owner ID for data scoping
   const boId = await resolveBusinessOwnerId(userId, role);
   const dataOwnerId = boId || userId;
+
+  // Detect marketing idea queries before broader sales-idea routing.
+  if (role === 'businessowner' && isMarketingIdeasQuery(message)) {
+    const marketingContext = Object.keys(context || {}).length > 0 ? context : await getContextForRole(userId, role);
+    return getMarketingIdeasResponse(marketingContext, message);
+  }
+
+  // Detect business-problem queries before broader sales-idea routing.
+  if (role === 'businessowner' && isBusinessImprovementQuery(message)) {
+    const improvementContext = Object.keys(context || {}).length > 0 ? context : await getContextForRole(userId, role);
+    return getBusinessImprovementResponse(improvementContext, message);
+  }
+
+  // Detect channel-specific marketing queries before broader sales-idea routing.
+  if (role === 'businessowner' && isChannelMarketingQuery(message)) {
+    const channelContext = Object.keys(context || {}).length > 0 ? context : await getContextForRole(userId, role);
+    return getChannelMarketingResponse(channelContext, message);
+  }
+
+  // Detect sales/promotion idea queries before generic entity lookups.
+  const salesIdeaKeywords = /\b(sales?|sell|promotion|promote|marketing|campaign|ideas?|strategy|boost|increase)\b/;
+  const salesIdeaQuery = role === 'businessowner' && salesIdeaKeywords.test(message);
+
+  if (salesIdeaQuery) {
+    const { term: salesTerm, type: salesType } = extractSalesIdeaTarget(userMessage);
+
+    if (salesTerm) {
+      const matchedProducts = await searchProducts(salesTerm, dataOwnerId, 10);
+
+      if (matchedProducts.length > 0) {
+        const bestProduct = findBestProductMatch(matchedProducts, salesTerm) || matchedProducts[0];
+
+        if (salesType === 'category' || matchedProducts.length > 1) {
+          return formatCategorySalesIdeasResponse(salesTerm, matchedProducts);
+        }
+
+        return formatProductSalesIdeasResponse(bestProduct);
+      }
+
+      if (salesType === 'category') {
+        return formatGenericCategorySalesIdeasResponse(salesTerm);
+      }
+
+      return formatGenericProductSalesIdeasResponse(salesTerm);
+    }
+
+    return `📈 **BUSINESS SALES IDEAS**\n\nTell me which product or category you want to improve, for example:\n• Sales ideas for Product1\n• Sales ideas for Category1 products\n• How can I boost revenue for my top products?`;
+  }
 
   // Detect product-specific queries (high priority over generic dashboard/overview)
   const isProductQuery = (message.includes('product') || message.includes('item')) &&
@@ -859,6 +936,135 @@ const formatSingleProductDetailsResponse = (product) => {
 };
 
 /**
+ * Generate practical sales ideas for a specific product
+ */
+const formatProductSalesIdeasResponse = (product) => {
+  if (!product) return null;
+
+  const details = getProductDetails(product);
+  const stock = Number(details.stock || 0);
+  const price = Number(details.price || 0);
+  const lowStock = stock > 0 && stock < 10;
+
+  let response = `🚀 **SALES IDEAS FOR ${details.name.toUpperCase()}**\n\n`;
+  response += `**Product Snapshot:**\n`;
+  response += `• Price: **₹${price}**\n`;
+  response += `• Stock: **${stock} units** ${lowStock ? '⚠️ Low' : '✅'}\n`;
+  response += `• Category: **${details.category}**\n\n`;
+
+  response += `**Action Plan:**\n`;
+  response += `1. Run a limited-time offer (5-10% discount) to create urgency.\n`;
+  response += `2. Bundle ${details.name} with a complementary product to increase order value.\n`;
+  response += `3. Highlight benefits in WhatsApp/Instagram posts with real usage examples.\n`;
+  response += `4. Offer repeat-customer incentive (coupon on next order).\n`;
+
+  if (stock > 0) {
+    const targetDaily = Math.max(1, Math.ceil(stock / 14));
+    response += `5. Set a 14-day target: sell **${targetDaily} units/day** to clear current stock.\n`;
+  }
+
+  response += `\n**Track Weekly:**\n`;
+  response += `• Conversion rate from product views to orders\n`;
+  response += `• Discount campaign ROI\n`;
+  response += `• Repeat purchase % for this product\n`;
+
+  return response;
+};
+
+/**
+ * Generate sales ideas for a category using products in that category
+ */
+const formatCategorySalesIdeasResponse = (categoryTerm, products) => {
+  const categoryName = String(categoryTerm || 'this category').trim();
+  const topProducts = (products || []).slice(0, 3).map((p) => getProductDetails(p).name);
+  const lowStockProducts = (products || []).filter((p) => Number(getProductDetails(p).stock || 0) < 10);
+
+  let response = `📈 **SALES IDEAS FOR ${categoryName.toUpperCase()}**\n\n`;
+  response += `**Category Focus:**\n`;
+  response += `• Products found: **${products?.length || 0}**\n`;
+  if (topProducts.length > 0) {
+    response += `• Example products: **${topProducts.join(', ')}**\n`;
+  }
+  response += `\n**Action Plan:**\n`;
+  response += `1. Promote the best-selling item from this category as the hero product.\n`;
+  response += `2. Bundle slower items with the best-seller to move more stock.\n`;
+  response += `3. Create category-level ads/posts with a single message and one CTA.\n`;
+  response += `4. Offer a limited-time category discount to increase conversion.\n`;
+  response += `5. Track category conversion, repeat purchase rate, and stock movement weekly.\n`;
+
+  if (lowStockProducts.length > 0) {
+    response += `\n⚠️ **Low stock items in this category:**\n`;
+    lowStockProducts.slice(0, 5).forEach((p, idx) => {
+      const details = getProductDetails(p);
+      response += `${idx + 1}. ${details.name} — ${details.stock} units\n`;
+    });
+    response += `\nConsider restocking these items before running promotions.\n`;
+  }
+
+  return response;
+};
+
+/**
+ * Fallback category sales ideas when category match is not exact
+ */
+const formatGenericCategorySalesIdeasResponse = (categoryTerm) => {
+  const label = String(categoryTerm || 'this category').trim();
+  return `📈 **SALES IDEAS FOR ${label.toUpperCase()}**\n\nI could not match the category exactly, but here is a practical category-level plan:\n\n1. Pick one hero product from the category and promote it heavily.\n2. Bundle related items together to raise order value.\n3. Run a category discount for 3-5 days to drive urgency.\n4. Use social posts and WhatsApp messages focused on one use-case.\n5. Review which item moves fastest and keep more stock for it.\n\n💡 If you send the exact category name, I can make this more specific.`;
+};
+
+/**
+ * Fallback suggestions when product name is unclear/not found
+ */
+const formatGenericProductSalesIdeasResponse = (productTerm) => {
+  let response = `🚀 **SALES IDEAS FOR ${String(productTerm || 'THIS PRODUCT').toUpperCase()}**\n\n`;
+  response += `I could not match the exact product in your inventory, but here is a practical plan you can apply immediately:\n\n`;
+  response += `1. Offer a time-bound promo (5-10% off) for first-time buyers.\n`;
+  response += `2. Create a combo with a related product to increase order value.\n`;
+  response += `3. Post short benefit-focused content (before/after, use-cases, testimonials).\n`;
+  response += `4. Run repeat-customer coupon campaign (next purchase incentive).\n`;
+  response += `5. Track weekly: inquiries, conversion rate, repeat sales, and promo ROI.\n`;
+  response += `\n💡 Tip: Ask with exact name, e.g. "sales ideas for product <exact-name>", and I will give product-specific tactics.`;
+  return response;
+};
+
+/**
+ * Extract the target entity and type for sales-idea queries
+ */
+const extractSalesIdeaTarget = (userMessage) => {
+  if (!userMessage) return { term: null, type: null };
+
+  const text = userMessage.replace(/[\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const categoryPatterns = [
+    /(?:sales?|sell|promotion|promote|marketing|campaign|ideas?|strategy|boost|increase)\s+(?:ideas?\s+)?(?:for|about|on)\s+([a-z0-9][a-z0-9\s_-]*?)\s+(?:products?|items?|category|categories)\b/i,
+    /(?:for|about|on)\s+([a-z0-9][a-z0-9\s_-]*?)\s+(?:products?|items?)\b/i,
+    /\b([a-z0-9][a-z0-9\s_-]*?)\s+(?:products?|items?)\b/i,
+  ];
+
+  for (const pattern of categoryPatterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) {
+      const term = sanitizeSearchTerm(match[1]);
+      if (term) {
+        const lower = term.toLowerCase();
+        if (/\b(category|categories)\b/i.test(text) || lower.includes('category')) {
+          return { term, type: 'category' };
+        }
+        return { term, type: 'product' };
+      }
+    }
+  }
+
+  const productMatch = text.match(/\b(product\s*\d+|product|item|items)\b\s*(?:named|called|for|about|of)?\s*([a-z0-9][a-z0-9\s_-]*)/i);
+  if (productMatch?.[2]) {
+    const term = sanitizeSearchTerm(productMatch[2]);
+    if (term) return { term, type: 'product' };
+  }
+
+  return { term: null, type: null };
+};
+
+/**
  * Format order details for display
  */
 const formatOrderDetailsResponse = (orders) => {
@@ -935,8 +1141,25 @@ const generateGroqResponse = async (userMessage, role, context, userId) => {
       return generateEnhancedResponse(userMessage, role, context);
     }
 
+    const normalizedMessage = (userMessage || '').toLowerCase().trim();
+
+    // Keep channel-specific marketing advice deterministic for business owners.
+    if (role === 'businessowner' && isChannelMarketingQuery(normalizedMessage)) {
+      return getChannelMarketingResponse(context || {}, normalizedMessage);
+    }
+
+    // Keep marketing advice deterministic for business owners.
+    if (role === 'businessowner' && isMarketingIdeasQuery(normalizedMessage)) {
+      return getMarketingIdeasResponse(context || {}, normalizedMessage);
+    }
+
+    // Keep advisory responses deterministic for business improvement questions.
+    if (role === 'businessowner' && isBusinessImprovementQuery(normalizedMessage)) {
+      return getBusinessImprovementResponse(context || {}, normalizedMessage);
+    }
+
     // First check for specific entity queries that need DB lookups
-    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId);
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context);
     if (entityResponse) return entityResponse;
 
     const systemPrompt = generateSystemPrompt(role);
@@ -1158,6 +1381,21 @@ const getOrderDetails = (order) => {
 const generateEnhancedResponse = (userMessage, role, context) => {
   const message = userMessage.toLowerCase().trim();
 
+  // Prioritize channel-specific marketing coaching for business owners
+  if (role === 'businessowner' && isChannelMarketingQuery(message)) {
+    return getChannelMarketingResponse(context, message);
+  }
+
+  // Prioritize marketing coaching for business owners
+  if (role === 'businessowner' && isMarketingIdeasQuery(message)) {
+    return getMarketingIdeasResponse(context, message);
+  }
+
+  // Prioritize business improvement coaching for business owners
+  if (role === 'businessowner' && isBusinessImprovementQuery(message)) {
+    return getBusinessImprovementResponse(context, message);
+  }
+
   const intents = {
     greeting: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy', 'greetings'],
     dashboard: ['dashboard', 'overview', 'summary', 'business summary', 'how is business', 'how are things'],
@@ -1171,6 +1409,7 @@ const generateEnhancedResponse = (userMessage, role, context) => {
     revenue_info: ['revenue', 'income', 'earning', 'sales', 'profit', 'money'],
     top_products: ['top product', 'best selling', 'popular', 'top selling', 'most sold'],
     urgent_tasks: ['urgent', 'overdue', 'deadline', 'due soon', 'priority', 'critical'],
+    business_growth: ['improve business', 'grow business', 'increase sales', 'improve revenue', 'business problem', 'business issue', 'need suggestion', 'suggestion for business', 'how to improve'],
     reports: ['report', 'analytics', 'export', 'download', 'generate report'],
     help: ['help', 'what can you do', 'capabilities', 'features', 'commands'],
     thanks: ['thank', 'thanks', 'appreciate', 'great', 'awesome', 'perfect', 'good job'],
@@ -1211,6 +1450,10 @@ const generateEnhancedResponse = (userMessage, role, context) => {
       return getTopProductsResponse(role, context);
     case 'urgent_tasks':
       return getUrgentTasksResponse(role, context);
+    case 'business_growth':
+      return role === 'businessowner'
+        ? getBusinessImprovementResponse(context, message)
+        : `Business growth suggestions are available for business owners. I can still help you with your role-specific tasks.`;
     case 'reports':
       return getReportsHelpResponse(role);
     case 'help':
@@ -1220,6 +1463,243 @@ const generateEnhancedResponse = (userMessage, role, context) => {
     default:
       return getDefaultResponse(role);
   }
+};
+
+const isBusinessImprovementQuery = (message) => {
+  const strategyKeywords = [
+    'improve', 'increase', 'grow', 'boost', 'optimize', 'suggest', 'advice',
+    'strategy', 'problem', 'issue', 'help', 'fix', 'plan', 'solution',
+    'idea', 'ideas', 'sell', 'marketing', 'promotion',
+    'what should i do', 'what to do', 'how to improve', 'how can i improve'
+  ];
+  const businessKeywords = ['business', 'sales', 'revenue', 'orders', 'stock', 'inventory', 'customer', 'profit', 'team', 'supplier'];
+  const issueSignals = ['low', 'down', 'dropped', 'drop', 'decline', 'decreasing', 'stuck', 'not improving', 'poor'];
+
+  const hasBusinessKeyword = businessKeywords.some((kw) => message.includes(kw));
+  const hasStrategyKeyword = strategyKeywords.some((kw) => message.includes(kw));
+  const hasIssueSignal = issueSignals.some((kw) => message.includes(kw));
+
+  // Trigger if query is clearly business + strategy OR business + problem language.
+  return hasBusinessKeyword && (hasStrategyKeyword || hasIssueSignal);
+};
+
+const isMarketingIdeasQuery = (message) => {
+  const marketingKeywords = ['marketing', 'market', 'advertise', 'advertising', 'promotion', 'promote', 'campaign', 'brand', 'branding', 'reach', 'awareness', 'social media', 'ads', 'offer', 'referral'];
+  const ideaKeywords = ['idea', 'ideas', 'strategy', 'strategies', 'suggest', 'suggestion', 'how to', 'what should', 'what can'];
+  const businessKeywords = ['business', 'sales', 'customers', 'customer', 'product', 'products', 'store', 'shop', 'brand', 'revenue'];
+
+  const hasMarketingKeyword = marketingKeywords.some((kw) => message.includes(kw));
+  const hasIdeaKeyword = ideaKeywords.some((kw) => message.includes(kw));
+  const hasBusinessKeyword = businessKeywords.some((kw) => message.includes(kw));
+
+  return hasMarketingKeyword && (hasIdeaKeyword || hasBusinessKeyword);
+};
+
+const isChannelMarketingQuery = (message) => {
+  const channelKeywords = ['instagram', 'whatsapp', 'facebook', 'social', 'offline', 'local', 'paid ads', 'google ads', 'ads', 'email'];
+  const ideaKeywords = ['idea', 'ideas', 'strategy', 'strategies', 'suggest', 'suggestion', 'how to', 'what should', 'what can'];
+  return channelKeywords.some((kw) => message.includes(kw)) && ideaKeywords.some((kw) => message.includes(kw));
+};
+
+const getChannelMarketingResponse = (context, message = '') => {
+  const totalProducts = context.products || context.totalProducts || 0;
+  const topProducts = context.topProducts || [];
+
+  const channel =
+    message.includes('instagram') ? 'Instagram' :
+    message.includes('whatsapp') ? 'WhatsApp' :
+    message.includes('facebook') ? 'Facebook' :
+    message.includes('google ads') || message.includes('paid ads') || message.includes('ads') ? 'Paid Ads' :
+    message.includes('offline') || message.includes('local') ? 'Offline' :
+    'Marketing';
+
+  let response = `📣 **${channel.toUpperCase()} IDEAS FOR YOUR BUSINESS**\n\n`;
+  response += `**Quick Context:**\n`;
+  response += `• Products: **${totalProducts}**\n`;
+  if (topProducts.length > 0) {
+    response += `• Best sellers: **${topProducts.slice(0, 3).map((p) => p._id).join(', ')}**\n`;
+  }
+
+  if (channel === 'Instagram') {
+    response += `\n**Instagram Ideas:**\n`;
+    response += `1. Post short reels showing product benefits or before/after results.\n`;
+    response += `2. Use story polls and countdowns for new offers.\n`;
+    response += `3. Share customer testimonials as carousel posts.\n`;
+    response += `4. Use a consistent visual theme with one CTA per post.\n`;
+    response += `5. Pin your best-selling products and promote them in highlights.\n`;
+  } else if (channel === 'WhatsApp') {
+    response += `\n**WhatsApp Ideas:**\n`;
+    response += `1. Send weekly broadcast offers with one clear CTA.\n`;
+    response += `2. Share product photos with short benefit-driven captions.\n`;
+    response += `3. Use status updates for new stock, offers, and social proof.\n`;
+    response += `4. Create a referral message to encourage sharing.\n`;
+    response += `5. Follow up with warm leads after 1-2 days.\n`;
+  } else if (channel === 'Facebook') {
+    response += `\n**Facebook Ideas:**\n`;
+    response += `1. Post offer banners and local community content.\n`;
+    response += `2. Share customer reviews and product-use stories.\n`;
+    response += `3. Join local groups and share useful updates, not just promotions.\n`;
+    response += `4. Boost only the posts that already get good engagement.\n`;
+    response += `5. Use local targeting for nearby customers.\n`;
+  } else if (channel === 'Paid Ads') {
+    response += `\n**Paid Ads Ideas:**\n`;
+    response += `1. Start with a small daily budget on your best-selling product.\n`;
+    response += `2. Test two creatives: one product image and one short video.\n`;
+    response += `3. Retarget people who clicked but didn’t buy.\n`;
+    response += `4. Send traffic to one specific product, not your whole dashboard.\n`;
+    response += `5. Track cost per lead and conversion rate every week.\n`;
+  } else {
+    response += `\n**Channel Ideas:**\n`;
+    response += `1. Post content regularly with a single call to action.\n`;
+    response += `2. Share customer proof and limited-time offers.\n`;
+    response += `3. Promote one hero product at a time.\n`;
+  }
+
+  response += `\n💡 If you want, I can make this even more specific for product launches, offers, or local growth.`;
+  return response;
+};
+
+const getMarketingIdeasResponse = (context, message = '') => {
+  const totalProducts = context.products || context.totalProducts || 0;
+  const totalOrders = context.totalOrders || 0;
+  const totalRevenue = context.totalRevenue || 0;
+  const topProducts = context.topProducts || [];
+  const lowStockCount = context.lowStockProducts?.length || 0;
+
+  const wantsOnline = /online|social|facebook|instagram|whatsapp|digital|ads|google/.test(message);
+  const wantsLocal = /local|nearby|shop|store|walk-in|customers/.test(message);
+  const wantsOffers = /offer|discount|sale|coupon|deal|promotion/.test(message);
+
+  let response = `📣 **MARKETING IDEAS FOR YOUR BUSINESS**\n\n`;
+  response += `**Quick Context:**\n`;
+  response += `• Products: **${totalProducts}**\n`;
+  response += `• Orders: **${totalOrders}**\n`;
+  response += `• Revenue: **₹${Number(totalRevenue || 0).toLocaleString()}**\n`;
+  if (lowStockCount > 0) {
+    response += `• Low stock items: **${lowStockCount}**\n`;
+  }
+
+  response += `\n**High-Impact Marketing Ideas:**\n`;
+  response += `1. Post short before/after or use-case content on Instagram, Facebook, and WhatsApp statuses.\n`;
+  response += `2. Ask happy customers for reviews and turn them into social proof posts.\n`;
+  response += `3. Run a referral offer: give a discount to both the referrer and the new customer.\n`;
+  response += `4. Create bundle offers around your best-selling products to increase conversion.\n`;
+  response += `5. Send weekly WhatsApp broadcast messages with one clear offer and one CTA.\n`;
+
+  if (wantsOnline || topProducts.length > 0) {
+    response += `\n**Online Growth Ideas:**\n`;
+    response += `• Promote top-selling items first: ${topProducts.slice(0, 3).map((p) => p._id).join(', ') || 'your best sellers'}\n`;
+    response += `• Use 10-15 second videos showing how the product solves a problem.\n`;
+    response += `• Test a small paid ad budget on the best-performing product page or post.\n`;
+  }
+
+  if (wantsLocal) {
+    response += `\n**Local Marketing Ideas:**\n`;
+    response += `• Put QR codes on bills, packaging, and shop signage for easy sharing.\n`;
+    response += `• Ask repeat customers to share location-tagged posts or stories.\n`;
+    response += `• Offer a "buy today / pick up today" deal to increase footfall.\n`;
+  }
+
+  if (wantsOffers) {
+    response += `\n**Offer Ideas:**\n`;
+    response += `• Limited-time 5-10% discount\n`;
+    response += `• Buy 2 get 1 style bundle\n`;
+    response += `• Free delivery above a threshold\n`;
+  }
+
+  response += `\n**Track Weekly:**\n`;
+  response += `• Leads / inquiries\n`;
+  response += `• Conversion rate\n`;
+  response += `• Repeat purchases\n`;
+  response += `• ROI of each campaign\n`;
+
+  response += `\n💡 If you want, I can also give ideas for one channel only, like Instagram, WhatsApp, offline, or paid ads.`;
+  return response;
+};
+
+const getBusinessImprovementResponse = (context, message = '') => {
+  const suggestions = [];
+  const nextSteps = [];
+
+  const totalOrders = context.totalOrders || 0;
+  const pendingOrders = context.pendingOrders || 0;
+  const totalRevenue = context.totalRevenue || 0;
+  const avgOrderValue = context.avgOrderValue || 0;
+  const lowStockCount = context.lowStockProducts?.length || 0;
+  const topProducts = context.topProducts || [];
+
+  const pendingRatio = totalOrders > 0 ? pendingOrders / totalOrders : 0;
+
+  const asksSalesHelp = /sales|revenue|profit|income|grow/.test(message);
+  const asksStockHelp = /stock|inventory|reorder|out of stock|low stock/.test(message);
+  const asksOrderHelp = /order|delivery|pending|shipment/.test(message);
+  const asksTeamHelp = /employee|team|staff|worker/.test(message);
+  const asksSupplierHelp = /supplier|vendor|procurement/.test(message);
+
+  if (asksSalesHelp || (!asksStockHelp && !asksOrderHelp && !asksTeamHelp && !asksSupplierHelp)) {
+    if (topProducts.length > 0) {
+      suggestions.push(`Focus promotions on your top products (${topProducts.slice(0, 3).map(p => p._id).join(', ')}) to lift revenue faster.`);
+    } else {
+      suggestions.push(`Track best-selling products weekly and run focused promotions on your top 3 items.`);
+    }
+
+    if (avgOrderValue > 0) {
+      const target = Math.round(avgOrderValue * 1.15);
+      suggestions.push(`Increase average order value from **₹${Math.round(avgOrderValue)}** to about **₹${target}** using bundles and minimum-order discounts.`);
+    } else {
+      suggestions.push(`Create bundle offers (fast-moving + slow-moving items) to improve order value.`);
+    }
+
+    if (totalRevenue > 0) {
+      nextSteps.push(`Set a 30-day revenue target: current **₹${totalRevenue.toLocaleString()}**, target **₹${Math.round(totalRevenue * 1.12).toLocaleString()}** (+12%).`);
+    }
+  }
+
+  if (asksOrderHelp || pendingRatio > 0.35) {
+    suggestions.push(`Reduce pending orders by introducing a daily dispatch cutoff and assigning owner-wise order buckets.`);
+    if (totalOrders > 0) {
+      suggestions.push(`Pending orders are **${pendingOrders}/${totalOrders}**. Prioritize the oldest pending orders first to improve completion rate.`);
+    }
+    nextSteps.push(`Create an SLA board: Pending > 48h, Processing > 72h, Delivered target within promised date.`);
+  }
+
+  if (asksStockHelp || lowStockCount > 0) {
+    if (lowStockCount > 0) {
+      suggestions.push(`You have **${lowStockCount}** low-stock products. Reorder by priority (high-demand items first).`);
+    }
+    suggestions.push(`Set product-level reorder points and auto-review low stock every morning.`);
+    nextSteps.push(`For each low-stock SKU, define min stock, lead time, and safety stock to avoid stock-outs.`);
+  }
+
+  if (asksTeamHelp) {
+    suggestions.push(`Track team productivity by orders completed per employee and on-time completion rate.`);
+    suggestions.push(`Use weekly task reviews: top blockers, delayed orders, and corrective actions.`);
+  }
+
+  if (asksSupplierHelp) {
+    suggestions.push(`Rate suppliers by delivery timeliness, quality issues, and cost consistency each month.`);
+    suggestions.push(`Split critical purchases across at least 2 suppliers to reduce risk.`);
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push(`Share your exact problem (for example: low sales, too many pending orders, stock-outs, or supplier delays), and I will give a targeted action plan.`);
+  }
+
+  let response = `📈 **BUSINESS IMPROVEMENT SUGGESTIONS**\n\n`;
+  response += `**Recommended Actions:**\n`;
+  suggestions.slice(0, 6).forEach((item, idx) => {
+    response += `${idx + 1}. ${item}\n`;
+  });
+
+  if (nextSteps.length > 0) {
+    response += `\n**Immediate Next Steps (This Week):**\n`;
+    nextSteps.slice(0, 3).forEach((step) => {
+      response += `• ${step}\n`;
+    });
+  }
+
+  response += `\n💡 Tell me your specific challenge (example: \"sales are low\" or \"too many pending orders\") and I will give a focused plan.`;
+  return response;
 };
 
 /**
@@ -1679,7 +2159,7 @@ const extractStatus = (message) => {
 const generateIntelligentResponse = async (userMessage, role, context, userId) => {
   try {
     // Check for specific entity queries first
-    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId);
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context);
     if (entityResponse) return entityResponse;
 
     // Fetch context if needed
