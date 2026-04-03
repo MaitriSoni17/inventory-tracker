@@ -4,6 +4,8 @@ const CustomerOrders = require('../models/CustomerOrders');
 const Warehouse = require('../models/Warehouse');
 const Supplier = require('../models/Supplier');
 const Employee = require('../models/Employee');
+const SalaryPayment = require('../models/SalaryPayment');
+const SupplierOrders = require('../models/SupplierOrders');
 const BusinessOwner = require('../models/BusinessOwner');
 const ChatHistory = require('../models/ChatHistory');
 const chatbotCache = require('./chatbotCache');
@@ -99,7 +101,7 @@ const getContextForRole = async (userId, role) => {
 
     if (role === 'businessowner') {
       // Use single aggregation pipeline for most data
-      const [stats, products, orders, warehouses, suppliers, employees, lowStock] = await Promise.all([
+      const [stats, products, warehouses, suppliers, employees, lowStock] = await Promise.all([
         // Get all counts and revenue in one aggregation
         CustomerOrders.aggregate([
           { $match: { businessowner: toObjectId(userId) } },
@@ -154,6 +156,8 @@ const getContextForRole = async (userId, role) => {
       context.warehouses = warehouses;
       context.suppliers = suppliers;
       context.employeesList = employees;
+      context.employees = employees.length;
+      context.totalEmployees = employees.length;
       context.lowStockProducts = lowStock;
 
       if (stats[0]?.stats?.length > 0) {
@@ -316,7 +320,6 @@ const getContextForRole = async (userId, role) => {
       } catch (e) { /* ignore */ }
 
     } else if (role === 'supplier') {
-      const SupplierOrders = require('../models/SupplierOrders');
       const [stats, supplier] = await Promise.all([
         SupplierOrders.aggregate([
           { $match: { supplier: toObjectId(userId) } },
@@ -468,6 +471,14 @@ BUSINESS OVERVIEW:
       formattedContext += `\n\nTEAM MEMBERS:`;
       context.employeesList.forEach(emp => {
         formattedContext += `\n- ${emp.fname} ${emp.lname || ''} (${emp.email}) — Role: ${emp.role || 'employee'}`;
+      });
+    }
+
+    const salaryAssignments = getSalaryAssignments(context.employeesList);
+    if (salaryAssignments.length) {
+      formattedContext += `\n\nSALARY ASSIGNMENTS:`;
+      salaryAssignments.forEach((emp, i) => {
+        formattedContext += `\n${i + 1}. ${emp.fname} ${emp.lname || ''} — ${formatSalaryLine(emp)}`;
       });
     }
 
@@ -628,7 +639,7 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
  * Handle specific entity queries (product details, order details, etc.)
  */
 const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}) => {
-  const message = userMessage.toLowerCase().trim();
+  const message = normalizeQueryText(userMessage);
 
   // Resolve the business owner ID for data scoping
   const boId = await resolveBusinessOwnerId(userId, role);
@@ -650,6 +661,46 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
   if (role === 'businessowner' && isChannelMarketingQuery(message)) {
     const channelContext = Object.keys(context || {}).length > 0 ? context : await getContextForRole(userId, role);
     return getChannelMarketingResponse(channelContext, message);
+  }
+
+  // Detect specific employee queries by role/name/email before broader category/salary routing.
+  if (role === 'businessowner' || role === 'employee') {
+    const employeeCriteria = extractEmployeeSearchCriteria(userMessage);
+    if (employeeCriteria && isEmployeeDetailsQuery(message, userMessage)) {
+      const matchedEmployees = await searchEmployees(employeeCriteria, dataOwnerId, 10);
+      if (matchedEmployees.length > 0) {
+        return formatEmployeeDetailsByQueryResponse(matchedEmployees, employeeCriteria);
+      }
+
+      return `No employee found for ${employeeCriteria.label}.\n\nTry:\n• Use exact email (example: manager1@test.com)\n• Use exact role (example: manager)\n• Use full or partial name`;
+    }
+
+    // Ask clarifying question when employee details are requested but target is missing.
+    if (isEmployeeDetailsQuery(message, userMessage)) {
+      return buildClarificationResponse('employee', 'show employee details for manager1@test.com or role manager');
+    }
+  }
+
+  // Detect category queries first so they do not fall through to product clarification.
+  if (message.includes('category') || message.includes('categories')) {
+    if (role === 'businessowner' || role === 'employee') {
+      const categories = await getCategoryDetails(dataOwnerId);
+      const categoryName = extractCategorySearchTerm(userMessage);
+
+      if (categoryName) {
+        const filteredCategories = categories.filter((category) => {
+          const categoryLabel = normalizeQueryText(category.name);
+          const searchLabel = normalizeQueryText(categoryName);
+          return categoryLabel.includes(searchLabel) || searchLabel.includes(categoryLabel);
+        });
+
+        if (filteredCategories.length > 0) return formatCategoryDetailsResponse(filteredCategories);
+        return `No category found matching "${categoryName}".\n\nTry:\n• Check the spelling\n• Use the exact category name\n• Ask for a broader category overview`;
+      }
+
+      if (categories.length > 0) return formatCategoryDetailsResponse(categories);
+      return `No categories found yet. Create categories from your dashboard to organize products.`;
+    }
   }
 
   // Detect sales/promotion idea queries before generic entity lookups.
@@ -711,21 +762,15 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
       }
       return `No products found matching "${productName}".\n\nTry:\n• Check the spelling\n• Search by category or brand\n• Use a partial name`;
     }
+
+    return buildClarificationResponse('product', 'show me details for product Product1');
   }
 
   // Detect order-specific queries
   if ((message.includes('order') &&
     (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about') || message.includes('search'))) ||
     message.includes('customer order')) {
-    let orderTerm = null;
-
-    let match = userMessage.match(/order\s+(?:for\s+)?["']?([^"'.!?]+)["']?/i);
-    if (match && match[1]) orderTerm = match[1].trim();
-
-    if (!orderTerm) {
-      match = userMessage.match(/(?:tell me about|show me|details? (?:on|for|about))\s+(?:(?:the\s+)?order\s+)?["']?([^"'.!?]+)["']?/i);
-      if (match && match[1]) orderTerm = match[1].trim();
-    }
+    const orderTerm = extractOrderSearchTerm(userMessage);
 
     if (orderTerm && (role === 'businessowner' || role === 'employee')) {
       const orders = await searchOrders(orderTerm, dataOwnerId);
@@ -734,25 +779,34 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
       }
       return `No orders found matching "${orderTerm}".\n\nTry searching by:\n• Customer name\n• Product name`;
     }
-  }
 
-  // Detect category queries
-  if (message.includes('category') || message.includes('categories')) {
-    if (role === 'businessowner' || role === 'employee') {
-      const categories = await getCategoryDetails(dataOwnerId);
-      if (categories.length > 0) return formatCategoryDetailsResponse(categories);
-      return `No categories found yet. Create categories from your dashboard to organize products.`;
-    }
+    return buildClarificationResponse('order', 'show me details for order 123 or order for John');
   }
 
   // Detect warehouse queries with details
   if ((message.includes('warehouse') || message.includes('warehouses')) &&
     (message.includes('detail') || message.includes('address') || message.includes('manager') || message.includes('location') || message.includes('info') || message.includes('show') || message.includes('list'))) {
+    const warehouseName = extractWarehouseSearchTerm(userMessage);
+
     if (role === 'businessowner' || role === 'employee') {
       const warehouses = await getWarehouseDetails(dataOwnerId);
+
+      if (warehouseName) {
+        const filteredWarehouses = warehouses.filter((warehouse) => {
+          const warehouseLabel = normalizeQueryText(warehouse.wName);
+          const searchLabel = normalizeQueryText(warehouseName);
+          return warehouseLabel.includes(searchLabel) || searchLabel.includes(warehouseLabel);
+        });
+
+        if (filteredWarehouses.length > 0) return formatWarehouseDetailsResponse(filteredWarehouses);
+        return `No warehouse found matching "${warehouseName}".\n\nTry:\n• Check the spelling\n• Use the exact warehouse name\n• Ask for a general warehouse overview`;
+      }
+
       if (warehouses.length > 0) return formatWarehouseDetailsResponse(warehouses);
       return `No warehouses set up yet. Add warehouses from your dashboard to manage inventory locations.`;
     }
+
+    return buildClarificationResponse('warehouse', 'show me details for warehouse Main Branch');
   }
 
   // Detect salary/payment queries
@@ -781,13 +835,56 @@ const sanitizeSearchTerm = (raw) => {
     .replace(/\s+/g, ' ')
     .trim();
 
+  term = term
+    .replace(/^(can\s+you|could\s+you|would\s+you|please|show\s+me|tell\s+me|give\s+me|share|need|i\s+need)\s+/i, '')
+    .replace(/\s+(please|now)$/i, '')
+    .trim();
+
   // Remove trailing/leading helper words that are not entity names
   term = term
     .replace(/\b(details?|detail|info|information|overview|status|stock|stocks|products?|items?)\b\s*$/i, '')
     .replace(/^\b(the|a|an|my|our)\b\s+/i, '')
+    .replace(/^(can\s+you|could\s+you|would\s+you|please|show\s+me|tell\s+me|give\s+me|share|need|i\s+need)\s*/i, '')
     .trim();
 
+  if (/^(this|that|it|one|something|anything|product|item|share|show|tell|give|need)$/i.test(term)) {
+    return null;
+  }
+
   return term || null;
+};
+
+/**
+ * Normalize user input for intent detection and matching
+ */
+const normalizeQueryText = (userMessage = '') => {
+  return String(userMessage)
+    .toLowerCase()
+    .replace(/[\n\r\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+/**
+ * Ask the user for the missing entity name when the query is specific but incomplete
+ */
+const buildClarificationResponse = (entityLabel, example) => {
+  const safeLabel = entityLabel || 'item';
+  return `I understand you want ${safeLabel} details, but I need the exact ${safeLabel} name to answer precisely.\n\nTry: ${example}`;
+};
+
+const getSalaryAssignments = (employeesList = []) => {
+  return (employeesList || []).filter((emp) => Number(emp?.salary?.baseSalary || 0) > 0);
+};
+
+const formatSalaryLine = (employee) => {
+  const salary = employee?.salary || {};
+  const amount = Number(salary.baseSalary || 0);
+  const currency = salary.currency || 'INR';
+  const frequency = salary.paymentFrequency || 'monthly';
+  const updatedAt = salary.lastUpdated ? new Date(salary.lastUpdated).toLocaleDateString() : 'N/A';
+
+  return `₹${amount.toLocaleString()} ${currency} / ${frequency} (updated ${updatedAt})`;
 };
 
 /**
@@ -821,6 +918,228 @@ const extractProductSearchTerm = (userMessage) => {
 };
 
 /**
+ * Extract category search term from natural language queries
+ */
+const extractCategorySearchTerm = (userMessage) => {
+  if (!userMessage) return null;
+
+  const patterns = [
+    /\b(?:category|categories)\b\s*(?:named|called|for|about|of)?\s*["']?([a-z0-9][a-z0-9\s_-]*)/i,
+    /\b(?:details?|info|information|overview|status|products?)\b\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:category|categories)\b/i,
+    /\b([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:category|categories)\b/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = userMessage.match(pattern);
+    if (match && match[1]) {
+      const cleaned = sanitizeSearchTerm(match[1]);
+      if (cleaned) return cleaned;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Extract warehouse search term from natural language queries
+ */
+const extractWarehouseSearchTerm = (userMessage) => {
+  if (!userMessage) return null;
+
+  const patterns = [
+    /\b(?:warehouse|warehouses)\b\s*(?:named|called|for|about|of)?\s*["']?([a-z0-9][a-z0-9\s_-]*)/i,
+    /\b(?:details?|info|information|overview|status|location|address|manager)\b\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:warehouse|warehouses)\b/i,
+    /\b([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:warehouse|warehouses)\b/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = userMessage.match(pattern);
+    if (match && match[1]) {
+      const cleaned = sanitizeSearchTerm(match[1]);
+      if (cleaned) return cleaned;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Extract order search term from natural language queries
+ */
+const extractOrderSearchTerm = (userMessage) => {
+  if (!userMessage) return null;
+
+  const patterns = [
+    /\b(?:order|orders)\b\s+details?\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*)/i,
+    /\b(?:order|orders)\b\s*(?:named|called|for|about|of)?\s*["']?([^"'.!?]+)["']?/i,
+    /\b(?:details?|info|information|status|tracking|update)\b\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:order|orders)\b/i,
+    /\b(?:order\s*#?\s*([a-z0-9-]+))\b/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = userMessage.match(pattern);
+    if (match && match[1]) {
+      const cleaned = sanitizeSearchTerm(match[1])
+        ?.replace(/^(details?|detail)\s+(for|on|about|of)\s+/i, '')
+        ?.trim();
+      if (cleaned) return cleaned;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Detect whether a query asks for specific employee details.
+ */
+const isEmployeeDetailsQuery = (message = '', rawMessage = '') => {
+  const normalized = normalizeQueryText(message || rawMessage);
+  const hasEmployeeKeyword = /\b(employee|employees|staff|member|members|worker|workers|manager|supervisor|team)\b/.test(normalized);
+  const hasLookupAction = /\b(show|tell|detail|details|info|information|about|search|find|who|fetch|get|profile)\b/.test(normalized);
+  const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(rawMessage || '');
+  const hasRoleSpecifier = /\brole\b/.test(normalized);
+
+  return hasEmail || hasRoleSpecifier || (hasEmployeeKeyword && hasLookupAction);
+};
+
+/**
+ * Extract employee search criteria from natural-language queries.
+ */
+const extractEmployeeSearchCriteria = (userMessage) => {
+  if (!userMessage) return null;
+
+  const raw = String(userMessage).trim();
+  const normalized = normalizeQueryText(raw);
+
+  const emailMatch = raw.match(/([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i);
+  if (emailMatch?.[1]) {
+    const email = emailMatch[1].trim().toLowerCase();
+    return { type: 'email', value: email, label: `email "${email}"` };
+  }
+
+  const explicitRoleMatch = raw.match(/\brole\s*(?:is|as|=|:)?\s*([a-z][a-z0-9_-]{1,30})\b/i);
+  if (explicitRoleMatch?.[1]) {
+    const roleValue = explicitRoleMatch[1].trim().toLowerCase();
+    return { type: 'role', value: roleValue, label: `role "${roleValue}"` };
+  }
+
+  const commonRoleMatch = raw.match(/\b(manager|supervisor|employee|staff|worker|admin|new_role)\b/i);
+  if (commonRoleMatch?.[1] && normalized.includes('role')) {
+    const roleValue = commonRoleMatch[1].trim().toLowerCase();
+    return { type: 'role', value: roleValue, label: `role "${roleValue}"` };
+  }
+
+  const namePatterns = [
+    /\b(?:employee|employees|staff|member|members|worker|workers|manager|supervisor)\b(?:\s+details?|\s+info(?:rmation)?|\s+profile)?\s*(?:named|called|for|about|of)?\s*["']?([a-z][a-z\s.'-]{1,50})/i,
+    /\b(?:details?|info|information|profile|about|for|of)\s+([a-z][a-z\s.'-]{1,50})\s+\b(?:employee|manager|supervisor|staff|member)\b/i
+  ];
+
+  for (const pattern of namePatterns) {
+    const match = raw.match(pattern);
+    if (match?.[1]) {
+      const nameValue = sanitizeSearchTerm(match[1])
+        ?.replace(/^(details?|info(?:rmation)?|profile)\s+(for|of|about)\s+/i, '')
+        ?.replace(/^(for|of|about)\s+/i, '')
+        ?.trim();
+      if (nameValue) {
+        return { type: 'name', value: nameValue, label: `name "${nameValue}"` };
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Search employees by email/role/name within one business owner scope.
+ */
+const searchEmployees = async (criteria, businessownerId, limit = 10) => {
+  try {
+    if (!criteria || !businessownerId) return [];
+
+    const baseQuery = { businessowner: businessownerId };
+    const escapedValue = String(criteria.value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    if (criteria.type === 'email') {
+      baseQuery.email = new RegExp(`^${escapedValue}$`, 'i');
+    } else if (criteria.type === 'role') {
+      baseQuery.role = new RegExp(`^${escapedValue}$`, 'i');
+    } else {
+      const nameRegex = new RegExp(escapedValue, 'i');
+      const nameParts = String(criteria.value || '').split(/\s+/).filter(Boolean);
+
+      baseQuery.$or = [
+        { fname: nameRegex },
+        { lname: nameRegex },
+        { email: nameRegex },
+        {
+          $expr: {
+            $regexMatch: {
+              input: { $concat: ['$fname', ' ', { $ifNull: ['$lname', ''] }] },
+              regex: escapedValue,
+              options: 'i'
+            }
+          }
+        }
+      ];
+
+      if (nameParts.length >= 2) {
+        const firstName = nameParts[0].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const lastName = nameParts.slice(1).join(' ').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        baseQuery.$or.push({
+          fname: new RegExp(`^${firstName}$`, 'i'),
+          lname: new RegExp(`^${lastName}$`, 'i')
+        });
+      }
+    }
+
+    const employees = await Employee.find(baseQuery)
+      .select('fname lname email phone role jDate hireAt salary warehouse department isActive')
+      .populate('warehouse', 'wName')
+      .lean()
+      .limit(limit);
+
+    return employees || [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Format matched employee details for chatbot display.
+ */
+const formatEmployeeDetailsByQueryResponse = (employees, criteria) => {
+  if (!employees?.length) return null;
+
+  const titleSuffix = criteria?.label ? ` for ${criteria.label}` : '';
+  let response = `**EMPLOYEE DETAILS** (${employees.length} found${titleSuffix}):\n\n`;
+
+  employees.forEach((emp, index) => {
+    const name = `${emp.fname || ''} ${emp.lname || ''}`.trim() || 'N/A';
+    const salaryAmount = Number(emp?.salary?.baseSalary || 0);
+    const salaryCurrency = emp?.salary?.currency || 'INR';
+    const salaryFrequency = emp?.salary?.paymentFrequency || 'monthly';
+    const joinDateRaw = emp?.jDate || emp?.hireAt;
+    const joinDate = joinDateRaw ? new Date(joinDateRaw).toLocaleDateString() : 'N/A';
+    const warehouseName = emp?.warehouse?.wName || 'Not Assigned';
+
+    response += `**${index + 1}. ${name}**\n`;
+    response += `   • Email: ${emp.email || 'N/A'}\n`;
+    response += `   • Role: ${emp.role || 'employee'}\n`;
+    response += `   • Phone: ${emp.phone || 'N/A'}\n`;
+    response += `   • Warehouse: ${warehouseName}\n`;
+    if (emp.department) {
+      response += `   • Department: ${emp.department}\n`;
+    }
+    response += `   • Joined: ${joinDate}\n`;
+    response += `   • Status: ${emp.isActive === false ? 'Inactive' : 'Active'}\n`;
+    response += `   • Salary: ${salaryAmount > 0 ? `₹${salaryAmount.toLocaleString()} ${salaryCurrency} / ${salaryFrequency}` : 'Not assigned'}\n\n`;
+  });
+
+  return response;
+};
+
+/**
  * Pick best matching product from search result
  */
 const findBestProductMatch = (products, searchTerm) => {
@@ -846,7 +1165,19 @@ const findBestProductMatch = (products, searchTerm) => {
 const getSalaryResponse = (context) => {
   let response = `**SALARY & PAYMENTS OVERVIEW:**\n\n`;
 
-  if (context.totalSalaryPaid) {
+  const salaryAssignments = getSalaryAssignments(context.employeesList);
+
+  if (salaryAssignments.length) {
+    const totalPayroll = salaryAssignments.reduce((sum, emp) => sum + Number(emp?.salary?.baseSalary || 0), 0);
+    response += `**Assigned Salaries:**\n`;
+    salaryAssignments.forEach((emp, i) => {
+      response += `${i + 1}. **${emp.fname} ${emp.lname || ''}** — ${formatSalaryLine(emp)}\n`;
+    });
+    response += `\n• Employees with salary assigned: **${salaryAssignments.length}**\n`;
+    response += `• Total payroll commitment: **₹${totalPayroll.toLocaleString()}**\n\n`;
+  }
+
+  if (context.totalSalaryPaid || context.totalSalaryPaid === 0) {
     response += `• Total Salary Paid: **₹${context.totalSalaryPaid.toLocaleString()}**\n`;
     response += `• Payment Transactions: **${context.salaryPaymentCount}**\n\n`;
   } else {
@@ -1890,7 +2221,9 @@ const getLowStockResponse = (role, context) => {
 const getEmployeeDetailsResponse = (role, context) => {
   if (role === 'businessowner') {
     if (context.employeesList?.length > 0) {
-      let msg = `👥 **TEAM MEMBERS** (${context.employees || 0} total):\n\n`;
+      const totalEmployees = context.employeesList?.length || context.employees || 0;
+      const salaryAssignments = getSalaryAssignments(context.employeesList);
+      let msg = `👥 **TEAM MEMBERS** (${totalEmployees} total):\n\n`;
       context.employeesList.forEach((emp, i) => {
         const name = `${emp.fname} ${emp.lname || ''}`.trim();
         const joinDate = emp.jDate ? new Date(emp.jDate).toLocaleDateString() : 'N/A';
@@ -1898,12 +2231,16 @@ const getEmployeeDetailsResponse = (role, context) => {
         msg += `   • Email: ${emp.email}\n`;
         msg += `   • Phone: ${emp.phone || 'N/A'}\n`;
         msg += `   • Role: ${emp.role || 'employee'}\n`;
+        msg += `   • Salary: ${emp.salary?.baseSalary > 0 ? formatSalaryLine(emp) : 'Not assigned'}\n`;
         msg += `   • Joined: ${joinDate}\n\n`;
       });
+      if (salaryAssignments.length > 0) {
+        msg += `💰 **SALARY SUMMARY:** ${salaryAssignments.length} employees have salary assigned.\n\n`;
+      }
       msg += `💡 Manage your team from the **Employees** section.`;
       return msg;
     }
-    return `👥 You have **${context.employees || 0}** employees. Add team members from your dashboard.`;
+    return `👥 You have **${context.employeesList?.length || context.employees || 0}** employees. Add team members from your dashboard.`;
   } else if (role === 'employee') {
     let msg = `👤 **YOUR PROFILE:**\n\n`;
     msg += `• Name: **${context.employeeName || 'N/A'}**\n`;
@@ -2208,5 +2545,8 @@ module.exports = {
   extractQueryParameters,
   formatResponseAsList,
   generateIntelligentResponse,
-  convertToListFormat
+  convertToListFormat,
+  getSalaryResponse,
+  getEmployeeDetailsResponse,
+  getEmployeeSalaryResponse
 };

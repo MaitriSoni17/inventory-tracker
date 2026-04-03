@@ -6,7 +6,7 @@ const { getContextForRole, generateAIResponse } = require('../utils/chatbotHelpe
 // POST endpoint to send message and get response
 router.post('/message', fetchuser, async (req, res) => {
   try {
-    let { message, role } = req.body;
+    const { message } = req.body;
     
     // Use authenticated user's ID from middleware (req.user is the full user object)
     const userId = req.user?._id;
@@ -19,18 +19,8 @@ router.post('/message', fetchuser, async (req, res) => {
       });
     }
 
-    if (!role || !['businessowner', 'employee', 'supplier'].includes(role)) {
-      // Allow custom roles to use chatbot as 'employee'
-      if (role && role !== 'businessowner' && role !== 'supplier') {
-        // Custom role - treat as employee for chatbot context
-        role = 'employee';
-      } else {
-        return res.status(400).json({
-          success: false,
-          error: 'Invalid role'
-        });
-      }
-    }
+    // Enforce role from authenticated token, not request payload.
+    const role = ['businessowner', 'supplier'].includes(req.role) ? req.role : 'employee';
 
     if (!userId) {
       return res.status(401).json({

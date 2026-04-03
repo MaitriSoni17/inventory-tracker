@@ -50,6 +50,12 @@ const findFAQMatch = (userInput) => {
 const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  
+  // Resize state
+  const [width, setWidth] = useState(420);
+  const [height, setHeight] = useState(600);
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
 
   useEffect(() => {
     if (externalOpen) {
@@ -58,6 +64,20 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
       if (onExternalOpenHandled) onExternalOpenHandled();
     }
   }, [externalOpen, onExternalOpenHandled]);
+
+  // Load saved dimensions from localStorage
+  useEffect(() => {
+    const savedSize = localStorage.getItem('homepageChatbotSize');
+    if (savedSize) {
+      try {
+        const { w, h } = JSON.parse(savedSize);
+        setWidth(w);
+        setHeight(h);
+      } catch (e) {
+        // Invalid saved data, use defaults
+      }
+    }
+  }, []);
 
   const [messages, setMessages] = useState([
     {
@@ -344,6 +364,61 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
     setIsMinimized(!isMinimized);
   };
 
+  // Handle resize start
+  const handleResizeStart = (e) => {
+    if (isMinimized) return;
+    e.preventDefault();
+    setIsResizing(true);
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: width,
+      height: height
+    });
+  };
+
+  // Handle resize move
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e) => {
+      const deltaX = e.clientX - resizeStart.x;
+      const deltaY = e.clientY - resizeStart.y;
+
+      // For left-side resize: drag left = wider, drag right = narrower
+      let newWidth = resizeStart.width - deltaX;
+      let newHeight = resizeStart.height + deltaY;
+
+      // Enforce minimum sizes
+      const minWidth = 300;
+      const maxWidth = window.innerWidth - 48;
+      const minHeight = 200;
+      const maxHeight = window.innerHeight - 120;
+
+      newWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+      newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+
+      setWidth(newWidth);
+      setHeight(newHeight);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      // Save size to localStorage
+      localStorage.setItem('homepageChatbotSize', JSON.stringify({ w: width, h: height }));
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing, resizeStart, width, height]);
+
   const formatTime = (date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -365,7 +440,14 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className={`chatbot-container ${isMinimized ? 'minimized' : ''}`}>
+        <div 
+          className={`chatbot-container ${isMinimized ? 'minimized' : ''}`}
+          style={{
+            width: `${width}px`,
+            height: `${height}px`,
+            cursor: isResizing ? 'sw-resize' : 'auto'
+          }}
+        >
           {/* Header */}
           <div className="chatbot-header">
             <div className="chatbot-header-content">
@@ -498,6 +580,18 @@ const HomepageChatbot = ({ externalOpen, onExternalOpenHandled }) => {
                 </div>
               </form>
             </>
+          )}
+
+          {/* Resize Handle */}
+          {!isMinimized && (
+            <div
+              className="chatbot-resize-handle"
+              onMouseDown={handleResizeStart}
+              title="Drag to resize"
+              aria-label="Resize chatbot"
+            >
+              <i className="fas fa-grip-vertical"></i>
+            </div>
           )}
         </div>
       )}
