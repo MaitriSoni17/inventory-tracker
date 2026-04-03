@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // Validate environment variables before anything else
 const { validateEnv } = require('./config/envValidation');
@@ -9,7 +10,6 @@ connectToMongo();
 const express = require('express');
 const app = express();
 const port = process.env.PORT || 5000;
-const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
 const { startDeletionProcessor } = require('./utils/deletionProcessor');

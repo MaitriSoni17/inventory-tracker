@@ -594,8 +594,19 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
       return entityResponse;
     }
 
-    // Prioritize channel-specific marketing advice for business owners.
     const normalizedMessage = (userMessage || '').toLowerCase().trim();
+
+    // Keep low-stock alert responses deterministic and data-driven.
+    if ((role === 'businessowner' || role === 'employee') && isLowStockAlertQuery(normalizedMessage)) {
+      const lowStockContext = context && Object.keys(context).length > 0
+        ? context
+        : await getContextForRole(userId, role);
+      const lowStockResponse = getLowStockResponse(role, lowStockContext || {});
+      addToConversationHistory(userId, 'assistant', lowStockResponse);
+      return lowStockResponse;
+    }
+
+    // Prioritize channel-specific marketing advice for business owners.
     if (role === 'businessowner' && isChannelMarketingQuery(normalizedMessage)) {
       const channelResponse = getChannelMarketingResponse(context || {}, normalizedMessage);
       addToConversationHistory(userId, 'assistant', channelResponse);
@@ -645,6 +656,52 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
   const boId = await resolveBusinessOwnerId(userId, role);
   const dataOwnerId = boId || userId;
 
+  // Return explicit low-stock alerts before advisory intents.
+  if ((role === 'businessowner' || role === 'employee') && isLowStockAlertQuery(message)) {
+    const lowStockContext = Object.keys(context || {}).length > 0 ? context : await getContextForRole(userId, role);
+    return getLowStockResponse(role, lowStockContext || {});
+  }
+
+  // Detect supplier-specific queries before they are swallowed by generic order routing.
+  if (role === 'businessowner' || role === 'supplier') {
+    const supplierCriteria = extractSupplierSearchCriteria(userMessage);
+
+    if (supplierCriteria && isSupplierDetailsQuery(message, userMessage)) {
+      const matchedSuppliers = await searchSuppliers(supplierCriteria, dataOwnerId, 10);
+      if (matchedSuppliers.length > 0) {
+        return formatSupplierDetailsByQueryResponse(matchedSuppliers, supplierCriteria);
+      }
+
+      return `No supplier found for ${supplierCriteria.label}.
+
+Try:
+• Use exact email (example: supplier@test.com)
+• Use exact company name (example: ABC Traders)
+• Use full or partial supplier name`;
+    }
+
+    if (!supplierCriteria && isSupplierDetailsQuery(message, userMessage)) {
+      const suppliers = await getSuppliersList(dataOwnerId, 25);
+      if (suppliers.length > 0) {
+        return formatSupplierDetailsByQueryResponse(suppliers, { label: 'all suppliers' });
+      }
+      return `No suppliers found yet.`;
+    }
+
+    if (isSupplierOrdersQuery(message)) {
+      const supplierOrderResponse = await getSupplierOrdersResponse(role, dataOwnerId, userId, supplierCriteria, context);
+      if (supplierOrderResponse) return supplierOrderResponse;
+    }
+
+    if (isSupplierListQuery(message)) {
+      const suppliers = await getSuppliersList(dataOwnerId, 25);
+      if (suppliers.length > 0) {
+        return formatSupplierDetailsByQueryResponse(suppliers, { label: 'all suppliers' });
+      }
+      return `No suppliers found yet.`;
+    }
+  }
+
   // Detect marketing idea queries before broader sales-idea routing.
   if (role === 'businessowner' && isMarketingIdeasQuery(message)) {
     const marketingContext = Object.keys(context || {}).length > 0 ? context : await getContextForRole(userId, role);
@@ -673,6 +730,14 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
       }
 
       return `No employee found for ${employeeCriteria.label}.\n\nTry:\n• Use exact email (example: manager1@test.com)\n• Use exact role (example: manager)\n• Use full or partial name`;
+    }
+
+    if (isEmployeeListQuery(message)) {
+      const employees = await getEmployeesList(dataOwnerId, 25);
+      if (employees.length > 0) {
+        return formatEmployeeDetailsByQueryResponse(employees, { label: 'all employees' });
+      }
+      return `No employees found yet.`;
     }
 
     // Ask clarifying question when employee details are requested but target is missing.
@@ -750,6 +815,14 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
   if (isProductQuery) {
     const productName = extractProductSearchTerm(userMessage);
 
+    if (!productName && isProductListQuery(message) && (role === 'businessowner' || role === 'employee')) {
+      const products = await getProductsList(dataOwnerId, 25);
+      if (products.length > 0) {
+        return formatProductDetailsResponse(products);
+      }
+      return `No products found yet. Add products from your dashboard to see inventory details.`;
+    }
+
     if (productName && (role === 'businessowner' || role === 'employee')) {
       const products = await searchProducts(productName, dataOwnerId, 10);
       if (products.length > 0) {
@@ -766,11 +839,73 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
     return buildClarificationResponse('product', 'show me details for product Product1');
   }
 
+  // Detect order status queries (BEFORE order search/details queries)
+  // Checks for: "order status", "pending orders", "delivered orders", etc.
+  const isOrderStatusSummaryQuery = /\b(order|orders)\b.*\b(status|summary|breakdown|pending|delivered|processing|shipped|cancelled)\b/i.test(userMessage) ||
+    /\b(status|summary|breakdown|pending|delivered|processing|shipped|cancelled)\b.*\b(order|orders)\b/i.test(userMessage) ||
+    /^(status|summary|breakdown|pending|delivered|processing|shipped|cancelled)/i.test(normalizeQueryText(userMessage));
+
+  if (isOrderStatusSummaryQuery && (role === 'businessowner' || role === 'employee' || role === 'supplier')) {
+    const freshContext = await getContextForRole(userId, role);
+    const mergedContext = { ...context, ...freshContext };
+    return getOrderStatusResponse(role, mergedContext);
+  }
+
+  // Detect specific deadline-date queries BEFORE generic deadline queries.
+  // Example: "show orders which deadline is 24/2/2026"
+  const hasRangeDeadlineLanguage = /\b(today|tomorrow|yesterday|this week|next week|between|from|within|in\s+\d+\s+days?)\b/i.test(normalizeQueryText(userMessage));
+  const isSpecificDeadlineQuery = !hasRangeDeadlineLanguage && /\b(deadline|deadlines|due\s+date|due|due\s+on|due\s+by)\b/i.test(userMessage) &&
+    /(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})|(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/.test(userMessage);
+
+  if (isSpecificDeadlineQuery && (role === 'businessowner' || role === 'employee' || role === 'supplier')) {
+    const deadlineDate = extractDeadlineDate(userMessage);
+    if (deadlineDate) {
+      const [freshContext, dbOrders] = await Promise.all([
+        getContextForRole(userId, role),
+        fetchOrdersBySpecificDeadline(role, userId, dataOwnerId, deadlineDate)
+      ]);
+      const mergedContext = { ...context, ...freshContext };
+      return getOrdersBySpecificDeadlineResponse(role, mergedContext, deadlineDate, { orders: dbOrders });
+    }
+  }
+
+  const deadlineRange = parseDeadlineRange(userMessage);
+  const hasRangeIntent = deadlineRange && hasRangeDeadlineLanguage;
+
+  if (hasRangeIntent && (role === 'businessowner' || role === 'employee' || role === 'supplier')) {
+    const [freshContext, dbOrders] = await Promise.all([
+      getContextForRole(userId, role),
+      fetchOrdersByDeadlineRange(role, userId, dataOwnerId, deadlineRange.start, deadlineRange.end)
+    ]);
+    const mergedContext = { ...context, ...freshContext };
+    return getOrdersByDeadlineRangeResponse(role, mergedContext, deadlineRange.label, deadlineRange.start, deadlineRange.end, { orders: dbOrders });
+  }
+
+  // Detect generic order deadline queries.
+  // Checks for: "deadline", "overdue", "due soon", "due date", etc.
+  const isOrderDeadlineQuery = /\b(deadline|deadlines|overdue|due\s+date|due\s+soon|due|due\s+by|due\s+on)\b/i.test(userMessage) ||
+    /\b(order|orders)\b.*\b(deadline|deadlines|overdue|due|due\s+date)\b/i.test(userMessage) ||
+    /\b(deadline|deadlines|overdue|due)\b.*\b(order|orders)\b/i.test(userMessage);
+
+  if (isOrderDeadlineQuery && (role === 'businessowner' || role === 'employee' || role === 'supplier')) {
+    const freshContext = await getContextForRole(userId, role);
+    const mergedContext = { ...context, ...freshContext };
+    return getOrderDeadlineResponse(role, mergedContext);
+  }
+
   // Detect order-specific queries
   if ((message.includes('order') &&
     (message.includes('tell me') || message.includes('show') || message.includes('detail') || message.includes('info about') || message.includes('about') || message.includes('search'))) ||
     message.includes('customer order')) {
     const orderTerm = extractOrderSearchTerm(userMessage);
+
+    if (!orderTerm && isOrderListQuery(message) && (role === 'businessowner' || role === 'employee')) {
+      const orders = await getOrdersList(dataOwnerId, 25);
+      if (orders.length > 0) {
+        return formatOrderDetailsResponse(orders);
+      }
+      return `No orders found yet.`;
+    }
 
     if (orderTerm && (role === 'businessowner' || role === 'employee')) {
       const orders = await searchOrders(orderTerm, dataOwnerId);
@@ -847,7 +982,11 @@ const sanitizeSearchTerm = (raw) => {
     .replace(/^(can\s+you|could\s+you|would\s+you|please|show\s+me|tell\s+me|give\s+me|share|need|i\s+need)\s*/i, '')
     .trim();
 
-  if (/^(this|that|it|one|something|anything|product|item|share|show|tell|give|need)$/i.test(term)) {
+  if (/^(this|that|it|one|something|anything|product|products|item|items|order|orders|employee|employees|share|show|tell|give|need|list|all|everything)$/i.test(term)) {
+    return null;
+  }
+
+  if (/^(all\s+(products?|orders?|employees?|items?)|products?\s+list|orders?\s+list|employees?\s+list)$/i.test(term)) {
     return null;
   }
 
@@ -969,10 +1108,25 @@ const extractWarehouseSearchTerm = (userMessage) => {
 const extractOrderSearchTerm = (userMessage) => {
   if (!userMessage) return null;
 
+  const raw = String(userMessage).trim();
+
+  // Email lookup should be treated as an order search target directly.
+  const emailMatch = raw.match(/([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i);
+  if (emailMatch?.[1]) {
+    return emailMatch[1].toLowerCase();
+  }
+
+  // Phone lookup should support formatted numbers (+91, spaces, dashes, etc.).
+  const phoneMatch = raw.match(/(\+?\d[\d\s()-]{6,}\d)/);
+  if (phoneMatch?.[1]) {
+    const digits = phoneMatch[1].replace(/\D/g, '');
+    if (digits.length >= 7) return digits;
+  }
+
   const patterns = [
-    /\b(?:order|orders)\b\s+details?\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*)/i,
-    /\b(?:order|orders)\b\s*(?:named|called|for|about|of)?\s*["']?([^"'.!?]+)["']?/i,
-    /\b(?:details?|info|information|status|tracking|update)\b\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:order|orders)\b/i,
+    /\b(?:orders|order)\b\s+details?\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*)/i,
+    /\b(?:orders|order)\b\s*(?:named|called|for|about|of)?\s*["']?([^"!?]+)["']?/i,
+    /\b(?:details?|info|information|status|tracking|update)\b\s+(?:for|on|about|of)\s+([a-z0-9][a-z0-9\s_-]*?)\s+\b(?:orders|order)\b/i,
     /\b(?:order\s*#?\s*([a-z0-9-]+))\b/i
   ];
 
@@ -982,7 +1136,7 @@ const extractOrderSearchTerm = (userMessage) => {
       const cleaned = sanitizeSearchTerm(match[1])
         ?.replace(/^(details?|detail)\s+(for|on|about|of)\s+/i, '')
         ?.trim();
-      if (cleaned) return cleaned;
+      if (cleaned && cleaned.length > 1) return cleaned;
     }
   }
 
@@ -999,7 +1153,298 @@ const isEmployeeDetailsQuery = (message = '', rawMessage = '') => {
   const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(rawMessage || '');
   const hasRoleSpecifier = /\brole\b/.test(normalized);
 
-  return hasEmail || hasRoleSpecifier || (hasEmployeeKeyword && hasLookupAction);
+  return hasRoleSpecifier || (hasEmployeeKeyword && (hasLookupAction || hasEmail));
+};
+
+const isEmployeeListQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  const hasEmployeeKeyword = /\b(employee|employees|staff|member|members|worker|workers|team)\b/.test(normalized);
+  const hasListSignal = /\b(all|list|show|display|view|entire|complete)\b/.test(normalized);
+  const asksSpecific = /\b(details?|info|information|profile|about|named|called|for|role)\b/.test(normalized);
+
+  return hasEmployeeKeyword && hasListSignal && !asksSpecific;
+};
+
+const isSupplierDetailsQuery = (message = '', rawMessage = '') => {
+  const normalized = normalizeQueryText(message || rawMessage);
+  const hasSupplierKeyword = /\b(supplier|suppliers|vendor|vendors|procurement|provider|providers)\b|\b(?:supplier|vendor)\d+\b/.test(normalized);
+  const hasLookupAction = /\b(show|tell|give|detail|details|info|information|about|search|find|who|fetch|get|profile|view)\b/.test(normalized);
+  const hasEmail = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(rawMessage || '');
+  const hasPhone = /\+?\d[\d\s()-]{6,}\d/.test(rawMessage || '');
+  const hasCompanyHint = /\b(company|business|firm|brand)\b/.test(normalized);
+
+  return hasLookupAction && hasSupplierKeyword && (hasEmail || hasPhone || hasCompanyHint || /\b(name|named|called|for|of|about|details?)\b/.test(normalized));
+};
+
+const isSupplierListQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  const hasSupplierKeyword = /\b(supplier|suppliers|vendor|vendors|procurement|provider|providers)\b|\b(?:supplier|vendor)\d+\b/.test(normalized);
+  const hasListSignal = /\b(all|list|show|display|view|entire|complete|give)\b/.test(normalized);
+  const hasSpecificIdentifier = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}|\+?\d[\d\s()-]{6,}\d|\b(named|called|for|of|about|company|business|firm|brand)\b/.test(normalized);
+
+  const hasPluralDetailsIntent = /\b(suppliers)\b/.test(normalized) && /\b(details?|info|information)\b/.test(normalized);
+
+  return hasSupplierKeyword && (hasListSignal || hasPluralDetailsIntent) && !hasSpecificIdentifier;
+};
+
+const isSupplierOrdersQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  const hasSupplierKeyword = /\b(supplier|suppliers|vendor|vendors|procurement)\b|\b(?:supplier|vendor)\d+\b/.test(normalized);
+  const hasOrderKeyword = /\b(order|orders|delivery|deliveries|payment|payments|pending|fulfilled|fulfilled)\b/.test(normalized);
+  const hasAction = /\b(show|list|display|view|check|tell|detail|details|info|information|status|history|recent)\b/.test(normalized);
+  return hasSupplierKeyword && hasOrderKeyword && hasAction;
+};
+
+const extractSupplierSearchCriteria = (userMessage) => {
+  if (!userMessage) return null;
+
+  const raw = String(userMessage).trim();
+  const normalized = normalizeQueryText(raw);
+
+  const emailMatch = raw.match(/([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i);
+  if (emailMatch?.[1]) {
+    const email = emailMatch[1].trim().toLowerCase();
+    return { type: 'email', value: email, label: `email "${email}"` };
+  }
+
+  const supplierTokenMatch = raw.match(/\b(?:supplier|vendor)\d+\b/i);
+  if (supplierTokenMatch?.[0]) {
+    const value = supplierTokenMatch[0].trim();
+    return { type: 'name', value, label: `name "${value}"` };
+  }
+
+  const phoneMatch = raw.match(/(\+?\d[\d\s()-]{6,}\d)/);
+  if (phoneMatch?.[1]) {
+    const phone = phoneMatch[1].replace(/\D/g, '');
+    if (phone.length >= 7) {
+      return { type: 'phone', value: phone, label: `phone "${phone}"` };
+    }
+  }
+
+  const companyPatterns = [
+    /\b(?:company|business|firm|brand)\b\s*(?:named|called|for|about|of|details?\s*(?:for|of|about)?)?\s*["']?([a-z][a-z0-9\s.'&-]{1,80})/i,
+    /\b([a-z][a-z0-9\s.'&-]{1,80})\s+\b(?:company|business|firm|brand)\b/i
+  ];
+
+  for (const pattern of companyPatterns) {
+    const match = raw.match(pattern);
+    if (match?.[1]) {
+      const companyValue = sanitizeSearchTerm(match[1])?.trim();
+      if (companyValue) {
+        return { type: 'company', value: companyValue, label: `company "${companyValue}"` };
+      }
+    }
+  }
+
+  const namePatterns = [
+    /\b(?:supplier|suppliers|vendor|vendors|provider|providers)\b(?:\s+details?|\s+info(?:rmation)?|\s+profile)?\s*(?:named|called|for|about|of)?\s*["']?([a-z0-9][a-z0-9\s.'&-]{1,80})/i,
+    /\b(?:details?|info|information|profile|about|for|of)\s+([a-z0-9][a-z0-9\s.'&-]{1,80})\s+\b(?:supplier|suppliers|vendor|vendors|provider|providers)\b/i
+  ];
+
+  for (const pattern of namePatterns) {
+    const match = raw.match(pattern);
+    if (match?.[1]) {
+      const nameValue = sanitizeSearchTerm(match[1])?.trim();
+      if (nameValue) {
+        return { type: 'name', value: nameValue, label: `name "${nameValue}"` };
+      }
+    }
+  }
+
+  if (hasSupplierKeyword(normalized)) {
+    const genericTerm = sanitizeSearchTerm(raw.replace(/\b(supplier|suppliers|vendor|vendors|provider|providers|details?|detail|info|information|profile|show|tell|give|find|search|list|all)\b/gi, ' '));
+    if (genericTerm) {
+      return { type: 'company', value: genericTerm, label: `company "${genericTerm}"` };
+    }
+  }
+
+  return null;
+};
+
+const hasSupplierKeyword = (normalized) => /\b(supplier|suppliers|vendor|vendors|procurement|provider|providers)\b|\b(?:supplier|vendor)\d+\b/.test(normalized);
+
+const searchSuppliers = async (criteria, businessownerId, limit = 10) => {
+  try {
+    if (!criteria || !businessownerId) return [];
+
+    const baseQuery = { businessowner: businessownerId };
+    const escapedValue = String(criteria.value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    if (criteria.type === 'email') {
+      baseQuery.$or = [
+        { email: new RegExp(`^${escapedValue}$`, 'i') },
+        { companyEmail: new RegExp(`^${escapedValue}$`, 'i') }
+      ];
+    } else if (criteria.type === 'phone') {
+      baseQuery.$or = [
+        { phone: new RegExp(escapedValue, 'i') },
+        { companyPhone: new RegExp(escapedValue, 'i') }
+      ];
+    } else if (criteria.type === 'company') {
+      baseQuery.$or = [
+        { companyName: new RegExp(escapedValue, 'i') },
+        { companyEmail: new RegExp(escapedValue, 'i') },
+        { companyPhone: new RegExp(escapedValue, 'i') },
+        { fname: new RegExp(escapedValue, 'i') },
+        { lname: new RegExp(escapedValue, 'i') },
+        { email: new RegExp(escapedValue, 'i') }
+      ];
+    } else {
+      const nameRegex = new RegExp(escapedValue, 'i');
+      const normalizedNoDigits = String(criteria.value || '').replace(/\d+/g, '').trim();
+      const escapedNoDigits = normalizedNoDigits.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const noDigitsRegex = escapedNoDigits ? new RegExp(escapedNoDigits, 'i') : null;
+
+      baseQuery.$or = [
+        { fname: nameRegex },
+        { lname: nameRegex },
+        { email: nameRegex },
+        { companyName: nameRegex },
+        { companyEmail: nameRegex },
+        { companyPhone: nameRegex }
+      ];
+
+      if (noDigitsRegex) {
+        baseQuery.$or.push(
+          { fname: noDigitsRegex },
+          { lname: noDigitsRegex },
+          { companyName: noDigitsRegex }
+        );
+      }
+    }
+
+    const suppliers = await Supplier.find(baseQuery)
+      .select('fname lname email phone companyName companyEmail companyPhone address companyAddress isActive')
+      .sort({ jDate: -1, _id: -1 })
+      .limit(limit)
+      .lean();
+
+    return suppliers || [];
+  } catch {
+    return [];
+  }
+};
+
+const getSuppliersList = async (businessownerId, limit = 25) => {
+  try {
+    if (!businessownerId) return [];
+    return await Supplier.find({ businessowner: businessownerId })
+      .select('fname lname email phone companyName companyEmail companyPhone address companyAddress isActive')
+      .sort({ jDate: -1, _id: -1 })
+      .limit(limit)
+      .lean();
+  } catch {
+    return [];
+  }
+};
+
+const formatSupplierDetailsByQueryResponse = (suppliers, criteria) => {
+  if (!suppliers?.length) return null;
+
+  const titleSuffix = criteria?.label ? ` for ${criteria.label}` : '';
+  let response = `**SUPPLIER DETAILS** (${suppliers.length} found${titleSuffix}):\n\n`;
+
+  suppliers.forEach((supplier, index) => {
+    const name = `${supplier.fname || ''} ${supplier.lname || ''}`.trim() || 'N/A';
+    response += `**${index + 1}. ${name}**\n`;
+    response += `   • Email: ${supplier.email || 'N/A'}\n`;
+    response += `   • Phone: ${supplier.phone || supplier.companyPhone || 'N/A'}\n`;
+    response += `   • Company: ${supplier.companyName || 'N/A'}\n`;
+    response += `   • Company Email: ${supplier.companyEmail || 'N/A'}\n`;
+    response += `   • Company Phone: ${supplier.companyPhone || 'N/A'}\n`;
+    response += `   • Address: ${supplier.address || supplier.companyAddress || 'N/A'}\n`;
+    response += `   • Status: ${supplier.isActive === false ? 'Inactive' : 'Active'}\n\n`;
+  });
+
+  return response;
+};
+
+const formatSupplierOrdersResponse = (orders, title = 'SUPPLIER ORDERS') => {
+  if (!orders?.length) return null;
+
+  let response = `**${title}** (${orders.length} found):\n\n`;
+  orders.forEach((order, index) => {
+    const supplierName = order.supplier && typeof order.supplier === 'object'
+      ? `${order.supplier.fname || ''} ${order.supplier.lname || ''}`.trim() || order.supplier.companyName || 'N/A'
+      : 'N/A';
+    response += `**${index + 1}. ${order.pName || 'N/A'}**\n`;
+    response += `   • Supplier: ${supplierName}\n`;
+    response += `   • Category: ${order.category || 'N/A'}\n`;
+    response += `   • Units: ${order.ounits || 0}\n`;
+    response += `   • Amount: ₹${order.amount || 0}\n`;
+    response += `   • Order Date: ${order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A'}\n`;
+    response += `   • Delivery Date: ${order.dDate ? new Date(order.dDate).toLocaleDateString() : 'N/A'}\n`;
+    response += `   • Status: ${order.status || 'N/A'} | Payment: ${order.paymentStatus || 'Pending'}\n\n`;
+  });
+
+  return response;
+};
+
+const getSupplierOrdersResponse = async (role, businessownerId, userId, supplierCriteria, context = {}) => {
+  try {
+    const selectFields = 'pName category amount ounits oDate dDate status paymentStatus pAvail dStatus desc supplier businessowner';
+
+    if (role === 'supplier') {
+      const orders = await SupplierOrders.find({ supplier: userId })
+        .select(selectFields)
+        .populate('supplier', 'fname lname email phone companyName companyEmail companyPhone')
+        .sort({ oDate: -1, _id: -1 })
+        .limit(10)
+        .lean();
+
+      return orders.length > 0
+        ? formatSupplierOrdersResponse(orders, 'YOUR SUPPLIER ORDERS')
+        : `No supplier orders found yet.`;
+    }
+
+    if (supplierCriteria) {
+      const matchedSuppliers = await searchSuppliers(supplierCriteria, businessownerId, 5);
+      if (matchedSuppliers.length > 0) {
+        const supplierIds = matchedSuppliers.map((supplier) => supplier._id);
+        const orders = await SupplierOrders.find({ businessowner: businessownerId, supplier: { $in: supplierIds } })
+          .select(selectFields)
+          .populate('supplier', 'fname lname email phone companyName companyEmail companyPhone')
+          .sort({ oDate: -1, _id: -1 })
+          .limit(10)
+          .lean();
+
+        return orders.length > 0
+          ? formatSupplierOrdersResponse(orders, 'SUPPLIER ORDERS')
+          : `No supplier orders found for ${supplierCriteria.label}.`;
+      }
+    }
+
+    const orders = await SupplierOrders.find({ businessowner: businessownerId })
+      .select(selectFields)
+      .populate('supplier', 'fname lname email phone companyName companyEmail companyPhone')
+      .sort({ oDate: -1, _id: -1 })
+      .limit(10)
+      .lean();
+
+    return orders.length > 0
+      ? formatSupplierOrdersResponse(orders, 'SUPPLIER ORDERS')
+      : `No supplier orders found yet.`;
+  } catch {
+    return null;
+  }
+};
+
+const isProductListQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  const hasProductKeyword = /\b(product|products|item|items|inventory)\b/.test(normalized);
+  const hasListSignal = /\b(all|list|show|display|view|entire|complete)\b/.test(normalized);
+  const asksSpecific = /\b(details?|info|information|about|named|called|for|of)\b/.test(normalized);
+
+  return hasProductKeyword && hasListSignal && !asksSpecific;
+};
+
+const isOrderListQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  const hasOrderKeyword = /\b(order|orders|customer order|customer orders)\b/.test(normalized);
+  const hasListSignal = /\b(all|list|show|display|view|entire|complete|recent)\b/.test(normalized);
+  const asksSpecific = /\b(details?|info|information|about|for|named|called)\b/.test(normalized);
+
+  return hasOrderKeyword && hasListSignal && !asksSpecific;
 };
 
 /**
@@ -1096,6 +1541,23 @@ const searchEmployees = async (criteria, businessownerId, limit = 10) => {
     const employees = await Employee.find(baseQuery)
       .select('fname lname email phone role jDate hireAt salary warehouse department isActive')
       .populate('warehouse', 'wName')
+      .lean()
+      .limit(limit);
+
+    return employees || [];
+  } catch {
+    return [];
+  }
+};
+
+const getEmployeesList = async (businessownerId, limit = 25) => {
+  try {
+    if (!businessownerId) return [];
+
+    const employees = await Employee.find({ businessowner: businessownerId })
+      .select('fname lname email phone role jDate hireAt salary warehouse department isActive')
+      .populate('warehouse', 'wName')
+      .sort({ jDate: -1, hireAt: -1, createdAt: -1 })
       .lean()
       .limit(limit);
 
@@ -1474,6 +1936,14 @@ const generateGroqResponse = async (userMessage, role, context, userId) => {
 
     const normalizedMessage = (userMessage || '').toLowerCase().trim();
 
+    // Keep low-stock alert responses deterministic and data-driven.
+    if ((role === 'businessowner' || role === 'employee') && isLowStockAlertQuery(normalizedMessage)) {
+      const lowStockContext = context && Object.keys(context).length > 0
+        ? context
+        : await getContextForRole(userId, role);
+      return getLowStockResponse(role, lowStockContext || {});
+    }
+
     // Keep channel-specific marketing advice deterministic for business owners.
     if (role === 'businessowner' && isChannelMarketingQuery(normalizedMessage)) {
       return getChannelMarketingResponse(context || {}, normalizedMessage);
@@ -1600,21 +2070,276 @@ const searchProducts = async (productName, businessownerId, limit = 5) => {
   }
 };
 
+const normalizeOrderSearchToken = (value = '') => {
+  return String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+};
+
+const levenshteinDistance = (left = '', right = '') => {
+  const a = normalizeOrderSearchToken(left);
+  const b = normalizeOrderSearchToken(right);
+
+  if (a === b) return 0;
+  if (!a) return b.length;
+  if (!b) return a.length;
+
+  const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
+
+  for (let i = 1; i <= a.length; i += 1) {
+    let current = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      const insertion = current[j - 1] + 1;
+      const deletion = previous[j] + 1;
+      const substitution = previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1);
+      current.push(Math.min(insertion, deletion, substitution));
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+
+  return previous[b.length];
+};
+
+const buildOrderSearchTerms = (rawTerm, isEmailSearch, isPhoneSearch) => {
+  const terms = [];
+  if (isEmailSearch) {
+    const [localPartRaw] = String(rawTerm).toLowerCase().split('@');
+    const localPart = normalizeOrderSearchToken(localPartRaw);
+
+    if (localPart) terms.push(localPart);
+  } else {
+    const normalizedRaw = normalizeOrderSearchToken(rawTerm);
+    if (normalizedRaw) {
+      terms.push(normalizedRaw);
+    }
+  }
+
+  if (isPhoneSearch) {
+    const digits = String(rawTerm).replace(/\D/g, '');
+    if (digits) terms.push(digits);
+  }
+
+  return [...new Set(terms.filter(Boolean))];
+};
+
+const scoreOrderCandidate = (order, searchTerms, isEmailSearch, isPhoneSearch) => {
+  const fieldValues = [];
+
+  if (order?.cName) fieldValues.push(order.cName);
+  if (order?.cEmail) fieldValues.push(order.cEmail);
+  if (order?.cPhone !== undefined && order?.cPhone !== null) fieldValues.push(String(order.cPhone));
+  if (order?.pName) fieldValues.push(order.pName);
+
+  if (Array.isArray(order?.products)) {
+    order.products.forEach((product) => {
+      if (product?.productName) fieldValues.push(product.productName);
+    });
+  }
+
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const term of searchTerms) {
+    for (const fieldValue of fieldValues) {
+      const normalizedField = normalizeOrderSearchToken(fieldValue);
+      const normalizedTerm = normalizeOrderSearchToken(term);
+
+      if (!normalizedTerm || !normalizedField) continue;
+
+      if (normalizedField === normalizedTerm) {
+        return 0;
+      }
+
+      if (isPhoneSearch) {
+        const fieldDigits = String(fieldValue).replace(/\D/g, '');
+        if (fieldDigits && fieldDigits.includes(normalizedTerm)) {
+          bestScore = Math.min(bestScore, 1);
+          continue;
+        }
+      }
+
+      if (isEmailSearch && /@/.test(String(fieldValue))) {
+        const [fieldLocalRaw] = String(fieldValue).toLowerCase().split('@');
+        const fieldLocal = normalizeOrderSearchToken(fieldLocalRaw);
+        const fieldLocalNoDigits = normalizeOrderSearchToken(fieldLocalRaw.replace(/\d+/g, ''));
+
+        if (fieldLocal === normalizedTerm || fieldLocalNoDigits === normalizedTerm) {
+          bestScore = Math.min(bestScore, 0);
+          continue;
+        }
+
+        continue;
+      }
+
+      const distance = levenshteinDistance(normalizedTerm, normalizedField);
+      bestScore = Math.min(bestScore, distance);
+    }
+  }
+
+  return bestScore;
+};
+
+const getProductsList = async (businessownerId, limit = 25) => {
+  try {
+    if (!businessownerId) return [];
+
+    const products = await Product.find({ businessowner: businessownerId })
+      .select('name category price totalProducts brand mDate eDate desc warehouse')
+      .sort({ createdAt: -1, updatedAt: -1 })
+      .limit(limit);
+
+    if (products.length > 0) {
+      const Category = require('../models/Category');
+      const catIds = [...new Set(products.map((p) => p.category).filter(Boolean))];
+      const whIds = [...new Set(products.flatMap((p) => Array.isArray(p.warehouse) ? p.warehouse : (p.warehouse ? [p.warehouse] : [])).filter(Boolean))];
+
+      const [cats, whs] = await Promise.all([
+        Category.find({ _id: { $in: catIds } }).select('_id cName').lean(),
+        Warehouse.find({ _id: { $in: whIds } }).select('_id wName').lean()
+      ]);
+
+      const catMap = {};
+      cats.forEach((c) => { catMap[c._id.toString()] = c.cName; });
+      const whMap = {};
+      whs.forEach((w) => { whMap[w._id.toString()] = w.wName; });
+
+      return products.map((p) => {
+        const pObj = p.toObject ? p.toObject() : { ...p };
+        pObj.categoryName = catMap[pObj.category] || pObj.category;
+        if (Array.isArray(pObj.warehouse)) {
+          pObj.warehouseNames = pObj.warehouse.map((wId) => whMap[wId] || wId).filter(Boolean);
+        } else if (pObj.warehouse) {
+          pObj.warehouseNames = [whMap[pObj.warehouse] || pObj.warehouse];
+        } else {
+          pObj.warehouseNames = [];
+        }
+        return pObj;
+      });
+    }
+
+    return products;
+  } catch {
+    return [];
+  }
+};
+
 /**
  * Search for specific orders
  */
 const searchOrders = async (searchTerm, businessownerId) => {
   try {
+    const rawTerm = String(searchTerm || '').trim();
+    if (!rawTerm) return [];
+
     const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const orders = await CustomerOrders.find({
-      businessowner: businessownerId,
-      $or: [
-        { cName: { $regex: escapedTerm, $options: 'i' } },
-        { pName: { $regex: escapedTerm, $options: 'i' } }
-      ]
-    }).select('cName pName amount oDate status dStatus dDate cAddress desc pAvail products').limit(5);
-    return orders;
+
+    // Build a forgiving name regex so "customer1" can also match "Customer 1".
+    const flexibleTerm = escapedTerm
+      .replace(/\s+/g, '\\s*')
+      .replace(/([a-zA-Z])(?=\d)/g, '$1\\s*')
+      .replace(/(\d)(?=[a-zA-Z])/g, '$1\\s*');
+    const nameRegex = new RegExp(flexibleTerm, 'i');
+
+    const isEmailSearch = /@/.test(rawTerm);
+    const phoneDigits = rawTerm.replace(/\D/g, '');
+    const isPhoneSearch = phoneDigits.length >= 7;
+
+    const selectFields = 'cName cEmail cPhone pName amount oDate status dStatus dDate cAddress desc pAvail products';
+
+    if (isEmailSearch) {
+      const exactEmailMatch = await CustomerOrders.find({
+        businessowner: businessownerId,
+        cEmail: { $regex: `^${escapedTerm}$`, $options: 'i' }
+      })
+        .select(selectFields)
+        .sort({ oDate: -1, _id: -1 })
+        .limit(1);
+
+      if (exactEmailMatch.length > 0) return exactEmailMatch;
+
+      const [emailLocalRaw, emailDomainRaw] = rawTerm.toLowerCase().split('@');
+      const emailLocalNoDigits = (emailLocalRaw || '').replace(/\d+/g, '').trim();
+      if (emailLocalNoDigits && emailLocalNoDigits !== emailLocalRaw && emailDomainRaw) {
+        const escapedLocalNoDigits = emailLocalNoDigits.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const escapedDomain = emailDomainRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        const tolerantEmailMatch = await CustomerOrders.find({
+          businessowner: businessownerId,
+          cEmail: {
+            $regex: `^${escapedLocalNoDigits}[^@]*@${escapedDomain}$`,
+            $options: 'i'
+          }
+        })
+          .select(selectFields)
+          .sort({ oDate: -1, _id: -1 })
+          .limit(1);
+
+        if (tolerantEmailMatch.length > 0) return tolerantEmailMatch;
+      }
+    }
+
+    const broadFilters = [];
+    if (escapedTerm) {
+      broadFilters.push({ cName: { $regex: escapedTerm, $options: 'i' } });
+      broadFilters.push({ cEmail: { $regex: escapedTerm, $options: 'i' } });
+      broadFilters.push({ pName: { $regex: escapedTerm, $options: 'i' } });
+      broadFilters.push({ 'products.productName': { $regex: escapedTerm, $options: 'i' } });
+    }
+    if (isPhoneSearch) {
+      broadFilters.push({ cPhone: { $regex: phoneDigits, $options: 'i' } });
+    }
+
+    const candidateQuery = broadFilters.length > 0
+      ? {
+          businessowner: businessownerId,
+          $or: broadFilters
+        }
+      : { businessowner: businessownerId };
+
+    const candidateOrders = await CustomerOrders.find(candidateQuery)
+      .select(selectFields)
+      .sort({ oDate: -1, _id: -1 })
+      .limit(50);
+
+    const fallbackOrders = candidateOrders.length > 0
+      ? candidateOrders
+      : await CustomerOrders.find({ businessowner: businessownerId })
+          .select(selectFields)
+          .sort({ oDate: -1, _id: -1 })
+          .limit(50);
+
+    if (!fallbackOrders.length) return [];
+
+    const searchTerms = buildOrderSearchTerms(rawTerm, isEmailSearch, isPhoneSearch);
+    const scored = fallbackOrders
+      .map((order) => ({
+        order,
+        score: scoreOrderCandidate(order, searchTerms, isEmailSearch, isPhoneSearch)
+      }))
+      .filter((item) => Number.isFinite(item.score));
+
+    if (!scored.length) return [];
+
+    scored.sort((left, right) => {
+      if (left.score !== right.score) return left.score - right.score;
+
+      const leftDate = new Date(left.order.oDate || 0).getTime();
+      const rightDate = new Date(right.order.oDate || 0).getTime();
+      return rightDate - leftDate;
+    });
+
+    return [scored[0].order];
   } catch (error) {
+    return [];
+  }
+};
+
+const getOrdersList = async (businessownerId, limit = 25) => {
+  try {
+    if (!businessownerId) return [];
+
+    return await CustomerOrders.find({ businessowner: businessownerId })
+      .select('cName pName amount oDate status dStatus dDate cAddress desc pAvail products')
+      .sort({ oDate: -1 })
+      .limit(limit);
+  } catch {
     return [];
   }
 };
@@ -1712,6 +2437,11 @@ const getOrderDetails = (order) => {
 const generateEnhancedResponse = (userMessage, role, context) => {
   const message = userMessage.toLowerCase().trim();
 
+  // Keep low-stock alert responses deterministic and data-driven.
+  if ((role === 'businessowner' || role === 'employee') && isLowStockAlertQuery(message)) {
+    return getLowStockResponse(role, context || {});
+  }
+
   // Prioritize channel-specific marketing coaching for business owners
   if (role === 'businessowner' && isChannelMarketingQuery(message)) {
     return getChannelMarketingResponse(context, message);
@@ -1731,6 +2461,7 @@ const generateEnhancedResponse = (userMessage, role, context) => {
     greeting: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy', 'greetings'],
     dashboard: ['dashboard', 'overview', 'summary', 'business summary', 'how is business', 'how are things'],
     inventory_status: ['inventory', 'stock', 'products', 'how many products', 'product count', 'stock level'],
+    supplier_orders: ['supplier order', 'supplier orders', 'vendor order', 'vendor orders', 'purchase order', 'purchase orders', 'supplier payment', 'supplier payments'],
     order_status: ['order', 'orders', 'pending', 'delivery', 'shipment', 'tracking'],
     low_stock_alert: ['low stock', 'reorder', 'out of stock', 'running low', 'stock alert', 'need restock'],
     employee_info: ['employee', 'employees', 'team', 'staff', 'worker', 'personnel', 'my team', 'members'],
@@ -1763,6 +2494,8 @@ const generateEnhancedResponse = (userMessage, role, context) => {
       return getDashboardResponse(role, context);
     case 'inventory_status':
       return getInventoryStatusResponse(role, context);
+    case 'supplier_orders':
+      return role === 'supplier' ? getOrderStatusResponse(role, context) : getOrderStatusResponse('supplier', context);
     case 'order_status':
       return getOrderStatusResponse(role, context);
     case 'low_stock_alert':
@@ -1797,6 +2530,10 @@ const generateEnhancedResponse = (userMessage, role, context) => {
 };
 
 const isBusinessImprovementQuery = (message) => {
+  if (isLowStockAlertQuery(message)) {
+    return false;
+  }
+
   const strategyKeywords = [
     'improve', 'increase', 'grow', 'boost', 'optimize', 'suggest', 'advice',
     'strategy', 'problem', 'issue', 'help', 'fix', 'plan', 'solution',
@@ -1812,6 +2549,30 @@ const isBusinessImprovementQuery = (message) => {
 
   // Trigger if query is clearly business + strategy OR business + problem language.
   return hasBusinessKeyword && (hasStrategyKeyword || hasIssueSignal);
+};
+
+const isLowStockAlertQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  if (!normalized) return false;
+
+  const lowStockSignals = [
+    'low stock', 'stock alert', 'stock alerts', 'running low', 'out of stock', 'need restock', 'reorder'
+  ];
+  const displaySignals = [
+    'show', 'list', 'display', 'check', 'status', 'alerts', 'alert', 'current', 'what', 'which', 'tell', 'give', 'share'
+  ];
+  const advisorySignals = [
+    'how to', 'improve', 'increase', 'grow', 'boost', 'optimize', 'strategy', 'plan', 'solution', 'fix', 'suggest'
+  ];
+
+  const hasLowStockSignal = lowStockSignals.some((kw) => normalized.includes(kw));
+  if (!hasLowStockSignal) return false;
+
+  const hasAdvisorySignal = advisorySignals.some((kw) => normalized.includes(kw));
+  if (hasAdvisorySignal) return false;
+
+  const hasDisplaySignal = displaySignals.some((kw) => normalized.includes(kw));
+  return hasDisplaySignal || normalized.includes('low stock');
 };
 
 const isMarketingIdeasQuery = (message) => {
@@ -2158,46 +2919,784 @@ const getInventoryStatusResponse = (role, context) => {
   return 'Inventory information is available from your dashboard.';
 };
 
+/**
+ * Format orders by deadline - separated into overdue vs not overdue
+ */
+const formatOrdersByDeadline = (orders, role = 'businessowner') => {
+  if (!orders || orders.length === 0) return '';
+
+  const now = new Date();
+  const overdue = [];
+  const notOverdue = [];
+
+  orders.forEach(order => {
+    if (order.dDate) {
+      const deadline = new Date(order.dDate);
+      if (deadline < now) {
+        overdue.push(order);
+      } else {
+        notOverdue.push(order);
+      }
+    } else {
+      // Orders without deadline go to not overdue
+      notOverdue.push(order);
+    }
+  });
+
+  let msg = '';
+
+  // Overdue orders first (highest priority)
+  if (overdue.length > 0) {
+    msg += `🔴 **OVERDUE** (${overdue.length} orders)\n`;
+    overdue.slice(0, 5).forEach((order, idx) => {
+      const productName = order.pName || (order.products && order.products.length > 0
+        ? order.products.map(p => p.productName).join(', ')
+        : 'N/A');
+      const customerName = order.cName || 'N/A';
+      const deadline = new Date(order.dDate);
+      const daysLate = Math.floor((now - deadline) / (1000 * 60 * 60 * 24));
+      const amount = order.amount || 0;
+
+      if (role === 'supplier') {
+        const quantity = order.ounits || 0;
+        const unitPrice = order.amount || 0;
+        msg += `   ❌ ${productName} | Qty: ${quantity} | ${daysLate} days late\n`;
+      } else {
+        msg += `   ❌ ${customerName} → ${productName} | ${daysLate}d late | ₹${amount}\n`;
+      }
+    });
+    if (overdue.length > 5) {
+      msg += `   ... and ${overdue.length - 5} more overdue\n`;
+    }
+    msg += '\n';
+  }
+
+  // Not overdue orders (categorized by urgency)
+  if (notOverdue.length > 0) {
+    // Separate into due soon (1-3 days) and due later (>3 days)
+    const dueSoon = [];
+    const dueLater = [];
+    const noDue = [];
+
+    notOverdue.forEach(order => {
+      if (order.dDate) {
+        const deadline = new Date(order.dDate);
+        const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+        if (daysUntil <= 3) {
+          dueSoon.push({ order, daysUntil });
+        } else {
+          dueLater.push({ order, daysUntil });
+        }
+      } else {
+        noDue.push(order);
+      }
+    });
+
+    // Due Soon (1-3 days)
+    if (dueSoon.length > 0) {
+      msg += `⚡ **DUE SOON** (${dueSoon.length} - within 3 days)\n`;
+      dueSoon.slice(0, 4).forEach(({ order, daysUntil }) => {
+        const productName = order.pName || (order.products && order.products.length > 0
+          ? order.products.map(p => p.productName).join(', ')
+          : 'N/A');
+        const customerName = order.cName || 'N/A';
+        const dueDate = new Date(order.dDate).toLocaleDateString();
+        const amount = order.amount || 0;
+
+        if (role === 'supplier') {
+          const quantity = order.ounits || 0;
+          msg += `   ⚠️ ${productName} | Qty: ${quantity} | Due: ${dueDate} (${daysUntil}d)\n`;
+        } else {
+          msg += `   ⚠️ ${customerName} → ${productName} | Due: ${dueDate} (${daysUntil}d)\n`;
+        }
+      });
+      if (dueSoon.length > 4) {
+        msg += `   ... and ${dueSoon.length - 4} more due soon\n`;
+      }
+      msg += '\n';
+    }
+
+    // Due Later (>3 days)
+    if (dueLater.length > 0) {
+      msg += `✅ **ON TRACK** (${dueLater.length} - more than 3 days)\n`;
+      dueLater.slice(0, 3).forEach(({ order, daysUntil }) => {
+        const productName = order.pName || (order.products && order.products.length > 0
+          ? order.products.map(p => p.productName).join(', ')
+          : 'N/A');
+        const customerName = order.cName || 'N/A';
+        const dueDate = new Date(order.dDate).toLocaleDateString();
+        const amount = order.amount || 0;
+
+        if (role === 'supplier') {
+          const quantity = order.ounits || 0;
+          msg += `   ✓ ${productName} | Qty: ${quantity} | Due: ${dueDate}\n`;
+        } else {
+          msg += `   ✓ ${customerName} → ${productName} | Due: ${dueDate}\n`;
+        }
+      });
+      if (dueLater.length > 3) {
+        msg += `   ... and ${dueLater.length - 3} more on track\n`;
+      }
+      msg += '\n';
+    }
+
+    // No deadline specified
+    if (noDue.length > 0) {
+      msg += `❓ **NO DEADLINE** (${noDue.length})\n`;
+      noDue.slice(0, 2).forEach((order) => {
+        const productName = order.pName || (order.products && order.products.length > 0
+          ? order.products.map(p => p.productName).join(', ')
+          : 'N/A');
+        const customerName = order.cName || 'N/A';
+
+        if (role === 'supplier') {
+          const quantity = order.ounits || 0;
+          msg += `   ? ${productName} | Qty: ${quantity}\n`;
+        } else {
+          msg += `   ? ${customerName} → ${productName}\n`;
+        }
+      });
+      if (noDue.length > 2) {
+        msg += `   ... and ${noDue.length - 2} more\n`;
+      }
+      msg += '\n';
+    }
+  }
+
+  return msg;
+};
+
+/**
+ * Get order deadline statistics
+ */
+const getDeadlineStats = (orders = []) => {
+  if (!orders || orders.length === 0) {
+    return { overdue: 0, dueSoon: 0, onTrack: 0, noDeadline: 0 };
+  }
+
+  const now = new Date();
+  let overdue = 0;
+  let dueSoon = 0;
+  let onTrack = 0;
+  let noDeadline = 0;
+
+  orders.forEach(order => {
+    if (!order.dDate) {
+      noDeadline++;
+    } else {
+      const deadline = new Date(order.dDate);
+      const daysUntil = Math.ceil((deadline - now) / (1000 * 60 * 60 * 24));
+
+      if (daysUntil < 0) {
+        overdue++;
+      } else if (daysUntil <= 3) {
+        dueSoon++;
+      } else {
+        onTrack++;
+      }
+    }
+  });
+
+  return { overdue, dueSoon, onTrack, noDeadline };
+};
+
+/**
+ * Format orders by their status with detailed points
+ */
+const formatOrdersByStatus = (orders, role = 'businessowner') => {
+  if (!orders || orders.length === 0) return '';
+
+  // Group orders by status
+  const groupedByStatus = {};
+  orders.forEach(order => {
+    const status = order.status || 'Unknown';
+    if (!groupedByStatus[status]) {
+      groupedByStatus[status] = [];
+    }
+    groupedByStatus[status].push(order);
+  });
+
+  // Define status order and emoji mapping
+  const statusOrder = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned'];
+  const statusEmoji = {
+    'Pending': '⏳',
+    'Processing': '⚙️',
+    'Shipped': '📦',
+    'Delivered': '✅',
+    'Cancelled': '❌',
+    'Returned': '↩️'
+  };
+
+  let msg = '';
+
+  // Iterate through statuses in defined order
+  statusOrder.forEach(status => {
+    if (groupedByStatus[status]) {
+      const count = groupedByStatus[status].length;
+      const emoji = statusEmoji[status] || '•';
+      msg += `${emoji} **${status}** (${count} orders)\n`;
+
+      // Show up to 3 sample orders for each status
+      groupedByStatus[status].slice(0, 3).forEach((order, idx) => {
+        const productName = order.pName || (order.products && order.products.length > 0
+          ? order.products.map(p => p.productName).join(', ')
+          : 'N/A');
+        const customerName = order.cName || 'N/A';
+        const amount = order.amount || 0;
+        const date = order.oDate ? new Date(order.oDate).toLocaleDateString() : 'N/A';
+
+        if (role === 'supplier') {
+          // For supplier orders, show differently
+          const quantity = order.ounits || 0;
+          const unitPrice = order.amount || 0;
+          msg += `   └─ ${productName} | Qty: ${quantity} | ₹${unitPrice}/unit\n`;
+        } else {
+          // For customer/employee orders
+          msg += `   └─ ${customerName} → ${productName} | ₹${amount} | ${date}\n`;
+        }
+      });
+
+      // Show indicator if there are more orders not shown
+      if (groupedByStatus[status].length > 3) {
+        msg += `   ... and ${groupedByStatus[status].length - 3} more\n`;
+      }
+      msg += '\n';
+    }
+  });
+
+  return msg;
+};
+
+/**
+ * Get order count summary by status
+ */
+const getOrderStatusSummary = (orderStatusBreakdown = []) => {
+  if (!orderStatusBreakdown || orderStatusBreakdown.length === 0) return '';
+
+  let msg = '';
+  const statusEmoji = {
+    'Pending': '⏳',
+    'Processing': '⚙️',
+    'Shipped': '📦',
+    'Delivered': '✅',
+    'Cancelled': '❌',
+    'Returned': '↩️'
+  };
+
+  orderStatusBreakdown.forEach(item => {
+    const emoji = statusEmoji[item._id] || '•';
+    msg += `${emoji} **${item._id}**: ${item.count}\n`;
+  });
+
+  return msg;
+};
+
 const getOrderStatusResponse = (role, context) => {
   if (role === 'businessowner') {
-    let msg = `📋 **ORDER STATUS:**\n\n`;
+    let msg = `📋 **ORDER STATUS OVERVIEW:**\n\n`;
+    msg += `**Summary:**\n`;
     msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
-    msg += `• Pending: **${context.pendingOrders || 0}**\n`;
-    msg += `• Completed: **${context.completedOrders || 0}**\n\n`;
-    if (context.recentOrders?.length > 0) {
-      msg += `**Recent Orders:**\n`;
-      context.recentOrders.slice(0, 5).forEach((o, i) => {
-        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
-        msg += `${i + 1}. ${o.cName} → ${productName} — ₹${o.amount} (${o.status})\n`;
-      });
+    msg += `• Total Revenue: **₹${context.totalRevenue || 0}**\n`;
+    msg += `• Average Order Value: **₹${context.avgOrderValue || 0}**\n\n`;
+
+    // Show status breakdown
+    if (context.orderStatusBreakdown?.length > 0) {
+      msg += `**Orders by Status:**\n`;
+      msg += getOrderStatusSummary(context.orderStatusBreakdown);
+      msg += '\n';
     }
+
+    // Show detailed orders by status
+    if (context.recentOrders?.length > 0) {
+      msg += `**Orders by Status (with details):**\n`;
+      msg += formatOrdersByStatus(context.recentOrders, 'businessowner');
+    } else {
+      msg += `No orders found. Start by creating customer orders.`;
+    }
+
     return msg;
   } else if (role === 'employee') {
-    let msg = `📋 **ORDERS:**\n\n`;
+    let msg = `📋 **YOUR ORDERS & TASKS:**\n\n`;
+    msg += `**Summary:**\n`;
     msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
-    msg += `• Pending: **${context.pendingTasks || 0}**\n`;
-    msg += `• Completed: **${context.completedTasks || 0}**\n\n`;
-    if (context.assignedOrdersList?.length > 0) {
-      msg += `**Your Recent Orders:**\n`;
-      context.assignedOrdersList.slice(0, 5).forEach((o, i) => {
-        const productName = o.pName || (o.products && o.products.length > 0 ? o.products.map(p => p.productName).join(', ') : 'N/A');
-        msg += `${i + 1}. ${productName} for ${o.cName} — ${o.status}\n`;
+    msg += `• Pending Tasks: **${context.pendingTasks || 0}**\n`;
+    msg += `• Completed Tasks: **${context.completedTasks || 0}**\n\n`;
+
+    // Show urgent and overdue orders prominently
+    if (context.overdueOrders?.length > 0) {
+      msg += `⚠️ **OVERDUE ORDERS** (${context.overdueOrders.length}):\n`;
+      context.overdueOrders.slice(0, 3).forEach((o, i) => {
+        const productName = o.pName || (o.products && o.products.length > 0
+          ? o.products.map(p => p.productName).join(', ')
+          : 'N/A');
+        const dueDate = new Date(o.dDate).toLocaleDateString();
+        msg += `   └─ **${productName}** for ${o.cName} (Was due: ${dueDate})\n`;
       });
+      if (context.overdueOrders.length > 3) {
+        msg += `   ... and ${context.overdueOrders.length - 3} more overdue\n\n`;
+      } else {
+        msg += '\n';
+      }
     }
+
+    if (context.urgentOrders?.length > 0) {
+      msg += `🔴 **URGENT ORDERS** (${context.urgentOrders.length} - due within 3 days):\n`;
+      context.urgentOrders.slice(0, 3).forEach((o, i) => {
+        const productName = o.pName || (o.products && o.products.length > 0
+          ? o.products.map(p => p.productName).join(', ')
+          : 'N/A');
+        const dueDate = new Date(o.dDate).toLocaleDateString();
+        msg += `   └─ **${productName}** for ${o.cName} (Due: ${dueDate})\n`;
+      });
+      if (context.urgentOrders.length > 3) {
+        msg += `   ... and ${context.urgentOrders.length - 3} more urgent\n\n`;
+      } else {
+        msg += '\n';
+      }
+    }
+
+    // Show recent orders by status
+    if (context.assignedOrdersList?.length > 0) {
+      msg += `**Your Recent Orders by Status:**\n`;
+      msg += formatOrdersByStatus(context.assignedOrdersList, 'employee');
+    } else {
+      msg += `No orders assigned to you yet.`;
+    }
+
     return msg;
   } else if (role === 'supplier') {
     let msg = `📦 **YOUR SUPPLY ORDERS:**\n\n`;
+    msg += `**Summary:**\n`;
+    msg += `• Total Orders: **${context.totalOrders || 0}**\n`;
     msg += `• Pending: **${context.pendingOrders || 0}**\n`;
-    msg += `• Delivered: **${context.deliveredOrders || 0}**\n\n`;
+    msg += `• Delivered: **${context.deliveredOrders || 0}**\n`;
+    msg += `• Cancelled: **${context.cancelledOrders || 0}**\n`;
+    msg += `• Total Value: **₹${context.totalOrderValue || 0}**\n\n`;
+
+    // Show orders by status
     if (context.recentSupplierOrders?.length > 0) {
-      msg += `**Recent Orders:**\n`;
-      context.recentSupplierOrders.slice(0, 5).forEach((o, i) => {
-        msg += `${i + 1}. ${o.pName} — Qty: ${o.ounits}, ₹${o.amount}/unit (${o.status})\n`;
-      });
+      msg += `**Orders by Status (with details):**\n`;
+      msg += formatOrdersByStatus(context.recentSupplierOrders, 'supplier');
+    } else {
+      msg += `No supply orders found.`;
     }
+
     return msg;
   }
   return 'Order information is available from your dashboard.';
+};
+
+/**
+ * Get orders grouped by deadline status (overdue vs not overdue)
+ */
+/**
+ * Extract date from user message
+ * Handles formats: DD/MM/YYYY, DD-MM-YYYY, DD MM YYYY, YYYY-MM-DD, etc.
+ */
+const extractDeadlineDate = (userMessage) => {
+  // Match various date formats
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+  const ddmmyyyyMatch = userMessage.match(/(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/);
+  if (ddmmyyyyMatch) {
+    const [, day, month, year] = ddmmyyyyMatch;
+    try {
+      const date = new Date(year, parseInt(month) - 1, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    } catch (e) {
+      // Continue to next format
+    }
+  }
+
+  // YYYY-MM-DD format
+  const yyyymmddMatch = userMessage.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (yyyymmddMatch) {
+    const [, year, month, day] = yyyymmddMatch;
+    try {
+      const date = new Date(year, parseInt(month) - 1, day);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    } catch (e) {
+      // Continue
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Filter orders by a specific deadline date
+ */
+const filterOrdersBySpecificDeadline = (orders, targetDate) => {
+  if (!targetDate) return [];
+  
+  // Normalize target date (set to start of day)
+  const targetDateStart = new Date(targetDate);
+  targetDateStart.setHours(0, 0, 0, 0);
+  
+  const targetDateEnd = new Date(targetDate);
+  targetDateEnd.setHours(23, 59, 59, 999);
+
+  return orders.filter(order => {
+    if (!order.dDate) return false;
+    
+    const orderDeadline = new Date(order.dDate);
+    orderDeadline.setHours(0, 0, 0, 0);
+    
+    return orderDeadline.getTime() === targetDateStart.getTime();
+  });
+};
+
+const normalizeDateStart = (date) => {
+  const normalized = new Date(date);
+  normalized.setHours(0, 0, 0, 0);
+  return normalized;
+};
+
+const normalizeDateEnd = (date) => {
+  const normalized = new Date(date);
+  normalized.setHours(23, 59, 59, 999);
+  return normalized;
+};
+
+/**
+ * Parse deadline ranges and relative date expressions from user messages.
+ */
+const parseDeadlineRange = (userMessage) => {
+  const normalizedMessage = normalizeQueryText(userMessage);
+  const now = new Date();
+
+  if (/\b(today)\b/i.test(normalizedMessage)) {
+    return { start: normalizeDateStart(now), end: normalizeDateEnd(now), label: 'today' };
+  }
+
+  if (/\b(tomorrow)\b/i.test(normalizedMessage)) {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return { start: normalizeDateStart(tomorrow), end: normalizeDateEnd(tomorrow), label: 'tomorrow' };
+  }
+
+  if (/\b(yesterday)\b/i.test(normalizedMessage)) {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return { start: normalizeDateStart(yesterday), end: normalizeDateEnd(yesterday), label: 'yesterday' };
+  }
+
+  if (/\b(this week)\b/i.test(normalizedMessage)) {
+    const start = new Date(now);
+    const currentDay = start.getDay();
+    const daysSinceMonday = (currentDay + 6) % 7;
+    start.setDate(start.getDate() - daysSinceMonday);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { start: normalizeDateStart(start), end: normalizeDateEnd(end), label: 'this week' };
+  }
+
+  if (/\b(next week)\b/i.test(normalizedMessage)) {
+    const start = new Date(now);
+    const currentDay = start.getDay();
+    const daysUntilNextMonday = (8 - currentDay) % 7 || 7;
+    start.setDate(start.getDate() + daysUntilNextMonday);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    return { start: normalizeDateStart(start), end: normalizeDateEnd(end), label: 'next week' };
+  }
+
+  const betweenMatch = normalizedMessage.match(/(?:between|from)\s+(.*?)(?:\s+and\s+|\s+to\s+)(.*)$/i);
+  if (betweenMatch) {
+    const startDate = extractDeadlineDate(betweenMatch[1]);
+    const endDate = extractDeadlineDate(betweenMatch[2]);
+    if (startDate && endDate) {
+      return {
+        start: normalizeDateStart(startDate),
+        end: normalizeDateEnd(endDate),
+        label: 'range'
+      };
+    }
+  }
+
+  const inDaysMatch = normalizedMessage.match(/\b(in|within)\s+(\d{1,2})\s+days?\b/i);
+  if (inDaysMatch) {
+    const days = parseInt(inDaysMatch[2], 10);
+    if (!Number.isNaN(days)) {
+      const start = new Date(now);
+      const end = new Date(now);
+      end.setDate(end.getDate() + days);
+      return { start: normalizeDateStart(start), end: normalizeDateEnd(end), label: `next ${days} days` };
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Fetch orders in a deadline date range directly from database.
+ */
+const fetchOrdersByDeadlineRange = async (role, userId, dataOwnerId, startDate, endDate) => {
+  if (!startDate || !endDate) return [];
+
+  if (role === 'businessowner') {
+    return CustomerOrders.find({
+      businessowner: toObjectId(dataOwnerId),
+      dDate: { $gte: startDate, $lte: endDate }
+    })
+      .select('cName pName amount status oDate dDate products')
+      .sort({ dDate: 1, oDate: -1 })
+      .limit(100)
+      .lean();
+  }
+
+  if (role === 'employee') {
+    const boId = await resolveBusinessOwnerId(userId, role);
+    const employeeScope = boId
+      ? { businessowner: toObjectId(boId), employee: toObjectId(userId) }
+      : { employee: toObjectId(userId) };
+
+    return CustomerOrders.find({
+      ...employeeScope,
+      dDate: { $gte: startDate, $lte: endDate }
+    })
+      .select('cName pName amount status oDate dDate products')
+      .sort({ dDate: 1, oDate: -1 })
+      .limit(100)
+      .lean();
+  }
+
+  if (role === 'supplier') {
+    return SupplierOrders.find({
+      supplier: toObjectId(userId),
+      dDate: { $gte: startDate, $lte: endDate }
+    })
+      .select('pName ounits amount status oDate dDate')
+      .sort({ dDate: 1, oDate: -1 })
+      .limit(100)
+      .lean();
+  }
+
+  return [];
+};
+
+/**
+ * Fetch orders by specific deadline directly from database.
+ * This avoids missing matches caused by limited "recent" context arrays.
+ */
+const fetchOrdersBySpecificDeadline = async (role, userId, dataOwnerId, targetDate) => {
+  if (!targetDate) return [];
+
+  const start = normalizeDateStart(targetDate);
+  const end = normalizeDateEnd(targetDate);
+
+  if (role === 'businessowner') {
+    return CustomerOrders.find({
+      businessowner: toObjectId(dataOwnerId),
+      dDate: { $gte: start, $lte: end }
+    })
+      .select('cName pName amount status oDate dDate products')
+      .sort({ oDate: -1 })
+      .limit(50)
+      .lean();
+  }
+
+  if (role === 'employee') {
+    const boId = await resolveBusinessOwnerId(userId, role);
+    const employeeScope = boId
+      ? { businessowner: toObjectId(boId), employee: toObjectId(userId) }
+      : { employee: toObjectId(userId) };
+
+    return CustomerOrders.find({
+      ...employeeScope,
+      dDate: { $gte: start, $lte: end }
+    })
+      .select('cName pName amount status oDate dDate products')
+      .sort({ oDate: -1 })
+      .limit(50)
+      .lean();
+  }
+
+  if (role === 'supplier') {
+    return SupplierOrders.find({
+      supplier: toObjectId(userId),
+      dDate: { $gte: start, $lte: end }
+    })
+      .select('pName ounits amount status oDate dDate')
+      .sort({ oDate: -1 })
+      .limit(50)
+      .lean();
+  }
+
+  return [];
+};
+
+/**
+ * Get response for orders filtered by specific deadline date
+ */
+const getOrdersBySpecificDeadlineResponse = (role, context, targetDate, options = {}) => {
+  const targetDateStr = targetDate.toLocaleDateString('en-IN'); // Format as DD/MM/YYYY
+
+  let orders = [];
+  
+  if (role === 'businessowner') {
+    orders = context.recentOrders || [];
+  } else if (role === 'employee') {
+    orders = context.assignedOrdersList || [];
+  } else if (role === 'supplier') {
+    orders = context.recentSupplierOrders || [];
+  }
+
+  const filteredOrders = Array.isArray(options.orders)
+    ? options.orders
+    : filterOrdersBySpecificDeadline(orders, targetDate);
+
+  if (filteredOrders.length === 0) {
+    return `📅 **ORDERS WITH DEADLINE: ${targetDateStr}**\n\nNo orders found with this deadline date.\n\nAvailable deadlines:\n• Use "show orders by deadline" to see all orders grouped by deadline status\n• Try another date`;
+  }
+
+  let msg = `📅 **ORDERS WITH DEADLINE: ${targetDateStr}**\n\n`;
+  msg += `Found **${filteredOrders.length}** order(s) with this deadline:\n\n`;
+
+  if (role === 'businessowner') {
+    filteredOrders.slice(0, 10).forEach(order => {
+      const daysLate = Math.floor((new Date() - new Date(order.dDate)) / (1000 * 60 * 60 * 24));
+      const statusEmoji = daysLate > 0 ? '🔴' : '✅';
+      const statusText = daysLate > 0 ? `${daysLate} days overdue` : 'On track';
+      const amount = order.amount ? `₹${order.amount.toLocaleString('en-IN')}` : 'N/A';
+      
+      msg += `${statusEmoji} ${order.cName} → ${order.pName} | ${amount} | ${statusText}\n`;
+    });
+    
+    if (filteredOrders.length > 10) {
+      msg += `\n...and ${filteredOrders.length - 10} more orders`;
+    }
+  } else if (role === 'employee') {
+    filteredOrders.slice(0, 10).forEach(order => {
+      const daysLate = Math.floor((new Date() - new Date(order.dDate)) / (1000 * 60 * 60 * 24));
+      const statusEmoji = daysLate > 0 ? '🔴 OVERDUE' : '✅ ON TRACK';
+      
+      msg += `${statusEmoji} | ${order.cName} → ${order.pName} | Status: ${order.status}\n`;
+    });
+    
+    if (filteredOrders.length > 10) {
+      msg += `\n...and ${filteredOrders.length - 10} more orders`;
+    }
+  } else if (role === 'supplier') {
+    filteredOrders.slice(0, 10).forEach(order => {
+      const daysLate = Math.floor((new Date() - new Date(order.dDate)) / (1000 * 60 * 60 * 24));
+      const statusEmoji = daysLate > 0 ? '⚠️ OVERDUE' : '✅ ON SCHEDULE';
+      const amount = order.amount ? `₹${order.amount.toLocaleString('en-IN')}` : 'N/A';
+      
+      msg += `${statusEmoji} | ${order.pName} | Qty: ${order.ounits || 'N/A'} | ${amount}\n`;
+    });
+    
+    if (filteredOrders.length > 10) {
+      msg += `\n...and ${filteredOrders.length - 10} more orders`;
+    }
+  }
+
+  return msg;
+};
+
+const getOrdersByDeadlineRangeResponse = (role, context, rangeLabel, startDate, endDate, options = {}) => {
+  const orders = Array.isArray(options.orders) ? options.orders : [];
+  const startLabel = startDate.toLocaleDateString('en-IN');
+  const endLabel = endDate.toLocaleDateString('en-IN');
+
+  if (orders.length === 0) {
+    return `📆 **ORDERS DUE ${rangeLabel.toUpperCase()}**\n\nNo orders found between ${startLabel} and ${endLabel}.`;
+  }
+
+  let msg = `📆 **ORDERS DUE ${rangeLabel.toUpperCase()}**\n\n`;
+  msg += `Showing **${orders.length}** order(s) between ${startLabel} and ${endLabel}:\n\n`;
+
+  orders.slice(0, 10).forEach(order => {
+    const dueDate = new Date(order.dDate).toLocaleDateString('en-IN');
+    if (role === 'supplier') {
+      const amount = order.amount ? `₹${order.amount.toLocaleString('en-IN')}` : 'N/A';
+      msg += `• ${order.pName} | Qty: ${order.ounits || 'N/A'} | Due: ${dueDate} | ${amount}\n`;
+      return;
+    }
+
+    const amount = order.amount ? `₹${order.amount.toLocaleString('en-IN')}` : 'N/A';
+    msg += `• ${order.cName} → ${order.pName} | Due: ${dueDate} | ${amount} | ${order.status || 'N/A'}\n`;
+  });
+
+  if (orders.length > 10) {
+    msg += `\n...and ${orders.length - 10} more orders`;
+  }
+
+  return msg;
+};
+
+/**
+ * Get orders grouped by deadline status (overdue vs not overdue)
+ */
+const getOrderDeadlineResponse = (role, context) => {
+  if (role === 'businessowner') {
+    let msg = `⏰ **ORDERS BY DEADLINE**\n\n`;
+    
+    // Get deadline stats
+    const allOrders = context.recentOrders || [];
+    const stats = getDeadlineStats(allOrders);
+    
+    msg += `**Deadline Summary:**\n`;
+    msg += `🔴 Overdue: **${stats.overdue}** | ⚡ Due Soon (≤3 days): **${stats.dueSoon}** | ✅ On Track: **${stats.onTrack}** | ❓ No Deadline: **${stats.noDeadline}**\n\n`;
+
+    // Show detailed orders by deadline
+    if (allOrders.length > 0) {
+      msg += `**Orders Grouped by Deadline:**\n`;
+      msg += formatOrdersByDeadline(allOrders, 'businessowner');
+    } else {
+      msg += `No orders found.`;
+    }
+
+    return msg;
+  } else if (role === 'employee') {
+    let msg = `⏰ **YOUR ORDERS BY DEADLINE**\n\n`;
+
+    const allOrders = context.assignedOrdersList || [];
+    const stats = getDeadlineStats(allOrders);
+
+    msg += `**Deadline Summary:**\n`;
+    msg += `🔴 Overdue: **${stats.overdue}** | ⚡ Due Soon (≤3 days): **${stats.dueSoon}** | ✅ On Track: **${stats.onTrack}**\n\n`;
+
+    if (stats.overdue > 0) {
+      msg += `⚠️ **ACTION REQUIRED**: You have **${stats.overdue}** overdue order(s) that need immediate attention!\n\n`;
+    }
+
+    // Show detailed orders by deadline
+    if (allOrders.length > 0) {
+      msg += `**Your Orders by Deadline:**\n`;
+      msg += formatOrdersByDeadline(allOrders, 'employee');
+    } else {
+      msg += `No orders assigned to you yet.`;
+    }
+
+    return msg;
+  } else if (role === 'supplier') {
+    let msg = `⏰ **YOUR SUPPLY ORDERS BY DEADLINE**\n\n`;
+
+    const allOrders = context.recentSupplierOrders || [];
+    const stats = getDeadlineStats(allOrders);
+
+    msg += `**Deadline Summary:**\n`;
+    msg += `🔴 Overdue Deliveries: **${stats.overdue}** | ⚡ Due Soon: **${stats.dueSoon}** | ✅ On Schedule: **${stats.onTrack}**\n\n`;
+
+    if (stats.overdue > 0) {
+      msg += `⚠️ **PRIORITY**: **${stats.overdue}** delivery(ies) are overdue. Please expedite!\n\n`;
+    }
+
+    // Show detailed orders by deadline
+    if (allOrders.length > 0) {
+      msg += `**Your Orders by Deadline:**\n`;
+      msg += formatOrdersByDeadline(allOrders, 'supplier');
+    } else {
+      msg += `No supply orders found.`;
+    }
+
+    return msg;
+  }
+  return 'Order deadline information is available from your dashboard.';
 };
 
 const getLowStockResponse = (role, context) => {
@@ -2215,6 +3714,24 @@ const getLowStockResponse = (role, context) => {
     }
     return `✅ **Great news!** All your products have adequate stock levels. No restocking needed right now.`;
   }
+
+  if (role === 'employee') {
+    if (context.lowStockProducts?.length > 0) {
+      let msg = `⚠️ **LOW STOCK ALERT** (${context.lowStockProducts.length} products):\n\n`;
+      context.lowStockProducts.forEach((p, i) => {
+        msg += `${i + 1}. **${p.name}**\n`;
+        msg += `   • Current stock: **${p.totalProducts}** units\n`;
+        if (p.category) {
+          msg += `   • Category: ${p.category}\n`;
+        }
+        msg += `\n`;
+      });
+      msg += `💡 Share this list with your manager/business owner to reorder priority items.`;
+      return msg;
+    }
+    return `✅ Current assigned inventory does not show low-stock products.`;
+  }
+
   return `Stock information is managed by the business owner. Check your dashboard for relevant details.`;
 };
 
