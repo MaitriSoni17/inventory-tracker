@@ -24,7 +24,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
 
   const fetchDeletionRequests = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/deletion/pending-requests', {
+      const response = await fetch('/api/deletion/pending-requests', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -83,7 +83,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/deletion/approve/${selectedRequest._id}`, {
+      const response = await fetch(`/api/deletion/approve/${selectedRequest._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -114,7 +114,7 @@ const DeletionRequestsManager = ({ showAlert }) => {
 
     setActionLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/deletion/reject/${selectedRequest._id}`, {
+      const response = await fetch(`/api/deletion/reject/${selectedRequest._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -47,7 +47,7 @@ const AddOrder = (props) => {
         // Fetch products
         const fetchProducts = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/products/getproduct', {
+                const response = await fetch('/api/products/getproduct', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -71,7 +71,7 @@ const AddOrder = (props) => {
         // Fetch warehouses
         const fetchWarehouses = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                const response = await fetch('/api/warehouse/getwarehouse', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -322,7 +322,7 @@ const AddOrder = (props) => {
                 }))
             };
 
-            const response = await fetch('http://localhost:5000/api/customerorders/createcustomerorder', {
+            const response = await fetch('/api/customerorders/createcustomerorder', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

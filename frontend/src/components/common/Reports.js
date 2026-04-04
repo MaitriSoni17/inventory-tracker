@@ -28,7 +28,7 @@ const Reports = ({ showAlert }) => {
         const fetchReportPermissions = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch('http://localhost:5000/api/reports/report-permissions', {
+                const response = await fetch('/api/reports/report-permissions', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ const Reports = ({ showAlert }) => {
                     break;
                 case 'salary': {
                     // Fetch salary-assigned employees directly
-                    const salaryResponse = await fetch('http://localhost:5000/api/salary/getallsalaries', {
+                    const salaryResponse = await fetch('/api/salary/getallsalaries', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ const Reports = ({ showAlert }) => {
                     return;
             }
 
-            const response = await fetch(`http://localhost:5000${endpoint}`, {
+            const response = await fetch(`${endpoint}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -173,7 +173,7 @@ const Reports = ({ showAlert }) => {
             
             // Handle salary report separately
             if (reportConfig.reportType === 'salary') {
-                const response = await fetch('http://localhost:5000/api/salary/getallsalaries', {
+                const response = await fetch('/api/salary/getallsalaries', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -195,7 +195,7 @@ const Reports = ({ showAlert }) => {
                 // Fetch paid salaries for all employees
                 const paidSalaries = {};
                 for (const emp of salaryData) {
-                    const paidResponse = await fetch(`http://localhost:5000/api/salarypayment/totalpaid/${emp._id}`, {
+                    const paidResponse = await fetch(`/api/salarypayment/totalpaid/${emp._id}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -264,7 +264,7 @@ const Reports = ({ showAlert }) => {
                 params.append(idParam, reportConfig.specificId);
             }
 
-            const url = `http://localhost:5000${endpoint}?${params.toString()}`;
+            const url = `${endpoint}?${params.toString()}`;
 
             const response = await fetch(url, {
                 method: 'GET',

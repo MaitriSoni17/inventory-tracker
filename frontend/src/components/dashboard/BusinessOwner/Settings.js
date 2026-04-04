@@ -78,7 +78,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await apiCall('http://localhost:5000/api/businessowner/getbusinessowner', {
+      const res = await apiCall('/api/businessowner/getbusinessowner', {
         method: 'POST',
         headers
       });
@@ -162,7 +162,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      // const businessOwnerRes = await fetch('http://localhost:5000/api/businessowner/getbusinessowner', {
+      // const businessOwnerRes = await fetch('/api/businessowner/getbusinessowner', {
       //   method: 'POST',
       //   headers
       // });
@@ -180,7 +180,7 @@ const Settings = (props) => {
         address: profileData.address
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/updatebusinessowner', {
+      const res = await fetch('/api/businessowner/updatebusinessowner', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -252,7 +252,7 @@ const Settings = (props) => {
         address: profileData.address
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/updatebusinessowner', {
+      const res = await fetch('/api/businessowner/updatebusinessowner', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -298,7 +298,7 @@ const Settings = (props) => {
       if (!token) return;
       let activeDeletionExists = false;
 
-      const response = await fetch('http://localhost:5000/api/businessowner/deletion-status', {
+      const response = await fetch('/api/businessowner/deletion-status', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +324,7 @@ const Settings = (props) => {
 
       if (!activeDeletionExists) {
         setImpactLoading(true);
-        const impactRes = await fetch('http://localhost:5000/api/businessowner/deletion-impact', {
+        const impactRes = await fetch('/api/businessowner/deletion-impact', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -395,7 +395,7 @@ const Settings = (props) => {
 
       // console.log('Sending delete request with headers:', { ...headers, 'auth-token': headers['auth-token'].substring(0, 20) + '...' });
 
-      const res = await fetch('http://localhost:5000/api/businessowner/delete', {
+      const res = await fetch('/api/businessowner/delete', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -454,7 +454,7 @@ const Settings = (props) => {
         'auth-token': token
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/cancel-deletion', {
+      const res = await fetch('/api/businessowner/cancel-deletion', {
         method: 'POST',
         headers
       });
@@ -497,7 +497,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/businessowner/deactivate', {
+      const res = await fetch('/api/businessowner/deactivate', {
         method: 'POST',
         headers,
         body: JSON.stringify({

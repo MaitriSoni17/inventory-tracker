@@ -166,7 +166,7 @@ const NotificationsPage = (props) => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/notifications/getnotifications', {
+      const response = await fetch('/api/notifications/getnotifications', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -190,7 +190,7 @@ const NotificationsPage = (props) => {
   // Fetch unread count
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/notifications/unreadcount', {
+      const response = await fetch('/api/notifications/unreadcount', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +209,7 @@ const NotificationsPage = (props) => {
   // Mark notification as read
   const markAsRead = async (notificationId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/markasread/${notificationId}`, {
+      const response = await fetch(`/api/notifications/markasread/${notificationId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -234,7 +234,7 @@ const NotificationsPage = (props) => {
   const markAllAsRead = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/notifications/markallasread', {
+      const response = await fetch('/api/notifications/markallasread', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -260,7 +260,7 @@ const NotificationsPage = (props) => {
   // Delete notification
   const deleteNotification = async (notificationId) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/notifications/deletenotification/${notificationId}`, {
+      const response = await fetch(`/api/notifications/deletenotification/${notificationId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -286,7 +286,7 @@ const NotificationsPage = (props) => {
     if (window.confirm('Are you sure you want to delete all notifications?')) {
       try {
         setLoading(true);
-        const response = await fetch('http://localhost:5000/api/notifications/deleteallnotifications', {
+        const response = await fetch('/api/notifications/deleteallnotifications', {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -349,7 +349,7 @@ const NotificationsPage = (props) => {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/notifications/bulk/markasread', {
+      const response = await fetch('/api/notifications/bulk/markasread', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -389,7 +389,7 @@ const NotificationsPage = (props) => {
 
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/notifications/bulk/delete', {
+      const response = await fetch('/api/notifications/bulk/delete', {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

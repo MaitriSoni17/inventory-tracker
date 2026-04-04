@@ -14,14 +14,14 @@ const WarehouseDetails = (props) => {
         const fetchData = async () => {
             try {
                 const [warehouseRes, productsRes] = await Promise.all([
-                    fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                    fetch('/api/warehouse/getwarehouse', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'auth-token': localStorage.getItem('token')
                         }
                     }),
-                    fetch('http://localhost:5000/api/products/getproduct', {
+                    fetch('/api/products/getproduct', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

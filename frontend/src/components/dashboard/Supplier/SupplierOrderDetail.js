@@ -23,7 +23,7 @@ const SupplierOrderDetail = (props) => {
     // Check export permission
     const checkExportPermission = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/reports/supplier/check-permission', {
+            const response = await fetch('/api/reports/supplier/check-permission', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -42,7 +42,7 @@ const SupplierOrderDetail = (props) => {
 
     const fetchOrderDetail = useCallback(async () => {
         try {
-            const response = await fetch(`http://localhost:5000/api/supplierorders/getorders`, {
+            const response = await fetch(`/api/supplierorders/getorders`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -101,7 +101,7 @@ const SupplierOrderDetail = (props) => {
 
         setExportLoading(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/reports/supplier/my-orders/individual/${id}/${format}`, {
+            const response = await fetch(`/api/reports/supplier/my-orders/individual/${id}/${format}`, {
                 method: 'GET',
                 headers: {
                     'auth-token': localStorage.getItem('token')
@@ -141,7 +141,7 @@ const SupplierOrderDetail = (props) => {
 
     const handleUpdateStatus = async () => {
         try {
-            const response = await fetch(`http://localhost:5000/api/supplierorders/updateorderstatus/${id}`, {
+            const response = await fetch(`/api/supplierorders/updateorderstatus/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -166,7 +166,7 @@ const SupplierOrderDetail = (props) => {
 
     const handleUpdatePaymentStatus = async () => {
         try {
-            const response = await fetch(`http://localhost:5000/api/supplierorders/updatepaymentstatus/${id}`, {
+            const response = await fetch(`/api/supplierorders/updatepaymentstatus/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

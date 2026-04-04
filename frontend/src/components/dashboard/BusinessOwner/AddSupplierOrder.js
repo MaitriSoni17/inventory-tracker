@@ -42,7 +42,7 @@ function AddSupplierOrder(props) {
 
     const fetchSupplierInfo = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/getsupplier/' + id, {
+            const response = await fetch('/api/supplier/getsupplier/' + id, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ function AddSupplierOrder(props) {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/category/getcategories', {
+            const response = await fetch('/api/category/getcategories', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ function AddSupplierOrder(props) {
 
     const fetchProducts = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/products/getproduct', {
+            const response = await fetch('/api/products/getproduct', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -251,7 +251,7 @@ function AddSupplierOrder(props) {
                     desc: orderDetails.desc
                 };
 
-                const response = await fetch(`http://localhost:5000/api/supplierorders/createsupplierorder/${id}`, {
+                const response = await fetch(`/api/supplierorders/createsupplierorder/${id}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

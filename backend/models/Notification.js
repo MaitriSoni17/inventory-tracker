@@ -80,7 +80,12 @@ const NotificationSchema = new Schema({
       'supplier_order_delivery_alert',
       'product_low_stock_alert',
       'customer_order_delivery_alert',
-      'supplier_order_supply_alert'
+      'supplier_order_supply_alert',
+      'ai_anomaly_alert',
+      'ai_reorder_alert',
+      'ai_workflow_alert',
+      'ai_data_quality_alert',
+      'ai_digest'
     ],
     required: true
   },

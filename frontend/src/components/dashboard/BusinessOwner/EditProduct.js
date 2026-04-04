@@ -31,6 +31,40 @@ const EditProduct = (props) => {
     const [loadingCategories, setLoadingCategories] = useState(true);
     const [enrichedNames, setEnrichedNames] = useState({ warehouseNames: [], categoryName: '' });
 
+    const getUploadsBaseUrl = () => {
+        if (process.env.REACT_APP_API_BASE_URL) {
+            return process.env.REACT_APP_API_BASE_URL;
+        }
+
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:5000';
+        }
+
+        return '';
+    };
+
+    const resolveImageSrc = (rawImage) => {
+        const fallbackImage = '/logo192.png';
+        if (!rawImage) return fallbackImage;
+
+        const value = String(rawImage).trim();
+        if (!value) return fallbackImage;
+
+        // Absolute URL already stored in DB
+        if (/^https?:\/\//i.test(value) || value.startsWith('data:')) {
+            // If it points to frontend localhost uploads, rewrite to backend localhost.
+            if (/^https?:\/\/(localhost|127\.0\.0\.1):3000\/uploads\//i.test(value)) {
+                return value.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3000/i, 'http://localhost:5000');
+            }
+            return value;
+        }
+
+        const baseUrl = getUploadsBaseUrl();
+        const cleanPath = value.replace(/^\/+/, '');
+        const normalizedPath = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
+        return `${baseUrl}/${normalizedPath}`;
+    };
+
     // Check permission on mount
     useEffect(() => {
         if (!hasPermission('canEditProducts')) {
@@ -44,7 +78,7 @@ const EditProduct = (props) => {
         // Fetch the product details
         const fetchProduct = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/api/products/getproduct`, {
+                const response = await fetch(`/api/products/getproduct`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -109,7 +143,7 @@ const EditProduct = (props) => {
     useEffect(() => {
         const fetchWarehouses = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                const response = await fetch('/api/warehouse/getwarehouse', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -133,7 +167,7 @@ const EditProduct = (props) => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                const response = await fetch('/api/category/getcategory', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -211,7 +245,7 @@ const EditProduct = (props) => {
                     formData.append('images', image);
                 });
 
-                const response = await fetch(`http://localhost:5000/api/products/updateproduct/${id}`, {
+                const response = await fetch(`/api/products/updateproduct/${id}`, {
                     method: 'PUT',
                     headers: {
                         'auth-token': localStorage.getItem('token')
@@ -225,7 +259,7 @@ const EditProduct = (props) => {
                     return;
                 }
             } else {
-                const response = await fetch(`http://localhost:5000/api/products/updateproduct/${id}`, {
+                const response = await fetch(`/api/products/updateproduct/${id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -553,10 +587,13 @@ const EditProduct = (props) => {
                                                 <div key={index} className="col-md-3 col-sm-4 col-6">
                                                     <div className={`position-relative rounded-3 overflow-hidden shadow-sm ${isRemoved ? 'opacity-50' : ''}`} style={{ aspectRatio: '1/1' }}>
                                                         <img 
-                                                            src={`http://localhost:5000/uploads/${imageName}`}
+                                                            src={resolveImageSrc(imageName)}
                                                             alt={`Product ${index + 1}`}
                                                             className="w-100 h-100 object-fit-cover"
-                                                            onError={(e) => { e.target.src = '../imgs/product1.jpg'; }}
+                                                            onError={(e) => {
+                                                                e.currentTarget.onerror = null;
+                                                                e.currentTarget.src = '/logo192.png';
+                                                            }}
                                                         />
                                                         <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-end p-2" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5), transparent)' }}>
                                                             {!isRemoved ? (

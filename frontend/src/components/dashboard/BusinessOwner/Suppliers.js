@@ -33,7 +33,7 @@ const Suppliers = (props) => {
 
     const fetchSuppliers = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/getallsuppliers', {
+            const response = await fetch('/api/supplier/getallsuppliers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ const Suppliers = (props) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this supplier?')) {
             try {
-                const response = await fetch(`http://localhost:5000/api/supplier/deletesupplier/${id}`, {
+                const response = await fetch(`/api/supplier/deletesupplier/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -120,8 +120,8 @@ const Suppliers = (props) => {
         const { actionType, supplier } = statusModal;
         const fullName = `${supplier.fname} ${supplier.lname || ''}`.trim();
         const endpoint = actionType === 'reactivate'
-            ? `http://localhost:5000/api/supplier/reactivate/${supplier._id}`
-            : `http://localhost:5000/api/supplier/deactivate/${supplier._id}`;
+            ? `/api/supplier/reactivate/${supplier._id}`
+            : `/api/supplier/deactivate/${supplier._id}`;
 
         try {
             setStatusActionLoading(true);

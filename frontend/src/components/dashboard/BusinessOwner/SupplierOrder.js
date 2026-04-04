@@ -32,7 +32,7 @@ const SupplierOrder = (props) => {
 
     const fetchSupplierOrders = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplierorders/getsupplierorder/' + id, {
+            const response = await fetch('/api/supplierorders/getsupplierorder/' + id, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ const SupplierOrder = (props) => {
                 });
 
                 // Fetch supplier name
-                const supplierResponse = await fetch('http://localhost:5000/api/supplier/getsupplier/' + id, {
+                const supplierResponse = await fetch('/api/supplier/getsupplier/' + id, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -108,7 +108,7 @@ const SupplierOrder = (props) => {
     const handleDelete = async (orderId) => {
         if (window.confirm('Are you sure you want to delete this order?')) {
             try {
-                const response = await fetch(`http://localhost:5000/api/supplierorders/deletesupplierorder/${orderId}`, {
+                const response = await fetch(`/api/supplierorders/deletesupplierorder/${orderId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',

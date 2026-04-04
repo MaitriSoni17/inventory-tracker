@@ -73,7 +73,7 @@ const Warehouses = (props) => {
 
     const fetchManagers = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/warehouse/getmanagers', {
+            const response = await fetch('/api/warehouse/getmanagers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ const Warehouses = (props) => {
 
     const fetchWarehouses = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+            const response = await fetch('/api/warehouse/getwarehouse', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -228,7 +228,7 @@ const Warehouses = (props) => {
                 country: warehouseForm.country
             };
 
-            const response = await fetch('http://localhost:5000/api/warehouse/createwarehouse', {
+            const response = await fetch('/api/warehouse/createwarehouse', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -279,7 +279,7 @@ const Warehouses = (props) => {
                 country: warehouseForm.country
             };
 
-            const response = await fetch(`http://localhost:5000/api/warehouse/updatewarehouse/${editingId}`, {
+            const response = await fetch(`/api/warehouse/updatewarehouse/${editingId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -305,7 +305,7 @@ const Warehouses = (props) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this warehouse?')) {
             try {
-                const response = await fetch(`http://localhost:5000/api/warehouse/deletewarehouse/${id}`, {
+                const response = await fetch(`/api/warehouse/deletewarehouse/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',

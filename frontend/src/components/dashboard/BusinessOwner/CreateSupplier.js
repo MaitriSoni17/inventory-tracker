@@ -121,7 +121,7 @@ function CreateSupplier(props) {
         const { fname, lname, phone, nationality, about, address, country, state, city, email, password } = supplierDetails
 
         try {
-            const response = await fetch("http://localhost:5000/api/supplier/createsupplier", {
+            const response = await fetch("/api/supplier/createsupplier", {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

@@ -3,6 +3,7 @@ const router = express.Router();
 const RolePermissions = require('../models/RolePermissions');
 const Employee = require('../models/Employee');
 const fetchuser = require('../middleware/fetchuser');
+const { logAuditEvent } = require('../utils/auditLogger');
 
 // Built-in roles that cannot be removed or renamed
 const BUILT_IN_ROLES = ['manager', 'supervisor', 'employee'];
@@ -227,6 +228,20 @@ router.put('/update', fetchuser, async (req, res) => {
         
         // console.log(`Updated ${updateResult.modifiedCount} employees with new ${role} permissions`);
 
+        await logAuditEvent({
+            req,
+            businessowner: req.user._id,
+            action: 'permissions.update',
+            entityType: 'role_permissions',
+            entityId: role,
+            summary: `Updated permissions for role ${role}`,
+            metadata: {
+                role,
+                updatedEmployees: updateResult.modifiedCount,
+                permissionKeys: Object.keys(permissionsToUpdate)
+            }
+        });
+
         res.json({
             success: true,
             message: `${role.charAt(0).toUpperCase() + role.slice(1)} permissions updated successfully`,
@@ -299,6 +314,21 @@ router.put('/update-single', fetchuser, async (req, res) => {
         );
         
         // console.log(`Updated ${updateResult.modifiedCount} employees with permission ${permissionKey}=${value}`);
+
+        await logAuditEvent({
+            req,
+            businessowner: req.user._id,
+            action: 'permissions.update_single',
+            entityType: 'role_permissions',
+            entityId: role,
+            summary: `Updated ${permissionKey} for role ${role}`,
+            metadata: {
+                role,
+                permissionKey,
+                value,
+                updatedEmployees: updateResult.modifiedCount
+            }
+        });
 
         res.json({
             success: true,
@@ -416,6 +446,16 @@ router.put('/reset', fetchuser, async (req, res) => {
         }
 
         await rolePermissions.save();
+
+        await logAuditEvent({
+            req,
+            businessowner: req.user._id,
+            action: 'permissions.reset',
+            entityType: 'role_permissions',
+            entityId: role,
+            summary: role === 'all' ? 'Reset all role permissions to defaults' : `Reset ${role} permissions to defaults`,
+            metadata: { role }
+        });
 
         // Build response with custom roles
         const responsePermissions = {

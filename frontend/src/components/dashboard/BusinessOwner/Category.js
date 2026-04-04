@@ -17,7 +17,7 @@ const Category = (props) => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/category/getcategory", {
+      const response = await fetch("/api/category/getcategory", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,7 +41,7 @@ const Category = (props) => {
   const handleAddCategory = async () => {
     const { cName, cDesc } = categoryDetails;
     try {
-      const response = await fetch("http://localhost:5000/api/category/createcategory", {
+      const response = await fetch("/api/category/createcategory", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ const Category = (props) => {
   const handleEditCategory = async () => {
     if (!selectedCategory) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/category/updatecategory/${selectedCategory._id}`, {
+      const response = await fetch(`/api/category/updatecategory/${selectedCategory._id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ const Category = (props) => {
     if (!window.confirm(`Are you sure you want to delete ${selectedCategory.cName}?`)) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/category/deletecategory/${selectedCategory._id}`, {
+      const response = await fetch(`/api/category/deletecategory/${selectedCategory._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

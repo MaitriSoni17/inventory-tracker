@@ -69,7 +69,7 @@ const SideBar = () => {
 
     const handleStopImpersonation = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/auth/stop-impersonation', {
+            const response = await fetch('/api/auth/stop-impersonation', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -220,6 +220,12 @@ const SideBar = () => {
                         {!isDeletionRestricted && canExportReports && (
                             <Link to="/dashboard/reports" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/reports" ? "active" : ""}`}>
                                 <i className="fas fa-chart-line me-2"></i>Reports
+                            </Link>
+                        )}
+
+                        {!isDeletionRestricted && canExportReports && (
+                            <Link to="/dashboard/ai-insights" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/ai-insights" ? "active" : ""}`}>
+                                <i className="fas fa-brain me-2"></i>AI Insights
                             </Link>
                         )}
                         

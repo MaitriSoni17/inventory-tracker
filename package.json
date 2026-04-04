@@ -7,13 +7,16 @@
     "frontend:install": "cd frontend && npm install",
     "frontend:start": "cd frontend && npm start",
     "frontend:build": "cd frontend && npm run build",
+    "frontend:test": "cd frontend && npm test -- --watchAll=false",
     "backend:install": "cd backend && npm install",
     "backend:dev": "cd backend && npm run dev",
     "backend:start": "cd backend && npm start",
+    "backend:test": "cd backend && npm run test:ci",
     "install": "npm run frontend:install && npm run backend:install",
     "dev": "concurrently \"npm run backend:dev\" \"npm run frontend:start\"",
     "both": "concurrently \"npm run backend:dev\" \"npm run frontend:start\"",
-    "start": "concurrently \"npm run backend:start\" \"npm run frontend:start\""
+    "start": "concurrently \"npm run backend:start\" \"npm run frontend:start\"",
+    "test": "npm run backend:test"
   },
   "dependencies": {
     "concurrently": "^9.2.1"

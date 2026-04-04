@@ -47,7 +47,7 @@ const SalaryManagement = (props) => {
 
     const fetchSalaryData = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/salary/getallsalaries', {
+            const response = await fetch('/api/salary/getallsalaries', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -77,7 +77,7 @@ const SalaryManagement = (props) => {
 
     const fetchPaidSalary = async (employeeId) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/salarypayment/totalpaid/${employeeId}`, {
+            const response = await fetch(`/api/salarypayment/totalpaid/${employeeId}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -187,8 +187,8 @@ const SalaryManagement = (props) => {
 
         try {
             const endpoint = editingId
-                ? `http://localhost:5000/api/salary/updatesalary/${editingId}`
-                : `http://localhost:5000/api/salary/assignsalary/${selectedEmployee._id}`;
+                ? `/api/salary/updatesalary/${editingId}`
+                : `/api/salary/assignsalary/${selectedEmployee._id}`;
 
             const method = editingId ? 'PUT' : 'POST';
 
@@ -223,7 +223,7 @@ const SalaryManagement = (props) => {
     const handleDeleteSalary = async (employeeId) => {
         if (window.confirm('Are you sure you want to remove this employee\'s salary?')) {
             try {
-                const response = await fetch(`http://localhost:5000/api/salary/deletesalary/${employeeId}`, {
+                const response = await fetch(`/api/salary/deletesalary/${employeeId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -287,7 +287,7 @@ const SalaryManagement = (props) => {
         }
 
         try {
-            const response = await fetch('http://localhost:5000/api/salarypayment/recordpayment', {
+            const response = await fetch('/api/salarypayment/recordpayment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -497,7 +497,7 @@ const SalaryManagement = (props) => {
                                                         className="btn btn-sm btn-warning"
                                                         onClick={async () => {
                                                             try {
-                                                                const response = await fetch(`http://localhost:5000/api/salarypayment/getpayments/${emp._id}`, {
+                                                                const response = await fetch(`/api/salarypayment/getpayments/${emp._id}`, {
                                                                     method: 'GET',
                                                                     headers: {
                                                                         'Content-Type': 'application/json',

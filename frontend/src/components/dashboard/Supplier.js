@@ -73,7 +73,7 @@ function Supplier(props) {
             };
 
             // Fetch supplier orders
-            const response = await fetch('http://localhost:5000/api/supplierorders/getorders', {
+            const response = await fetch('/api/supplierorders/getorders', {
                 method: 'POST',
                 headers
             });

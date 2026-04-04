@@ -7,28 +7,28 @@ import HomepageChatbot from './HomepageChatbot';
 function About() {
   const navigate = useNavigate();
 
-  const team = [
-    {
-      name: 'John Smith',
-      role: 'Founder & CEO',
-      image: '👨‍💼'
-    },
-    {
-      name: 'Sarah Johnson',
-      role: 'CTO',
-      image: '👩‍💻'
-    },
-    {
-      name: 'Michael Chen',
-      role: 'Head of Product',
-      image: '👨‍💼'
-    },
-    {
-      name: 'Emily Davis',
-      role: 'Lead Designer',
-      image: '👩‍🎨'
-    }
-  ];
+  // const team = [
+  //   {
+  //     name: 'John Smith',
+  //     role: 'Founder & CEO',
+  //     image: '👨‍💼'
+  //   },
+  //   {
+  //     name: 'Sarah Johnson',
+  //     role: 'CTO',
+  //     image: '👩‍💻'
+  //   },
+  //   {
+  //     name: 'Michael Chen',
+  //     role: 'Head of Product',
+  //     image: '👨‍💼'
+  //   },
+  //   {
+  //     name: 'Emily Davis',
+  //     role: 'Lead Designer',
+  //     image: '👩‍🎨'
+  //   }
+  // ];
 
   return (
     <div className="home-elegant">
@@ -197,7 +197,7 @@ function About() {
       </section>
 
       {/* Team Section */}
-      <section className="team-section">
+      {/* <section className="team-section">
         <div className="section-container">
           <h2 className="section-title">Meet Our Team</h2>
           <p className="section-subtitle text-start">Talented professionals dedicated to your success</p>
@@ -211,7 +211,7 @@ function About() {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="cta-elegant">

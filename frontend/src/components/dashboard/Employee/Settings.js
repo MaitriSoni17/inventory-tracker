@@ -53,7 +53,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/employee/getemployee', {
+      const res = await fetch('/api/employee/getemployee', {
         method: 'POST',
         headers
       });
@@ -89,7 +89,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/employee/getpreferences', {
+      const res = await fetch('/api/employee/getpreferences', {
         method: 'POST',
         headers
       });
@@ -142,7 +142,7 @@ const Settings = (props) => {
         weeklyReport: prefsToSave.weeklyReport
       };
 
-      const res = await fetch('http://localhost:5000/api/employee/updatepreferences', {
+      const res = await fetch('/api/employee/updatepreferences', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -195,7 +195,7 @@ const Settings = (props) => {
         address: profileData.address
       };
 
-      const res = await fetch('http://localhost:5000/api/employee/updateemployee', {
+      const res = await fetch('/api/employee/updateemployee', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -238,7 +238,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/employee/changepassword', {
+      const res = await fetch('/api/employee/changepassword', {
         method: 'PUT',
         headers,
         body: JSON.stringify({
@@ -291,7 +291,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/employee/deactivateemployee', {
+      const res = await fetch('/api/employee/deactivateemployee', {
         method: 'PUT',
         headers
       });

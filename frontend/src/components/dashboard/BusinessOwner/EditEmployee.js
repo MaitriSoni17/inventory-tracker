@@ -69,7 +69,7 @@ const EditEmployee = (props) => {
 
     const fetchCustomRoles = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+            const response = await fetch('/api/permissions/custom-roles', {
                 method: 'GET',
                 headers: {
                     'auth-token': localStorage.getItem('token')
@@ -88,7 +88,7 @@ const EditEmployee = (props) => {
 
     const fetchWarehouses = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+            const response = await fetch('/api/warehouse/getwarehouse', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -105,7 +105,7 @@ const EditEmployee = (props) => {
 
     const fetchEmployee = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/employee/getallemployees', {
+            const response = await fetch('/api/employee/getallemployees', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -212,7 +212,7 @@ const EditEmployee = (props) => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/employee/resetpassword/${id}`, {
+            const response = await fetch(`/api/employee/resetpassword/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -272,7 +272,7 @@ const EditEmployee = (props) => {
         if (!imagePath) return null;
         // Extract just the filename if path contains /
         const filename = imagePath.includes('/') ? imagePath.split('/').pop() : imagePath;
-        return `http://localhost:5000/uploads/${filename}`;
+        return `/uploads/${filename}`;
     };
 
     const handleSubmit = async (e) => {
@@ -335,7 +335,7 @@ const EditEmployee = (props) => {
                 });
             }
 
-            const response = await fetch(`http://localhost:5000/api/employee/updateemployee/${id}`, {
+            const response = await fetch(`/api/employee/updateemployee/${id}`, {
                 method: 'PUT',
                 headers,
                 body

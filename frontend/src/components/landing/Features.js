@@ -29,7 +29,7 @@ function Features() {
       {/* Features Grid Section */}
       <section className="features-elegant">
         <div className="section-container">
-          <div className="features-grid">
+          <div className="feature-grid">
             {/* Feature 1 */}
             <div className="feature-card expanded">
               <div className="feature-icon">

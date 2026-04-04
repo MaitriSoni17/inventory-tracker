@@ -4,6 +4,7 @@ const { body, validationResult } = require('express-validator');
 const SupplierOrders = require('../models/SupplierOrders');
 const { createNotification } = require('../utils/notificationHelper');
 const { hasPermission } = require('../middleware/roleBasedAccess');
+const { logAuditEvent } = require('../utils/auditLogger');
 const router = express.Router();
 
 // Create Supplier Order — permission-based access
@@ -46,6 +47,20 @@ router.post('/createsupplierorder/:id', fetchuser, [
         }
 
         const supplierorder = await SupplierOrders.create(supplierorderdata);
+
+        await logAuditEvent({
+            req,
+            businessowner: supplierorder.businessowner,
+            action: 'supplier_order.create',
+            entityType: 'supplier_order',
+            entityId: supplierorder._id,
+            summary: `Created supplier order for ${pName}`,
+            metadata: {
+                supplier: req.params.id,
+                amount,
+                units: ounits
+            }
+        });
 
         // Send notification to supplier
         try {
@@ -229,6 +244,20 @@ router.put('/updatesupplierorder/:id', fetchuser, [
         }
 
         supplierorder = await SupplierOrders.findByIdAndUpdate(req.params.id, { $set: newSupplierOrder }, { new: true });
+
+        await logAuditEvent({
+            req,
+            businessowner: supplierorder.businessowner,
+            action: 'supplier_order.update',
+            entityType: 'supplier_order',
+            entityId: supplierorder._id,
+            summary: `Updated supplier order for ${pName}`,
+            metadata: {
+                amount,
+                units: ounits,
+                status
+            }
+        });
         
         // Send notification to supplier
         try {
@@ -274,6 +303,16 @@ router.put('/updateorderstatus/:id', fetchuser, [
         }
 
         supplierorder = await SupplierOrders.findByIdAndUpdate(req.params.id, { $set: { status } }, { new: true });
+
+        await logAuditEvent({
+            req,
+            businessowner: supplierorder.businessowner,
+            action: 'supplier_order.status_update',
+            entityType: 'supplier_order',
+            entityId: supplierorder._id,
+            summary: `Updated supplier order status to ${status}`,
+            metadata: { status }
+        });
         
         // Send notification to business owner
         try {
@@ -318,6 +357,16 @@ router.put('/updatepaymentstatus/:id', fetchuser, [
         }
 
         supplierorder = await SupplierOrders.findByIdAndUpdate(req.params.id, { $set: { paymentStatus } }, { new: true });
+
+        await logAuditEvent({
+            req,
+            businessowner: supplierorder.businessowner,
+            action: 'supplier_order.payment_status_update',
+            entityType: 'supplier_order',
+            entityId: supplierorder._id,
+            summary: `Updated supplier order payment status to ${paymentStatus}`,
+            metadata: { paymentStatus }
+        });
         
         // Send notification to business owner
         try {
@@ -378,6 +427,20 @@ router.delete('/deletesupplierorder/:id', fetchuser, async (req, res) => {
         }
 
         await SupplierOrders.findByIdAndDelete(req.params.id);
+
+        await logAuditEvent({
+            req,
+            businessowner: supplierorder.businessowner,
+            action: 'supplier_order.delete',
+            entityType: 'supplier_order',
+            entityId: supplierorder._id,
+            summary: `Deleted supplier order for ${supplierorder.pName}`,
+            metadata: {
+                amount: supplierorder.amount,
+                units: supplierorder.ounits
+            }
+        });
+
         res.json({ message: "Supplier Order deleted successfully", success: true });
     } catch (err) {
         res.status(500).send("Internal Server error occurred");

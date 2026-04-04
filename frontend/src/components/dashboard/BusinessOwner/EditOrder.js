@@ -85,7 +85,7 @@ const EditOrder = (props) => {
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/products/getproduct', {
+                const response = await fetch('/api/products/getproduct', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ const EditOrder = (props) => {
 
     const fetchOrder = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+            const response = await fetch('/api/customerorders/getcustomerorder', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -247,7 +247,7 @@ const EditOrder = (props) => {
                 }))
             };
 
-            const response = await fetch(`http://localhost:5000/api/customerorders/updatecustomerorder/${id}`, {
+            const response = await fetch(`/api/customerorders/updatecustomerorder/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

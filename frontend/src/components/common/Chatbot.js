@@ -232,7 +232,7 @@ const Chatbot = () => {
     setShowQuickActions(false);
 
     try {
-      const response = await axios.post('http://localhost:5000/api/chatbot/message', {
+      const response = await axios.post('/api/chatbot/message', {
         message: messageText,
         role: userRole,
         userId: userId

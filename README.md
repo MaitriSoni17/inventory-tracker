@@ -41,7 +41,8 @@ npm run frontend:start # Terminal 2
 ### Run Tests
 ```bash
 cd backend
-npm test              # Run all backend tests (27 tests)
+npm test              # Run all backend tests
+npm run test:ci       # CI-safe backend test run
 npm test:watch       # Watch mode
 npm test:coverage    # With coverage report
 
@@ -86,11 +87,10 @@ All of the following improvements have been implemented and tested:
 - **API Versioning Ready**: Structure supports /api/v1 migrations
 
 ### ✅ Testing & Documentation
-- **27 Backend Tests** ✅ passing
-  - 14 pagination tests
-  - 13 validation schema tests
+- **Backend test suite** ✅ passing
 - **Frontend Test Setup**: Ready for component tests
 - **OpenAPI Documentation**: Full API spec in `swagger.json`
+- **GitHub Actions CI**: Backend tests + frontend production build
 
 ---
 
@@ -115,7 +115,8 @@ inventory-tracker/
 │   ├── __tests__/           # Unit tests (NEW)
 │   ├── logs/                # Log files (auto-created)
 │   ├── uploads/             # File uploads
-│   ├── index.js             # Express app entry
+│   ├── app.js               # Express app composition
+│   ├── index.js             # Server bootstrap entry
 │   ├── db.js                # MongoDB connection
 │   ├── package.json
 │   ├── jest.config.json     # Jest configuration
@@ -160,7 +161,7 @@ inventory-tracker/
 - 📱 **Responsive Design**: Mobile-friendly interface
 
 ### Developer Features
-- ✅ **Comprehensive Tests**: 27+ unit tests, test infrastructure ready
+- ✅ **Comprehensive Tests**: Unit tests with CI-safe test command
 - 📖 **API Documentation**: OpenAPI/Swagger spec
 - 🔐 **Security Best Practices**: Rate limiting, validation, error handling
 - 📝 **Structured Logging**: Request tracking and error monitoring
@@ -219,9 +220,8 @@ npm test:watch
 ```
 
 ### Test Files
-- `backend/__tests__/utils/paginationHelper.test.js` - 14 tests
-- `backend/__tests__/config/validationSchemas.test.js` - 13 tests
-- `frontend/src/utils/validationHelper.test.js` - 14 tests (ready to run)
+- `backend/__tests__/chatbotHelper.test.js` - chatbot logic and query coverage
+- `backend/__tests__/health.test.js` - service availability health check
 
 ---
 

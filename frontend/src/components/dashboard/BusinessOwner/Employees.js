@@ -39,7 +39,7 @@ const Employees = (props) => {
 
     const fetchWarehouses = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+            const response = await fetch('/api/warehouse/getwarehouse', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -60,7 +60,7 @@ const Employees = (props) => {
 
     const fetchEmployees = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/employee/getallemployees', {
+            const response = await fetch('/api/employee/getallemployees', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ const Employees = (props) => {
 
     const fetchCustomRoles = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+            const response = await fetch('/api/permissions/custom-roles', {
                 method: 'GET',
                 headers: {
                     'auth-token': localStorage.getItem('token')
@@ -157,7 +157,7 @@ const Employees = (props) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this employee?')) {
             try {
-                const response = await fetch(`http://localhost:5000/api/employee/deleteemployee/${id}`, {
+                const response = await fetch(`/api/employee/deleteemployee/${id}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -192,8 +192,8 @@ const Employees = (props) => {
         const { actionType, employee } = statusModal;
         const fullName = `${employee.fname} ${employee.lname || ''}`.trim();
         const endpoint = actionType === 'reactivate'
-            ? `http://localhost:5000/api/employee/reactivate/${employee._id}`
-            : `http://localhost:5000/api/employee/deactivate/${employee._id}`;
+            ? `/api/employee/reactivate/${employee._id}`
+            : `/api/employee/deactivate/${employee._id}`;
 
         try {
             setStatusActionLoading(true);
@@ -248,7 +248,7 @@ const Employees = (props) => {
         if (!imagePath) return null;
         // Extract just the filename if path contains /
         const filename = imagePath.includes('/') ? imagePath.split('/').pop() : imagePath;
-        return `http://localhost:5000/uploads/${filename}`;
+        return `/uploads/${filename}`;
     };
 
     const handleSearchChange = (e) => {
@@ -426,7 +426,7 @@ const Employees = (props) => {
             const currentRole = localStorage.getItem('role');
             const currentUserId = localStorage.getItem('userId');
 
-            const response = await fetch(`http://localhost:5000/api/auth/impersonate/employee/${employee._id}`, {
+            const response = await fetch(`/api/auth/impersonate/employee/${employee._id}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

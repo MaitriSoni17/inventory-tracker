@@ -13,7 +13,8 @@ const { body, validationResult } = require('express-validator');
 const { notifyBusinessOwnerAboutEmployeeLogin, notifyBusinessOwnerAboutSupplierLogin } = require('../utils/notificationHelper');
 const { sendPasswordResetEmail, isMailConfigured } = require('../utils/mailer');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'ThisisaSecretKey';
+const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const PASSWORD_RESET_SECRET = process.env.PASSWORD_RESET_SECRET || JWT_SECRET;
 const PASSWORD_RESET_EXPIRES_IN = process.env.PASSWORD_RESET_EXPIRES_IN || '15m';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -102,7 +103,7 @@ router.post('/login', [
         }
 
         const tokenVersion = Number.isInteger(user.tokenVersion) ? user.tokenVersion : 0;
-        const token = jwt.sign({ id: user._id, role, tokenVersion }, JWT_SECRET);
+        const token = jwt.sign({ id: user._id, role, tokenVersion }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
         const loginTime = new Date();
 
         // Update lastLogin timestamp — check if user is an employee-type role (not businessowner or supplier)
@@ -220,7 +221,7 @@ router.post('/stop-impersonation', async (req, res) => {
             return res.status(403).json({ success: false, error: 'Business owner account is deactivated' });
         }
 
-        const ownerToken = jwt.sign({ id: businessowner._id, role: 'businessowner' }, JWT_SECRET);
+        const ownerToken = jwt.sign({ id: businessowner._id, role: 'businessowner' }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 
         await LoginInfo.create({
             email: businessowner.email,

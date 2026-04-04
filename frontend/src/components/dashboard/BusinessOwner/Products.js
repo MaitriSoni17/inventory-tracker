@@ -21,10 +21,41 @@ const Products = (props) => {
     const [warehouseMap, setWarehouseMap] = useState({});
     const [lastUpdateTime, setLastUpdateTime] = useState(new Date());
 
-    const getImageFileName = (product) => {
-        const fileName = (product.images && product.images.length > 0 ? product.images[0] : '');
-        // Ensure the filename is a string and not null/undefined
-        return fileName ? String(fileName) : '';
+    const getUploadsBaseUrl = () => {
+        if (process.env.REACT_APP_API_BASE_URL) {
+            return process.env.REACT_APP_API_BASE_URL;
+        }
+
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:5000';
+        }
+
+        return '';
+    };
+
+    const getPrimaryImage = (product) => {
+        const candidate = (product.images && product.images.length > 0 ? product.images[0] : product.image);
+        return candidate ? String(candidate).trim() : '';
+    };
+
+    const resolveImageSrc = (rawImage) => {
+        const fallbackImage = '/logo192.png';
+        if (!rawImage) return fallbackImage;
+
+        const value = String(rawImage).trim();
+        if (!value) return fallbackImage;
+
+        if (/^https?:\/\//i.test(value) || value.startsWith('data:')) {
+            if (/^https?:\/\/(localhost|127\.0\.0\.1):3000\/uploads\//i.test(value)) {
+                return value.replace(/^https?:\/\/(localhost|127\.0\.0\.1):3000/i, 'http://localhost:5000');
+            }
+            return value;
+        }
+
+        const baseUrl = getUploadsBaseUrl();
+        const cleanPath = value.replace(/^\/+/, '');
+        const normalizedPath = cleanPath.startsWith('uploads/') ? cleanPath : `uploads/${cleanPath}`;
+        return `${baseUrl}/${normalizedPath}`;
     };
 
     useEffect(() => {
@@ -124,7 +155,7 @@ const Products = (props) => {
     const handleDelete = async (productId) => {
         if (window.confirm("Are you sure you want to delete this product?")) {
             try {
-                const response = await fetch(`http://localhost:5000/api/products/deleteproduct/${productId}`, {
+                const response = await fetch(`/api/products/deleteproduct/${productId}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -400,8 +431,8 @@ const Products = (props) => {
                                     <tbody>
                                         {getFilteredProducts().map((product) => {
                                             // Get the first image from images array or use single image field
-                                            const imageToDisplay = getImageFileName(product);
-                                            const imageSrc = `http://localhost:5000/uploads/${imageToDisplay}`;
+                                            const imageToDisplay = getPrimaryImage(product);
+                                            const imageSrc = resolveImageSrc(imageToDisplay);
 
                                             return (
                                                 <tr key={product._id} className='p-0'>
@@ -410,7 +441,10 @@ const Products = (props) => {
                                                             src={imageSrc}
                                                             alt={product.name}
                                                             className="product-thumb-img rounded-3"
-                                                            onError={(e) => { e.target.src = '../imgs/product1.jpg'; }}
+                                                            onError={(e) => {
+                                                                e.currentTarget.onerror = null;
+                                                                e.currentTarget.src = '/logo192.png';
+                                                            }}
                                                         />
                                                     </td>
                                                     <td className="fw-bold">{product.name}</td>

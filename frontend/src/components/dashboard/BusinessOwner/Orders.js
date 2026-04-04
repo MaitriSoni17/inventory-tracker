@@ -31,7 +31,7 @@ const Orders = (props) => {
 
     const fetchWarehouses = async () => {
         try {
-            const response = await apiCall('http://localhost:5000/api/warehouse/getwarehouse', {
+            const response = await apiCall('/api/warehouse/getwarehouse', {
                 method: 'POST'
             });
             if (response.isUnauthorized) return;
@@ -78,7 +78,7 @@ const Orders = (props) => {
 
     const fetchOrders = async () => {
         try {
-            const response = await apiCall('http://localhost:5000/api/customerorders/getcustomerorder', {
+            const response = await apiCall('/api/customerorders/getcustomerorder', {
                 method: 'POST'
             });
 
@@ -103,7 +103,7 @@ const Orders = (props) => {
 
     const fetchCategories = async () => {
         try {
-            const response = await apiCall('http://localhost:5000/api/category/getcategory', {
+            const response = await apiCall('/api/category/getcategory', {
                 method: 'POST'
             });
             if (response.isUnauthorized) return;
@@ -121,7 +121,7 @@ const Orders = (props) => {
 
     const fetchPendingOrders = async () => {
         try {
-            const response = await apiCall('http://localhost:5000/api/customerorders/getpendingorders', {
+            const response = await apiCall('/api/customerorders/getpendingorders', {
                 method: 'POST'
             });
             if (response.isUnauthorized) return;
@@ -136,7 +136,7 @@ const Orders = (props) => {
     const handleDeletePending = async (id) => {
         if (window.confirm('Are you sure you want to delete this pending order?')) {
             try {
-                const response = await apiCall(`http://localhost:5000/api/customerorders/deletecustomerorder/${id}`, {
+                const response = await apiCall(`/api/customerorders/deletecustomerorder/${id}`, {
                     method: 'DELETE'
                 });
 
@@ -160,7 +160,7 @@ const Orders = (props) => {
     const handleDelete = async (id) => {
         if (window.confirm('Are you sure you want to delete this order?')) {
             try {
-                const response = await apiCall(`http://localhost:5000/api/customerorders/deletecustomerorder/${id}`, {
+                const response = await apiCall(`/api/customerorders/deletecustomerorder/${id}`, {
                     method: 'DELETE'
                 });
 

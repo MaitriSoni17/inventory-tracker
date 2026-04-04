@@ -66,7 +66,7 @@ function SignUp(props) {
     setIsSubmitting(true);
     try {
       const { email, password } = credentials;
-      const response = await fetch("http://localhost:5000/api/businessowner/createbusinessowner", {
+      const response = await fetch("/api/businessowner/createbusinessowner", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

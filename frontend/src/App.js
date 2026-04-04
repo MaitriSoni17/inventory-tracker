@@ -1,54 +1,62 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 // Import enhanced responsive styles first
 import './styles/enhanced-responsive.css';
 import './styles/charts.css';
 import './App.css';
-import Home from './components/landing/Home';
-import Features from './components/landing/Features';
-import About from './components/landing/About';
-import Contact from './components/landing/Contact';
-import Login from './components/auth/Login';
-import ForgotPassword from './components/auth/ForgotPassword';
-import ResetPassword from './components/auth/ResetPassword';
-import SignUp from './components/auth/SignUp';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import SideBar from './components/common/SideBar';
-import SupplierOrders from './components/dashboard/Supplier/SupplierOrders';
-import SupplierOrderDetail from './components/dashboard/Supplier/SupplierOrderDetail';
-import SupplierSettings from './components/dashboard/Supplier/Settings';
-import CreateEmployee from './components/dashboard/BusinessOwner/CreateEmployee';
 import Alert from './components/common/Alert';
-import CreateSupplier from './components/dashboard/BusinessOwner/CreateSupplier';
-import Category from './components/dashboard/BusinessOwner/Category';
-import Products from './components/dashboard/BusinessOwner/Products';
-import AddProduct from './components/dashboard/BusinessOwner/AddProduct';
-import EditProduct from './components/dashboard/BusinessOwner/EditProduct';
-import Orders from './components/dashboard/BusinessOwner/Orders';
-import AddOrder from './components/dashboard/BusinessOwner/AddOrder';
-import EditOrder from './components/dashboard/BusinessOwner/EditOrder';
-import Employees from './components/dashboard/BusinessOwner/Employees';
-import EditEmployee from './components/dashboard/BusinessOwner/EditEmployee';
-import Suppliers from './components/dashboard/BusinessOwner/Suppliers';
-import EditSupplier from './components/dashboard/BusinessOwner/EditSupplier';
-import SupplierOrder from './components/dashboard/BusinessOwner/SupplierOrder';
-import AddSupplierOrder from './components/dashboard/BusinessOwner/AddSupplierOrder';
-import EditSupplierOrder from './components/dashboard/BusinessOwner/EditSupplierOrder';
-import Warehouses from './components/dashboard/BusinessOwner/Warehouses';
-import WarehouseDetails from './components/dashboard/BusinessOwner/WarehouseDetails';
-import ProductDetails from './components/dashboard/BusinessOwner/ProductDetails';
-import Settings from './components/dashboard/BusinessOwner/Settings';
-import EmpSettings from './components/dashboard/Employee/Settings';
-import NotificationsPage from './components/common/NotificationsPage';
-import Messaging from './components/common/Messaging';
-import PermissionManager from './components/dashboard/BusinessOwner/PermissionManager';
-import Reports from './components/common/Reports';
-import SalaryManagement from './components/dashboard/BusinessOwner/SalaryManagement';
 import { RoleProvider } from './context/RoleContext';
 import { PermissionRouteGuard, RoleRouteGuard } from './components/auth/RouteGuard';
-import AccessDenied from './components/common/AccessDenied';
 import DashboardGuard from './components/auth/DashboardGuard';
-import DeletionRestriction from './components/common/DeletionRestriction';
+
+const Home = lazy(() => import('./components/landing/Home'));
+const Features = lazy(() => import('./components/landing/Features'));
+const About = lazy(() => import('./components/landing/About'));
+const Contact = lazy(() => import('./components/landing/Contact'));
+const Login = lazy(() => import('./components/auth/Login'));
+const ForgotPassword = lazy(() => import('./components/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./components/auth/ResetPassword'));
+const SignUp = lazy(() => import('./components/auth/SignUp'));
+const SupplierOrders = lazy(() => import('./components/dashboard/Supplier/SupplierOrders'));
+const SupplierOrderDetail = lazy(() => import('./components/dashboard/Supplier/SupplierOrderDetail'));
+const SupplierSettings = lazy(() => import('./components/dashboard/Supplier/Settings'));
+const CreateEmployee = lazy(() => import('./components/dashboard/BusinessOwner/CreateEmployee'));
+const CreateSupplier = lazy(() => import('./components/dashboard/BusinessOwner/CreateSupplier'));
+const Category = lazy(() => import('./components/dashboard/BusinessOwner/Category'));
+const Products = lazy(() => import('./components/dashboard/BusinessOwner/Products'));
+const AddProduct = lazy(() => import('./components/dashboard/BusinessOwner/AddProduct'));
+const EditProduct = lazy(() => import('./components/dashboard/BusinessOwner/EditProduct'));
+const Orders = lazy(() => import('./components/dashboard/BusinessOwner/Orders'));
+const AddOrder = lazy(() => import('./components/dashboard/BusinessOwner/AddOrder'));
+const EditOrder = lazy(() => import('./components/dashboard/BusinessOwner/EditOrder'));
+const Employees = lazy(() => import('./components/dashboard/BusinessOwner/Employees'));
+const EditEmployee = lazy(() => import('./components/dashboard/BusinessOwner/EditEmployee'));
+const Suppliers = lazy(() => import('./components/dashboard/BusinessOwner/Suppliers'));
+const EditSupplier = lazy(() => import('./components/dashboard/BusinessOwner/EditSupplier'));
+const SupplierOrder = lazy(() => import('./components/dashboard/BusinessOwner/SupplierOrder'));
+const AddSupplierOrder = lazy(() => import('./components/dashboard/BusinessOwner/AddSupplierOrder'));
+const EditSupplierOrder = lazy(() => import('./components/dashboard/BusinessOwner/EditSupplierOrder'));
+const Warehouses = lazy(() => import('./components/dashboard/BusinessOwner/Warehouses'));
+const WarehouseDetails = lazy(() => import('./components/dashboard/BusinessOwner/WarehouseDetails'));
+const ProductDetails = lazy(() => import('./components/dashboard/BusinessOwner/ProductDetails'));
+const Settings = lazy(() => import('./components/dashboard/BusinessOwner/Settings'));
+const EmpSettings = lazy(() => import('./components/dashboard/Employee/Settings'));
+const NotificationsPage = lazy(() => import('./components/common/NotificationsPage'));
+const Messaging = lazy(() => import('./components/common/Messaging'));
+const PermissionManager = lazy(() => import('./components/dashboard/BusinessOwner/PermissionManager'));
+const Reports = lazy(() => import('./components/common/Reports'));
+const AIInsights = lazy(() => import('./components/common/AIInsights'));
+const SalaryManagement = lazy(() => import('./components/dashboard/BusinessOwner/SalaryManagement'));
+const AccessDenied = lazy(() => import('./components/common/AccessDenied'));
+const DeletionRestriction = lazy(() => import('./components/common/DeletionRestriction'));
+
+const RouteLoadingFallback = () => (
+  <div className="d-flex align-items-center justify-content-center" style={{ minHeight: '40vh' }}>
+    <div className="spinner-border text-primary" role="status" aria-label="Loading route content" />
+  </div>
+);
 
 function App() {
   const [alert, setAlert] = useState(null);
@@ -62,6 +70,7 @@ function App() {
       <>
         <Alert alert={alert} />
         <Router>
+          <Suspense fallback={<RouteLoadingFallback />}>
           <Routes>
             {/* Landing Pages */}
             <Route path="/" element={<Home />} />
@@ -228,6 +237,11 @@ function App() {
                   <Reports showAlert={showAlert} />
                 </PermissionRouteGuard>
               } />
+              <Route path="ai-insights" element={
+                <PermissionRouteGuard permission="canExportReports">
+                  <AIInsights showAlert={showAlert} />
+                </PermissionRouteGuard>
+              } />
               {/* Salary Management - Business Owner only */}
               <Route path="salary" element={
                 <RoleRouteGuard roles="businessowner">
@@ -256,6 +270,7 @@ function App() {
             </Route>
 
           </Routes>
+          </Suspense>
         </Router>
       </>
     </RoleProvider>

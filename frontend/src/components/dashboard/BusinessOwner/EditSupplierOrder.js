@@ -47,7 +47,7 @@ function EditSupplierOrder(props) {
 
     const fetchOrderDetails = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplierorders/getsupplierorder/' + id, {
+            const response = await fetch('/api/supplierorders/getsupplierorder/' + id, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ function EditSupplierOrder(props) {
 
     const fetchSupplierInfo = async (suppId) => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/getsupplier/' + suppId, {
+            const response = await fetch('/api/supplier/getsupplier/' + suppId, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ function EditSupplierOrder(props) {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/category/getcategories', {
+            const response = await fetch('/api/category/getcategories', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ function EditSupplierOrder(props) {
 
     const fetchProducts = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/products/getproduct', {
+            const response = await fetch('/api/products/getproduct', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -244,7 +244,7 @@ function EditSupplierOrder(props) {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/supplierorders/updatesupplierorder/${id}`, {
+            const response = await fetch(`/api/supplierorders/updatesupplierorder/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

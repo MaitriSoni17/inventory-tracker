@@ -91,27 +91,27 @@ function Employee(props) {
             // Build fetch promises in parallel based on permissions
             const fetchPromises = {};
             if (hasPermission('canViewOrders')) {
-                fetchPromises.orders = fetch('http://localhost:5000/api/customerorders/getcustomerorder', {
+                fetchPromises.orders = fetch('/api/customerorders/getcustomerorder', {
                     method: 'POST', headers
                 });
             }
             if (hasPermission('canViewProducts')) {
-                fetchPromises.products = fetch('http://localhost:5000/api/products/getproduct', {
+                fetchPromises.products = fetch('/api/products/getproduct', {
                     method: 'POST', headers
                 });
             }
             if (hasPermission('canViewCategories')) {
-                fetchPromises.categories = fetch('http://localhost:5000/api/category/getcategories', {
+                fetchPromises.categories = fetch('/api/category/getcategories', {
                     method: 'POST', headers
                 });
             }
             if (hasPermission('canViewEmployees')) {
-                fetchPromises.employees = fetch('http://localhost:5000/api/employee/getallemployees', {
+                fetchPromises.employees = fetch('/api/employee/getallemployees', {
                     method: 'POST', headers
                 });
             }
             if (hasPermission('canViewWarehouses')) {
-                fetchPromises.warehouses = fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                fetchPromises.warehouses = fetch('/api/warehouse/getwarehouse', {
                     method: 'POST', headers
                 });
             }
@@ -157,7 +157,7 @@ function Employee(props) {
             setLoading(false);
 
             // Check low stock alerts in the background (non-blocking)
-            fetch('http://localhost:5000/api/notifications/check-low-stock-alerts', {
+            fetch('/api/notifications/check-low-stock-alerts', {
                 method: 'POST', headers
             }).catch(() => {});
         } catch (error) {

@@ -54,7 +54,7 @@ const EditSupplier = (props) => {
 
     const fetchSupplier = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/getallsuppliers', {
+            const response = await fetch('/api/supplier/getallsuppliers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -129,7 +129,7 @@ const EditSupplier = (props) => {
                 'auth-token': localStorage.getItem('token')
             };
 
-            const res = await fetch(`http://localhost:5000/api/supplier/resetpassword/${id}`, {
+            const res = await fetch(`/api/supplier/resetpassword/${id}`, {
                 method: 'PUT',
                 headers,
                 body: JSON.stringify({ newPassword: passwordData.newPassword })
@@ -169,7 +169,7 @@ const EditSupplier = (props) => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/supplier/updatesupplier/${id}`, {
+            const response = await fetch(`/api/supplier/updatesupplier/${id}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

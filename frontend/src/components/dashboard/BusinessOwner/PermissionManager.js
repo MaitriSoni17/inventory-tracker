@@ -108,7 +108,7 @@ const PermissionManager = (props) => {
     // Fetch permission groups
     const fetchPermissionGroups = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/groups', {
+            const response = await fetch('/api/permissions/groups', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -135,7 +135,7 @@ const PermissionManager = (props) => {
     // Fetch custom roles
     const fetchCustomRoles = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/custom-roles', {
+            const response = await fetch('/api/permissions/custom-roles', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -153,7 +153,7 @@ const PermissionManager = (props) => {
 
     const fetchPermissions = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/get', {
+            const response = await fetch('/api/permissions/get', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -187,7 +187,7 @@ const PermissionManager = (props) => {
     const fetchEmployees = useCallback(async () => {
         setLoadingEmployees(true);
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/employees', {
+            const response = await fetch('/api/permissions/employees', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -213,7 +213,7 @@ const PermissionManager = (props) => {
     const fetchProductCategories = useCallback(async () => {
         setLoadingProductCategories(true);
         try {
-            const response = await fetch('http://localhost:5000/api/category/getcategory', {
+            const response = await fetch('/api/category/getcategory', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -236,7 +236,7 @@ const PermissionManager = (props) => {
     // Fetch notification preferences
     const fetchNotificationPreferences = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/notificationpreferences', {
+            const response = await fetch('/api/notificationpreferences', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -269,7 +269,7 @@ const PermissionManager = (props) => {
     const fetchSuppliers = useCallback(async () => {
         setLoadingSuppliers(true);
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/permissions/list', {
+            const response = await fetch('/api/supplier/permissions/list', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -300,7 +300,7 @@ const PermissionManager = (props) => {
         ));
 
         try {
-            const response = await fetch(`http://localhost:5000/api/supplier/permissions/update/${supplierId}`, {
+            const response = await fetch(`/api/supplier/permissions/update/${supplierId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -343,7 +343,7 @@ const PermissionManager = (props) => {
         ));
 
         try {
-            const response = await fetch(`http://localhost:5000/api/supplier/permissions/update/${supplierId}`, {
+            const response = await fetch(`/api/supplier/permissions/update/${supplierId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -382,7 +382,7 @@ const PermissionManager = (props) => {
         setSavingSupplierPermission('bulk');
 
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/permissions/bulk-update', {
+            const response = await fetch('/api/supplier/permissions/bulk-update', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -415,7 +415,7 @@ const PermissionManager = (props) => {
         setSavingSupplierPermission('bulk-msg');
 
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/permissions/bulk-update', {
+            const response = await fetch('/api/supplier/permissions/bulk-update', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -442,7 +442,7 @@ const PermissionManager = (props) => {
     // Fetch report download permissions from role permissions
     const fetchReportDownloadPerms = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/get', {
+            const response = await fetch('/api/permissions/get', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -491,7 +491,7 @@ const PermissionManager = (props) => {
         setSavingReportPerm(saveKey);
 
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/update-single', {
+            const response = await fetch('/api/permissions/update-single', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -624,7 +624,7 @@ const PermissionManager = (props) => {
         };
 
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/update', {
+            const response = await fetch('/api/permissions/update', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -743,7 +743,7 @@ const PermissionManager = (props) => {
     const saveNotificationPreferences = async () => {
         setSavingNotificationPreferences(true);
         try {
-            const response = await fetch('http://localhost:5000/api/notificationpreferences', {
+            const response = await fetch('/api/notificationpreferences', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -799,7 +799,7 @@ const PermissionManager = (props) => {
         try {
             // If we have dependent permissions to update, use bulk update
             if (!newValue && dependentPerms.length > 0) {
-                const response = await fetch('http://localhost:5000/api/permissions/update', {
+                const response = await fetch('/api/permissions/update', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -826,7 +826,7 @@ const PermissionManager = (props) => {
                     props.showAlert(errorData.error || 'Error updating permissions', 'danger');
                 }
             } else {
-                const response = await fetch('http://localhost:5000/api/permissions/update-single', {
+                const response = await fetch('/api/permissions/update-single', {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -890,7 +890,7 @@ const PermissionManager = (props) => {
         try {
             // If we have dependent permissions to update, use bulk update
             if (!newValue && dependentPerms.length > 0) {
-                const response = await fetch(`http://localhost:5000/api/permissions/employee/${selectedEmployee._id}`, {
+                const response = await fetch(`/api/permissions/employee/${selectedEmployee._id}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -920,7 +920,7 @@ const PermissionManager = (props) => {
                     props.showAlert(errorData.error || 'Error updating permissions', 'danger');
                 }
             } else {
-                const response = await fetch(`http://localhost:5000/api/permissions/employee/${selectedEmployee._id}/single`, {
+                const response = await fetch(`/api/permissions/employee/${selectedEmployee._id}/single`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -965,7 +965,7 @@ const PermissionManager = (props) => {
         if (!selectedEmployee) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/api/permissions/employee/${selectedEmployee._id}/product-categories`, {
+            const response = await fetch(`/api/permissions/employee/${selectedEmployee._id}/product-categories`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1073,7 +1073,7 @@ const PermissionManager = (props) => {
         });
 
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/update', {
+            const response = await fetch('/api/permissions/update', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1111,7 +1111,7 @@ const PermissionManager = (props) => {
 
         setSaving(true);
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/reset', {
+            const response = await fetch('/api/permissions/reset', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1144,7 +1144,7 @@ const PermissionManager = (props) => {
 
         setSyncing(true);
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/sync-all', {
+            const response = await fetch('/api/permissions/sync-all', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1181,7 +1181,7 @@ const PermissionManager = (props) => {
 
         setSavingEmployee(true);
         try {
-            const response = await fetch(`http://localhost:5000/api/permissions/employee/${selectedEmployee._id}/reset`, {
+            const response = await fetch(`/api/permissions/employee/${selectedEmployee._id}/reset`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1292,7 +1292,7 @@ const PermissionManager = (props) => {
         }
         setCreatingRole(true);
         try {
-            const response = await fetch('http://localhost:5000/api/permissions/custom-role', {
+            const response = await fetch('/api/permissions/custom-role', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -1328,7 +1328,7 @@ const PermissionManager = (props) => {
         if (!window.confirm(`Are you sure you want to delete the "${roleInfo[roleKey]?.title || roleKey}" role? This cannot be undone.`)) return;
         setDeletingRole(roleKey);
         try {
-            const response = await fetch(`http://localhost:5000/api/permissions/custom-role/${roleKey}`, {
+            const response = await fetch(`/api/permissions/custom-role/${roleKey}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',

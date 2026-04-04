@@ -13,6 +13,19 @@ function Login(props) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { setRole, fetchUserRole } = useRole();
 
+    const getApiBaseUrl = () => {
+        if (process.env.REACT_APP_API_BASE_URL) {
+            return process.env.REACT_APP_API_BASE_URL;
+        }
+
+        // In local development, call backend directly to avoid proxy misconfiguration issues.
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            return 'http://localhost:5000';
+        }
+
+        return '';
+    };
+
     const passVisibility = () => {
         setShowPassword(prev => !prev);
     }
@@ -63,7 +76,7 @@ function Login(props) {
 
         setIsSubmitting(true);
         try {
-            const response = await fetch("http://localhost:5000/api/auth/login", {
+            const response = await fetch(`${getApiBaseUrl()}/api/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

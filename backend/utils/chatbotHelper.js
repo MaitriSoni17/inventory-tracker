@@ -70,8 +70,10 @@ const addToConversationHistory = async (userId, role, content) => {
   });
 };
 
-// Start cache cleanup on module load
-chatbotCache.startCleanup();
+// Start cache cleanup on module load outside test environment.
+if (process.env.NODE_ENV !== 'test') {
+  chatbotCache.startCleanup();
+}
 
 /**
  * Resolve the businessowner ID for any role

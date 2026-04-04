@@ -40,7 +40,7 @@ const AddProduct = (props) => {
     useEffect(() => {
         const fetchWarehouses = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/warehouse/getwarehouse', {
+                const response = await fetch('/api/warehouse/getwarehouse', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -64,7 +64,7 @@ const AddProduct = (props) => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/category/getcategory', {
+                const response = await fetch('/api/category/getcategory', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -226,7 +226,7 @@ const AddProduct = (props) => {
                 formData.append('images', image);
             });
 
-            const response = await fetch('http://localhost:5000/api/products/createproduct', {
+            const response = await fetch('/api/products/createproduct', {
                 method: 'POST',
                 headers: {
                     'auth-token': localStorage.getItem('token')

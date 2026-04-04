@@ -18,7 +18,7 @@ const SupplierOrders = (props) => {
     // Check export permission
     const checkExportPermission = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/reports/supplier/check-permission', {
+            const response = await fetch('/api/reports/supplier/check-permission', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -38,7 +38,7 @@ const SupplierOrders = (props) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     const fetchSupplierOrders = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplierorders/getorders', {
+            const response = await fetch('/api/supplierorders/getorders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -69,7 +69,7 @@ const SupplierOrders = (props) => {
 
     const fetchSupplierName = useCallback(async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/getsupplier', {
+            const response = await fetch('/api/supplier/getsupplier', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -188,7 +188,7 @@ const SupplierOrders = (props) => {
         setExportLoading(true);
         try {
             // Use server-side generation
-            const response = await fetch('http://localhost:5000/api/reports/supplier/my-orders/excel', {
+            const response = await fetch('/api/reports/supplier/my-orders/excel', {
                 method: 'GET',
                 headers: {
                     'auth-token': localStorage.getItem('token')
@@ -231,7 +231,7 @@ const SupplierOrders = (props) => {
         setExportLoading(true);
         try {
             // Use server-side generation
-            const response = await fetch('http://localhost:5000/api/reports/supplier/my-orders/pdf', {
+            const response = await fetch('/api/reports/supplier/my-orders/pdf', {
                 method: 'GET',
                 headers: {
                     'auth-token': localStorage.getItem('token')

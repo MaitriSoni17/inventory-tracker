@@ -21,7 +21,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
   const checkExistingRequest = async () => {
     setCheckingStatus(true);
     try {
-      const response = await fetch('http://localhost:5000/api/deletion/status', {
+      const response = await fetch('/api/deletion/status', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
 
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:5000/api/deletion/request/${existingRequest._id}`, {
+      const response = await fetch(`/api/deletion/request/${existingRequest._id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +91,7 @@ const AccountDeletionModal = ({ isOpen, onClose, userRole, userEmail, showAlert 
   const handleSubmitDeletion = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:5000/api/deletion/request', {
+      const response = await fetch('/api/deletion/request', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

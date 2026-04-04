@@ -105,7 +105,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/supplier/getsupplier', {
+      const res = await fetch('/api/supplier/getsupplier', {
         method: 'POST',
         headers
       });
@@ -214,7 +214,7 @@ const Settings = (props) => {
         address: profileData.address
       };
 
-      const res = await fetch('http://localhost:5000/api/supplier/updatesupplier', {
+      const res = await fetch('/api/supplier/updatesupplier', {
         method: 'PUT',
         headers,
         body: JSON.stringify(dataToSend)
@@ -274,7 +274,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/supplier/changepassword', {
+      const res = await fetch('/api/supplier/changepassword', {
         method: 'PUT',
         headers,
         body: JSON.stringify({
@@ -327,7 +327,7 @@ const Settings = (props) => {
         'auth-token': localStorage.getItem('token')
       };
 
-      const res = await fetch('http://localhost:5000/api/supplier/deactivate', {
+      const res = await fetch('/api/supplier/deactivate', {
         method: 'POST',
         headers
       });

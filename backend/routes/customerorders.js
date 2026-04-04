@@ -5,6 +5,8 @@ const Product = require('../models/Products');
 const { body, validationResult } = require('express-validator');
 const router = express.Router();
 const { notifyEmployeesAboutOrder, notifyBusinessOwnerAboutOrderByEmployee, checkAndNotifyLowStock } = require('../utils/notificationHelper');
+const { recordStockMovement } = require('../utils/stockMovementHelper');
+const { logAuditEvent } = require('../utils/auditLogger');
 
 const isValidPhoneNumber = (value) => {
   if (!value) return false;
@@ -108,9 +110,27 @@ router.post('/createcustomerorder', fetchuser, [
         // Only deduct stock if NOT pending
         if (!hasPendingProducts) {
             for (const item of products) {
-                await Product.findByIdAndUpdate(item.product, {
+                const previousProduct = await Product.findById(item.product);
+                const updatedProduct = await Product.findByIdAndUpdate(item.product, {
                     $inc: { totalProducts: -item.quantity }
-                });
+                }, { new: true });
+
+                if (previousProduct && updatedProduct) {
+                    await recordStockMovement({
+                        businessowner: updatedProduct.businessowner,
+                        product: updatedProduct._id,
+                        orderId: null,
+                        quantityChange: -item.quantity,
+                        previousStock: previousProduct.totalProducts,
+                        newStock: updatedProduct.totalProducts,
+                        source: 'customer_order_create',
+                        reason: `Stock deducted for customer order (${cName})`,
+                        actorId: req.user._id,
+                        actorRole: req.role,
+                        direction: 'OUT',
+                        metadata: { customer: cName, requestedQuantity: item.quantity }
+                    });
+                }
             }
 
             // Check for low stock alerts after stock deduction
@@ -154,6 +174,20 @@ router.post('/createcustomerorder', fetchuser, [
         }
 
         const customerorder = await CustomerOrders.create(customerorderData);
+
+        await logAuditEvent({
+            req,
+            businessowner: customerorder.businessowner,
+            action: 'customer_order.create',
+            entityType: 'customer_order',
+            entityId: customerorder._id,
+            summary: `Created customer order for ${cName}`,
+            metadata: {
+                amount: totalAmount,
+                totalUnits: customerorderData.ounits,
+                isPending: hasPendingProducts
+            }
+        });
 
         // Send notification to employees if created by business owner
         if (req.role === 'businessowner') {
@@ -345,15 +379,51 @@ router.put('/updatecustomerorder/:id', fetchuser, [
         // Adjust stock: restore old quantities then deduct new quantities
         // Restore stock for all old products
         for (const oldItem of customerorder.products) {
-            await Product.findByIdAndUpdate(oldItem.product, {
+            const previousProduct = await Product.findById(oldItem.product);
+            const updatedProduct = await Product.findByIdAndUpdate(oldItem.product, {
                 $inc: { totalProducts: oldItem.quantity }
-            });
+            }, { new: true });
+
+            if (previousProduct && updatedProduct) {
+                await recordStockMovement({
+                    businessowner: updatedProduct.businessowner,
+                    product: updatedProduct._id,
+                    orderId: customerorder._id,
+                    quantityChange: oldItem.quantity,
+                    previousStock: previousProduct.totalProducts,
+                    newStock: updatedProduct.totalProducts,
+                    source: 'customer_order_update_restore',
+                    reason: `Restored stock before editing order ${customerorder._id}`,
+                    actorId: req.user._id,
+                    actorRole: req.role,
+                    direction: 'IN',
+                    metadata: { quantity: oldItem.quantity }
+                });
+            }
         }
         // Deduct stock for all new products
         for (const item of products) {
-            await Product.findByIdAndUpdate(item.product, {
+            const previousProduct = await Product.findById(item.product);
+            const updatedProduct = await Product.findByIdAndUpdate(item.product, {
                 $inc: { totalProducts: -item.quantity }
-            });
+            }, { new: true });
+
+            if (previousProduct && updatedProduct) {
+                await recordStockMovement({
+                    businessowner: updatedProduct.businessowner,
+                    product: updatedProduct._id,
+                    orderId: customerorder._id,
+                    quantityChange: -item.quantity,
+                    previousStock: previousProduct.totalProducts,
+                    newStock: updatedProduct.totalProducts,
+                    source: 'customer_order_update_deduct',
+                    reason: `Deducted stock after editing order ${customerorder._id}`,
+                    actorId: req.user._id,
+                    actorRole: req.role,
+                    direction: 'OUT',
+                    metadata: { quantity: item.quantity }
+                });
+            }
         }
 
         // Check for low stock alerts after stock adjustment
@@ -384,6 +454,19 @@ router.put('/updatecustomerorder/:id', fetchuser, [
         }
 
         customerorder = await CustomerOrders.findByIdAndUpdate(req.params.id, { $set: newCustomerOrder }, { new: true });
+
+        await logAuditEvent({
+            req,
+            businessowner: customerorder.businessowner,
+            action: 'customer_order.update',
+            entityType: 'customer_order',
+            entityId: customerorder._id,
+            summary: `Updated customer order for ${cName}`,
+            metadata: {
+                amount: totalAmount,
+                totalUnits: newCustomerOrder.ounits
+            }
+        });
 
         // Send notification to employees if updated by business owner
         if (req.role === 'businessowner') {
@@ -434,13 +517,44 @@ router.delete('/deletecustomerorder/:id', fetchuser, async (req, res) => {
         // Only restore stock if the order was NOT pending (pending orders never deducted stock)
         if (!customerorder.isPending) {
             for (const item of customerorder.products) {
-                await Product.findByIdAndUpdate(item.product, {
+                const previousProduct = await Product.findById(item.product);
+                const updatedProduct = await Product.findByIdAndUpdate(item.product, {
                     $inc: { totalProducts: item.quantity }
-                });
+                }, { new: true });
+
+                if (previousProduct && updatedProduct) {
+                    await recordStockMovement({
+                        businessowner: updatedProduct.businessowner,
+                        product: updatedProduct._id,
+                        orderId: customerorder._id,
+                        quantityChange: item.quantity,
+                        previousStock: previousProduct.totalProducts,
+                        newStock: updatedProduct.totalProducts,
+                        source: 'customer_order_delete_restore',
+                        reason: `Restored stock after deleting order ${customerorder._id}`,
+                        actorId: req.user._id,
+                        actorRole: req.role,
+                        direction: 'IN',
+                        metadata: { quantity: item.quantity }
+                    });
+                }
             }
         }
 
         await CustomerOrders.findByIdAndDelete(req.params.id);
+
+        await logAuditEvent({
+            req,
+            businessowner: businessOwnerId,
+            action: 'customer_order.delete',
+            entityType: 'customer_order',
+            entityId: req.params.id,
+            summary: `Deleted customer order for ${customerorder.cName}`,
+            metadata: {
+                amount: customerorder.amount,
+                wasPending: customerorder.isPending
+            }
+        });
 
         // Send notification to employees if deleted by business owner
         if (req.role === 'businessowner') {

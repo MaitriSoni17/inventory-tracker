@@ -43,7 +43,7 @@ const Messaging = () => {
     useEffect(() => {
         const fetchCurrentUser = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/auth/getuser', {
+                const response = await fetch('/api/auth/getuser', {
                     method: 'GET',
                     headers: {
                         'Content-Type': 'application/json',
@@ -80,7 +80,7 @@ const Messaging = () => {
     // Check supplier messaging permission
     const checkSupplierMessagePermission = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/messages/supplier/check-permission', {
+            const response = await fetch('/api/messages/supplier/check-permission', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -169,7 +169,7 @@ const Messaging = () => {
 
     const fetchConversations = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/messages/conversations', {
+            const response = await fetch('/api/messages/conversations', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -200,7 +200,7 @@ const Messaging = () => {
 
             const queryString = queryParams.toString();
             const response = await fetch(
-                `http://localhost:5000/api/messages/conversation/${userId}/${userRole}${queryString ? `?${queryString}` : ''}`,
+                `/api/messages/conversation/${userId}/${userRole}${queryString ? `?${queryString}` : ''}`,
                 {
                     method: 'GET',
                     headers: {
@@ -235,7 +235,7 @@ const Messaging = () => {
 
         setSending(true);
         try {
-            const response = await fetch('http://localhost:5000/api/messages/send', {
+            const response = await fetch('/api/messages/send', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -279,7 +279,7 @@ const Messaging = () => {
         if (!window.confirm('Delete this message?')) return;
 
         try {
-            const response = await fetch(`http://localhost:5000/api/messages/${messageId}`, {
+            const response = await fetch(`/api/messages/${messageId}`, {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',
@@ -311,7 +311,7 @@ const Messaging = () => {
         }
 
         try {
-            const response = await fetch(`http://localhost:5000/api/messages/${messageId}`, {
+            const response = await fetch(`/api/messages/${messageId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -354,7 +354,7 @@ const Messaging = () => {
     // Fetch employees for business owner
     const fetchEmployees = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/employee/getallemployees', {
+            const response = await fetch('/api/employee/getallemployees', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -375,7 +375,7 @@ const Messaging = () => {
     // Fetch suppliers for business owner or employee
     const fetchSuppliers = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/supplier/getallsuppliers', {
+            const response = await fetch('/api/supplier/getallsuppliers', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -396,7 +396,7 @@ const Messaging = () => {
     // Fetch messaging contacts for employees (business owner + same-warehouse colleagues)
     const fetchContacts = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/messages/contacts', {
+            const response = await fetch('/api/messages/contacts', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -561,7 +561,7 @@ const Messaging = () => {
 
         setBulkDeleting(true);
         try {
-            const response = await fetch('http://localhost:5000/api/messages/bulk', {
+            const response = await fetch('/api/messages/bulk', {
                 method: 'DELETE',
                 headers: {
                     'Content-Type': 'application/json',

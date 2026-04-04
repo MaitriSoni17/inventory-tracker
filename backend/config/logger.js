@@ -1,4 +1,5 @@
 const winston = require('winston');
+const { randomUUID } = require('crypto');
 
 const logLevels = {
   error: 0,
@@ -51,7 +52,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Middleware to attach request ID and log requests
 function requestLogger(req, res, next) {
-  req.id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  req.id = randomUUID();
   
   const start = Date.now();
   

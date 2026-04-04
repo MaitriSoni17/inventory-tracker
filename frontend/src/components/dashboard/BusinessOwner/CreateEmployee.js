@@ -49,7 +49,7 @@ const CreateEmployee = (props) => {
     useEffect(() => {
         const fetchWarehouses = async () => {
             try {
-                const response = await apiCall('http://localhost:5000/api/warehouse/getwarehouse', {
+                const response = await apiCall('/api/warehouse/getwarehouse', {
                     method: 'POST'
                 });
                 
@@ -71,7 +71,7 @@ const CreateEmployee = (props) => {
         };
         const fetchCustomRoles = async () => {
             try {
-                const response = await apiCall('http://localhost:5000/api/permissions/custom-roles', {
+                const response = await apiCall('/api/permissions/custom-roles', {
                     method: 'GET'
                 });
                 if (response.ok) {
@@ -240,7 +240,7 @@ const CreateEmployee = (props) => {
         }
 
         try {
-            const response = await apiCall("http://localhost:5000/api/employee/createemployee", {
+            const response = await apiCall("/api/employee/createemployee", {
                 method: 'POST',
                 body: formData // Send the FormData object
             });
