@@ -38,6 +38,17 @@ npm run backend:dev    # Terminal 1
 npm run frontend:start # Terminal 2
 ```
 
+### Seed Sample Data
+```bash
+# Populate MongoDB with demo data linked to existing frontend dashboards
+npm run backend:seed
+```
+
+Seeded demo logins:
+- Business Owner: owner.demo@inventorytracker.dev / Owner@123
+- Manager: manager.demo@inventorytracker.dev / Manager@123
+- Supplier: supplier.demo@inventorytracker.dev / Supplier@123
+
 ### Run Tests
 ```bash
 cd backend

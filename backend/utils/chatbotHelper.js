@@ -11,6 +11,7 @@ const ChatHistory = require('../models/ChatHistory');
 const chatbotCache = require('./chatbotCache');
 const axios = require('axios');
 const { Groq } = require('groq-sdk');
+const { hasPermission } = require('../middleware/roleBasedAccess');
 
 /**
  * Safely convert userId to ObjectId for aggregate pipelines
@@ -584,13 +585,19 @@ SUPPLY OVERVIEW:
 /**
  * Generate AI response - main entry point
  */
-const generateAIResponse = async (userMessage, role, context, userId) => {
+const generateAIResponse = async (userMessage, role, context, userId, requestUser = null) => {
   try {
     // Add user message to conversation history
     addToConversationHistory(userId, 'user', userMessage);
 
+    const restrictedResponse = getRestrictedChatbotResponse(userMessage, role, requestUser);
+    if (restrictedResponse) {
+      addToConversationHistory(userId, 'assistant', restrictedResponse);
+      return restrictedResponse;
+    }
+
     // Prioritize specific entity/product queries before generic coaching/model responses.
-    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context);
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context, requestUser);
     if (entityResponse) {
       addToConversationHistory(userId, 'assistant', entityResponse);
       return entityResponse;
@@ -633,10 +640,10 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
 
     // Try Groq API first if available
     if (USE_GROQ && groqClient) {
-      response = await generateGroqResponse(userMessage, role, context, userId);
+      response = await generateGroqResponse(userMessage, role, context, userId, requestUser);
     } else {
       // Use intelligent rule-based response
-      response = await generateIntelligentResponse(userMessage, role, context, userId);
+      response = await generateIntelligentResponse(userMessage, role, context, userId, requestUser);
     }
 
     // Add bot response to conversation history
@@ -651,8 +658,13 @@ const generateAIResponse = async (userMessage, role, context, userId) => {
 /**
  * Handle specific entity queries (product details, order details, etc.)
  */
-const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}) => {
+const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}, requestUser = null) => {
   const message = normalizeQueryText(userMessage);
+
+  const restrictedResponse = getRestrictedChatbotResponse(userMessage, role, requestUser);
+  if (restrictedResponse) {
+    return restrictedResponse;
+  }
 
   // Resolve the business owner ID for data scoping
   const boId = await resolveBusinessOwnerId(userId, role);
@@ -1930,16 +1942,24 @@ const formatWarehouseDetailsResponse = (warehouses) => {
 /**
  * Generate response using Groq API with conversation history
  */
-const generateGroqResponse = async (userMessage, role, context, userId) => {
+const generateGroqResponse = async (userMessage, role, context, userId, requestUser = null) => {
   try {
     if (!USE_GROQ || !groqClient) {
       return generateEnhancedResponse(userMessage, role, context);
+    }
+
+    const restrictedResponse = getRestrictedChatbotResponse(userMessage, role, requestUser);
+    if (restrictedResponse) {
+      return restrictedResponse;
     }
 
     const normalizedMessage = (userMessage || '').toLowerCase().trim();
 
     // Keep low-stock alert responses deterministic and data-driven.
     if ((role === 'businessowner' || role === 'employee') && isLowStockAlertQuery(normalizedMessage)) {
+      if (!canViewProductData(role, requestUser)) {
+        return getRestrictedDataResponse();
+      }
       const lowStockContext = context && Object.keys(context).length > 0
         ? context
         : await getContextForRole(userId, role);
@@ -1962,7 +1982,7 @@ const generateGroqResponse = async (userMessage, role, context, userId) => {
     }
 
     // First check for specific entity queries that need DB lookups
-    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context);
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context, requestUser);
     if (entityResponse) return entityResponse;
 
     const systemPrompt = generateSystemPrompt(role);
@@ -1999,7 +2019,7 @@ const generateGroqResponse = async (userMessage, role, context, userId) => {
     return responseText;
   } catch (error) {
     // Fallback to intelligent rule-based response
-    return generateIntelligentResponse(userMessage, role, context, userId);
+    return generateIntelligentResponse(userMessage, role, context, userId, requestUser);
   }
 };
 
@@ -3737,6 +3757,88 @@ const getLowStockResponse = (role, context) => {
   return `Stock information is managed by the business owner. Check your dashboard for relevant details.`;
 };
 
+const getRestrictedDataResponse = () => {
+  return `You are not accessible to that data.`;
+};
+
+const hasAnyPermission = (requestUser, permissions = []) => {
+  if (!requestUser) return true;
+  return permissions.some((permission) => hasPermission(requestUser, permission));
+};
+
+const canViewProductData = (role, requestUser) => {
+  if (role === 'businessowner') return true;
+  if (!requestUser) return true;
+  return hasAnyPermission(requestUser, ['canViewProducts', 'canCreateProducts', 'canEditProducts', 'canDeleteProducts']);
+};
+
+const getRestrictedChatbotResponse = (userMessage, role, requestUser) => {
+  const message = normalizeQueryText(userMessage);
+  if (!message || role === 'businessowner' || !requestUser) return null;
+
+  const isGreetingOrHelp = /^(hi|hello|hey|good morning|good afternoon|good evening|help|thanks?|thank you)\b/.test(message);
+  if (isGreetingOrHelp) return null;
+
+  if (role === 'supplier') {
+    const supplierAllowedPatterns = [
+      /\b(my|your)\b.*\b(orders?|dashboard|profile|revenue|summary|status|deadline|due)\b/,
+      /\b(orders?|order|delivery|deliveries|shipment|shipping|tracking|pending|fulfilled|status|deadline|due|revenue|income|payment|payments|dashboard|overview|summary)\b/
+    ];
+
+    if (supplierAllowedPatterns.some((pattern) => pattern.test(message))) {
+      return null;
+    }
+
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(salary|payroll|wage|compensation|pay slip|pay slip|salary payments?)\b/.test(message)) {
+    return null;
+  }
+
+  if ((/\b(product|products|item|items|inventory|stock)\b/.test(message) || isLowStockAlertQuery(message)) && !canViewProductData(role, requestUser)) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(category|categories)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewCategories', 'canViewProducts', 'canCreateProducts', 'canEditProducts'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(warehouse|warehouses|storage|location|depot|facility)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewWarehouses', 'canViewProducts', 'canCreateProducts', 'canEditProducts'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(employee|employees|team|staff|worker|personnel|members?)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewEmployees', 'canManageEmployees'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(supplier|suppliers|vendor|vendors|procurement)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewOrders', 'canMessageSuppliers'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(report|reports|analytics|export|download|generate report)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewAnalytics', 'canExportReports', 'canDownloadEmployeeReport', 'canDownloadProductReport', 'canDownloadOrderReport', 'canDownloadSupplierOrderReport', 'canDownloadSupplierReport', 'canDownloadSalaryReport'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(revenue|income|earning|earnings|sales|profit|financial)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewAnalytics', 'canExportReports', 'canDownloadProductReport', 'canDownloadOrderReport', 'canDownloadSupplierOrderReport', 'canDownloadSupplierReport', 'canDownloadSalaryReport'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(dashboard|overview|business summary|summary)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewDashboard', 'canViewAnalytics'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(improve|increase|grow|boost|optimize|strategy|marketing|campaign|promote|promotion|business problem|business issue)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewAnalytics', 'canExportReports'])) {
+    return getRestrictedDataResponse();
+  }
+
+  if (/\b(order|orders|delivery|shipment|tracking|pending|processing|shipped|cancelled|deadline|due)\b/.test(message) && !hasAnyPermission(requestUser, ['canViewOrders'])) {
+    return getRestrictedDataResponse();
+  }
+
+  return null;
+};
+
 const getEmployeeDetailsResponse = (role, context) => {
   if (role === 'businessowner') {
     if (context.employeesList?.length > 0) {
@@ -4012,10 +4114,13 @@ const extractStatus = (message) => {
 /**
  * Generate response with intelligent analysis (fallback when Groq is unavailable)
  */
-const generateIntelligentResponse = async (userMessage, role, context, userId) => {
+const generateIntelligentResponse = async (userMessage, role, context, userId, requestUser = null) => {
   try {
+    const restrictedResponse = getRestrictedChatbotResponse(userMessage, role, requestUser);
+    if (restrictedResponse) return restrictedResponse;
+
     // Check for specific entity queries first
-    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context);
+    const entityResponse = await handleSpecificEntityQuery(userMessage, role, userId, context, requestUser);
     if (entityResponse) return entityResponse;
 
     // Fetch context if needed

@@ -9,6 +9,7 @@
     "frontend:build": "cd frontend && npm run build",
     "frontend:test": "cd frontend && npm test -- --watchAll=false",
     "backend:install": "cd backend && npm install",
+    "backend:seed": "cd backend && npm run seed",
     "backend:dev": "cd backend && npm run dev",
     "backend:start": "cd backend && npm start",
     "backend:test": "cd backend && npm run test:ci",

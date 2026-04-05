@@ -527,12 +527,24 @@ const conversationalBI = async (businessowner, queryText) => {
     };
   }
 
+  const normalizedQuery = query.toLowerCase().replace(/[\s\-]+/g, ' ');
+  const looksLikeLowMarginQuery = normalizedQuery.includes('low margin') && (
+    normalizedQuery.includes('product') ||
+    normalizedQuery.includes('products') ||
+    normalizedQuery.includes('item') ||
+    normalizedQuery.includes('items') ||
+    normalizedQuery.includes('warehouse')
+  );
+  const topMatch = query.match(/\btop\s*(\d+)\b/i);
+  const daysMatch = query.match(/\blast\s*(\d+)\s*days?\b/i);
+
   const lowMarginMatch = query.match(/top\s*(\d+)?\s*.*low[-\s]*margin.*last\s*(\d+)\s*days?.*warehouse/i)
-    || query.match(/low[-\s]*margin.*warehouse/i);
+    || query.match(/low[-\s]*margin.*warehouse/i)
+    || (looksLikeLowMarginQuery ? [query, topMatch?.[1], daysMatch?.[1]] : null);
 
   if (lowMarginMatch) {
-    const topN = clamp(safeNumber(lowMarginMatch?.[1], 10), 1, 50);
-    const days = clamp(safeNumber(lowMarginMatch?.[2], 30), 7, 365);
+    const topN = clamp(safeNumber(lowMarginMatch?.[1] || topMatch?.[1], 10), 1, 50);
+    const days = clamp(safeNumber(lowMarginMatch?.[2] || daysMatch?.[1], 30), 7, 365);
     const since = new Date(Date.now() - days * DAY_MS);
 
     const warehouseMap = new Map();
@@ -593,11 +605,11 @@ const conversationalBI = async (businessowner, queryText) => {
 
     return {
       success: true,
-      intent: 'top_low_margin_products_by_warehouse',
+      intent: 'top_low_margin_products',
       interpretation: {
         topN,
         days,
-        matchedPattern: 'low margin products by warehouse'
+        matchedPattern: normalizedQuery.includes('warehouse') ? 'low margin products by warehouse' : 'low margin products'
       },
       chart: {
         type: 'bar',
@@ -615,7 +627,7 @@ const conversationalBI = async (businessowner, queryText) => {
 
   return {
     success: false,
-    message: 'Unsupported BI query for now. Try: "top 10 low-margin products in last 30 days by warehouse".'
+    message: 'Unsupported BI query for now. Try: "top 10 low-margin products" or "top 10 low-margin products in last 30 days by warehouse".'
   };
 };
 

@@ -90,8 +90,7 @@ router.post('/conversational-bi/query', fetchuser, requireBusinessOwnerOrManager
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await conversationalBI(businessowner, req.body?.query);
-    const statusCode = result.success ? 200 : 400;
-    return res.status(statusCode).json(result);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to process conversational BI query.' });
   }

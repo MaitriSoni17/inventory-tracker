@@ -147,6 +147,18 @@ const BusinessOwner = (props) => {
     };
 
     const aggregateMonthlySales = (orders) => {
+        const salesStatuses = new Set(['paid', 'confirmed', 'completed', 'delivered']);
+
+        const shouldCountInSales = (order) => {
+            if (!order || !order.oDate) return false;
+            if (order.isPending === true) return false;
+
+            const normalizedStatus = String(order.status || '').trim().toLowerCase();
+            if (!normalizedStatus) return true;
+
+            return salesStatuses.has(normalizedStatus);
+        };
+
         const monthlyData = {};
         const currentYear = new Date().getFullYear();
         const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -156,9 +168,9 @@ const BusinessOwner = (props) => {
             monthlyData[month] = 0;
         });
 
-        // Aggregate order amounts by month (only paid orders)
+        // Aggregate order amounts by month using non-pending completed/confirmed sales.
         orders.forEach(order => {
-            if (order.status === 'Paid' && order.oDate) {
+            if (shouldCountInSales(order)) {
                 const orderDate = new Date(order.oDate);
                 if (orderDate.getFullYear() === currentYear) {
                     const monthIndex = orderDate.getMonth();
@@ -175,12 +187,24 @@ const BusinessOwner = (props) => {
     };
 
     const aggregateQuarterlySales = (orders) => {
+        const salesStatuses = new Set(['paid', 'confirmed', 'completed', 'delivered']);
+
+        const shouldCountInSales = (order) => {
+            if (!order || !order.oDate) return false;
+            if (order.isPending === true) return false;
+
+            const normalizedStatus = String(order.status || '').trim().toLowerCase();
+            if (!normalizedStatus) return true;
+
+            return salesStatuses.has(normalizedStatus);
+        };
+
         const quarterlyData = { 'Q1': 0, 'Q2': 0, 'Q3': 0, 'Q4': 0 };
         const currentYear = new Date().getFullYear();
 
-        // Aggregate order amounts by quarter (only paid orders)
+        // Aggregate order amounts by quarter using non-pending completed/confirmed sales.
         orders.forEach(order => {
-            if (order.status === 'Paid' && order.oDate) {
+            if (shouldCountInSales(order)) {
                 const orderDate = new Date(order.oDate);
                 if (orderDate.getFullYear() === currentYear) {
                     const monthIndex = orderDate.getMonth();
@@ -197,6 +221,18 @@ const BusinessOwner = (props) => {
     };
 
     const aggregateAnnuallySales = (orders) => {
+        const salesStatuses = new Set(['paid', 'confirmed', 'completed', 'delivered']);
+
+        const shouldCountInSales = (order) => {
+            if (!order || !order.oDate) return false;
+            if (order.isPending === true) return false;
+
+            const normalizedStatus = String(order.status || '').trim().toLowerCase();
+            if (!normalizedStatus) return true;
+
+            return salesStatuses.has(normalizedStatus);
+        };
+
         const annualData = {};
         const currentYear = new Date().getFullYear();
         const startYear = currentYear - 4; // Show last 5 years
@@ -206,9 +242,9 @@ const BusinessOwner = (props) => {
             annualData[i] = 0;
         }
 
-        // Aggregate order amounts by year (only paid orders)
+        // Aggregate order amounts by year using non-pending completed/confirmed sales.
         orders.forEach(order => {
-            if (order.status === 'Paid' && order.oDate) {
+            if (shouldCountInSales(order)) {
                 const orderDate = new Date(order.oDate);
                 const year = orderDate.getFullYear();
                 if (year >= startYear && year <= currentYear) {

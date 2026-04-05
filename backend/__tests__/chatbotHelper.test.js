@@ -751,6 +751,70 @@ describe('chatbot new query coverage', () => {
     expect(response).toContain('Current stock: **4** units');
   });
 
+  test('denies product details when employee lacks product permission', async () => {
+    Employee.findById.mockReturnValue({
+      select: jest.fn(() => Promise.resolve({ businessowner: BUSINESS_OWNER_ID }))
+    });
+
+    const response = await generateAIResponse(
+      'Show product details for Alpha Mix',
+      'employee',
+      {},
+      EMPLOYEE_ID,
+      {
+        _id: EMPLOYEE_ID,
+        role: 'employee',
+        permissions: {
+          canViewProducts: false,
+          canCreateProducts: false,
+          canEditProducts: false
+        }
+      }
+    );
+
+    expect(response).toContain('You are not accessible to that data.');
+    expect(Product.find).not.toHaveBeenCalled();
+  });
+
+  test('denies warehouse details when employee lacks warehouse permission', async () => {
+    const response = await generateAIResponse(
+      'Show warehouse details for Central Hub',
+      'employee',
+      {},
+      EMPLOYEE_ID,
+      {
+        _id: EMPLOYEE_ID,
+        role: 'employee',
+        permissions: {
+          canViewProducts: false,
+          canCreateProducts: false,
+          canEditProducts: false,
+          canViewWarehouses: false
+        }
+      }
+    );
+
+    expect(response).toBe('You are not accessible to that data.');
+    expect(Warehouse.find).not.toHaveBeenCalled();
+  });
+
+  test('denies order details when employee lacks order permission', async () => {
+    const response = await generateAIResponse(
+      'Show order details for Rahul Sharma',
+      'employee',
+      {},
+      EMPLOYEE_ID,
+      {
+        _id: EMPLOYEE_ID,
+        role: 'employee',
+        permissions: { canViewOrders: false }
+      }
+    );
+
+    expect(response).toBe('You are not accessible to that data.');
+    expect(CustomerOrders.find).not.toHaveBeenCalled();
+  });
+
   test('returns supplier list for generic supplier details query', async () => {
     Supplier.find.mockReturnValue(makeSelectSortLimitLeanChain([
       {
