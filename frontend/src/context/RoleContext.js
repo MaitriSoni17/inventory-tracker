@@ -174,10 +174,11 @@ export const RoleProvider = ({ children }) => {
             const supplierPermissions = {
                 'canViewDashboard': true,
                 'canViewMessages': true,
-                'canSendMessages': true,
-                'canDeleteMessages': true,
+                'canSendMessages': Boolean(userDetails?.canMessage),
+                'canDeleteMessages': Boolean(userDetails?.canMessage),
                 'canViewNotifications': true,
-                'canViewSettings': true
+                'canViewSettings': true,
+                'canExportReports': Boolean(userDetails?.canExportReports)
             };
             return supplierPermissions[permissionName] || false;
         }

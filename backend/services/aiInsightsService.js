@@ -1081,41 +1081,99 @@ const applyApprovedFixProposal = async ({ proposalId, reviewerId }) => {
 };
 
 const runAllAIInsights = async ({ businessowner, role, userId, actorId, actorRole, options = {} }) => {
-  const [
-    forecast,
-    reorder,
-    anomalies,
-    supplierScores,
-    workflow,
-    prioritized,
-    cash,
-    dataQuality
-  ] = await Promise.all([
-    demandForecast(businessowner, options),
-    autoReorder(businessowner, options),
-    detectInventoryAnomalies(businessowner, options),
-    supplierIntelligence(businessowner),
-    workflowCopilot({ businessowner, role, userId }),
-    prioritizeNotifications({ userId, role }),
-    cashForecast({ businessowner, days: options.days, reorderMultiplier: options.reorderMultiplier }),
-    dataQualityGuardrails({ businessowner, actorId, actorRole, createFixProposals: true })
-  ]);
+  const defaultSections = [
+    'demandForecast',
+    'autoReorder',
+    'anomalyDetection',
+    'supplierIntelligence',
+    'workflowCopilot',
+    'prioritizedNotifications',
+    'cashAndProfitForecast',
+    'dataQualityGuardrails'
+  ];
 
-  if (options.notifyAnomalies) {
-    await createAnomalyNotifications({ businessowner, actorId, actorRole, anomalies: anomalies.anomalies });
+  const includeSections = Array.isArray(options.includeSections) && options.includeSections.length > 0
+    ? options.includeSections
+    : defaultSections;
+
+  const includeSet = new Set(includeSections);
+  const result = {
+    generatedAt: new Date().toISOString()
+  };
+
+  const tasks = [];
+
+  if (includeSet.has('demandForecast')) {
+    tasks.push(
+      demandForecast(businessowner, options).then((value) => {
+        result.demandForecast = value;
+      })
+    );
   }
 
-  return {
-    generatedAt: new Date().toISOString(),
-    demandForecast: forecast,
-    autoReorder: reorder,
-    anomalyDetection: anomalies,
-    supplierIntelligence: supplierScores,
-    workflowCopilot: workflow,
-    prioritizedNotifications: prioritized,
-    cashAndProfitForecast: cash,
-    dataQualityGuardrails: dataQuality
-  };
+  if (includeSet.has('autoReorder')) {
+    tasks.push(
+      autoReorder(businessowner, options).then((value) => {
+        result.autoReorder = value;
+      })
+    );
+  }
+
+  if (includeSet.has('anomalyDetection')) {
+    tasks.push(
+      detectInventoryAnomalies(businessowner, options).then((value) => {
+        result.anomalyDetection = value;
+      })
+    );
+  }
+
+  if (includeSet.has('supplierIntelligence')) {
+    tasks.push(
+      supplierIntelligence(businessowner).then((value) => {
+        result.supplierIntelligence = value;
+      })
+    );
+  }
+
+  if (includeSet.has('workflowCopilot')) {
+    tasks.push(
+      workflowCopilot({ businessowner, role, userId }).then((value) => {
+        result.workflowCopilot = value;
+      })
+    );
+  }
+
+  if (includeSet.has('prioritizedNotifications')) {
+    tasks.push(
+      prioritizeNotifications({ userId, role }).then((value) => {
+        result.prioritizedNotifications = value;
+      })
+    );
+  }
+
+  if (includeSet.has('cashAndProfitForecast')) {
+    tasks.push(
+      cashForecast({ businessowner, days: options.days, reorderMultiplier: options.reorderMultiplier }).then((value) => {
+        result.cashAndProfitForecast = value;
+      })
+    );
+  }
+
+  if (includeSet.has('dataQualityGuardrails')) {
+    tasks.push(
+      dataQualityGuardrails({ businessowner, actorId, actorRole, createFixProposals: true }).then((value) => {
+        result.dataQualityGuardrails = value;
+      })
+    );
+  }
+
+  await Promise.all(tasks);
+
+  if (options.notifyAnomalies && result.anomalyDetection?.anomalies) {
+    await createAnomalyNotifications({ businessowner, actorId, actorRole, anomalies: result.anomalyDetection.anomalies });
+  }
+
+  return result;
 };
 
 module.exports = {

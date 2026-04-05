@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const fetchuser = require('../middleware/fetchuser');
 const AIDataFixProposal = require('../models/AIDataFixProposal');
+const { hasPermission } = require('../middleware/roleBasedAccess');
 const {
   demandForecast,
   autoReorder,
@@ -21,16 +22,70 @@ const {
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 
-const requireBusinessOwnerOrManager = (req, res, next) => {
-  if (req.role === 'businessowner' || req.role === 'manager' || req.role === 'supervisor') {
-    return next();
+const supplierPermissionMap = {
+  canViewDashboard: true,
+  canViewNotifications: true,
+  canViewMessages: true,
+  canSendMessages: (user) => Boolean(user?.canMessage),
+  canExportReports: (user) => Boolean(user?.canExportReports)
+};
+
+const aiSectionRules = {
+  demandForecast: { permissions: ['canViewProducts'] },
+  autoReorder: { permissions: ['canViewProducts'] },
+  anomalyDetection: { permissions: ['canViewProducts'] },
+  supplierIntelligence: { permissions: ['canViewOrders'] },
+  workflowCopilot: { permissions: ['canViewDashboard'] },
+  prioritizedNotifications: { permissions: ['canViewNotifications'] },
+  cashAndProfitForecast: { permissions: ['canViewAnalytics'] },
+  dataQualityGuardrails: { permissions: ['canViewAnalytics'] },
+  conversationalBi: { permissions: ['canViewAnalytics', 'canViewProducts'] }
+};
+
+const getPermissionState = (req, permission) => {
+  if (req.role === 'businessowner') return true;
+
+  if (req.role === 'supplier') {
+    const supplierPermission = supplierPermissionMap[permission];
+    if (typeof supplierPermission === 'function') return supplierPermission(req.user);
+    return Boolean(supplierPermission);
   }
-  return res.status(403).json({ success: false, error: 'Not authorized for AI insights operations.' });
+
+  return hasPermission(req.user, permission);
 };
 
 const getBusinessOwnerId = (req) => (req.role === 'businessowner' ? req.user._id : req.businessowner || req.user.businessowner);
 
-router.post('/demand-forecast', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+const canViewAiSection = (req, sectionKey) => {
+  const rule = aiSectionRules[sectionKey];
+  if (!rule) return false;
+
+  const requiredPermissions = rule.permissions || [];
+  return requiredPermissions.every((permission) => getPermissionState(req, permission));
+};
+
+const getAllowedAiSections = (req) => Object.keys(aiSectionRules).filter((sectionKey) => canViewAiSection(req, sectionKey));
+
+const requireAiSectionAccess = (sectionKey) => (req, res, next) => {
+  if (canViewAiSection(req, sectionKey)) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    error: `Not authorized to access ${sectionKey} insights.`
+  });
+};
+
+const filterAiInsightsForUser = (req, insights = {}) => {
+  const allowedSections = Object.keys(insights).filter((key) => canViewAiSection(req, key));
+  return allowedSections.reduce((filtered, key) => {
+    filtered[key] = insights[key];
+    return filtered;
+  }, { generatedAt: insights.generatedAt, allowedSections });
+};
+
+router.post('/demand-forecast', fetchuser, requireAiSectionAccess('demandForecast'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await demandForecast(businessowner, req.body || {});
@@ -40,7 +95,7 @@ router.post('/demand-forecast', fetchuser, requireBusinessOwnerOrManager, async 
   }
 });
 
-router.post('/auto-reorder', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/auto-reorder', fetchuser, requireAiSectionAccess('autoReorder'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await autoReorder(businessowner, req.body || {});
@@ -50,7 +105,7 @@ router.post('/auto-reorder', fetchuser, requireBusinessOwnerOrManager, async (re
   }
 });
 
-router.post('/anomalies', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/anomalies', fetchuser, requireAiSectionAccess('anomalyDetection'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await detectInventoryAnomalies(businessowner, req.body || {});
@@ -76,7 +131,7 @@ router.post('/anomalies', fetchuser, requireBusinessOwnerOrManager, async (req, 
   }
 });
 
-router.get('/supplier-intelligence', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.get('/supplier-intelligence', fetchuser, requireAiSectionAccess('supplierIntelligence'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await supplierIntelligence(businessowner);
@@ -86,7 +141,7 @@ router.get('/supplier-intelligence', fetchuser, requireBusinessOwnerOrManager, a
   }
 });
 
-router.post('/conversational-bi/query', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/conversational-bi/query', fetchuser, requireAiSectionAccess('conversationalBi'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await conversationalBI(businessowner, req.body?.query);
@@ -96,7 +151,7 @@ router.post('/conversational-bi/query', fetchuser, requireBusinessOwnerOrManager
   }
 });
 
-router.post('/ocr/invoice', fetchuser, requireBusinessOwnerOrManager, upload.single('file'), async (req, res) => {
+router.post('/ocr/invoice', fetchuser, requireAiSectionAccess('supplierIntelligence'), upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'Invoice file is required.' });
@@ -116,7 +171,7 @@ router.post('/ocr/invoice', fetchuser, requireBusinessOwnerOrManager, upload.sin
   }
 });
 
-router.get('/workflow-copilot', fetchuser, async (req, res) => {
+router.get('/workflow-copilot', fetchuser, requireAiSectionAccess('workflowCopilot'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await workflowCopilot({
@@ -130,7 +185,7 @@ router.get('/workflow-copilot', fetchuser, async (req, res) => {
   }
 });
 
-router.get('/notifications/prioritized', fetchuser, async (req, res) => {
+router.get('/notifications/prioritized', fetchuser, requireAiSectionAccess('prioritizedNotifications'), async (req, res) => {
   try {
     const result = await prioritizeNotifications({ userId: req.user._id, role: req.role });
     return res.json({ success: true, ...result });
@@ -139,7 +194,7 @@ router.get('/notifications/prioritized', fetchuser, async (req, res) => {
   }
 });
 
-router.post('/cash-forecast', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/cash-forecast', fetchuser, requireAiSectionAccess('cashAndProfitForecast'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const result = await cashForecast({
@@ -153,7 +208,7 @@ router.post('/cash-forecast', fetchuser, requireBusinessOwnerOrManager, async (r
   }
 });
 
-router.post('/data-quality/scan', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/data-quality/scan', fetchuser, requireAiSectionAccess('dataQualityGuardrails'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Employee';
@@ -169,7 +224,7 @@ router.post('/data-quality/scan', fetchuser, requireBusinessOwnerOrManager, asyn
   }
 });
 
-router.get('/data-quality/fix-proposals', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.get('/data-quality/fix-proposals', fetchuser, requireAiSectionAccess('dataQualityGuardrails'), async (req, res) => {
   try {
     const businessowner = getBusinessOwnerId(req);
     const status = req.query.status || 'pending';
@@ -183,7 +238,7 @@ router.get('/data-quality/fix-proposals', fetchuser, requireBusinessOwnerOrManag
   }
 });
 
-router.post('/data-quality/fix-proposals/:id/approve', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/data-quality/fix-proposals/:id/approve', fetchuser, requireAiSectionAccess('dataQualityGuardrails'), async (req, res) => {
   try {
     const applyResult = await applyApprovedFixProposal({
       proposalId: req.params.id,
@@ -197,7 +252,7 @@ router.post('/data-quality/fix-proposals/:id/approve', fetchuser, requireBusines
   }
 });
 
-router.post('/data-quality/fix-proposals/:id/reject', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/data-quality/fix-proposals/:id/reject', fetchuser, requireAiSectionAccess('dataQualityGuardrails'), async (req, res) => {
   try {
     const proposal = await AIDataFixProposal.findById(req.params.id);
     if (!proposal) {
@@ -216,8 +271,13 @@ router.post('/data-quality/fix-proposals/:id/reject', fetchuser, requireBusiness
   }
 });
 
-router.post('/run-all', fetchuser, requireBusinessOwnerOrManager, async (req, res) => {
+router.post('/run-all', fetchuser, async (req, res) => {
   try {
+    const allowedSections = getAllowedAiSections(req).filter((sectionKey) => sectionKey !== 'conversationalBi');
+    if (allowedSections.length === 0) {
+      return res.status(403).json({ success: false, error: 'No AI insight sections are permitted for this account.' });
+    }
+
     const businessowner = getBusinessOwnerId(req);
     const senderRole = req.role === 'businessowner' ? 'BusinessOwner' : 'Employee';
 
@@ -227,10 +287,13 @@ router.post('/run-all', fetchuser, requireBusinessOwnerOrManager, async (req, re
       userId: req.user._id,
       actorId: req.user._id,
       actorRole: senderRole,
-      options: req.body || {}
+      options: {
+        ...(req.body || {}),
+        includeSections: allowedSections
+      }
     });
 
-    return res.json({ success: true, ...result });
+    return res.json({ success: true, ...filterAiInsightsForUser(req, result) });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to run complete AI insights suite.' });
   }

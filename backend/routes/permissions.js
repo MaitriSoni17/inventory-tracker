@@ -168,11 +168,24 @@ router.put('/update', fetchuser, async (req, res) => {
             });
         }
 
+        const hasAllowedCategoryUpdate = Object.prototype.hasOwnProperty.call(permissions || {}, 'allowedProductCategories');
+        const normalizedAllowedCategories = hasAllowedCategoryUpdate && Array.isArray(permissions.allowedProductCategories)
+            ? [...new Set(permissions.allowedProductCategories.map((id) => String(id || '').trim()).filter(Boolean))]
+            : null;
+
         let permissionsToUpdate = {};
 
         if (isBuiltInRole(role)) {
             // Update built-in role permissions
-            rolePermissions[role] = { ...rolePermissions[role].toObject(), ...permissions };
+            const mergedPermissions = { ...rolePermissions[role].toObject(), ...permissions };
+            if (hasAllowedCategoryUpdate) {
+                if (Array.isArray(permissions.allowedProductCategories)) {
+                    mergedPermissions.allowedProductCategories = normalizedAllowedCategories;
+                } else {
+                    delete mergedPermissions.allowedProductCategories;
+                }
+            }
+            rolePermissions[role] = mergedPermissions;
             await rolePermissions.save();
 
             const rawPerms = rolePermissions[role].toObject ? rolePermissions[role].toObject() : rolePermissions[role];
@@ -189,6 +202,13 @@ router.put('/update', fetchuser, async (req, res) => {
             }
             const existingCustomRole = rolePermissions.customRoles.get(roleKey);
             const updatedRole = { ...existingCustomRole.toObject(), ...permissions };
+            if (hasAllowedCategoryUpdate) {
+                if (Array.isArray(permissions.allowedProductCategories)) {
+                    updatedRole.allowedProductCategories = normalizedAllowedCategories;
+                } else {
+                    delete updatedRole.allowedProductCategories;
+                }
+            }
             rolePermissions.customRoles.set(roleKey, updatedRole);
             await rolePermissions.save();
 

@@ -1,16 +1,76 @@
 import { useMemo, useState } from 'react';
 import { apiCall, parseResponse } from '../../utils/apiClient';
+import { useRole } from '../../context/RoleContext';
 import '../../styles/ai-insights.css';
 
 const sections = [
-  { key: 'demandForecast', label: 'Demand Forecasting' },
-  { key: 'autoReorder', label: 'Smart Auto-Reorder' },
-  { key: 'anomalyDetection', label: 'Inventory Anomaly Detection' },
-  { key: 'supplierIntelligence', label: 'Supplier Intelligence' },
-  { key: 'workflowCopilot', label: 'Workflow Copilot' },
-  { key: 'prioritizedNotifications', label: 'Notification Prioritization' },
-  { key: 'cashAndProfitForecast', label: 'Cash & Profit Forecast' },
-  { key: 'dataQualityGuardrails', label: 'Data Quality Guardrails' }
+  {
+    key: 'demandForecast',
+    label: 'Demand Forecasting',
+    permissions: ['canViewProducts']
+  },
+  {
+    key: 'autoReorder',
+    label: 'Smart Auto-Reorder',
+    permissions: ['canViewProducts']
+  },
+  {
+    key: 'anomalyDetection',
+    label: 'Inventory Anomaly Detection',
+    permissions: ['canViewProducts']
+  },
+  {
+    key: 'supplierIntelligence',
+    label: 'Supplier Intelligence',
+    permissions: ['canViewOrders']
+  },
+  {
+    key: 'workflowCopilot',
+    label: 'Workflow Copilot',
+    permissions: ['canViewDashboard']
+  },
+  {
+    key: 'prioritizedNotifications',
+    label: 'Notification Prioritization',
+    permissions: ['canViewNotifications']
+  },
+  {
+    key: 'cashAndProfitForecast',
+    label: 'Cash & Profit Forecast',
+    permissions: ['canViewAnalytics']
+  },
+  {
+    key: 'dataQualityGuardrails',
+    label: 'Data Quality Guardrails',
+    permissions: ['canViewAnalytics']
+  }
+];
+
+const summaryCards = [
+  {
+    title: 'At Risk Products',
+    sectionKey: 'demandForecast',
+    value: (insights) => insights?.demandForecast?.atRiskCount ?? 0,
+    subText: (insights) => `${insights?.demandForecast?.totalProductsAnalyzed ?? 0} analyzed`
+  },
+  {
+    title: 'Reorder Plans',
+    sectionKey: 'autoReorder',
+    value: (insights) => insights?.autoReorder?.reorderCount ?? 0,
+    subText: (insights) => `Budget left: ${insights?.autoReorder?.budgetRemaining ?? 'N/A'}`
+  },
+  {
+    title: 'Anomalies',
+    sectionKey: 'anomalyDetection',
+    value: (insights) => insights?.anomalyDetection?.anomalyCount ?? 0,
+    subText: () => 'Potential inventory risks detected'
+  },
+  {
+    title: 'Data Quality Findings',
+    sectionKey: 'dataQualityGuardrails',
+    value: (insights) => insights?.dataQualityGuardrails?.findingCount ?? 0,
+    subText: (insights) => `${insights?.dataQualityGuardrails?.fixProposalCount ?? 0} fix proposals created`
+  }
 ];
 
 const currencyFormatter = new Intl.NumberFormat('en-IN', {
@@ -220,38 +280,56 @@ const renderSectionBody = (sectionKey, data) => {
 };
 
 const AIInsights = ({ showAlert }) => {
+  const { role, hasPermission, loading: roleLoading } = useRole();
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState(null);
   const [biQuery, setBiQuery] = useState('top 10 low-margin products in last 30 days by warehouse');
   const [biResult, setBiResult] = useState(null);
   const [biLoading, setBiLoading] = useState(false);
 
-  const summaryCards = useMemo(() => {
+  const allowedSections = useMemo(() => {
+    if (role === 'businessowner') {
+      return sections;
+    }
+
+    return sections.filter((section) => section.permissions.every((permission) => hasPermission(permission)));
+  }, [hasPermission, role]);
+
+  const effectiveAllowedSections = useMemo(() => {
+    const backendAllowedSections = Array.isArray(insights?.allowedSections) ? new Set(insights.allowedSections) : null;
+    if (!backendAllowedSections) return allowedSections;
+
+    return allowedSections.filter((section) => backendAllowedSections.has(section.key));
+  }, [allowedSections, insights]);
+
+  const effectiveAllowedSectionKeys = useMemo(
+    () => new Set(effectiveAllowedSections.map((section) => section.key)),
+    [effectiveAllowedSections]
+  );
+
+  const visibleSummaryCards = useMemo(() => {
     if (!insights) return [];
 
-    return [
-      {
-        title: 'At Risk Products',
-        value: insights?.demandForecast?.atRiskCount ?? 0,
-        subText: `${insights?.demandForecast?.totalProductsAnalyzed ?? 0} analyzed`
-      },
-      {
-        title: 'Reorder Plans',
-        value: insights?.autoReorder?.reorderCount ?? 0,
-        subText: `Budget left: ${insights?.autoReorder?.budgetRemaining ?? 'N/A'}`
-      },
-      {
-        title: 'Anomalies',
-        value: insights?.anomalyDetection?.anomalyCount ?? 0,
-        subText: 'Potential inventory risks detected'
-      },
-      {
-        title: 'Data Quality Findings',
-        value: insights?.dataQualityGuardrails?.findingCount ?? 0,
-        subText: `${insights?.dataQualityGuardrails?.fixProposalCount ?? 0} fix proposals created`
-      }
-    ];
-  }, [insights]);
+    return summaryCards
+      .filter((card) => effectiveAllowedSectionKeys.has(card.sectionKey))
+      .map((card) => ({
+        title: card.title,
+        value: card.value(insights),
+        subText: card.subText(insights)
+      }));
+  }, [effectiveAllowedSectionKeys, insights]);
+
+  const canRunBiInsights = role === 'businessowner' || (hasPermission('canViewAnalytics') && hasPermission('canViewProducts'));
+
+  if (roleLoading) {
+    return (
+      <div className="ai-insights-page p-3 p-md-4">
+        <div className="ai-control-shell d-flex align-items-center justify-content-center" style={{ minHeight: '50vh' }}>
+          <div className="spinner-border text-primary" role="status" aria-label="Loading AI Insights permissions" />
+        </div>
+      </div>
+    );
+  }
 
   const runAllInsights = async () => {
     setLoading(true);
@@ -327,8 +405,9 @@ const AIInsights = ({ showAlert }) => {
         </button>
       </div>
 
+      {visibleSummaryCards.length > 0 && (
       <div className="ai-summary-grid-top mb-4">
-        {summaryCards.map((card) => (
+        {visibleSummaryCards.map((card) => (
           <div className="ai-summary-card" key={card.title}>
             <p className="ai-summary-title mb-1">{card.title}</p>
             <h4 className="mb-1">{card.value}</h4>
@@ -336,58 +415,67 @@ const AIInsights = ({ showAlert }) => {
           </div>
         ))}
       </div>
+      )}
 
-      <div className="ai-section ai-section--bi mb-4">
-        <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mb-2">
-          <h5 className="mb-0">Conversational BI</h5>
-          <button className="btn ai-outline-btn" onClick={runBIQuery} disabled={biLoading}>
-            {biLoading ? 'Running...' : 'Run Query'}
-          </button>
-        </div>
-        <div className="d-flex flex-column flex-lg-row gap-2">
-          <input
-            type="text"
-            className="form-control"
-            value={biQuery}
-            onChange={(e) => setBiQuery(e.target.value)}
-            placeholder="Ask: top 10 low-margin products in last 30 days by warehouse"
-          />
-        </div>
-        {biResult?.rows?.length > 0 && (
-          <div className="table-responsive mt-3">
-            <table className="table table-striped table-hover">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Warehouse</th>
-                  <th>Qty Sold</th>
-                  <th>Revenue</th>
-                  <th>Unit Cost</th>
-                  <th>Margin</th>
-                </tr>
-              </thead>
-              <tbody>
-                {biResult.rows.map((row, index) => (
-                  <tr key={`${row.productName}-${row.warehouse}-${index}`}>
-                    <td>{row.productName}</td>
-                    <td>{row.warehouse}</td>
-                    <td>{row.quantitySold}</td>
-                    <td>{row.revenue}</td>
-                    <td>{row.avgUnitCost}</td>
-                    <td>{row.margin}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {canRunBiInsights && (
+        <div className="ai-section ai-section--bi mb-4">
+          <div className="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mb-2">
+            <h5 className="mb-0">Conversational BI</h5>
+            <button className="btn ai-outline-btn" onClick={runBIQuery} disabled={biLoading}>
+              {biLoading ? 'Running...' : 'Run Query'}
+            </button>
           </div>
-        )}
-        {biResult && (!Array.isArray(biResult.rows) || biResult.rows.length === 0) && (
-          <div className="ai-bi-empty-state mt-3">No Data to Show</div>
-        )}
-      </div>
+          <div className="d-flex flex-column flex-lg-row gap-2">
+            <input
+              type="text"
+              className="form-control"
+              value={biQuery}
+              onChange={(e) => setBiQuery(e.target.value)}
+              placeholder="Ask: top 10 low-margin products in last 30 days by warehouse"
+            />
+          </div>
+          {biResult?.rows?.length > 0 && (
+            <div className="table-responsive mt-3">
+              <table className="table table-striped table-hover">
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Warehouse</th>
+                    <th>Qty Sold</th>
+                    <th>Revenue</th>
+                    <th>Unit Cost</th>
+                    <th>Margin</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {biResult.rows.map((row, index) => (
+                    <tr key={`${row.productName}-${row.warehouse}-${index}`}>
+                      <td>{row.productName}</td>
+                      <td>{row.warehouse}</td>
+                      <td>{row.quantitySold}</td>
+                      <td>{row.revenue}</td>
+                      <td>{row.avgUnitCost}</td>
+                      <td>{row.margin}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {biResult && (!Array.isArray(biResult.rows) || biResult.rows.length === 0) && (
+            <div className="ai-bi-empty-state mt-3">No Data to Show</div>
+          )}
+        </div>
+      )}
+
+      {!canRunBiInsights && (
+        <div className="ai-section ai-section--bi mb-4">
+          <div className="ai-empty-state">You do not have permission to view conversational BI data.</div>
+        </div>
+      )}
 
       <div className="ai-section-grid">
-        {sections.map((section) => (
+        {effectiveAllowedSections.map((section) => (
           <div className="ai-section" key={section.key}>
             <div className="ai-section-header">
               <div>
@@ -398,6 +486,11 @@ const AIInsights = ({ showAlert }) => {
             {renderSectionBody(section.key, insights?.[section.key] ?? { status: insightFallback })}
           </div>
         ))}
+        {effectiveAllowedSections.length === 0 && (
+          <div className="ai-section">
+            <div className="ai-empty-state">No AI insights are available for your current permissions.</div>
+          </div>
+        )}
       </div>
       </div>
     </div>

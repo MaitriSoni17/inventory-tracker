@@ -620,7 +620,7 @@ const PermissionManager = (props) => {
         const rolePerms = permissions?.[roleKey] || {};
         const nextRolePerms = {
             ...rolePerms,
-            allowedProductCategories: Array.isArray(nextCategories) ? nextCategories : undefined
+            allowedProductCategories: nextCategories
         };
 
         try {

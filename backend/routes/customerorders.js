@@ -346,6 +346,8 @@ router.put('/updatecustomerorder/:id', fetchuser, [
         let totalAmount = 0;
         const processedProducts = [];
         const productNames = [];
+        let hasPendingProducts = false;
+        const pendingReasons = [];
 
         for (const item of products) {
             const productDoc = await Product.findById(item.product);
@@ -356,10 +358,13 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             // Calculate the difference: new quantity minus what was already ordered
             const previousQty = oldQuantityMap[item.product.toString()] || 0;
             const diff = item.quantity - previousQty;
+            const requiredFromStock = customerorder.isPending ? item.quantity : Math.max(diff, 0);
 
-            // If requesting more than before, check if additional stock is available
-            if (diff > 0 && productDoc.totalProducts < diff) {
-                return res.status(400).json({ error: `Insufficient stock for "${productDoc.name}". Available: ${productDoc.totalProducts}, Additional needed: ${diff}` });
+            // For pending orders, check full quantity (nothing was reserved before).
+            // For active orders, check only the additional quantity needed.
+            if (requiredFromStock > 0 && productDoc.totalProducts < requiredFromStock) {
+                hasPendingProducts = true;
+                pendingReasons.push(`Insufficient stock for "${productDoc.name}" (Available: ${productDoc.totalProducts}, Needed: ${requiredFromStock})`);
             }
             
             const totalPrice = productDoc.price * item.quantity;
@@ -376,66 +381,73 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             });
         }
 
-        // Adjust stock: restore old quantities then deduct new quantities
-        // Restore stock for all old products
-        for (const oldItem of customerorder.products) {
-            const previousProduct = await Product.findById(oldItem.product);
-            const updatedProduct = await Product.findByIdAndUpdate(oldItem.product, {
-                $inc: { totalProducts: oldItem.quantity }
-            }, { new: true });
+        // Adjust stock only when required by pending/non-pending transitions.
+        // Restore old stock only if the existing order had already reserved stock.
+        if (!customerorder.isPending) {
+            for (const oldItem of customerorder.products) {
+                const previousProduct = await Product.findById(oldItem.product);
+                const updatedProduct = await Product.findByIdAndUpdate(oldItem.product, {
+                    $inc: { totalProducts: oldItem.quantity }
+                }, { new: true });
 
-            if (previousProduct && updatedProduct) {
-                await recordStockMovement({
-                    businessowner: updatedProduct.businessowner,
-                    product: updatedProduct._id,
-                    orderId: customerorder._id,
-                    quantityChange: oldItem.quantity,
-                    previousStock: previousProduct.totalProducts,
-                    newStock: updatedProduct.totalProducts,
-                    source: 'customer_order_update_restore',
-                    reason: `Restored stock before editing order ${customerorder._id}`,
-                    actorId: req.user._id,
-                    actorRole: req.role,
-                    direction: 'IN',
-                    metadata: { quantity: oldItem.quantity }
-                });
-            }
-        }
-        // Deduct stock for all new products
-        for (const item of products) {
-            const previousProduct = await Product.findById(item.product);
-            const updatedProduct = await Product.findByIdAndUpdate(item.product, {
-                $inc: { totalProducts: -item.quantity }
-            }, { new: true });
-
-            if (previousProduct && updatedProduct) {
-                await recordStockMovement({
-                    businessowner: updatedProduct.businessowner,
-                    product: updatedProduct._id,
-                    orderId: customerorder._id,
-                    quantityChange: -item.quantity,
-                    previousStock: previousProduct.totalProducts,
-                    newStock: updatedProduct.totalProducts,
-                    source: 'customer_order_update_deduct',
-                    reason: `Deducted stock after editing order ${customerorder._id}`,
-                    actorId: req.user._id,
-                    actorRole: req.role,
-                    direction: 'OUT',
-                    metadata: { quantity: item.quantity }
-                });
-            }
-        }
-
-        // Check for low stock alerts after stock adjustment
-        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
-        try {
-            for (const item of products) {
-                const updatedProduct = await Product.findById(item.product);
-                if (updatedProduct) {
-                    await checkAndNotifyLowStock(updatedProduct, businessOwnerId);
+                if (previousProduct && updatedProduct) {
+                    await recordStockMovement({
+                        businessowner: updatedProduct.businessowner,
+                        product: updatedProduct._id,
+                        orderId: customerorder._id,
+                        quantityChange: oldItem.quantity,
+                        previousStock: previousProduct.totalProducts,
+                        newStock: updatedProduct.totalProducts,
+                        source: 'customer_order_update_restore',
+                        reason: `Restored stock before editing order ${customerorder._id}`,
+                        actorId: req.user._id,
+                        actorRole: req.role,
+                        direction: 'IN',
+                        metadata: { quantity: oldItem.quantity }
+                    });
                 }
             }
-        } catch (e) {}
+        }
+
+        // Deduct stock only when updated order is not pending.
+        if (!hasPendingProducts) {
+            for (const item of products) {
+                const previousProduct = await Product.findById(item.product);
+                const updatedProduct = await Product.findByIdAndUpdate(item.product, {
+                    $inc: { totalProducts: -item.quantity }
+                }, { new: true });
+
+                if (previousProduct && updatedProduct) {
+                    await recordStockMovement({
+                        businessowner: updatedProduct.businessowner,
+                        product: updatedProduct._id,
+                        orderId: customerorder._id,
+                        quantityChange: -item.quantity,
+                        previousStock: previousProduct.totalProducts,
+                        newStock: updatedProduct.totalProducts,
+                        source: 'customer_order_update_deduct',
+                        reason: `Deducted stock after editing order ${customerorder._id}`,
+                        actorId: req.user._id,
+                        actorRole: req.role,
+                        direction: 'OUT',
+                        metadata: { quantity: item.quantity }
+                    });
+                }
+            }
+        }
+
+        // Check for low stock alerts only when stock is actually deducted.
+        const businessOwnerId = req.role === 'businessowner' ? req.user._id : req.user.businessowner;
+        if (!hasPendingProducts) {
+            try {
+                for (const item of products) {
+                    const updatedProduct = await Product.findById(item.product);
+                    if (updatedProduct) {
+                        await checkAndNotifyLowStock(updatedProduct, businessOwnerId);
+                    }
+                }
+            } catch (e) {}
+        }
 
         // Prepare update data
         let newCustomerOrder = {
@@ -446,6 +458,8 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             ounits: products.reduce((sum, p) => sum + p.quantity, 0),
             amount: totalAmount,
             oDate, dDate, status, pAvail, dStatus, desc
+            ,isPending: hasPendingProducts,
+            pendingReason: hasPendingProducts ? pendingReasons.join('; ') : ''
         };
         
         // Only business owner can change warehouse
@@ -464,7 +478,8 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             summary: `Updated customer order for ${cName}`,
             metadata: {
                 amount: totalAmount,
-                totalUnits: newCustomerOrder.ounits
+                totalUnits: newCustomerOrder.ounits,
+                isPending: hasPendingProducts
             }
         });
 
@@ -472,7 +487,7 @@ router.put('/updatecustomerorder/:id', fetchuser, [
         if (req.role === 'businessowner') {
             await notifyEmployeesAboutOrder(
                 req.user._id,
-                'updated',
+                hasPendingProducts ? 'updated (pending - low stock)' : 'updated',
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
@@ -481,13 +496,20 @@ router.put('/updatecustomerorder/:id', fetchuser, [
             await notifyBusinessOwnerAboutOrderByEmployee(
                 customerorder.businessowner,
                 req.user._id,
-                'updated',
+                hasPendingProducts ? 'updated (pending - low stock)' : 'updated',
                 customerorder._id,
                 { orderId: customerorder._id, customer: cName, product: productNames.join(', '), amount: totalAmount }
             );
         }
 
-        res.json({ customerorder });
+        res.json({
+            customerorder,
+            isPending: hasPendingProducts,
+            pendingReason: hasPendingProducts ? pendingReasons.join('; ') : '',
+            message: hasPendingProducts
+                ? 'Order updated and moved to pending due to insufficient stock. It will be fulfilled when stock is available.'
+                : 'Order updated successfully'
+        });
     } catch (err) {
 
         res.status(500).send("Internal Server error occurred");
