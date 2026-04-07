@@ -28,6 +28,32 @@ const Reports = ({ showAlert }) => {
         const fetchReportPermissions = async () => {
             try {
                 const token = localStorage.getItem('token');
+
+                if (role === 'supplier') {
+                    const response = await fetch('/api/reports/supplier/check-permission', {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'auth-token': token
+                        }
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const canExport = Boolean(data?.canExportReports);
+                        setReportPermissions({
+                            canExportReports: canExport,
+                            employees: false,
+                            products: false,
+                            orders: false,
+                            supplierOrders: canExport,
+                            suppliers: false,
+                            salary: false
+                        });
+                        return;
+                    }
+                }
+
                 const response = await fetch('/api/reports/report-permissions', {
                     method: 'GET',
                     headers: {
@@ -53,7 +79,7 @@ const Reports = ({ showAlert }) => {
             }
         };
         fetchReportPermissions();
-    }, [navigate]);
+    }, [navigate, hasPermission, role, showAlert]);
 
     const [availableItems, setAvailableItems] = useState({
         employees: [],
@@ -101,7 +127,9 @@ const Reports = ({ showAlert }) => {
                     endpoint = '/api/reports/orders/list';
                     break;
                 case 'supplierOrders':
-                    endpoint = '/api/reports/supplier-orders/list';
+                    endpoint = role === 'supplier'
+                        ? '/api/reports/supplier/my-orders/list'
+                        : '/api/reports/supplier-orders/list';
                     break;
                 case 'suppliers':
                     endpoint = '/api/reports/suppliers/list';
@@ -249,7 +277,9 @@ const Reports = ({ showAlert }) => {
                     idParam = 'orderId';
                     break;
                 case 'supplierOrders':
-                    endpoint = `/api/reports/supplier-orders/${reportConfig.format}`;
+                    endpoint = role === 'supplier'
+                        ? `/api/reports/supplier/my-orders/${reportConfig.format}`
+                        : `/api/reports/supplier-orders/${reportConfig.format}`;
                     idParam = 'orderId';
                     break;
                 case 'suppliers':
@@ -319,6 +349,9 @@ const Reports = ({ showAlert }) => {
             case 'supplierOrders':
                 const supplierName = item.supplier?.companyName || 
                                      (item.supplier?.fname ? `${item.supplier.fname} ${item.supplier.lname || ''}` : 'N/A');
+                if (role === 'supplier') {
+                    return `${item.pName || 'Order'} - ${new Date(item.oDate).toLocaleDateString()} (${item.status || 'N/A'})`;
+                }
                 return `${supplierName} - ${new Date(item.oDate).toLocaleDateString()}`;
             case 'suppliers':
                 return `${item.fname} ${item.lname || ''} (${item.companyName || item.email || 'N/A'})`.trim();
@@ -329,14 +362,18 @@ const Reports = ({ showAlert }) => {
         }
     };
 
-    const allReportTypes = [
-        { value: 'employees', label: 'Employees', icon: '👥', permKey: 'employees' },
-        { value: 'products', label: 'Products', icon: '📦', permKey: 'products' },
-        { value: 'orders', label: 'Customer Orders', icon: '🛒', permKey: 'orders' },
-        { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚', permKey: 'supplierOrders' },
-        { value: 'suppliers', label: 'Suppliers', icon: '🏢', permKey: 'suppliers' },
-        { value: 'salary', label: 'Salary Management', icon: '💼', permKey: 'salary' }
-    ];
+    const allReportTypes = role === 'supplier'
+        ? [
+            { value: 'supplierOrders', label: 'My Orders', icon: '🚚', permKey: 'supplierOrders' }
+        ]
+        : [
+            { value: 'employees', label: 'Employees', icon: '👥', permKey: 'employees' },
+            { value: 'products', label: 'Products', icon: '📦', permKey: 'products' },
+            { value: 'orders', label: 'Customer Orders', icon: '🛒', permKey: 'orders' },
+            { value: 'supplierOrders', label: 'Supplier Orders', icon: '🚚', permKey: 'supplierOrders' },
+            { value: 'suppliers', label: 'Suppliers', icon: '🏢', permKey: 'suppliers' },
+            { value: 'salary', label: 'Salary Management', icon: '💼', permKey: 'salary' }
+        ];
 
     // Filter report types based on user's permissions
     const reportTypes = reportPermissions

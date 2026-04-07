@@ -900,6 +900,20 @@ router.get('/report-permissions', fetchuser, async (req, res) => {
         const businessOwnerId = req.businessowner || req.user.businessowner || req.user.businessOwnerId || req.user._id;
         const isBusinessOwner = req.role === 'businessowner';
 
+        // Suppliers use their dedicated self-service report flow.
+        if (req.role === 'supplier') {
+            const canExport = Boolean(req.user?.canExportReports);
+            return res.json({
+                canExportReports: canExport,
+                employees: false,
+                products: false,
+                orders: false,
+                supplierOrders: canExport,
+                suppliers: false,
+                salary: false
+            });
+        }
+
         const canExport = await hasPermissionAsync(req.user, 'canExportReports', businessOwnerId);
         if (!canExport && !isBusinessOwner) {
             return res.json({
@@ -1152,6 +1166,21 @@ router.get('/supplier/check-permission', fetchuser, async (req, res) => {
     } catch (error) {
         // console.error('Error checking supplier permission:', error);
         res.status(500).json({ error: "Internal server error" });
+    }
+});
+
+// GET: Supplier's own orders list for report picker
+router.get('/supplier/my-orders/list', fetchuser, requireSupplierExportPermission, async (req, res) => {
+    try {
+        const orders = await SupplierOrders.find({ supplier: req.user._id })
+            .select('_id pName quantity amount status oDate dDate')
+            .sort({ oDate: -1 })
+            .limit(200)
+            .lean();
+
+        res.json(orders);
+    } catch (error) {
+        res.status(500).json({ error: "Error fetching supplier orders" });
     }
 });
 

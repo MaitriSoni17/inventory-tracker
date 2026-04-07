@@ -564,6 +564,11 @@ const Orders = (props) => {
                                                     )}
                                                 </td>
                                                 <td>
+                                                    <CanEditOrders>
+                                                        <Link to={`/dashboard/editorder/${order._id}`} className="btn btn-info btn-sm me-2" title="Edit Pending Order">
+                                                            <i className="bi bi-pencil"></i>
+                                                        </Link>
+                                                    </CanEditOrders>
                                                     <CanDeleteOrders>
                                                         <button className="btn btn-danger btn-sm" onClick={() => handleDeletePending(order._id)} title="Delete Pending Order">
                                                             <i className="bi bi-trash"></i>

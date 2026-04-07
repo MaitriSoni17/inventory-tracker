@@ -666,6 +666,16 @@ const handleSpecificEntityQuery = async (userMessage, role, userId, context = {}
     return restrictedResponse;
   }
 
+  const capabilityResponse = getCapabilityResponse(role, requestUser, userMessage);
+  if (capabilityResponse) {
+    return capabilityResponse;
+  }
+
+  const websiteGuideResponse = getWebsiteGuideResponse(role, userMessage, context);
+  if (websiteGuideResponse) {
+    return websiteGuideResponse;
+  }
+
   // Resolve the business owner ID for data scoping
   const boId = await resolveBusinessOwnerId(userId, role);
   const dataOwnerId = boId || userId;
@@ -703,7 +713,14 @@ Try:
     }
 
     if (isSupplierOrdersQuery(message)) {
-      const supplierOrderResponse = await getSupplierOrdersResponse(role, dataOwnerId, userId, supplierCriteria, context);
+      const options = getSupplierOrderQueryOptions(message, userMessage);
+      const supplierOrderResponse = await getSupplierOrdersResponse(role, dataOwnerId, userId, supplierCriteria, context, options);
+      if (supplierOrderResponse) return supplierOrderResponse;
+    }
+
+    if (role === 'supplier' && isSupplierOwnOrdersQuery(message, userMessage)) {
+      const options = getSupplierOrderQueryOptions(message, userMessage);
+      const supplierOrderResponse = await getSupplierOrdersResponse(role, dataOwnerId, userId, null, context, options);
       if (supplierOrderResponse) return supplierOrderResponse;
     }
 
@@ -929,6 +946,12 @@ Try:
       return `No orders found matching "${orderTerm}".\n\nTry searching by:\n• Customer name\n• Product name`;
     }
 
+    if (role === 'supplier') {
+      const options = getSupplierOrderQueryOptions(message, userMessage);
+      const supplierOrderResponse = await getSupplierOrdersResponse(role, dataOwnerId, userId, null, context, options);
+      if (supplierOrderResponse) return supplierOrderResponse;
+    }
+
     return buildClarificationResponse('order', 'show me details for order 123 or order for John');
   }
 
@@ -1024,6 +1047,420 @@ const normalizeQueryText = (userMessage = '') => {
 const buildClarificationResponse = (entityLabel, example) => {
   const safeLabel = entityLabel || 'item';
   return `I understand you want ${safeLabel} details, but I need the exact ${safeLabel} name to answer precisely.\n\nTry: ${example}`;
+};
+
+const isWebsiteGuideQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  if (!normalized) return false;
+
+  return /^how\s+(?:do|can|should|would)\s+i\b/.test(normalized) ||
+    /^how\s+to\b/.test(normalized) ||
+    /^what\s+is\s+the\s+process\s+to\b/.test(normalized) ||
+    /^walk\s+me\s+through\b/.test(normalized) ||
+    /^guide\s+me\b/.test(normalized) ||
+    /^step\s+by\s+step\b/.test(normalized) ||
+    /^steps\s+to\b/.test(normalized) ||
+    /\b(tutorial|guide|walkthrough)\b/.test(normalized);
+};
+
+const extractGuideTopic = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  if (!normalized) return null;
+
+  const topicMatchers = [
+    { topic: 'permission', keywords: ['permission', 'permissions', 'access', 'role-based permissions', 'individual permissions', 'custom role', 'grant', 'allow', 'restrict', 'enable', 'disable'] },
+    { topic: 'report', keywords: ['report', 'reports', 'analytics', 'export', 'download'] },
+    { topic: 'product', keywords: ['product', 'products', 'item', 'items', 'inventory', 'stock'] },
+    { topic: 'order', keywords: ['order', 'orders', 'delivery', 'deliveries', 'shipment', 'shipments', 'tracking'] },
+    { topic: 'employee', keywords: ['employee', 'employees', 'staff', 'team', 'worker', 'workers', 'manager'] },
+    { topic: 'supplier', keywords: ['supplier', 'suppliers', 'vendor', 'vendors', 'procurement'] },
+    { topic: 'warehouse', keywords: ['warehouse', 'warehouses', 'storage', 'location', 'locations', 'depot'] },
+    { topic: 'category', keywords: ['category', 'categories', 'type', 'types'] },
+    { topic: 'salary', keywords: ['salary', 'salaries', 'payment', 'payments', 'payroll', 'pay', 'wage'] },
+    { topic: 'dashboard', keywords: ['dashboard', 'overview', 'home', 'summary'] },
+    { topic: 'settings', keywords: ['settings', 'profile', 'account'] }
+  ];
+
+  for (const matcher of topicMatchers) {
+    if (matcher.keywords.some((keyword) => normalized.includes(keyword))) {
+      return matcher.topic;
+    }
+  }
+
+  return null;
+};
+
+const getWebsiteGuideResponse = (role, userMessage, context = {}) => {
+  if (!isWebsiteGuideQuery(userMessage)) return null;
+
+  const topic = extractGuideTopic(userMessage);
+  const normalized = normalizeQueryText(userMessage);
+
+  // Keep strategic growth questions in the business-improvement path instead of
+  // forcing a website walkthrough fallback.
+  const strategicAdviceIntent = /\b(improve|increase|grow|boost|optimize|strategy|marketing|campaign|promote|promotion|sales?|revenue|profit|business\s+problem|business\s+issue)\b/.test(normalized);
+  if (!topic && strategicAdviceIntent) {
+    return null;
+  }
+
+  if (!topic) {
+    return `I can guide you through the website, but I need the feature name to give the right steps.\n\nTry asking something like:\n• How do I add a product?\n• How do I create an order?\n• How do I check order status?\n• How do I add a supplier?`;
+  }
+
+  const action = /\b(add|create|new|set up|setup|make|register|start|give|grant|assign|allow|enable|approve)\b/.test(normalized)
+    ? 'create'
+    : /\b(edit|update|change|modify|revise)\b/.test(normalized)
+      ? 'edit'
+      : /\b(delete|remove|archive)\b/.test(normalized)
+        ? 'delete'
+        : /\b(view|show|check|see|find|track|status|list)\b/.test(normalized)
+          ? 'view'
+          : 'guide';
+
+  const guideSteps = {
+    businessowner: {
+      permission: {
+        create: `To give category management permission to one employee or supervisor:\n1. Open the left sidebar and choose Permissions.\n2. Click the Individual Permissions tab.\n3. Select the employee or supervisor you want to update.\n4. Turn on category access or the related product/category permission.\n5. Save the change and refresh the employee view if needed.`,
+        edit: `To change a permission later:\n1. Open the left sidebar and choose Permissions.\n2. Open the Individual Permissions tab for one person, or Role-Based Permissions for a whole role.\n3. Select the employee, supervisor, or role.\n4. Toggle the needed permission on or off and save.`,
+        view: `To check current permissions:\n1. Open the left sidebar and choose Permissions.\n2. Use Role-Based Permissions to review default access for each role.\n3. Use Individual Permissions to see overrides for a specific employee or supervisor.\n4. Review category, product, order, and report access before making changes.`,
+        delete: `To remove a permission:\n1. Open the left sidebar and choose Permissions.\n2. Open Individual Permissions or Role-Based Permissions.\n3. Turn off the permission you no longer want to give.\n4. Save the change so the access is revoked.`,
+        guide: `To manage permissions:\n1. Open the left sidebar and choose Permissions.\n2. Use Role-Based Permissions for default access by role.\n3. Use Individual Permissions to override access for one employee or supervisor.\n4. Save your changes after each update.`
+      },
+      product: {
+        create: `To add a product:\n1. Open the left sidebar and choose Products.\n2. Click Add Product.\n3. Fill in the product name, category, price, stock, and warehouse.\n4. Save the product.`,
+        edit: `To update a product:\n1. Open the left sidebar and choose Products.\n2. Open the product you want to change.\n3. Click Edit Product and update the fields you need.\n4. Save the changes.`,
+        view: `To check product details:\n1. Open the left sidebar and choose Products.\n2. Search for the product name or browse the list.\n3. Open the product card to review stock, price, and category.`,
+        delete: `To remove a product:\n1. Open the left sidebar and choose Products.\n2. Open the product record.\n3. Use the delete action if you have permission.\n4. Confirm carefully because it affects inventory records.`,
+        guide: `To manage products:\n1. Open the left sidebar and choose Products.\n2. Use Add Product for new items or open an existing product to edit it.\n3. Keep stock, category, warehouse, and price updated.\n4. Check Products regularly for low-stock alerts.`
+      },
+      order: {
+        create: `To create an order:\n1. Open Dashboard > Orders > Add Order.\n2. Choose the customer and product.\n3. Enter quantity, price, and due date.\n4. Save the order and monitor its status from Orders.`,
+        edit: `To update an order:\n1. Open Dashboard > Orders.\n2. Open the order you want to change.\n3. Update the order details or status.\n4. Save the changes.`,
+        view: `To check order status:\n1. Open Dashboard > Orders.\n2. Use Pending, Processing, Shipped, or Delivered filters.\n3. Open an order to see customer, product, amount, and due date.`,
+        delete: `To remove an order:\n1. Open Dashboard > Orders.\n2. Open the order record.\n3. Delete it only if your role and permissions allow it.\n4. Confirm carefully because it affects reporting.`,
+        guide: `To manage orders:\n1. Open Dashboard > Orders.\n2. Use Add Order for a new order or open an existing order for updates.\n3. Track status changes from Pending to Delivered.\n4. Check overdue or urgent orders regularly.`
+      },
+      employee: {
+        create: `To add an employee:\n1. Open Dashboard > Employees > Create Employee.\n2. Enter name, role, contact details, and salary information.\n3. Save the employee profile.\n4. Review employee access and assignments after creation.`,
+        edit: `To update an employee:\n1. Open Dashboard > Employees.\n2. Select the employee profile.\n3. Update role, contact, or salary details.\n4. Save the changes.`,
+        view: `To check employee details:\n1. Open Dashboard > Employees.\n2. Search or browse the team list.\n3. Open the employee profile to see role, contact, warehouse, and salary details.`,
+        delete: `To remove an employee:\n1. Open Dashboard > Employees.\n2. Select the employee record.\n3. Use the delete action only if your role permits it.\n4. Confirm carefully to avoid affecting assignments.`,
+        guide: `To manage employees:\n1. Open Dashboard > Employees.\n2. Use Create Employee for new staff.\n3. Update roles and salary information as needed.\n4. Check the team list regularly for active members.`
+      },
+      supplier: {
+        create: `To add a supplier:\n1. Open Dashboard > Suppliers > Create Supplier.\n2. Enter company name, contact info, email, and address.\n3. Save the supplier profile.\n4. Use Suppliers later to review or edit details.`,
+        edit: `To update a supplier:\n1. Open Dashboard > Suppliers.\n2. Select the supplier record.\n3. Change the contact or company details.\n4. Save the updates.`,
+        view: `To check supplier details:\n1. Open Dashboard > Suppliers.\n2. Search by name, email, or company.\n3. Open the supplier profile to see contact and company information.`,
+        delete: `To remove a supplier:\n1. Open Dashboard > Suppliers.\n2. Select the supplier.\n3. Delete it only if your permissions allow it.\n4. Confirm carefully because it may affect active orders.`,
+        guide: `To manage suppliers:\n1. Open Dashboard > Suppliers.\n2. Use Create Supplier for new vendors.\n3. Keep contact and company details up to date.\n4. Review supplier records before creating new supplier orders.`
+      },
+      warehouse: {
+        create: `To add a warehouse:\n1. Open Dashboard > Warehouses.\n2. Create a new warehouse record.\n3. Add location, manager, contact details, and address.\n4. Save and then assign products or stock as needed.`,
+        edit: `To update a warehouse:\n1. Open Dashboard > Warehouses.\n2. Select the warehouse record.\n3. Change the address, manager, or contact details.\n4. Save the changes.`,
+        view: `To check warehouse details:\n1. Open Dashboard > Warehouses.\n2. Browse the warehouse list.\n3. Open a warehouse to see its manager, address, and contact info.`,
+        delete: `To remove a warehouse:\n1. Open Dashboard > Warehouses.\n2. Select the warehouse record.\n3. Delete it only if it is no longer needed and your permissions allow it.\n4. Confirm carefully because it can affect inventory tracking.`,
+        guide: `To manage warehouses:\n1. Open Dashboard > Warehouses.\n2. Create or update warehouse records as needed.\n3. Keep location and manager details accurate.\n4. Review warehouse information when moving stock.`
+      },
+      category: {
+        create: `To add a category:\n1. Open Dashboard > Categories.\n2. Create a new category name and description.\n3. Save it.\n4. Assign products to the category when you add or edit products.`,
+        edit: `To update a category:\n1. Open Dashboard > Categories.\n2. Select the category.\n3. Edit the name or description.\n4. Save the changes.`,
+        view: `To check categories:\n1. Open Dashboard > Categories.\n2. Browse the category list.\n3. Open one to see which products belong to it.`,
+        delete: `To remove a category:\n1. Open Dashboard > Categories.\n2. Select the category.\n3. Delete it only if it is no longer used.\n4. Confirm carefully so product grouping is not affected.`,
+        guide: `To manage categories:\n1. Open Dashboard > Categories.\n2. Add or update categories to keep products organized.\n3. Make category names consistent.\n4. Review categories when adding new stock.`
+      },
+      report: {
+        view: `To generate a report:\n1. Open Dashboard > Reports.\n2. Choose the report type you need.\n3. Select the date range or filters.\n4. Export or download the result.`,
+        guide: `To use reports:\n1. Open Dashboard > Reports.\n2. Pick the report you want to analyze.\n3. Filter by date or status.\n4. Export the file if you need to share it.`
+      },
+      salary: {
+        view: `To review salary data:\n1. Open Dashboard > Salary.\n2. Check payment history and totals.\n3. Open a record to review individual payments.\n4. Keep salary records updated after each payment.`,
+        guide: `To manage salary information:\n1. Open Dashboard > Salary.\n2. Review payment history and employee records.\n3. Check totals before making payroll changes.\n4. Keep payment statuses current.`
+      },
+      dashboard: {
+        view: `To use the dashboard:\n1. Open the main Dashboard.\n2. Review quick stats like products, orders, revenue, and alerts.\n3. Open a section such as Products, Orders, or Employees to act on it.\n4. Use the dashboard as your starting point for daily work.`,
+        guide: `To work from the dashboard:\n1. Open Dashboard.\n2. Check the summary cards first.\n3. Jump into the area you need, such as Products, Orders, or Warehouses.\n4. Use alerts to decide what to fix first.`
+      },
+      settings: {
+        view: `To change your account settings:\n1. Open Settings or Profile from the dashboard.\n2. Update the fields you need.\n3. Save the changes.\n4. Sign out and back in if the update does not appear immediately.`,
+        guide: `To manage your account:\n1. Open Settings or Profile.\n2. Update personal or account details.\n3. Save changes.\n4. Return to the dashboard to continue working.`
+      }
+    },
+    employee: {
+      permission: {
+        view: `To check an employee's permissions:\n1. Open the left sidebar and choose Permissions.\n2. Open the Individual Permissions tab.\n3. Select the employee from the list.\n4. Review the permissions that are enabled for that person.`,
+        guide: `To manage an employee's access:\n1. Open the left sidebar and choose Permissions.\n2. Open Individual Permissions.\n3. Select the employee or supervisor.\n4. Enable or disable the access they need and save the change.`
+      },
+      order: {
+        view: `To check your assigned orders:\n1. Open Dashboard > Orders.\n2. Filter by Pending, Processing, or urgent items.\n3. Open an order to view customer, product, and due date details.\n4. Update the status only if your role allows it.`,
+        guide: `To manage your orders:\n1. Open Dashboard > Orders.\n2. Focus on pending and urgent items first.\n3. Review the due date before working on each order.\n4. Keep the status updated after completing the task.`
+      },
+      salary: {
+        view: `To check your salary payments:\n1. Open Dashboard > Salary or Salary Payments.\n2. Review the latest payment history.\n3. Open a record to see amount, date, and status.\n4. Contact your business owner if something looks wrong.`,
+        guide: `To review your salary information:\n1. Open Salary or Salary Payments.\n2. Check your latest payment history.\n3. Verify the amount and payment date.\n4. Ask for clarification if you need a correction.`
+      },
+      dashboard: {
+        view: `To use your dashboard:\n1. Open Dashboard.\n2. Review your assigned tasks, pending orders, and alerts.\n3. Open Orders or Salary for more detail.\n4. Start with urgent or overdue items first.`,
+        guide: `To work from your dashboard:\n1. Open Dashboard.\n2. Review your task summary and urgent items.\n3. Open the relevant section for details.\n4. Finish urgent work before moving to lower-priority tasks.`
+      },
+      product: {
+        view: `To view product information:\n1. Open the product or inventory section your owner shared with you.\n2. Search the product name.\n3. Open the product record to review stock, price, and category.`,
+        guide: `To review product information:\n1. Open the products or inventory section.\n2. Search for the item.\n3. Review stock, price, and category details.\n4. Flag low stock items to your business owner.`
+      },
+      settings: {
+        view: `To update your account settings:\n1. Open Settings or Profile.\n2. Change your contact details if allowed.\n3. Save the changes.\n4. Sign out and back in if needed.`,
+        guide: `To manage your account:\n1. Open Settings or Profile.\n2. Update the fields you are allowed to change.\n3. Save the changes.\n4. Return to your dashboard when you are done.`
+      }
+    },
+    supplier: {
+      order: {
+        view: `To check your supply orders:\n1. Open Dashboard > Supplier Orders or Orders.\n2. Review Pending, Delivered, or Cancelled statuses.\n3. Open an order to see quantity, due date, and amount.\n4. Use the latest status to plan your delivery.`,
+        guide: `To manage supply orders:\n1. Open Dashboard > Supplier Orders.\n2. Review the order list and focus on pending items.\n3. Check quantities and due dates.\n4. Keep your delivery status updated.`
+      },
+      report: {
+        view: `To download your order report as a supplier:\n1. Open Dashboard > Reports.\n2. Choose My Orders.\n3. (Optional) Pick month, year, or a specific order.\n4. Choose Excel or PDF and click Download Report.`,
+        guide: `To use reports as a supplier:\n1. Open Dashboard > Reports.\n2. Use the My Orders report type.\n3. Apply optional filters like month/year or specific order.\n4. Download the report in Excel or PDF.\n5. If Reports is blocked, ask the business owner to enable Export Reports in Supplier Permissions.`
+      },
+      dashboard: {
+        view: `To use your dashboard:\n1. Open Dashboard.\n2. Review pending deliveries, completed deliveries, and order value.\n3. Open Supplier Orders for full details.\n4. Start with urgent shipments first.`,
+        guide: `To work from your dashboard:\n1. Open Dashboard.\n2. Check your pending and completed deliveries.\n3. Open Supplier Orders for details.\n4. Prioritize the orders that are due soon.`
+      },
+      salary: {
+        view: `To review payment or revenue information:\n1. Open Dashboard or the relevant finance section.\n2. Review total order value and completed orders.\n3. Check the individual records if available.`,
+        guide: `To review your financial summary:\n1. Open the finance or dashboard section.\n2. Check total order value and delivery progress.\n3. Review order records for the latest updates.`
+      },
+      settings: {
+        view: `To update your supplier profile:\n1. Open Settings or Profile.\n2. Update company or contact details.\n3. Save the changes.`,
+        guide: `To manage your supplier profile:\n1. Open Settings or Profile.\n2. Keep contact and company information current.\n3. Save any updates before leaving the page.`
+      }
+    }
+  };
+
+  const topicGuide = guideSteps[role]?.[topic] || guideSteps.businessowner[topic];
+  const resolvedGuide = topicGuide?.[action] || topicGuide?.guide;
+
+  if (resolvedGuide) {
+    const contextHint = role === 'businessowner' && context?.lowStockProducts?.length && topic === 'product'
+      ? `\n\nTip: you currently have **${context.lowStockProducts.length}** low-stock item(s), so it is a good time to review Products.`
+      : '';
+
+    return `🧭 **HOW TO USE THE WEBSITE**\n\n${resolvedGuide}${contextHint}\n\nIf you want, I can also guide you through another task step by step.`;
+  }
+
+  return `I can guide you through that, but I do not have a specific walkthrough for it yet. Try asking about Products, Orders, Employees, Suppliers, Warehouses, Categories, Reports, Salary, or Dashboard.`;
+};
+
+const isCapabilityQuery = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  if (!normalized) return false;
+
+  return /^(can i|could i|may i|am i able|am i allowed|do i have permission|is it possible for me to|would i be able|would i be allowed)\b/.test(normalized) ||
+    /\b(able to|allowed to)\b/.test(normalized);
+};
+
+const getCapabilityTarget = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  if (!normalized) return null;
+
+  const targets = [
+    { topic: 'permission', keywords: ['permission', 'permissions', 'access', 'role-based permission', 'individual permission', 'custom role'] },
+    { topic: 'order', keywords: ['order', 'orders', 'shipment', 'delivery', 'tracking'] },
+    { topic: 'product', keywords: ['product', 'products', 'item', 'items', 'inventory', 'stock'] },
+    { topic: 'category', keywords: ['category', 'categories'] },
+    { topic: 'warehouse', keywords: ['warehouse', 'warehouses'] },
+    { topic: 'employee', keywords: ['employee', 'employees', 'staff', 'team', 'worker', 'manager'] },
+    { topic: 'supplier', keywords: ['supplier', 'suppliers', 'vendor', 'vendors'] },
+    { topic: 'report', keywords: ['report', 'reports', 'analytics', 'export', 'download'] },
+    { topic: 'dashboard', keywords: ['dashboard', 'overview', 'summary'] }
+  ];
+
+  for (const target of targets) {
+    if (target.keywords.some((keyword) => normalized.includes(keyword))) {
+      return target.topic;
+    }
+  }
+
+  return null;
+};
+
+const getCapabilityAction = (message = '') => {
+  const normalized = normalizeQueryText(message);
+  if (!normalized) return null;
+
+  if (/\b(add|create|new|make|register|assign|give|grant|enable|allow)\b/.test(normalized)) return 'create';
+  if (/\b(edit|update|change|modify|edit\s+order|update\s+order)\b/.test(normalized)) return 'edit';
+  if (/\b(delete|remove|archive|disable|revoke)\b/.test(normalized)) return 'delete';
+  if (/\b(approve|accept|confirm)\b/.test(normalized)) return 'approve';
+  if (/\b(view|see|show|check|view\s+status|look\s+at|review)\b/.test(normalized)) return 'view';
+
+  return 'view';
+};
+
+const getCapabilityResponse = (role, requestUser, userMessage) => {
+  if (!isCapabilityQuery(userMessage)) return null;
+
+  const target = getCapabilityTarget(userMessage);
+  const action = getCapabilityAction(userMessage);
+  const normalizedMessage = normalizeQueryText(userMessage);
+
+  if (!target) {
+    return `If you want to check access, tell me the area you mean, like orders, products, categories, warehouses, employees, suppliers, reports, or permissions.`;
+  }
+
+  const permissionMap = {
+    order: {
+      create: 'canCreateOrders',
+      edit: 'canEditOrders',
+      delete: 'canDeleteOrders',
+      approve: 'canApproveOrders',
+      view: 'canViewOrders'
+    },
+    product: {
+      create: 'canCreateProducts',
+      edit: 'canEditProducts',
+      delete: 'canDeleteProducts',
+      view: 'canViewProducts'
+    },
+    category: {
+      create: 'canCreateCategory',
+      edit: 'canEditCategory',
+      delete: 'canDeleteCategory',
+      view: 'canViewCategories'
+    },
+    warehouse: {
+      create: 'canCreateWarehouse',
+      edit: 'canEditWarehouse',
+      delete: 'canDeleteWarehouse',
+      view: 'canViewWarehouses'
+    },
+    employee: {
+      create: 'canManageEmployees',
+      edit: 'canManageEmployees',
+      delete: 'canManageEmployees',
+      view: 'canViewEmployees'
+    },
+    supplier: {
+      create: 'canMessageSuppliers',
+      edit: 'canMessageSuppliers',
+      delete: 'canMessageSuppliers',
+      view: 'canMessageSuppliers'
+    },
+    report: {
+      create: 'canExportReports',
+      edit: 'canExportReports',
+      delete: 'canExportReports',
+      view: 'canExportReports'
+    },
+    dashboard: {
+      view: 'canViewDashboard'
+    },
+    permission: {
+      create: 'canManageEmployees',
+      edit: 'canManageEmployees',
+      delete: 'canManageEmployees',
+      view: 'canManageEmployees'
+    }
+  };
+
+  const requiredPermission = permissionMap[target]?.[action] || permissionMap[target]?.view;
+  const supplierCanUpdateOwnOrderStatus = role === 'supplier' && target === 'order' && action === 'edit' &&
+    /\b(status|payment status|order status)\b/.test(normalizedMessage);
+  const supplierCanUpdateOwnOrders = role === 'supplier' && target === 'order' && action === 'edit' &&
+    /\b(update|change|modify|edit)\b/.test(normalizedMessage);
+  const supplierCanExportReports = role === 'supplier' && Boolean(requestUser?.canExportReports);
+  const canDoIt = role === 'businessowner' || (requestUser ? hasPermission(requestUser, requiredPermission) : false) ||
+    (supplierCanExportReports && (requiredPermission === 'canExportReports' || requiredPermission === 'canDownloadSupplierOrderReport')) ||
+    supplierCanUpdateOwnOrderStatus || supplierCanUpdateOwnOrders;
+
+  const targetLabel = {
+    order: 'orders',
+    product: 'products',
+    category: 'categories',
+    warehouse: 'warehouses',
+    employee: 'employees',
+    supplier: 'supplier access',
+    report: 'reports',
+    dashboard: 'dashboard',
+    permission: 'permissions'
+  }[target] || target;
+
+  const actionLabel = {
+    create: 'create',
+    edit: 'edit',
+    delete: 'delete',
+    approve: 'approve',
+    view: 'view'
+  }[action] || action;
+
+  if (canDoIt) {
+    const detailSteps = {
+      order: {
+        create: `Open the left sidebar and choose Orders, then click Add Order.`,
+        edit: role === 'supplier'
+          ? `Open Supplier Orders, open your order, then use the Status Updates section to change Order Status or Payment Status.`
+          : `Open the left sidebar and choose Orders, open the order, and click Edit Order.`,
+        delete: `Open Orders, open the order record, and use the delete action if your permissions allow it.`,
+        approve: `Open Orders, review the pending order, and use the approve action if it is enabled for your account.`,
+        view: `Open the left sidebar and choose Orders to review the order list.`
+      },
+      product: {
+        create: `Open Products, then click Add Product.`,
+        edit: `Open Products, open the product, and click Edit Product.`,
+        delete: `Open Products, open the product record, and use the delete action if available.`,
+        view: `Open Products to review the product list and details.`
+      },
+      category: {
+        create: `Open Categories and add a new category.`,
+        edit: `Open Categories, open the category, and edit its details.`,
+        delete: `Open Categories, open the category record, and remove it if allowed.`,
+        view: `Open Categories to review existing category access and product grouping.`
+      },
+      warehouse: {
+        create: `Open Warehouses and add a new warehouse record.`,
+        edit: `Open Warehouses, open the warehouse, and edit its details.`,
+        delete: `Open Warehouses and remove the warehouse only if it is no longer needed.`,
+        view: `Open Warehouses to review locations and manager details.`
+      },
+      employee: {
+        create: `Open Employees and create a new team member.`,
+        edit: `Open Employees, open the employee profile, and update their details.`,
+        delete: `Open Employees and remove the employee only if your permissions allow it.`,
+        view: `Open Employees to review team members.`
+      },
+      supplier: {
+        create: `Open Suppliers and create a new supplier record.`,
+        edit: `Open Suppliers, open the supplier, and update its details.`,
+        delete: `Open Suppliers and remove the supplier only if allowed.`,
+        view: `Open Suppliers to review supplier records.`
+      },
+      report: {
+        create: `Open Reports and export the report you need.`,
+        edit: `Open Reports and choose the report options you want to update.`,
+        delete: `Open Reports and remove the export only if your workflow allows it.`,
+        view: role === 'supplier'
+          ? `Open Reports, choose My Orders, apply filters if needed, then download Excel or PDF.`
+          : `Open Reports to review available analytics.`
+      },
+      dashboard: {
+        view: `Open Dashboard to review your summary cards and alerts.`
+      },
+      permission: {
+        create: `Open Permissions, then use Individual Permissions to assign access.`,
+        edit: `Open Permissions, then use Role-Based Permissions or Individual Permissions to change access.`,
+        delete: `Open Permissions and turn off the access you no longer want to give.`,
+        view: `Open Permissions to review role-based and individual access.`
+      }
+    };
+
+    const steps = detailSteps[target]?.[action] || detailSteps[target]?.view || `Open the relevant ${targetLabel} section from the sidebar.`;
+    return `Yes, you can ${actionLabel} ${targetLabel} with your current access.\n\n${steps}`;
+  }
+
+  if (role === 'supplier' && target === 'order' && action === 'edit') {
+    return `You can update status only for your own supplier orders.\n\nOpen **Supplier Orders**, select one of your orders, and use **Status Updates** to change Order Status or Payment Status.`;
+  }
+
+  const permissionName = requiredPermission || 'the required permission';
+  return `Not with your current access. You need **${permissionName}** to ${actionLabel} ${targetLabel}.\n\nAsk the business owner to enable it in **Permissions** (Role-Based or Individual Permissions).`;
 };
 
 const getSalaryAssignments = (employeesList = []) => {
@@ -1207,6 +1644,44 @@ const isSupplierOrdersQuery = (message = '') => {
   const hasOrderKeyword = /\b(order|orders|delivery|deliveries|payment|payments|pending|fulfilled|fulfilled)\b/.test(normalized);
   const hasAction = /\b(show|list|display|view|check|tell|detail|details|info|information|status|history|recent)\b/.test(normalized);
   return hasSupplierKeyword && hasOrderKeyword && hasAction;
+};
+
+const isSupplierOwnOrdersQuery = (message = '', rawMessage = '') => {
+  const normalized = normalizeQueryText(message || rawMessage);
+  if (!normalized) return false;
+
+  const hasOrderKeyword = /\b(order|orders|delivery|deliveries|shipment|status|pending|delivered|cancelled|recent|latest)\b/.test(normalized);
+  const hasPersonalSignal = /\b(my|mine|i|me)\b/.test(normalized);
+  const hasListOrDetailIntent = /\b(show|list|display|view|check|tell|detail|details|info|information|history|recent|latest|for)\b/.test(normalized);
+  const isStatusOrDeadlineSummary = /\b(status|summary|breakdown|deadline|deadlines|due|due\s+date|overdue|today|tomorrow|this\s+week|next\s+week)\b/.test(normalized);
+
+  return hasOrderKeyword && !isStatusOrDeadlineSummary && (hasPersonalSignal || hasListOrDetailIntent);
+};
+
+const getSupplierOrderQueryOptions = (message = '', userMessage = '') => {
+  const normalized = normalizeQueryText(message || userMessage);
+
+  const statusMap = {
+    pending: 'Pending',
+    delivered: 'Delivered',
+    cancelled: 'Cancelled',
+    processing: 'Processing',
+    shipped: 'Shipped'
+  };
+
+  let status = null;
+  Object.entries(statusMap).forEach(([token, value]) => {
+    if (!status && new RegExp(`\\b${token}\\b`).test(normalized)) {
+      status = value;
+    }
+  });
+
+  const latestMatch = normalized.match(/\b(?:latest|recent|last)\s+(\d{1,2})\b/);
+  const limit = latestMatch?.[1] ? Math.max(1, Math.min(parseInt(latestMatch[1], 10), 25)) : undefined;
+
+  const searchTerm = extractOrderSearchTerm(userMessage);
+
+  return { status, limit, searchTerm };
 };
 
 const extractSupplierSearchCriteria = (userMessage) => {
@@ -1394,20 +1869,34 @@ const formatSupplierOrdersResponse = (orders, title = 'SUPPLIER ORDERS') => {
   return response;
 };
 
-const getSupplierOrdersResponse = async (role, businessownerId, userId, supplierCriteria, context = {}) => {
+const getSupplierOrdersResponse = async (role, businessownerId, userId, supplierCriteria, context = {}, options = {}) => {
   try {
     const selectFields = 'pName category amount ounits oDate dDate status paymentStatus pAvail dStatus desc supplier businessowner';
 
     if (role === 'supplier') {
-      const orders = await SupplierOrders.find({ supplier: userId })
+      const supplierQuery = { supplier: userId };
+      if (options.status) supplierQuery.status = options.status;
+      if (options.searchTerm) {
+        const escapedTerm = String(options.searchTerm).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        supplierQuery.$or = [
+          { pName: new RegExp(escapedTerm, 'i') },
+          { category: new RegExp(escapedTerm, 'i') }
+        ];
+      }
+
+      const orders = await SupplierOrders.find(supplierQuery)
         .select(selectFields)
         .populate('supplier', 'fname lname email phone companyName companyEmail companyPhone')
         .sort({ oDate: -1, _id: -1 })
-        .limit(10)
+        .limit(options.limit || 10)
         .lean();
 
+      const title = options.status
+        ? `YOUR ${options.status.toUpperCase()} SUPPLIER ORDERS`
+        : 'YOUR SUPPLIER ORDERS';
+
       return orders.length > 0
-        ? formatSupplierOrdersResponse(orders, 'YOUR SUPPLIER ORDERS')
+        ? formatSupplierOrdersResponse(orders, title)
         : `No supplier orders found yet.`;
     }
 
@@ -2479,6 +2968,16 @@ const generateEnhancedResponse = (userMessage, role, context) => {
     return getBusinessImprovementResponse(context, message);
   }
 
+  const capabilityResponse = getCapabilityResponse(role, null, userMessage);
+  if (capabilityResponse) {
+    return capabilityResponse;
+  }
+
+  const websiteGuideResponse = getWebsiteGuideResponse(role, userMessage, context);
+  if (websiteGuideResponse) {
+    return websiteGuideResponse;
+  }
+
   const intents = {
     greeting: ['hello', 'hi', 'hey', 'good morning', 'good afternoon', 'good evening', 'howdy', 'greetings'],
     dashboard: ['dashboard', 'overview', 'summary', 'business summary', 'how is business', 'how are things'],
@@ -2490,7 +2989,7 @@ const generateEnhancedResponse = (userMessage, role, context) => {
     supplier_info: ['supplier', 'supply', 'vendor', 'procurement'],
     warehouse_info: ['warehouse', 'storage', 'location', 'depot'],
     salary_info: ['salary', 'payment', 'pay', 'wage', 'compensation', 'payroll'],
-    revenue_info: ['revenue', 'income', 'earning', 'sales', 'profit', 'money'],
+    revenue_info: ['revenue', 'income', 'earning', 'sales', 'profit', 'money', 'order value', 'total order value'],
     top_products: ['top product', 'best selling', 'popular', 'top selling', 'most sold'],
     urgent_tasks: ['urgent', 'overdue', 'deadline', 'due soon', 'priority', 'critical'],
     business_growth: ['improve business', 'grow business', 'increase sales', 'improve revenue', 'business problem', 'business issue', 'need suggestion', 'suggestion for business', 'how to improve'],
@@ -3763,7 +4262,16 @@ const getRestrictedDataResponse = () => {
 
 const hasAnyPermission = (requestUser, permissions = []) => {
   if (!requestUser) return true;
-  return permissions.some((permission) => hasPermission(requestUser, permission));
+  return permissions.some((permission) => {
+    if (hasPermission(requestUser, permission)) return true;
+
+    // Suppliers use direct flags on their own account for report export.
+    if (requestUser.role === 'supplier' && Boolean(requestUser.canExportReports)) {
+      return permission === 'canExportReports' || permission === 'canDownloadSupplierOrderReport';
+    }
+
+    return false;
+  });
 };
 
 const canViewProductData = (role, requestUser) => {
@@ -3775,6 +4283,7 @@ const canViewProductData = (role, requestUser) => {
 const getRestrictedChatbotResponse = (userMessage, role, requestUser) => {
   const message = normalizeQueryText(userMessage);
   if (!message || role === 'businessowner' || !requestUser) return null;
+  if (isCapabilityQuery(message)) return null;
 
   const isGreetingOrHelp = /^(hi|hello|hey|good morning|good afternoon|good evening|help|thanks?|thank you)\b/.test(message);
   if (isGreetingOrHelp) return null;
@@ -3782,7 +4291,7 @@ const getRestrictedChatbotResponse = (userMessage, role, requestUser) => {
   if (role === 'supplier') {
     const supplierAllowedPatterns = [
       /\b(my|your)\b.*\b(orders?|dashboard|profile|revenue|summary|status|deadline|due)\b/,
-      /\b(orders?|order|delivery|deliveries|shipment|shipping|tracking|pending|fulfilled|status|deadline|due|revenue|income|payment|payments|dashboard|overview|summary)\b/
+      /\b(orders?|order|delivery|deliveries|shipment|shipping|tracking|pending|fulfilled|status|deadline|due|revenue|income|payment|payments|dashboard|overview|summary|report|reports|download|export|analytics)\b/
     ];
 
     if (supplierAllowedPatterns.some((pattern) => pattern.test(message))) {
@@ -3986,18 +4495,18 @@ const getReportsHelpResponse = (role) => {
 
 const getHelpResponse = (role) => {
   const helpMessages = {
-    businessowner: `🤖 **I CAN HELP YOU WITH:**\n\n📊 **Business Insights:**\n• "Show my dashboard" — overview of everything\n• "Revenue summary" — sales and income\n• "Top selling products" — best performers\n\n📦 **Inventory:**\n• "Stock status" — current inventory\n• "Low stock alerts" — items needing restock\n• "Product details [name]" — specific product info\n\n📋 **Orders:**\n• "Order status" — pending and recent orders\n• "Show orders for [customer]" — specific order info\n\n👥 **Team:**\n• "Show employees" — team member list\n• "Salary overview" — payment information\n\n🏢 **Operations:**\n• "Warehouse details" — locations and managers\n• "Show categories" — product categories\n• "Supplier info" — supplier management\n\n📊 **Reports:**\n• "Report help" — how to generate reports`,
+    businessowner: `🤖 **I CAN HELP YOU WITH:**\n\n📊 **Business Insights:**\n• "Show my dashboard" — overview of everything\n• "Revenue summary" — sales and income\n• "Top selling products" — best performers\n\n🧭 **How-To Guides:**\n• "How do I add a product?"\n• "How do I create an order?"\n• "How do I add a supplier?"\n• "How do I check reports?"\n\n📦 **Inventory:**\n• "Stock status" — current inventory\n• "Low stock alerts" — items needing restock\n• "Product details [name]" — specific product info\n\n📋 **Orders:**\n• "Order status" — pending and recent orders\n• "Show orders for [customer]" — specific order info\n\n👥 **Team:**\n• "Show employees" — team member list\n• "Salary overview" — payment information\n\n🏢 **Operations:**\n• "Warehouse details" — locations and managers\n• "Show categories" — product categories\n• "Supplier info" — supplier management\n\n📊 **Reports:**\n• "Report help" — how to generate reports`,
 
-    employee: `🤖 **I CAN HELP YOU WITH:**\n\n📋 **Your Work:**\n• "My dashboard" — your task overview\n• "My orders" — assigned orders list\n• "Urgent tasks" — deadlines and overdue items\n\n💰 **Salary:**\n• "My salary" — payment history\n\n📦 **Products:**\n• "Inventory status" — your assigned products\n\n❓ Just ask naturally — I'll understand!`,
+    employee: `🤖 **I CAN HELP YOU WITH:**\n\n📋 **Your Work:**\n• "My dashboard" — your task overview\n• "My orders" — assigned orders list\n• "Urgent tasks" — deadlines and overdue items\n\n🧭 **How-To Guides:**\n• "How do I check my orders?"\n• "How do I view salary payments?"\n• "How do I find product details?"\n\n💰 **Salary:**\n• "My salary" — payment history\n\n📦 **Products:**\n• "Inventory status" — your assigned products\n\n❓ Just ask naturally — I'll understand!`,
 
-    supplier: `🤖 **I CAN HELP YOU WITH:**\n\n📦 **Orders:**\n• "My orders" — all your supply orders\n• "Pending orders" — what needs delivery\n• "Order status" — delivery tracking\n\n💰 **Business:**\n• "Revenue" — your total order value\n• "Dashboard" — quick overview\n\n❓ Ask me anything about your supply operations!`
+    supplier: `🤖 **I CAN HELP YOU WITH:**\n\n📦 **Orders:**\n• "My orders" — all your supply orders\n• "Pending orders" — what needs delivery\n• "Order status" — delivery tracking\n\n🧭 **How-To Guides:**\n• "How do I check supply orders?"\n• "How do I update my supplier details?"\n• "How do I use the dashboard?"\n\n💰 **Business:**\n• "Revenue" — your total order value\n• "Dashboard" — quick overview\n\n❓ Ask me anything about your supply operations!`
   };
 
   return helpMessages[role] || helpMessages.businessowner;
 };
 
 const getDefaultResponse = (role) => {
-  return `I'm not sure I understood that. Here are some things I can help with:\n\n• "Dashboard" — quick overview\n• "Stock status" — inventory levels\n• "Orders" — order tracking\n• "Revenue" or "Salary" — financial info\n• "Help" — see all commands\n\nTry asking in a different way, or type **help** for the full list!`;
+  return `I'm not sure I understood that yet, but I can help you use the website more directly.\n\nTry asking things like:\n• "How do I add a product?"\n• "How do I create an order?"\n• "How do I check order status?"\n• "How do I open the dashboard?"\n\nYou can also type **help** to see the main actions I support.`;
 };
 
 /**

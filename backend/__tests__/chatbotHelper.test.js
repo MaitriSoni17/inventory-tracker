@@ -715,6 +715,187 @@ describe('chatbot new query coverage', () => {
     expect(response).toContain('Customer2');
   });
 
+  test('returns a step-by-step website guide for add product queries', async () => {
+    const response = await generateAIResponse(
+      'How do I add a product?',
+      'businessowner',
+      {},
+      BUSINESS_OWNER_ID
+    );
+
+    expect(response).toContain('HOW TO USE THE WEBSITE');
+    expect(response).toContain('To add a product');
+    expect(response).toContain('left sidebar and choose Products');
+    expect(response).toContain('Click Add Product');
+    expect(response).toContain('Fill in the product name, category, price, stock, and warehouse');
+  });
+
+  test('returns the edit path for update product detail queries', async () => {
+    const response = await generateAIResponse(
+      'How can I update product details?',
+      'businessowner',
+      {},
+      BUSINESS_OWNER_ID
+    );
+
+    expect(response).toContain('HOW TO USE THE WEBSITE');
+    expect(response).toContain('To update a product');
+    expect(response).toContain('Open the left sidebar and choose Products');
+    expect(response).toContain('Click Edit Product');
+  });
+
+  test('returns permission guidance for supervisor category access query', async () => {
+    const response = await generateAIResponse(
+      'How can I give category management permission to supervisor individually?',
+      'businessowner',
+      {},
+      BUSINESS_OWNER_ID
+    );
+
+    expect(response).toContain('HOW TO USE THE WEBSITE');
+    expect(response).toContain('Permissions');
+    expect(response).toContain('Individual Permissions');
+    expect(response).toContain('Select the employee or supervisor you want to update');
+    expect(response).toContain('category access');
+  });
+
+  test('returns direct order edit ability guidance', async () => {
+    const response = await generateAIResponse(
+      'Am I able to edit order?',
+      'businessowner',
+      {},
+      BUSINESS_OWNER_ID,
+      {
+        _id: BUSINESS_OWNER_ID,
+        role: 'businessowner',
+        permissions: {
+          canViewOrders: true,
+          canEditOrders: true
+        }
+      }
+    );
+
+    expect(response).toContain('Yes, you can edit orders');
+    expect(response).toContain('Open the left sidebar and choose Orders');
+    expect(response).toContain('Edit Order');
+  });
+
+  test('denies order edit ability when permission is missing', async () => {
+    const response = await generateAIResponse(
+      'Can I edit order?',
+      'employee',
+      {},
+      EMPLOYEE_ID,
+      {
+        _id: EMPLOYEE_ID,
+        role: 'employee',
+        permissions: {
+          canViewOrders: true,
+          canEditOrders: false
+        }
+      }
+    );
+
+    expect(response).toContain('Not with your current access');
+    expect(response).toContain('canEditOrders');
+    expect(response).toContain('Permissions');
+  });
+
+  test('returns supplier-specific report guide path', async () => {
+    const response = await generateAIResponse(
+      'How do I download my order report?',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014'
+    );
+
+    expect(response).toContain('HOW TO USE THE WEBSITE');
+    expect(response).toContain('Dashboard > Reports');
+    expect(response).toContain('My Orders');
+    expect(response).toContain('Excel or PDF');
+  });
+
+  test('supplier generic report how-to query returns report guidance', async () => {
+    const response = await generateAIResponse(
+      'How can I download reports?',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014',
+      {
+        _id: '64f1c2a1b2c3d4e5f6789014',
+        role: 'supplier',
+        canExportReports: true
+      }
+    );
+
+    expect(response).toContain('HOW TO USE THE WEBSITE');
+    expect(response).toContain('Dashboard > Reports');
+    expect(response).toContain('My Orders');
+  });
+
+  test('allows supplier report capability when supplier export permission is enabled', async () => {
+    const response = await generateAIResponse(
+      'Am I able to download report?',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014',
+      {
+        _id: '64f1c2a1b2c3d4e5f6789014',
+        role: 'supplier',
+        canExportReports: true
+      }
+    );
+
+    expect(response).toContain('Yes, you can view reports');
+    expect(response).toContain('My Orders');
+  });
+
+  test('allows supplier to update own order with status-update guidance', async () => {
+    const response = await generateAIResponse(
+      'Am I able to update order?',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014',
+      {
+        _id: '64f1c2a1b2c3d4e5f6789014',
+        role: 'supplier'
+      }
+    );
+
+    expect(response).toContain('Yes, you can edit orders');
+    expect(response).toContain('Supplier Orders');
+    expect(response).toContain('Status Updates');
+  });
+
+  test('allows supplier to update order status explicitly', async () => {
+    const response = await generateAIResponse(
+      'Can I update order status?',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014',
+      {
+        _id: '64f1c2a1b2c3d4e5f6789014',
+        role: 'supplier'
+      }
+    );
+
+    expect(response).toContain('Yes, you can edit orders');
+    expect(response).toContain('Order Status');
+  });
+
+  test('asks for a feature name when the how-to query is too vague', async () => {
+    const response = await generateAIResponse(
+      'How can I do this thing?',
+      'businessowner',
+      {},
+      BUSINESS_OWNER_ID
+    );
+
+    expect(response).toContain('I can guide you through the website');
+    expect(response).toContain('How do I add a product?');
+    expect(response).toContain('How do I create an order?');
+  });
+
   test('returns concrete low stock alerts for business owner query', async () => {
     const response = await generateAIResponse(
       'Show low stock alerts',
@@ -898,6 +1079,85 @@ describe('chatbot new query coverage', () => {
     expect(response).toContain('SUPPLIER ORDERS');
     expect(response).toContain('Product1');
     expect(response).toContain('Supplier');
+  });
+
+  test('supplier query for latest orders returns supplier order list instead of clarification', async () => {
+    SupplierOrders.find.mockReturnValue(makeSelectPopulateSortLimitLeanChain([
+      {
+        pName: 'Raw Material A',
+        category: 'Category1',
+        amount: 500,
+        ounits: 8,
+        oDate: '2026-04-01T00:00:00.000Z',
+        dDate: '2026-04-04T00:00:00.000Z',
+        status: 'Pending',
+        paymentStatus: 'Completed',
+        supplier: { fname: 'Supplier', lname: '', companyName: 'Test Supplies' }
+      }
+    ]));
+
+    const response = await generateAIResponse(
+      'Show my latest 5 orders',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014'
+    );
+
+    expect(response).toContain('YOUR SUPPLIER ORDERS');
+    expect(response).toContain('Raw Material A');
+    expect(response).not.toContain('I understand you want order details');
+  });
+
+  test('supplier pending order query applies pending filter in response title', async () => {
+    SupplierOrders.find.mockReturnValue(makeSelectPopulateSortLimitLeanChain([
+      {
+        pName: 'Raw Material B',
+        category: 'Category2',
+        amount: 700,
+        ounits: 5,
+        oDate: '2026-04-02T00:00:00.000Z',
+        dDate: '2026-04-06T00:00:00.000Z',
+        status: 'Pending',
+        paymentStatus: 'Pending',
+        supplier: { fname: 'Supplier', lname: '', companyName: 'Test Supplies' }
+      }
+    ]));
+
+    const response = await generateAIResponse(
+      'Show pending supply orders',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014'
+    );
+
+    expect(response).toContain('YOUR PENDING SUPPLIER ORDERS');
+    expect(response).toContain('Raw Material B');
+  });
+
+  test('supplier order details by product name returns matching supplier order response', async () => {
+    SupplierOrders.find.mockReturnValue(makeSelectPopulateSortLimitLeanChain([
+      {
+        pName: 'Floor Cleaner 1L',
+        category: 'Cleaning',
+        amount: 450,
+        ounits: 12,
+        oDate: '2026-04-03T00:00:00.000Z',
+        dDate: '2026-04-09T00:00:00.000Z',
+        status: 'Delivered',
+        paymentStatus: 'Completed',
+        supplier: { fname: 'Supplier', lname: '', companyName: 'Test Supplies' }
+      }
+    ]));
+
+    const response = await generateAIResponse(
+      'Show order details for Floor Cleaner 1L',
+      'supplier',
+      {},
+      '64f1c2a1b2c3d4e5f6789014'
+    );
+
+    expect(response).toContain('YOUR SUPPLIER ORDERS');
+    expect(response).toContain('Floor Cleaner 1L');
   });
 
   describe('order status showcase with detailed points', () => {
@@ -1485,6 +1745,253 @@ describe('chatbot new query coverage', () => {
       expect(response).toContain('Customer Range 1');
       expect(response).toContain('Customer Range 2');
       expect(CustomerOrders.find).toHaveBeenCalled();
+    });
+  });
+
+  describe('role-wise chatbot query matrix validation', () => {
+    const SUPPLIER_ID = '64f1c2a1b2c3d4e5f6789014';
+
+    const ownerUser = {
+      _id: BUSINESS_OWNER_ID,
+      role: 'businessowner'
+    };
+
+    const employeeLimitedUser = {
+      _id: EMPLOYEE_ID,
+      role: 'employee',
+      permissions: {
+        canViewOrders: true,
+        canViewProducts: true,
+        canCreateProducts: true,
+        canEditProducts: true,
+        canDeleteProducts: false,
+        canApproveOrders: false,
+        canViewEmployees: false,
+        canManageEmployees: false,
+        canExportReports: false,
+        canViewAnalytics: false,
+        canViewDashboard: true,
+        canDownloadEmployeeReport: false,
+        canDownloadProductReport: false,
+        canDownloadOrderReport: false,
+        canDownloadSupplierOrderReport: false,
+        canDownloadSupplierReport: false,
+        canDownloadSalaryReport: false
+      }
+    };
+
+    const supplierLimitedUser = {
+      _id: SUPPLIER_ID,
+      role: 'supplier',
+      canExportReports: false
+    };
+
+    const businessContext = {
+      products: 12,
+      totalOrders: 18,
+      pendingOrders: 4,
+      completedOrders: 10,
+      warehouses: 2,
+      suppliers: 3,
+      employees: 5,
+      totalRevenue: 120000,
+      avgOrderValue: 6666,
+      lowStockProducts: [
+        { name: 'Alpha Mix', category: 'Snacks', totalProducts: 3, price: 1299 }
+      ],
+      employeesList: [
+        {
+          fname: 'Manager',
+          lname: 'One',
+          email: 'manager1@test.com',
+          role: 'manager',
+          salary: { baseSalary: 10000, currency: 'INR', paymentFrequency: 'monthly' }
+        }
+      ],
+      recentOrders: [
+        {
+          cName: 'Customer1',
+          pName: 'Alpha Mix',
+          amount: 3000,
+          status: 'Pending',
+          oDate: '2026-04-01T00:00:00.000Z'
+        }
+      ],
+      orderStatusBreakdown: [
+        { _id: 'Pending', count: 4 },
+        { _id: 'Processing', count: 4 },
+        { _id: 'Delivered', count: 10 }
+      ],
+      totalSalaryPaid: 50000,
+      salaryPaymentCount: 6
+    };
+
+    const employeeContext = {
+      employeeName: 'Employee Two',
+      totalOrders: 8,
+      pendingTasks: 2,
+      completedTasks: 6,
+      lowStockProducts: [{ name: 'Beta Pack', totalProducts: 4, category: 'Beverages' }],
+      mySalaryPayments: [{ amount: 8000, paymentDate: '2026-03-31T00:00:00.000Z', status: 'completed' }],
+      assignedOrdersList: [
+        { cName: 'Customer2', pName: 'Beta Pack', status: 'Pending', amount: 2000, oDate: '2026-04-02T00:00:00.000Z' }
+      ]
+    };
+
+    const supplierContext = {
+      totalOrders: 5,
+      pendingOrders: 2,
+      deliveredOrders: 2,
+      cancelledOrders: 1,
+      totalOrderValue: 25000,
+      recentSupplierOrders: [
+        { pName: 'Raw Material A', ounits: 10, amount: 500, status: 'Pending', oDate: '2026-04-03T00:00:00.000Z' }
+      ]
+    };
+
+    test('business owner queries return useful guidance, analytics, and capability responses', async () => {
+      const ownerQueries = [
+        {
+          query: 'How do I create an order?',
+          expected: ['HOW TO USE THE WEBSITE', 'Dashboard > Orders > Add Order']
+        },
+        {
+          query: 'How do I manage permissions for one employee?',
+          expected: ['HOW TO USE THE WEBSITE', 'Permissions', 'Individual Permissions']
+        },
+        {
+          query: 'Can I delete a warehouse?',
+          expected: ['Yes, you can delete warehouses', 'Open Warehouses']
+        },
+        {
+          query: 'Can I edit employee permissions?',
+          expected: ['Yes, you can edit permissions', 'Role-Based Permissions']
+        },
+        {
+          query: 'Give business improvement suggestions based on my current data.',
+          expected: ['BUSINESS IMPROVEMENT SUGGESTIONS']
+        },
+        {
+          query: 'How can I increase sales this month with targeted strategies?',
+          expected: ['BUSINESS IMPROVEMENT SUGGESTIONS', 'Recommended Actions']
+        }
+      ];
+
+      for (const item of ownerQueries) {
+        const response = await generateAIResponse(
+          item.query,
+          'businessowner',
+          businessContext,
+          BUSINESS_OWNER_ID,
+          ownerUser
+        );
+
+        item.expected.forEach((needle) => {
+          expect(response).toContain(needle);
+        });
+      }
+    });
+
+    test('employee queries enforce permissions and still support allowed guidance', async () => {
+      const employeeQueries = [
+        {
+          query: 'How do I check order status?',
+          expected: ['HOW TO USE THE WEBSITE', 'Dashboard > Orders']
+        },
+        {
+          query: 'Can I create products?',
+          expected: ['Yes, you can create products']
+        },
+        {
+          query: 'Can I delete products?',
+          expected: ['Not with your current access', 'canDeleteProducts']
+        },
+        {
+          query: 'Can I approve orders?',
+          expected: ['Not with your current access', 'canApproveOrders']
+        },
+        {
+          query: 'Can I view employees list?',
+          expected: ['Not with your current access', 'canViewEmployees']
+        },
+        {
+          query: 'Can I export reports?',
+          expected: ['Not with your current access', 'canExportReports']
+        },
+        {
+          query: 'Show full business revenue summary.',
+          expected: ['You are not accessible to that data.']
+        },
+        {
+          query: 'Can I manage permissions?',
+          expected: ['Not with your current access', 'canManageEmployees']
+        }
+      ];
+
+      for (const item of employeeQueries) {
+        const response = await generateAIResponse(
+          item.query,
+          'employee',
+          employeeContext,
+          EMPLOYEE_ID,
+          employeeLimitedUser
+        );
+
+        item.expected.forEach((needle) => {
+          expect(response).toContain(needle);
+        });
+      }
+    });
+
+    test('supplier queries allow own-order flows and deny cross-role sensitive data', async () => {
+      const supplierQueries = [
+        {
+          query: 'Show my pending supplier orders.',
+          expected: ['YOUR PENDING SUPPLIER ORDERS']
+        },
+        {
+          query: 'How do I download my order report?',
+          expected: ['HOW TO USE THE WEBSITE', 'My Orders', 'Excel or PDF']
+        },
+        {
+          query: 'Can I download reports?',
+          expected: ['Not with your current access', 'canExportReports']
+        },
+        {
+          query: 'Can I edit my order status?',
+          expected: ['Yes, you can edit orders', 'Supplier Orders', 'Order Status']
+        },
+        {
+          query: 'Show all employees and their salaries.',
+          expected: ['You are not accessible to that data.']
+        },
+        {
+          query: 'Show all warehouse details.',
+          expected: ['You are not accessible to that data.']
+        },
+        {
+          query: 'Show business owner revenue analytics.',
+          expected: ['Your Total Order Value', 'Pending: 2']
+        },
+        {
+          query: 'Guide me to manage employee permissions.',
+          expected: ['You are not accessible to that data.']
+        }
+      ];
+
+      for (const item of supplierQueries) {
+        const response = await generateAIResponse(
+          item.query,
+          'supplier',
+          supplierContext,
+          SUPPLIER_ID,
+          supplierLimitedUser
+        );
+
+        item.expected.forEach((needle) => {
+          expect(response).toContain(needle);
+        });
+      }
     });
   });
 });

@@ -112,16 +112,19 @@ const EditOrder = (props) => {
 
     const fetchOrder = async () => {
         try {
-            const response = await fetch('/api/customerorders/getcustomerorder', {
-                method: 'POST',
+            const response = await fetch(`/api/customerorders/getcustomerorderbyid/${id}`, {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'auth-token': localStorage.getItem('token')
                 }
             });
 
-            const orders = await response.json();
-            const order = orders.find(o => o._id === id);
+            if (!response.ok) {
+                throw new Error('Failed to fetch order');
+            }
+
+            const order = await response.json();
             
             if (order) {
                 setFormData({

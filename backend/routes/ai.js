@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const fetchuser = require('../middleware/fetchuser');
 const AIDataFixProposal = require('../models/AIDataFixProposal');
+const AIInsightSnapshot = require('../models/AIInsightSnapshot');
 const { hasPermission } = require('../middleware/roleBasedAccess');
 const {
   demandForecast,
@@ -84,6 +85,56 @@ const filterAiInsightsForUser = (req, insights = {}) => {
     return filtered;
   }, { generatedAt: insights.generatedAt, allowedSections });
 };
+
+const saveLatestSnapshotForUser = async (req, insights) => {
+  const businessowner = getBusinessOwnerId(req);
+  if (!businessowner || !req.user?._id || !insights) return;
+
+  const generatedAt = insights.generatedAt ? new Date(insights.generatedAt) : new Date();
+
+  await AIInsightSnapshot.findOneAndUpdate(
+    {
+      businessowner,
+      user: req.user._id,
+      role: req.role
+    },
+    {
+      $set: {
+        generatedAt,
+        insights
+      }
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true
+    }
+  );
+};
+
+router.get('/latest-insights', fetchuser, async (req, res) => {
+  try {
+    const businessowner = getBusinessOwnerId(req);
+    const snapshot = await AIInsightSnapshot.findOne({
+      businessowner,
+      user: req.user._id,
+      role: req.role
+    }).select('generatedAt insights');
+
+    if (!snapshot) {
+      return res.json({ success: true, hasSnapshot: false, insights: null });
+    }
+
+    return res.json({
+      success: true,
+      hasSnapshot: true,
+      generatedAt: snapshot.generatedAt,
+      insights: snapshot.insights
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Failed to fetch latest AI insights snapshot.' });
+  }
+});
 
 router.post('/demand-forecast', fetchuser, requireAiSectionAccess('demandForecast'), async (req, res) => {
   try {
@@ -293,7 +344,10 @@ router.post('/run-all', fetchuser, async (req, res) => {
       }
     });
 
-    return res.json({ success: true, ...filterAiInsightsForUser(req, result) });
+    const filteredInsights = filterAiInsightsForUser(req, result);
+    await saveLatestSnapshotForUser(req, filteredInsights);
+
+    return res.json({ success: true, ...filteredInsights });
   } catch (error) {
     return res.status(500).json({ success: false, error: 'Failed to run complete AI insights suite.' });
   }

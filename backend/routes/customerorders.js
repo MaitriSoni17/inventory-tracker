@@ -285,6 +285,36 @@ router.post('/getpendingorders', fetchuser, async (req, res) => {
     }
 });
 
+// Get Customer Order by ID (supports both pending and non-pending)
+router.get('/getcustomerorderbyid/:id', fetchuser, async (req, res) => {
+    try {
+        let customerorder = await CustomerOrders.findById(req.params.id)
+            .populate('warehouse')
+            .populate('products.product');
+
+        if (!customerorder) return res.status(404).send('Not Found');
+
+        if (req.role === 'businessowner') {
+            if (customerorder.businessowner.toString() !== req.user._id.toString()) {
+                return res.status(401).send('Not Allowed');
+            }
+        } else if (req.role === 'supplier') {
+            return res.status(403).send('Only authorized personnel can view customer orders');
+        } else {
+            const staffMember = await require('../models/Employee').findById(req.user._id);
+            const businessOwnerId = req.businessowner || (staffMember && staffMember.businessowner);
+
+            if (!businessOwnerId || customerorder.businessowner.toString() !== businessOwnerId.toString()) {
+                return res.status(401).send('Not Allowed');
+            }
+        }
+
+        res.json(customerorder);
+    } catch (err) {
+        res.status(500).send('Internal Server error occurred');
+    }
+});
+
 // Update Customer Order — BusinessOwner can update all, warehouse staff can update status
 router.put('/updatecustomerorder/:id', fetchuser, [
     body('cName', 'Enter Customer Name').exists(),

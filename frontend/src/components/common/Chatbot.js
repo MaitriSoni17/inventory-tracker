@@ -35,10 +35,19 @@ const MessageContent = memo(({ text }) => {
       );
     } else if (/^\d+\.\s/.test(trimmed)) {
       const numMatch = trimmed.match(/^(\d+)\.\s/);
+      const listText = trimmed.replace(/^\d+\.\s*/, '');
+      const listParts = listText.split(/(\*\*[^*]+\*\*)/g);
+      const processedListParts = listParts.map((part, partIdx) => {
+        const boldMatch = part.match(/^\*\*(.+)\*\*$/);
+        if (boldMatch) {
+          return <strong key={`bn-${lineIdx}-${partIdx}`}>{boldMatch[1]}</strong>;
+        }
+        return <span key={`tn-${lineIdx}-${partIdx}`}>{part}</span>;
+      });
       elements.push(
         <div key={`nl-${lineIdx}`} className="chat-list-item numbered">
           <span className="chat-number">{numMatch[1]}.</span>
-          <span>{processedParts}</span>
+          <span>{processedListParts}</span>
         </div>
       );
     } else if (trimmed.length > 0) {
