@@ -115,7 +115,7 @@ inventory-tracker/
 │   │   ├── logger.js
 │   │   ├── security.js
 │   │   ├── errorHandler.js
-│   │   └── validationSchemas.js
+│   │   └── ...
 │   ├── services/            # Service layer (NEW)
 │   │   ├── BaseService.js
 │   │   └── ProductService.js
@@ -245,7 +245,7 @@ npm test:watch
 ### Developer Documentation
 - **Improvements Guide**: See [IMPROVEMENTS.md](IMPROVEMENTS.md) for technical improvements
 - **Code Structure**: Each service and utility has inline documentation
-- **Validation Schemas**: Defined in `backend/config/validationSchemas.js`
+- **Validation**: Implemented through route-level validators and schema checks
 
 ---
 
@@ -255,7 +255,7 @@ npm test:watch
 ✅ **Environment Validation** - Fails fast if required config missing  
 ✅ **Rate Limiting** - Prevents brute force attacks  
 ✅ **Security Headers** - Helmet protection against common vulnerabilities  
-✅ **Input Validation** - Joi schemas prevent injection attacks  
+✅ **Input Validation** - Route-level validation helps prevent injection attacks  
 ✅ **Error Handling** - No internal error details leaked in production  
 ✅ **Request Logging** - Audit trail for security investigations  
 ✅ **JWT Authentication** - Secure token-based auth  
@@ -327,7 +327,7 @@ LOG_LEVEL=info
 - Follow existing patterns (e.g., service layer)
 
 ### Adding New Endpoints
-1. Define validation schema in `backend/config/validationSchemas.js`
+1. Add route-level validation in the corresponding route file
 2. Create service method in appropriate service class
 3. Add route handler with validation
 4. Use global error handler for errors
