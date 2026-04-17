@@ -95,8 +95,8 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
         let supplierorder = [];
 
         if (req.role === 'businessowner') {
-            // Business owner sees all orders
-            supplierorder = await SupplierOrders.find({ businessowner: req.user._id })
+            // Business owner sees orders for the selected supplier only
+            supplierorder = await SupplierOrders.find({ businessowner: req.user._id, supplier: req.params.id })
                 .populate('businessowner', 'fname lname email phone address')
                 .populate('warehouse');
         } else if (req.role !== 'supplier') {
@@ -105,7 +105,8 @@ router.post('/getsupplierorder/:id', fetchuser, async (req, res) => {
             
             if (staffMember && staffMember.warehouse) {
                 supplierorder = await SupplierOrders.find({
-                    warehouse: staffMember.warehouse._id
+                    warehouse: staffMember.warehouse._id,
+                    supplier: req.params.id
                 }).populate('businessowner', 'fname lname email phone address')
                  .populate('warehouse');
             } else {

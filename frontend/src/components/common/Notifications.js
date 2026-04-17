@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/notifications.css';
 import { apiCall, parseResponse } from '../../utils/apiClient';
+import useNotificationRefresh from '../../hooks/useNotificationRefresh';
 
 const Notifications = () => {
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
-  const token = localStorage.getItem('token');
 
   // Fetch unread count
   const fetchUnreadCount = async () => {
@@ -39,15 +39,7 @@ const Notifications = () => {
     }
   };
 
-  useEffect(() => {
-    fetchUnreadCount();
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(() => {
-      fetchUnreadCount();
-    }, 30000);
-
-    return () => clearInterval(interval);
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useNotificationRefresh(fetchUnreadCount, { intervalMs: 10000 });
 
   const handleNotificationClick = () => {
     navigate('/dashboard/notifications');

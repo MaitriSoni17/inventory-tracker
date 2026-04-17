@@ -45,9 +45,9 @@ npm run backend:seed
 ```
 
 Seeded demo logins:
-- Business Owner: owner.demo@inventorytracker.dev / Owner@123
-- Manager: manager.demo@inventorytracker.dev / Manager@123
-- Supplier: supplier.demo@inventorytracker.dev / Supplier@123
+- Business Owner: owner@test.com / Owner@123
+- Manager: manager1@test.com / Manager@123
+- Supplier: supplier1@test.com / Supplier@123
 
 ### Run Tests
 ```bash

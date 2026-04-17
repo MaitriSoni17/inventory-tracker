@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../../styles/notificationspage.css';
+import { apiCall, parseResponse } from '../../utils/apiClient';
+import useNotificationRefresh from '../../hooks/useNotificationRefresh';
 
 const NotificationsPage = (props) => {
   const navigate = useNavigate();
@@ -166,7 +168,7 @@ const NotificationsPage = (props) => {
   const fetchNotifications = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/notifications/getnotifications', {
+      const response = await apiCall('/api/notifications/getnotifications', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -174,8 +176,15 @@ const NotificationsPage = (props) => {
         }
       });
 
+      if (response.isUnauthorized || response.isDeactivated) {
+        if (response.shouldRedirect && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return;
+      }
+
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseResponse(response);
         setNotifications(data);
         setSelectedNotificationIds((prev) => prev.filter((id) => data.some((n) => n._id === id)));
         fetchUnreadCount();
@@ -190,7 +199,7 @@ const NotificationsPage = (props) => {
   // Fetch unread count
   const fetchUnreadCount = async () => {
     try {
-      const response = await fetch('/api/notifications/unreadcount', {
+      const response = await apiCall('/api/notifications/unreadcount', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -198,8 +207,15 @@ const NotificationsPage = (props) => {
         }
       });
 
+      if (response.isUnauthorized || response.isDeactivated) {
+        if (response.shouldRedirect && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return;
+      }
+
       if (response.ok) {
-        const data = await response.json();
+        const data = await parseResponse(response);
         setUnreadCount(data.unreadCount);
       }
     } catch (error) {
@@ -463,11 +479,7 @@ const NotificationsPage = (props) => {
     return notifDate.toLocaleDateString();
   };
 
-  useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  useNotificationRefresh(fetchNotifications, { intervalMs: 10000 });
 
   const filteredNotifications = getFilteredNotifications();
   const selectedCount = selectedNotificationIds.length;

@@ -226,10 +226,21 @@ router.post('/createcustomerorder', fetchuser, [
 router.post('/getcustomerorder', fetchuser, async (req, res) => {
     try {
         let customerorder = [];
+        const nonPendingFilter = {
+            $and: [
+                { isPending: { $ne: true } },
+                {
+                    $or: [
+                        { status: { $exists: false } },
+                        { status: { $not: /^pending$/i } }
+                    ]
+                }
+            ]
+        };
 
         if (req.role === 'businessowner') {
             // Business owner sees all non-pending orders in their organization
-            customerorder = await CustomerOrders.find({ businessowner: req.user._id, isPending: { $ne: true } })
+            customerorder = await CustomerOrders.find({ businessowner: req.user._id, ...nonPendingFilter })
                 .populate('warehouse')
                 .populate('products.product');
         } else {
@@ -240,7 +251,7 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
             if (businessOwnerId) {
                 customerorder = await CustomerOrders.find({
                     businessowner: businessOwnerId,
-                    isPending: { $ne: true }
+                    ...nonPendingFilter
                 })
                     .populate('warehouse')
                     .populate('products.product');
@@ -259,9 +270,15 @@ router.post('/getcustomerorder', fetchuser, async (req, res) => {
 router.post('/getpendingorders', fetchuser, async (req, res) => {
     try {
         let pendingOrders = [];
+        const pendingFilter = {
+            $or: [
+                { isPending: true },
+                { status: /^pending$/i }
+            ]
+        };
 
         if (req.role === 'businessowner') {
-            pendingOrders = await CustomerOrders.find({ businessowner: req.user._id, isPending: true })
+            pendingOrders = await CustomerOrders.find({ businessowner: req.user._id, ...pendingFilter })
                 .populate('warehouse')
                 .populate('products.product');
         } else {
@@ -272,14 +289,50 @@ router.post('/getpendingorders', fetchuser, async (req, res) => {
             if (businessOwnerId) {
                 pendingOrders = await CustomerOrders.find({
                     businessowner: businessOwnerId,
-                    isPending: true
+                    ...pendingFilter
                 })
                     .populate('warehouse')
                     .populate('products.product');
             }
         }
 
-        res.json(pendingOrders);
+        // Only expose orders that are truly pending due to low stock demand.
+        const lowStockPendingOrders = pendingOrders
+            .map((order) => {
+                const derivedPendingReasons = [];
+
+                if (!Array.isArray(order.products) || order.products.length === 0) {
+                    return null;
+                }
+
+                order.products.forEach((item) => {
+                    const requestedQty = Number(item.quantity || order.ounits || 0);
+                    const productDoc = item.product && typeof item.product === 'object' ? item.product : null;
+
+                    if (!productDoc || typeof productDoc.totalProducts !== 'number') {
+                        return;
+                    }
+
+                    if (productDoc.totalProducts < requestedQty) {
+                        derivedPendingReasons.push(
+                            `Insufficient stock for "${productDoc.name}" (Available: ${productDoc.totalProducts}, Requested: ${requestedQty})`
+                        );
+                    }
+                });
+
+                if (derivedPendingReasons.length === 0) {
+                    return null;
+                }
+
+                if (!order.pendingReason || !String(order.pendingReason).trim()) {
+                    order.pendingReason = derivedPendingReasons.join('; ');
+                }
+
+                return order;
+            })
+            .filter(Boolean);
+
+        res.json(lowStockPendingOrders);
     } catch (err) {
         res.status(500).send("Internal Server error occurred");
     }

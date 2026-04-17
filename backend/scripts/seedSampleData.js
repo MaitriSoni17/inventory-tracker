@@ -18,6 +18,12 @@ const SupplierOrders = require('../models/SupplierOrders');
 const SEED_PREFIX = '[seed-sample-data]';
 const SEED_DATA_TAG = `${SEED_PREFIX} generated`;
 
+const getArgValue = (argName) => {
+  const arg = process.argv.find((item) => item.startsWith(`${argName}=`));
+  if (!arg) return null;
+  return arg.slice(argName.length + 1).trim();
+};
+
 const TARGET_COUNTS = {
   warehouses: 3,
   employees: 3,
@@ -28,17 +34,20 @@ const TARGET_COUNTS = {
   supplierOrders: 6
 };
 
+const TARGET_OWNER_EMAIL = getArgValue('--ownerEmail') || 'owner@test.com';
+const TARGET_OWNER_PASSWORD = getArgValue('--ownerPassword') || 'Owner@123';
+
 const SAMPLE_CREDENTIALS = {
   businessOwner: {
-    email: 'owner.demo@inventorytracker.dev',
-    password: 'Owner@123'
+    email: TARGET_OWNER_EMAIL,
+    password: TARGET_OWNER_PASSWORD
   },
   manager: {
-    email: 'manager.demo@inventorytracker.dev',
+    email: 'manager1@test.com',
     password: 'Manager@123'
   },
   supplier: {
-    email: 'supplier.demo@inventorytracker.dev',
+    email: 'supplier1@test.com',
     password: 'Supplier@123'
   }
 };
@@ -50,9 +59,11 @@ const hashPassword = async (plainText) => {
 
 const upsertBusinessOwner = async () => {
   const existing = await BusinessOwner.findOne({ email: SAMPLE_CREDENTIALS.businessOwner.email });
-  const password = existing
-    ? existing.password
-    : await hashPassword(SAMPLE_CREDENTIALS.businessOwner.password);
+  if (existing) {
+    return existing;
+  }
+
+  const password = await hashPassword(SAMPLE_CREDENTIALS.businessOwner.password);
 
   return BusinessOwner.findOneAndUpdate(
     { email: SAMPLE_CREDENTIALS.businessOwner.email },
@@ -176,7 +187,7 @@ const upsertSupplier = async (businessowner) => {
         fname: 'Ravi',
         lname: 'Supplies',
         companyName: 'Ravi Wholesale Pvt Ltd',
-        companyEmail: 'contact@raviwholesale.dev',
+        companyEmail: 'contact@test.com',
         companyPhone: '+919812345678',
         companyAddress: '7 Industrial Area, Pune',
         email: SAMPLE_CREDENTIALS.supplier.email,
@@ -193,7 +204,7 @@ const upsertSupplier = async (businessowner) => {
 };
 
 const upsertAdditionalSupplier = async (businessowner, index) => {
-  const email = `supplier${index + 2}.demo@inventorytracker.dev`;
+  const email = `supplier${index + 2}@test.com`;
   const existing = await Supplier.findOne({ email });
   const password = existing
     ? existing.password
@@ -207,7 +218,7 @@ const upsertAdditionalSupplier = async (businessowner, index) => {
         fname: `Supplier${index + 2}`,
         lname: 'Demo',
         companyName: `Demo Supplies ${index + 2}`,
-        companyEmail: `contact${index + 2}@demosupplies.dev`,
+        companyEmail: `contact${index + 2}@test.com`,
         companyPhone: `+91981234${String(7000 + index).padStart(4, '0')}`,
         companyAddress: `${index + 2} Supplier Lane, Pune`,
         phone: `+91981234${String(7000 + index).padStart(4, '0')}`,
@@ -237,7 +248,7 @@ const upsertCategory = async (businessowner, seed) => {
 };
 
 const upsertAdditionalEmployee = async (businessowner, warehouse, index) => {
-  const email = `staff${index + 2}.demo@inventorytracker.dev`;
+  const email = `staff${index + 2}@test.com`;
   const existing = await Employee.findOne({ email });
   const password = existing
     ? existing.password
@@ -313,7 +324,7 @@ const upsertCustomerOrder = async (businessowner, employee, warehouse, products,
     employee: employee._id,
     warehouse: warehouse._id,
     cName: seed.cName || 'Aarav Retail',
-    cEmail: seed.cEmail || 'orders@aaravretail.dev',
+    cEmail: seed.cEmail || 'orders@test.com',
     cPhone: seed.cPhone || 9898989898,
     cAddress: seed.cAddress || 'Shop 12, Market Road',
     products: orderedProducts,
@@ -424,7 +435,7 @@ const seed = async () => {
       wManager: 'Maya Manager',
       wAddress: 'Plot 21, MIDC Industrial Zone',
       wContact: '+919812341111',
-      wEmail: 'warehouse.central@inventorytracker.dev',
+      wEmail: 'warehouse1@test.com',
       city: 'Pune',
       state: 'Maharashtra',
       country: 'India'
@@ -434,7 +445,7 @@ const seed = async () => {
       wManager: 'Anil Supervisor',
       wAddress: 'Near Ring Road, Warehouse Block B',
       wContact: '+919812342222',
-      wEmail: 'warehouse.west@inventorytracker.dev',
+      wEmail: 'warehouse2@test.com',
       city: 'Mumbai',
       state: 'Maharashtra',
       country: 'India'
@@ -450,7 +461,7 @@ const seed = async () => {
         wManager: `Manager ${i + 1}`,
         wAddress: `Sector ${i + 11}, Distribution Park`,
         wContact: `+91981236${String(3000 + i).padStart(4, '0')}`,
-        wEmail: `warehouse.north${i + 1}@inventorytracker.dev`,
+        wEmail: `warehouse${i + 3}@test.com`,
         city: 'Nashik',
         state: 'Maharashtra',
         country: 'India'
@@ -524,7 +535,7 @@ const seed = async () => {
     // eslint-disable-next-line no-await-in-loop
     await upsertCustomerOrder(businessowner, employeeForOrder, warehouse, products, {
       cName: `Retail Customer ${i + 1}`,
-      cEmail: `retail${i + 1}@demo-orders.dev`,
+      cEmail: `retail${i + 1}@test.com`,
       cPhone: Number(`98989${String(10000 + i).padStart(5, '0')}`),
       cAddress: `Shop ${i + 1}, Market Street`,
       quantity,
@@ -560,6 +571,7 @@ const seed = async () => {
   await upsertSupplierOrder(businessowner, supplier, employee, warehouseSecondary, products[2]);
 
   console.log(`${SEED_PREFIX} completed successfully.`);
+  console.log(`${SEED_PREFIX} target owner: ${SAMPLE_CREDENTIALS.businessOwner.email}`);
   console.log(`${SEED_PREFIX} seeded counts:`);
   console.log(`- Warehouses: ${TARGET_COUNTS.warehouses}`);
   console.log(`- Employees: ${TARGET_COUNTS.employees}`);

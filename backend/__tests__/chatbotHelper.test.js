@@ -1994,4 +1994,322 @@ describe('chatbot new query coverage', () => {
       }
     });
   });
+
+  describe('chatbot spec coverage matrix', () => {
+    const SUPPLIER_ID = '64f1c2a1b2c3d4e5f6789014';
+
+    const ownerUser = {
+      _id: BUSINESS_OWNER_ID,
+      role: 'businessowner'
+    };
+
+    const employeeLimitedUser = {
+      _id: EMPLOYEE_ID,
+      role: 'employee',
+      permissions: {
+        canViewOrders: true,
+        canViewProducts: true,
+        canCreateProducts: true,
+        canEditProducts: true,
+        canDeleteProducts: false,
+        canApproveOrders: false,
+        canViewEmployees: false,
+        canManageEmployees: false,
+        canExportReports: false,
+        canViewAnalytics: false,
+        canViewDashboard: true,
+        canDownloadEmployeeReport: false,
+        canDownloadProductReport: false,
+        canDownloadOrderReport: false,
+        canDownloadSupplierOrderReport: false,
+        canDownloadSupplierReport: false,
+        canDownloadSalaryReport: false
+      }
+    };
+
+    const supplierLimitedUser = {
+      _id: SUPPLIER_ID,
+      role: 'supplier',
+      canExportReports: false
+    };
+
+    const businessContext = {
+      products: 12,
+      totalOrders: 18,
+      pendingOrders: 4,
+      completedOrders: 10,
+      warehouses: 2,
+      suppliers: 3,
+      employees: 5,
+      totalRevenue: 120000,
+      avgOrderValue: 6666,
+      lowStockProducts: [
+        { name: 'Alpha Mix', category: 'Snacks', totalProducts: 3, price: 1299 }
+      ],
+      employeesList: [
+        {
+          fname: 'Manager',
+          lname: 'One',
+          email: 'manager1@test.com',
+          role: 'manager',
+          salary: { baseSalary: 10000, currency: 'INR', paymentFrequency: 'monthly' }
+        }
+      ],
+      recentOrders: [
+        {
+          cName: 'Customer1',
+          pName: 'Alpha Mix',
+          amount: 3000,
+          status: 'Pending',
+          oDate: '2026-04-01T00:00:00.000Z'
+        }
+      ],
+      orderStatusBreakdown: [
+        { _id: 'Pending', count: 4 },
+        { _id: 'Processing', count: 4 },
+        { _id: 'Delivered', count: 10 }
+      ],
+      totalSalaryPaid: 50000,
+      salaryPaymentCount: 6
+    };
+
+    const employeeContext = {
+      employeeName: 'Employee Two',
+      totalOrders: 8,
+      pendingTasks: 2,
+      completedTasks: 6,
+      totalProducts: 9,
+      lowStockProducts: [{ name: 'Beta Pack', totalProducts: 4, category: 'Beverages' }],
+      mySalaryPayments: [{ amount: 8000, paymentDate: '2026-03-31T00:00:00.000Z', status: 'completed' }],
+      assignedOrdersList: [
+        { cName: 'Customer2', pName: 'Beta Pack', status: 'Pending', amount: 2000, oDate: '2026-04-02T00:00:00.000Z' }
+      ]
+    };
+
+    const supplierContext = {
+      totalOrders: 5,
+      pendingOrders: 2,
+      deliveredOrders: 2,
+      cancelledOrders: 1,
+      totalOrderValue: 25000,
+      recentSupplierOrders: [
+        { pName: 'Raw Material A', ounits: 10, amount: 500, status: 'Pending', oDate: '2026-04-03T00:00:00.000Z' }
+      ]
+    };
+
+    test('business owner gets the main supported answers', async () => {
+      const dashboardResponse = await generateAIResponse(
+        'Show my dashboard',
+        'businessowner',
+        businessContext,
+        BUSINESS_OWNER_ID,
+        ownerUser
+      );
+
+      expect(dashboardResponse).toContain('BUSINESS DASHBOARD');
+      expect(dashboardResponse).toContain('Products: **12**');
+      expect(dashboardResponse).toContain('Revenue: **₹1,20,000**');
+
+      const revenueResponse = await generateAIResponse(
+        'How much revenue do we have',
+        'businessowner',
+        {
+          ...businessContext,
+          topProducts: [
+            { _id: 'Alpha Mix', totalSold: 5, totalRevenue: 50000 }
+          ]
+        },
+        BUSINESS_OWNER_ID,
+        ownerUser
+      );
+
+      expect(revenueResponse).toContain('REVENUE & SALES');
+      expect(revenueResponse).toContain('Total Revenue: **₹1,20,000**');
+      expect(revenueResponse).toContain('Top Revenue Products');
+
+      const salaryResponse = getSalaryResponse(businessContext);
+
+      expect(salaryResponse).toContain('SALARY & PAYMENTS OVERVIEW');
+      expect(salaryResponse).toContain('Total Salary Paid: **₹50,000**');
+      expect(salaryResponse).toContain('Employees with salary assigned: **1**');
+
+      const helpResponse = await generateAIResponse(
+        'What can you do?',
+        'businessowner',
+        businessContext,
+        BUSINESS_OWNER_ID,
+        ownerUser
+      );
+
+      expect(helpResponse).toContain('I CAN HELP YOU WITH');
+      expect(helpResponse).toContain('Show my dashboard');
+      expect(helpResponse).toContain('How do I add a product?');
+
+      const offTopicResponse = await generateAIResponse(
+        'Tell me a joke',
+        'businessowner',
+        businessContext,
+        BUSINESS_OWNER_ID,
+        ownerUser
+      );
+
+      expect(offTopicResponse).toContain('I\'m not sure I understood that yet');
+      expect(offTopicResponse).toContain('type **help**');
+    });
+
+    test('employee gets allowed answers and blocked data stays blocked', async () => {
+      const employeeDashboard = await generateAIResponse(
+        'Show my dashboard',
+        'employee',
+        {
+          ...employeeContext,
+          totalProducts: 9,
+          completedTasks: 6
+        },
+        EMPLOYEE_ID,
+        employeeLimitedUser
+      );
+
+      expect(employeeDashboard).toContain('YOUR DASHBOARD');
+      expect(employeeDashboard).toContain('Total Products: **9**');
+      expect(employeeDashboard).toContain('Pending Tasks: **2**');
+      expect(employeeDashboard).toContain('Completed: **6**');
+
+      const employeeSalary = getEmployeeSalaryResponse(employeeContext);
+
+      expect(employeeSalary).toContain('YOUR SALARY PAYMENTS');
+      expect(employeeSalary).toContain('₹8000');
+
+      const employeeHelp = await generateAIResponse(
+        'Help',
+        'employee',
+        employeeContext,
+        EMPLOYEE_ID,
+        employeeLimitedUser
+      );
+
+      expect(employeeHelp).toContain('I CAN HELP YOU WITH');
+      expect(employeeHelp).toContain('My orders');
+      expect(employeeHelp).toContain('My salary');
+
+      const employeeDeniedCategory = await generateAIResponse(
+        'Show all employees',
+        'employee',
+        employeeContext,
+        EMPLOYEE_ID,
+        employeeLimitedUser
+      );
+
+      expect(employeeDeniedCategory).toBe('You are not accessible to that data.');
+
+      const employeeDeniedSupplier = await generateAIResponse(
+        'Show supplier details',
+        'employee',
+        employeeContext,
+        EMPLOYEE_ID,
+        employeeLimitedUser
+      );
+
+      expect(employeeDeniedSupplier).toBe('Supplier information is not available for your role.');
+
+      const employeeOffTopic = await generateAIResponse(
+        'Tell me a joke',
+        'employee',
+        employeeContext,
+        EMPLOYEE_ID,
+        employeeLimitedUser
+      );
+
+      expect(employeeOffTopic).toContain('I\'m not sure I understood that yet');
+      expect(employeeOffTopic).toContain('type **help**');
+    });
+
+    test('supplier gets allowed answers and rejected cross-role data stays blocked', async () => {
+      const supplierDashboard = await generateAIResponse(
+        'Show my dashboard',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierDashboard).toContain('SUPPLY DASHBOARD');
+      expect(supplierDashboard).toContain('Pending: **2**');
+      expect(supplierDashboard).toContain('Total Value: **₹25,000**');
+
+      const supplierRevenue = await generateAIResponse(
+        'How much revenue do I have',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierRevenue).toContain('Your Total Order Value');
+      expect(supplierRevenue).toContain('Pending: 2');
+
+      const supplierOrders = await generateAIResponse(
+        'Show my supply orders status',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierOrders).toContain('YOUR SUPPLY ORDERS');
+      expect(supplierOrders).toContain('Raw Material A');
+
+      const supplierHelp = await generateAIResponse(
+        'Help',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierHelp).toContain('I CAN HELP YOU WITH');
+      expect(supplierHelp).toContain('My orders');
+      expect(supplierHelp).toContain('How do I use the dashboard?');
+
+      const supplierDeniedEmployee = await generateAIResponse(
+        'Show employee details',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierDeniedEmployee).toBe('You are not accessible to that data.');
+
+      const supplierDeniedWarehouse = await generateAIResponse(
+        'Show warehouse details',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierDeniedWarehouse).toBe('You are not accessible to that data.');
+
+      const supplierDeniedCategory = await generateAIResponse(
+        'Show categories',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierDeniedCategory).toBe('You are not accessible to that data.');
+
+      const supplierOffTopic = await generateAIResponse(
+        'Tell me a joke',
+        'supplier',
+        supplierContext,
+        SUPPLIER_ID,
+        supplierLimitedUser
+      );
+
+      expect(supplierOffTopic).toBe('You are not accessible to that data.');
+    });
+  });
 });

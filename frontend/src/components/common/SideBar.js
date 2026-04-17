@@ -223,11 +223,11 @@ const SideBar = () => {
                             </Link>
                         )}
 
-                        {!isDeletionRestricted && canExportReports && (
+                        {/* {!isDeletionRestricted && canExportReports && (
                             <Link to="/dashboard/ai-insights" className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/ai-insights" ? "active" : ""}`}>
                                 <i className="fas fa-brain me-2"></i>AI Insights
                             </Link>
-                        )}
+                        )} */}
                         
                         {/* Settings */}
                         <Link to={isDeletionRestricted ? "/dashboard/deletion-hold" : isEmployee ? "/dashboard/empsettings" : isBusinessOwner ? "/dashboard/settings" : isSupplier ? "/dashboard/suppliersettings" : "/"} className={`list-group-item list-group-item-action bg-transparent second-text ${location.pathname === "/dashboard/settings" || location.pathname === "/dashboard/empsettings" || location.pathname === "/dashboard/suppliersettings" || location.pathname === "/dashboard/deletion-hold" ? "active" : ""}`}>

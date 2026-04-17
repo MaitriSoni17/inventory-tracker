@@ -1445,12 +1445,12 @@ const PermissionManager = (props) => {
 
                             {/* Custom roles section */}
                             {Object.keys(customRoles).length > 0 && (
-                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', margin: '10px 0', paddingTop: '10px' }}>
-                                    <small style={{ color: 'black', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', padding: '0 15px' }}>Custom Roles</small>
+                                <div className="custom-role-divider">
+                                    <small>Custom Roles</small>
                                 </div>
                             )}
                             {Object.entries(customRoles).map(([key, role]) => (
-                                <div key={key} style={{ position: 'relative' }}>
+                                <div key={key} className="custom-role-item-wrap">
                                     <button
                                         className={`role-item ${activeRole === key ? 'active' : ''}`}
                                         onClick={() => setActiveRole(key)}
@@ -1468,7 +1468,7 @@ const PermissionManager = (props) => {
                                         onClick={(e) => { e.stopPropagation(); handleDeleteCustomRole(key); }}
                                         disabled={deletingRole === key}
                                         title={`Delete ${role.displayName} role`}
-                                        style={{ position: 'absolute', top: '50%', right: '8px', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', opacity: 0.6, fontSize: '12px', padding: '4px' }}
+                                        className="custom-role-delete-btn"
                                     >
                                         {deletingRole === key ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-trash-alt"></i>}
                                     </button>

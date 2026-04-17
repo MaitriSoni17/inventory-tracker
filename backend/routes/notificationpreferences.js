@@ -43,6 +43,11 @@ router.get('/', fetchUser, async (req, res) => {
       preferences = new NotificationPreference({
         user: userId,
         role: userRole,
+        emailNotifications: true,
+        orderAlerts: true,
+        deliveryAlerts: true,
+        lowStockAlerts: true,
+        weeklyReport: false,
         salarydueAlert: true,
         salaryDueDaysThreshold: 3,
         supplierOrderDeliveryAlert: true,
@@ -83,6 +88,11 @@ router.post('/', fetchUser, async (req, res) => {
     const roleVariants = getRoleVariants(userRole);
 
     const {
+      emailNotifications,
+      orderAlerts,
+      deliveryAlerts,
+      lowStockAlerts,
+      weeklyReport,
       salarydueAlert,
       salaryDueDaysThreshold,
       supplierOrderDeliveryAlert,
@@ -139,6 +149,20 @@ router.post('/', fetchUser, async (req, res) => {
 
     if (preferences) {
       // Update existing preferences
+      if (emailNotifications !== undefined) preferences.emailNotifications = emailNotifications;
+      if (orderAlerts !== undefined) preferences.orderAlerts = orderAlerts;
+      if (deliveryAlerts !== undefined) preferences.deliveryAlerts = deliveryAlerts;
+      if (lowStockAlerts !== undefined) preferences.lowStockAlerts = lowStockAlerts;
+      if (weeklyReport !== undefined) preferences.weeklyReport = weeklyReport;
+
+      // Keep legacy and generic low-stock flags aligned.
+      if (lowStockAlerts !== undefined && productLowStockAlert === undefined) {
+        preferences.productLowStockAlert = lowStockAlerts;
+      }
+      if (productLowStockAlert !== undefined && lowStockAlerts === undefined) {
+        preferences.lowStockAlerts = productLowStockAlert;
+      }
+
       if (salarydueAlert !== undefined) preferences.salarydueAlert = salarydueAlert;
       if (salaryDueDaysThreshold !== undefined) preferences.salaryDueDaysThreshold = salaryDueDaysThreshold;
       
@@ -160,11 +184,18 @@ router.post('/', fetchUser, async (req, res) => {
       preferences = new NotificationPreference({
         user: userId,
         role: userRole,
+        emailNotifications: emailNotifications !== undefined ? emailNotifications : true,
+        orderAlerts: orderAlerts !== undefined ? orderAlerts : true,
+        deliveryAlerts: deliveryAlerts !== undefined ? deliveryAlerts : true,
+        lowStockAlerts: lowStockAlerts !== undefined ? lowStockAlerts : true,
+        weeklyReport: weeklyReport !== undefined ? weeklyReport : false,
         salarydueAlert: salarydueAlert !== undefined ? salarydueAlert : true,
         salaryDueDaysThreshold: salaryDueDaysThreshold || 3,
         supplierOrderDeliveryAlert: supplierOrderDeliveryAlert !== undefined ? supplierOrderDeliveryAlert : true,
         supplierOrderDeliveryDaysThreshold: supplierOrderDeliveryDaysThreshold || 2,
-        productLowStockAlert: productLowStockAlert !== undefined ? productLowStockAlert : true,
+        productLowStockAlert: productLowStockAlert !== undefined
+          ? productLowStockAlert
+          : (lowStockAlerts !== undefined ? lowStockAlerts : true),
         productLowStockThreshold: productLowStockThreshold || 10,
         customerOrderDeliveryAlert: customerOrderDeliveryAlert !== undefined ? customerOrderDeliveryAlert : true,
         customerOrderDeliveryDaysThreshold: customerOrderDeliveryDaysThreshold || 1,

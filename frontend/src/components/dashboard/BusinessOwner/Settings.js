@@ -69,6 +69,7 @@ const Settings = (props) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchBusinessOwnerData();
+    fetchNotificationPreferences();
   }, []);
 
   const fetchBusinessOwnerData = async () => {
@@ -105,6 +106,17 @@ const Settings = (props) => {
           address: data.address || '',
           image: data.image || ''
         });
+        setCompanyData({
+          companyName: data.companyName || '',
+          companyPhone: data.companyPhone || '',
+          companyEmail: data.companyEmail || '',
+          companyAddress: data.companyAddress || '',
+          companyCountry: data.companyCountry || 'India',
+          companyState: data.companyState || '',
+          companyCity: data.companyCity || '',
+          companyPincode: data.companyPincode || '',
+          companyLogo: data.companyLogo || ''
+        });
       } else {
         props.showAlert?.('Failed to load profile data', 'danger');
       }
@@ -137,6 +149,37 @@ const Settings = (props) => {
       ...prev,
       [id]: type === 'checkbox' ? checked : value
     }));
+  };
+
+  const fetchNotificationPreferences = async () => {
+    try {
+      const headers = {
+        'auth-token': localStorage.getItem('token')
+      };
+
+      const response = await apiCall('/api/notificationpreferences', {
+        method: 'GET',
+        headers
+      });
+
+      if (response.isUnauthorized || response.isDeactivated) {
+        return;
+      }
+
+      if (response.ok) {
+        const data = await parseResponse(response);
+        if (data) {
+          setPreferences({
+            emailNotifications: data.emailNotifications !== false,
+            orderAlerts: data.orderAlerts !== false,
+            lowStockAlerts: data.lowStockAlerts !== false,
+            weeklyReport: data.weeklyReport === true
+          });
+        }
+      }
+    } catch (error) {
+      // Keep existing defaults if preferences fail to load.
+    }
   };
 
   const handlePasswordChange = (e) => {
@@ -208,11 +251,53 @@ const Settings = (props) => {
       return;
     }
 
-    setSaving(true);
-    setTimeout(() => {
-      props.showAlert?.('Company settings saved successfully', 'success');
+    try {
+      setSaving(true);
+      const headers = {
+        'Content-Type': 'application/json',
+        'auth-token': localStorage.getItem('token')
+      };
+
+      const dataToSend = {
+        // Route requires these profile fields as well.
+        fname: profileData.fname,
+        lname: profileData.lname,
+        email: profileData.email,
+        phone: profileData.phone,
+        country: profileData.country,
+        state: profileData.state,
+        city: profileData.city,
+        pincode: profileData.pincode,
+        address: profileData.address,
+        companyName: companyData.companyName,
+        companyPhone: companyData.companyPhone,
+        companyEmail: companyData.companyEmail,
+        companyAddress: companyData.companyAddress,
+        companyCountry: companyData.companyCountry,
+        companyState: companyData.companyState,
+        companyCity: companyData.companyCity,
+        companyPincode: companyData.companyPincode,
+        companyLogo: companyData.companyLogo
+      };
+
+      const res = await fetch('/api/businessowner/updatebusinessowner', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(dataToSend)
+      });
+
+      if (res.ok) {
+        props.showAlert?.('Company settings saved successfully', 'success');
+        fetchBusinessOwnerData();
+      } else {
+        const errorData = await res.json();
+        props.showAlert?.('Failed to save company settings: ' + (errorData.errors?.[0]?.msg || 'Unknown error'), 'danger');
+      }
+    } catch (error) {
+      props.showAlert?.('Error saving company settings', 'danger');
+    } finally {
       setSaving(false);
-    }, 500);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -273,11 +358,51 @@ const Settings = (props) => {
   };
 
   const handleSavePreferences = () => {
-    setSaving(true);
-    setTimeout(() => {
-      props.showAlert?.('Preferences saved successfully', 'success');
-      setSaving(false);
-    }, 500);
+    const saveNotificationPreferences = async () => {
+      try {
+        setSaving(true);
+        const headers = {
+          'Content-Type': 'application/json',
+          'auth-token': localStorage.getItem('token')
+        };
+
+        const response = await apiCall('/api/notificationpreferences', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(preferences)
+        });
+
+        if (response.isUnauthorized || response.isDeactivated) {
+          props.showAlert?.('Session ended. Please login again.', 'warning');
+          if (response.shouldRedirect && window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+          return;
+        }
+
+        if (response.ok) {
+          const data = await parseResponse(response);
+          if (data?.preferences) {
+            setPreferences({
+              emailNotifications: data.preferences.emailNotifications !== false,
+              orderAlerts: data.preferences.orderAlerts !== false,
+              lowStockAlerts: data.preferences.lowStockAlerts !== false,
+              weeklyReport: data.preferences.weeklyReport === true
+            });
+          }
+          props.showAlert?.('Preferences saved successfully', 'success');
+          return;
+        }
+
+        props.showAlert?.('Failed to save preferences', 'danger');
+      } catch (error) {
+        props.showAlert?.('Error saving preferences', 'danger');
+      } finally {
+        setSaving(false);
+      }
+    };
+
+    saveNotificationPreferences();
   };
 
   const handleDeleteAccountClick = async () => {

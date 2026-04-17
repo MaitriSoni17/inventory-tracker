@@ -328,6 +328,110 @@ const Orders = (props) => {
         }
     };
 
+    const exportPendingToExcel = () => {
+        if (pendingOrders.length === 0) {
+            props.showAlert('No pending orders to export', 'warning');
+            return;
+        }
+
+        try {
+            const exportData = pendingOrders.map(order => ({
+                'Order ID': order._id.slice(-6),
+                'Customer Name': order.cName,
+                'Customer Email': order.cEmail,
+                'Customer Phone': order.cPhone,
+                'Product Name': order.pName,
+                'Category': categoryMap[order.category] || order.categoryName || order.category || '-',
+                'Units': order.ounits,
+                'Amount': `₹${order.amount}`,
+                'Order Date': formatDate(order.oDate),
+                'Delivery Date': formatDate(order.dDate),
+                'Status': order.status || 'Pending',
+                'Delivery Status': order.dStatus || '-',
+                'Stock Status': order.pendingReason ? 'Low Stock' : 'Pending',
+                'Pending Reason': order.pendingReason || '-',
+                'Address': order.cAddress,
+                'Notes': order.desc || ''
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Pending Orders');
+
+            worksheet['!cols'] = [
+                { wch: 12 }, { wch: 15 }, { wch: 22 }, { wch: 15 },
+                { wch: 16 }, { wch: 14 }, { wch: 8 }, { wch: 12 },
+                { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 15 },
+                { wch: 12 }, { wch: 40 }, { wch: 25 }, { wch: 20 }
+            ];
+
+            const fileName = `Pending_Orders_${new Date().toISOString().split('T')[0]}.xlsx`;
+            XLSX.writeFile(workbook, fileName);
+            props.showAlert('Pending orders exported to Excel successfully', 'success');
+        } catch (error) {
+            props.showAlert('Error exporting pending orders to Excel', 'danger');
+        }
+    };
+
+    const exportPendingToPDF = () => {
+        if (pendingOrders.length === 0) {
+            props.showAlert('No pending orders to export', 'warning');
+            return;
+        }
+
+        try {
+            const element = document.createElement('div');
+            element.innerHTML = `
+                <div style="padding: 20px; font-family: Arial, sans-serif;">
+                    <h1 style="text-align: center; margin-bottom: 30px;">Pending Orders Report</h1>
+                    <p style="text-align: center; margin-bottom: 20px; color: #666;">Generated on: ${new Date().toLocaleString('en-IN')}</p>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+                        <thead>
+                            <tr style="background-color: #fff3cd; border-bottom: 2px solid #dee2e6;">
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Order ID</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Customer Name</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Product</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Amount</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Order Date</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Delivery Date</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Status</th>
+                                <th style="padding: 12px; text-align: left; border: 1px solid #dee2e6;">Pending Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pendingOrders.map(order => `
+                                <tr style="border-bottom: 1px solid #dee2e6;">
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order._id.slice(-6)}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.cName}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.pName}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">₹${order.amount}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${formatDate(order.oDate)}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${formatDate(order.dDate)}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.status || 'Pending'}</td>
+                                    <td style="padding: 10px; border: 1px solid #dee2e6;">${order.pendingReason || 'Low stock / pending state'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <p style="margin-top: 30px; text-align: center; color: #999; font-size: 12px;">Total Pending Orders: ${pendingOrders.length}</p>
+                </div>
+            `;
+
+            const opt = {
+                margin: 10,
+                filename: `Pending_Orders_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a4' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+            props.showAlert('Pending orders exported to PDF successfully', 'success');
+        } catch (error) {
+            props.showAlert('Error exporting pending orders to PDF', 'danger');
+        }
+    };
+
     return (
         <>
             <div className="container-fluid">
@@ -348,6 +452,17 @@ const Orders = (props) => {
                                     <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
                                 </button>
                                 <button className="btn btn-link text-decoration-none" onClick={exportToExcel} title="Export to Excel">
+                                    <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
+                                </button>
+                            </CanExportReports>
+                        )}
+
+                        {activeTab === 'pending' && (
+                            <CanExportReports>
+                                <button className="btn btn-link text-decoration-none" onClick={exportPendingToPDF} title="Export Pending to PDF">
+                                    <i className="bi bi-file-earmark-pdf-fill text-danger fs-1 d-flex justify-content-center align-items-center"></i>
+                                </button>
+                                <button className="btn btn-link text-decoration-none" onClick={exportPendingToExcel} title="Export Pending to Excel">
                                     <i className="bi bi-file-earmark-excel-fill text-success fs-1 d-flex justify-content-center align-items-center"></i>
                                 </button>
                             </CanExportReports>

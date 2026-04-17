@@ -169,12 +169,55 @@ router.put('/updatebusinessowner', fetchbusinessowner, [
 ], async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-    const { fname, lname, email, password, date, country, state, city, pincode, phone, address, image } = req.body;
+    const {
+        fname,
+        lname,
+        email,
+        password,
+        date,
+        country,
+        state,
+        city,
+        pincode,
+        phone,
+        address,
+        image,
+        companyName,
+        companyPhone,
+        companyEmail,
+        companyAddress,
+        companyCountry,
+        companyState,
+        companyCity,
+        companyPincode,
+        companyLogo
+    } = req.body;
     try {
         let businessowner = await BusinessOwner.findById(req.businessowner._id);
         if (!businessowner) return res.status(404).send("Not Found");
         
-        const newBusinessOwner = { fname, lname, email, date, country, state, city, pincode, phone, address, image };
+        const newBusinessOwner = {
+            fname,
+            lname,
+            email,
+            date,
+            country,
+            state,
+            city,
+            pincode,
+            phone,
+            address,
+            image,
+            companyName,
+            companyPhone,
+            companyEmail,
+            companyAddress,
+            companyCountry,
+            companyState,
+            companyCity,
+            companyPincode,
+            companyLogo
+        };
         
         // Only update password if it's provided
         if (password) {

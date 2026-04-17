@@ -272,9 +272,16 @@ router.delete('/deletesupplier/:id', require('../middleware/fetchbusinessowner')
 // Update own profile using: PUT "/api/supplier/updatesupplier". Supplier login required
 router.put('/updatesupplier', fetchuser, [
     body('email').optional({ checkFalsy: true }).isEmail().withMessage('Enter a valid email'),
+    body('companyEmail').optional({ checkFalsy: true }).isEmail().withMessage('Enter a valid company email'),
     body('phone').optional({ checkFalsy: true }).custom((value) => {
         if (!isValidPhoneNumber(value)) {
             throw new Error('Enter a valid 10-digit phone number');
+        }
+        return true;
+    }),
+    body('companyPhone').optional({ checkFalsy: true }).custom((value) => {
+        if (!isValidPhoneNumber(value)) {
+            throw new Error('Enter a valid 10-digit company phone number');
         }
         return true;
     }),
@@ -289,7 +296,26 @@ router.put('/updatesupplier', fetchuser, [
             return res.status(403).json({ error: "Access denied" });
         }
 
-        const { fname, lname, phone, email, country, state, city, pincode, address } = req.body;
+        const {
+            fname,
+            lname,
+            phone,
+            email,
+            country,
+            state,
+            city,
+            pincode,
+            address,
+            companyName,
+            companyPhone,
+            companyEmail,
+            companyAddress,
+            companyCountry,
+            companyState,
+            companyCity,
+            companyPincode,
+            companyLogo
+        } = req.body;
         const supplier = await Supplier.findById(req.user._id);
         
         if (!supplier) {
@@ -315,6 +341,15 @@ router.put('/updatesupplier', fetchuser, [
         if (city) supplier.city = city;
         if (pincode) supplier.pincode = pincode;
         if (address) supplier.address = address;
+        if (companyName !== undefined) supplier.companyName = companyName;
+        if (companyPhone !== undefined) supplier.companyPhone = companyPhone;
+        if (companyEmail !== undefined) supplier.companyEmail = companyEmail;
+        if (companyAddress !== undefined) supplier.companyAddress = companyAddress;
+        if (companyCountry !== undefined) supplier.companyCountry = companyCountry;
+        if (companyState !== undefined) supplier.companyState = companyState;
+        if (companyCity !== undefined) supplier.companyCity = companyCity;
+        if (companyPincode !== undefined) supplier.companyPincode = companyPincode;
+        if (companyLogo !== undefined) supplier.companyLogo = companyLogo;
 
         await supplier.save();
         res.json({ supplier: supplier.toObject({ getters: true }), success: true });

@@ -3,6 +3,8 @@
  * Automatically handles unauthorized responses and redirects to login
  */
 
+import { dispatchNotificationRefresh } from './notificationEvents';
+
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 const BACKEND_RETRY_COOLDOWN_MS = 15000;
 let backendUnavailableUntil = 0;
@@ -99,6 +101,11 @@ export const apiCall = async (url, options = {}) => {
         }
 
         // For other responses, return them as-is
+        const method = String(options.method || 'GET').toUpperCase();
+        if (response.ok && method !== 'GET') {
+            dispatchNotificationRefresh();
+        }
+
         return response;
 
     } catch (error) {

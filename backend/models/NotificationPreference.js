@@ -11,6 +11,31 @@ const NotificationPreferenceSchema = new Schema({
     enum: ['BusinessOwner', 'Employee', 'Supplier', 'businessowner', 'employee', 'supplier', 'manager', 'supervisor'],
     required: true
   },
+  emailNotifications: {
+    type: Boolean,
+    default: true,
+    description: 'Enable general email notifications'
+  },
+  orderAlerts: {
+    type: Boolean,
+    default: true,
+    description: 'Enable order alerts'
+  },
+  deliveryAlerts: {
+    type: Boolean,
+    default: true,
+    description: 'Enable delivery alerts'
+  },
+  lowStockAlerts: {
+    type: Boolean,
+    default: true,
+    description: 'Enable low stock alerts'
+  },
+  weeklyReport: {
+    type: Boolean,
+    default: false,
+    description: 'Enable weekly reports'
+  },
   // Salary Notifications (Business Owner)
   salarydueAlert: {
     type: Boolean,

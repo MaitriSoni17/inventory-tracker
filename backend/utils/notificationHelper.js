@@ -1146,8 +1146,15 @@ async function checkAndNotifyLowStock(product, businessOwnerId) {
       role: { $in: ['businessowner', 'BusinessOwner'] }
     });
 
+    // Prefer the generic settings flag when available, with legacy fallback.
+    const ownerLowStockDisabled = preferences
+      ? (preferences.lowStockAlerts !== undefined
+          ? preferences.lowStockAlerts === false
+          : preferences.productLowStockAlert === false)
+      : false;
+
     // Check if low stock alerts are enabled (default: true)
-    if (preferences && preferences.productLowStockAlert === false) {
+    if (ownerLowStockDisabled) {
       return null;
     }
 
@@ -1240,16 +1247,27 @@ async function notifyPermittedEmployeesLowStock(businessOwnerId, alertMessage, a
     const employees = await Employee.find({
       businessowner: businessOwnerId,
       role: { $in: permittedRoles }
-    }).select('_id role');
+    }).select('_id role preferences');
 
     for (const emp of employees) {
-      // Check employee's own notification preferences
-      const empPrefs = await NotificationPreference.findOne({
+      const employeeLowStockDisabled = emp.preferences && (
+        emp.preferences.lowStockAlerts === false ||
+        emp.preferences.productLowStockAlert === false
+      );
+
+      // Check employee notification preferences if they were stored separately.
+      const empPrefs = employeeLowStockDisabled ? null : await NotificationPreference.findOne({
         user: emp._id,
         role: { $in: ['employee', 'Employee', emp.role] }
       });
 
-      if (empPrefs && empPrefs.productLowStockAlert === false) {
+      const employeeNotifPrefDisabled = empPrefs
+        ? (empPrefs.lowStockAlerts !== undefined
+            ? empPrefs.lowStockAlerts === false
+            : empPrefs.productLowStockAlert === false)
+        : false;
+
+      if (employeeLowStockDisabled || employeeNotifPrefDisabled) {
         continue; // Employee has disabled low stock alerts
       }
 
@@ -1292,8 +1310,14 @@ async function checkAllProductsLowStock(businessOwnerId) {
       role: { $in: ['businessowner', 'BusinessOwner'] }
     });
 
+    const ownerLowStockDisabled = preferences
+      ? (preferences.lowStockAlerts !== undefined
+          ? preferences.lowStockAlerts === false
+          : preferences.productLowStockAlert === false)
+      : false;
+
     // Check if low stock alerts are enabled (default: true)
-    if (preferences && preferences.productLowStockAlert === false) {
+    if (ownerLowStockDisabled) {
       return [];
     }
 

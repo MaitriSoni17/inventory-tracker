@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import '../../../styles/settings.css';
 import AccountDeletionModal from '../../common/Modal/AccountDeletionModal';
+import { apiCall, parseResponse } from '../../../utils/apiClient';
 
 const isValidPhoneNumber = (value) => {
   if (!value) return false;
@@ -95,6 +96,7 @@ const Settings = (props) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchSupplierData();
+    fetchSupplierPreferences();
   }, []);
 
   const fetchSupplierData = async () => {
@@ -179,12 +181,83 @@ const Settings = (props) => {
     }));
   };
 
+  const fetchSupplierPreferences = async () => {
+    try {
+      const response = await apiCall('/api/notificationpreferences', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'auth-token': localStorage.getItem('token')
+        }
+      });
+
+      if (response.isUnauthorized || response.isDeactivated) {
+        return;
+      }
+
+      if (response.ok) {
+        const data = await parseResponse(response);
+        if (data) {
+          setPreferences({
+            emailNotifications: data.emailNotifications !== false,
+            orderAlerts: data.orderAlerts !== false,
+            deliveryAlerts: data.deliveryAlerts !== false,
+            weeklyReport: data.weeklyReport === true
+          });
+        }
+      }
+    } catch (error) {
+      // Keep defaults if preferences cannot be loaded.
+    }
+  };
+
   const handlePasswordChange = (e) => {
     const { id, value } = e.target;
     setPasswordData(prev => ({
       ...prev,
       [id]: value
     }));
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      setSaving(true);
+      const response = await apiCall('/api/notificationpreferences', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'auth-token': localStorage.getItem('token')
+        },
+        body: JSON.stringify(preferences)
+      });
+
+      if (response.isUnauthorized || response.isDeactivated) {
+        props.showAlert?.('Session ended. Please login again.', 'warning');
+        if (response.shouldRedirect && window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return;
+      }
+
+      if (response.ok) {
+        const data = await parseResponse(response);
+        if (data?.preferences) {
+          setPreferences({
+            emailNotifications: data.preferences.emailNotifications !== false,
+            orderAlerts: data.preferences.orderAlerts !== false,
+            deliveryAlerts: data.preferences.deliveryAlerts !== false,
+            weeklyReport: data.preferences.weeklyReport === true
+          });
+        }
+        props.showAlert?.('Preferences saved successfully', 'success');
+      } else {
+        props.showAlert?.('Failed to save preferences', 'danger');
+      }
+    } catch (error) {
+      props.showAlert?.('Error saving preferences', 'danger');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveProfile = async (e) => {
@@ -242,11 +315,43 @@ const Settings = (props) => {
       return;
     }
 
-    setSaving(true);
-    setTimeout(() => {
-      props.showAlert?.('Company settings saved successfully', 'success');
+    try {
+      setSaving(true);
+      const headers = {
+        'Content-Type': 'application/json',
+        'auth-token': localStorage.getItem('token')
+      };
+
+      const dataToSend = {
+        companyName: companyData.companyName,
+        companyPhone: companyData.companyPhone,
+        companyEmail: companyData.companyEmail,
+        companyAddress: companyData.companyAddress,
+        companyCountry: companyData.companyCountry,
+        companyState: companyData.companyState,
+        companyCity: companyData.companyCity,
+        companyPincode: companyData.companyPincode,
+        companyLogo: companyData.companyLogo
+      };
+
+      const res = await fetch('/api/supplier/updatesupplier', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify(dataToSend)
+      });
+
+      if (res.ok) {
+        props.showAlert?.('Company settings saved successfully', 'success');
+        fetchSupplierData();
+      } else {
+        const errorData = await res.json();
+        props.showAlert?.('Failed to save company settings: ' + (errorData.errors?.[0]?.msg || errorData.error || 'Unknown error'), 'danger');
+      }
+    } catch (error) {
+      props.showAlert?.('Error saving company settings', 'danger');
+    } finally {
       setSaving(false);
-    }, 500);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -815,6 +920,16 @@ const Settings = (props) => {
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="form-actions">
+                  <button
+                    className="btn-save"
+                    onClick={handleSavePreferences}
+                    disabled={saving}
+                  >
+                    {saving ? 'Saving...' : 'Save Preferences'}
+                  </button>
                 </div>
               </div>
             </div>

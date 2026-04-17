@@ -129,6 +129,60 @@
 
 .role-list { display: flex; flex-direction: column; gap: 0.5rem; }
 
+.custom-role-divider {
+    border-top: 1px solid var(--pm-border);
+    margin: 0.75rem 0 0.25rem;
+    padding-top: 0.75rem;
+}
+
+.custom-role-divider small {
+    color: var(--pm-text-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0 0.25rem;
+}
+
+.custom-role-item-wrap {
+    position: relative;
+}
+
+.custom-role-item-wrap .role-item {
+    padding-right: 2.5rem;
+}
+
+.custom-role-item-wrap .role-desc {
+    line-height: 1.35;
+    word-break: break-word;
+}
+
+.custom-role-delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 8px;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.08);
+    color: var(--pm-danger);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--pm-transition);
+}
+
+.custom-role-delete-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.16);
+    transform: scale(1.05);
+}
+
+.custom-role-delete-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .role-item {
     display: flex;
     align-items: center;
@@ -149,14 +203,24 @@
 }
 
 .role-icon {
-    width: 45px;
-    height: 45px;
+    width: 38px;
+    height: 38px;
     border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1rem;
     color: white;
+    flex: 0 0 38px;
+}
+
+@media (min-width: 992px) {
+    .role-icon {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
+        font-size: 1.08rem;
+    }
 }
 
 .role-icon.manager { background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); }
